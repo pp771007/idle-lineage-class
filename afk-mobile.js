@@ -54,6 +54,8 @@
       sysPanel.classList.add('m-syslog');
       logSheet = buildLogSheet();
       gs.appendChild(logSheet);
+      decorateLogHeader(combatLog, 'sys');     // 戰鬥日誌標題列:⇆ 切到系統 / ✕ 關閉
+      decorateLogHeader(sysPanel, 'combat');   // 系統日誌標題列:⇆ 切到戰鬥 / ✕ 關閉
       // 點面板外面(戰鬥區)即關閉:透明 backdrop,蓋住戰鬥區但不蓋導覽列
       var logBackdrop = document.createElement('div');
       logBackdrop.id = 'm-log-backdrop';
@@ -118,10 +120,6 @@
     function setLog(v) {
       document.body.classList.remove('mlog-combat', 'mlog-sys');
       document.body.classList.add('mlog-' + v);
-      if (logSheet) {
-        var kids = logSheet.querySelectorAll('#m-log-head button[data-l]');
-        for (var i = 0; i < kids.length; i++) kids[i].classList.toggle('m-active', kids[i].getAttribute('data-l') === v);
-      }
     }
     function updateLogNavActive(on) { var b = nav.querySelector('[data-nav="log"]'); if (b) b.classList.toggle('m-active', !!on); }
     function openLog() { document.body.classList.add('mlog-open'); updateLogNavActive(true); }
@@ -179,28 +177,32 @@
       return n;
     }
 
-    // --- 底部浮動日誌面板(表頭:戰鬥/系統切換 + ✕;內容:兩個日誌面板)--------
+    // --- 底部浮動日誌面板(只有內容容器;切換/關閉做成小鈕注入原本的 panel 標題列)------
     function buildLogSheet() {
       var sheet = document.createElement('div');
       sheet.id = 'm-log-sheet';
-      var head = document.createElement('div');
-      head.id = 'm-log-head';
-      [['sys', '📜 系統日誌'], ['combat', '⚔️ 戰鬥日誌']].forEach(function (it) {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.setAttribute('data-l', it[0]);
-        b.textContent = it[1];
-        b.addEventListener('click', function () { setLog(it[0]); });
-        head.appendChild(b);
-      });
-      var x = document.createElement('button');
-      x.type = 'button'; x.id = 'm-log-close'; x.textContent = '✕';
-      x.addEventListener('click', function () { closeLog(); });
-      head.appendChild(x);
       var body = document.createElement('div');
       body.id = 'm-log-body';
-      sheet.appendChild(head); sheet.appendChild(body);
+      sheet.appendChild(body);
       return sheet;
+    }
+
+    // 把「⇆ 切換 / ✕ 關閉」兩顆小鈕注入原本的日誌標題列(整合進原列,不再另開一排)。
+    // otherType:點 ⇆ 要切到的另一種日誌(看戰鬥就切系統,反之亦然)。
+    function decorateLogHeader(panel, otherType) {
+      var hdr = panel.querySelector('.panel-header');
+      if (!hdr || hdr.querySelector('.m-log-ctrls')) return;
+      hdr.classList.add('m-log-hdr');
+      var ctrls = document.createElement('span');
+      ctrls.className = 'm-log-ctrls';
+      var sw = document.createElement('button');
+      sw.type = 'button'; sw.textContent = '⇆'; sw.title = '切換戰鬥/系統日誌';
+      sw.addEventListener('click', function (e) { e.stopPropagation(); setLog(otherType); });
+      var x = document.createElement('button');
+      x.type = 'button'; x.textContent = '✕'; x.title = '關閉';
+      x.addEventListener('click', function (e) { e.stopPropagation(); closeLog(); });
+      ctrls.appendChild(sw); ctrls.appendChild(x);
+      hdr.appendChild(ctrls);
     }
   }
 
@@ -260,19 +262,19 @@
       'body.m-mobile #m-nav button.m-active{color:#fcd34d;background:#1e293b;}',
       'body.m-mobile #m-nav button:active{background:#334155;}',
 
-      /* 戰鬥/系統日誌:底部浮動面板(從導覽列「日誌」開,浮在畫面上,不擠壓戰鬥畫面)*/
+      /* 戰鬥/系統日誌:底部浮動面板。切換/關閉做成 ⇆/✕ 兩顆小鈕注入原本標題列,不再另開一排。
+         原標題列半透明(讓血條透出),日誌內文(.log-bg 自帶深色底)維持不透明保持可讀。 */
       '#m-log-sheet{display:none;}',
-      /* 日誌面板:表頭半透明(讓底下怪物血條透出來),內文維持不透明保持可讀。
-         所以 sheet 本身不上底色,底色只給內文 body;表頭/按鈕用半透明底 + 模糊。 */
       'body.m-mobile #m-log-sheet{display:none;position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));height:45dvh;height:45vh;z-index:50;flex-direction:column;background:transparent;border-top:2px solid #475569;box-shadow:0 -12px 34px rgba(0,0,0,.6);}',
       'body.m-mobile.mlog-open #m-log-sheet{display:flex !important;}',
-      'body.m-mobile #m-log-head{display:flex;flex:0 0 auto;align-items:center;gap:6px;padding:7px 8px;border-bottom:1px solid #334155;background:rgba(15,23,42,0.45);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}',
-      'body.m-mobile #m-log-head button[data-l]{flex:1;padding:8px 4px;border:1px solid rgba(51,65,85,0.7);background:rgba(30,41,59,0.55);color:#cbd5e1;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;}',
-      'body.m-mobile #m-log-head button[data-l].m-active{background:rgba(51,65,85,0.72);color:#fcd34d;border-color:#eab308;}',
-      'body.m-mobile #m-log-close{flex:0 0 auto;width:40px;height:36px;border:1px solid rgba(51,65,85,0.7);background:rgba(30,41,59,0.55);color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
-      'body.m-mobile #m-log-close:active{background:rgba(71,85,105,0.7);}',
-      'body.m-mobile #m-log-body{flex:1 1 auto;min-height:0;display:flex;overflow:hidden;background:#0f172a;}',
-      'body.m-mobile #m-log-body #combat-log-panel,body.m-mobile #m-log-body .m-syslog{flex:1 1 auto !important;width:100%;height:auto !important;min-height:0 !important;margin:0 !important;border-radius:0 !important;}',
+      'body.m-mobile #m-log-body{flex:1 1 auto;min-height:0;display:flex;overflow:hidden;background:transparent;}',
+      'body.m-mobile #m-log-body #combat-log-panel,body.m-mobile #m-log-body .m-syslog{flex:1 1 auto !important;width:100%;height:auto !important;min-height:0 !important;margin:0 !important;border-radius:0 !important;background:transparent !important;border:none !important;box-shadow:none !important;}',
+      /* 原標題列:半透明 + 模糊(血條透出),右側留位放控制鈕 */
+      'body.m-mobile #m-log-body .panel-header.m-log-hdr{position:relative;background:rgba(15,23,42,0.45) !important;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);padding-right:86px !important;}',
+      '.m-log-ctrls{display:none;}',
+      'body.m-mobile #m-log-body .panel-header.m-log-hdr .m-log-ctrls{display:flex;position:absolute;right:6px;top:50%;transform:translateY(-50%);gap:6px;}',
+      'body.m-mobile .m-log-ctrls button{width:34px;height:30px;border:1px solid rgba(51,65,85,0.85);background:rgba(30,41,59,0.7);color:#e2e8f0;border-radius:7px;font-size:15px;line-height:1;cursor:pointer;font-family:inherit;padding:0;}',
+      'body.m-mobile .m-log-ctrls button:active{background:rgba(71,85,105,0.9);}',
       'body.m-mobile.mlog-sys #m-log-body #combat-log-panel{display:none !important;}',
       'body.m-mobile.mlog-combat #m-log-body .m-syslog{display:none !important;}',
       /* 點面板外面關閉用的透明遮罩(蓋戰鬥區、不蓋導覽列)*/

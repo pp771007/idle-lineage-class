@@ -60,11 +60,6 @@
       gs.appendChild(logSheet);
       decorateLogHeader(combatLog, 'sys');     // 戰鬥日誌標題列:⇆ 切到系統 / ✕ 關閉
       decorateLogHeader(sysPanel, 'combat');   // 系統日誌標題列:⇆ 切到戰鬥 / ✕ 關閉
-      // 點面板外面(戰鬥區)即關閉:透明 backdrop,蓋住戰鬥區但不蓋導覽列
-      var logBackdrop = document.createElement('div');
-      logBackdrop.id = 'm-log-backdrop';
-      logBackdrop.addEventListener('click', function () { closeLog(); });
-      gs.appendChild(logBackdrop);
     }
     var logBody = logSheet ? logSheet.querySelector('#m-log-body') : null;
     // 手機:把兩個日誌面板移進浮動面板;桌機:移回中欄原位(最後兩個子元素,順序還原)
@@ -354,9 +349,6 @@
       'body.m-mobile.mlog-nocombat .m-log-sw{display:none !important;}',
       'body.m-mobile.mlog-sys #m-log-body #combat-log-panel{display:none !important;}',
       'body.m-mobile.mlog-combat #m-log-body .m-syslog{display:none !important;}',
-      /* 點面板外面關閉用的透明遮罩(蓋戰鬥區、不蓋導覽列)*/
-      '#m-log-backdrop{display:none;}',
-      'body.m-mobile.mlog-open #m-log-backdrop{display:block;position:fixed;left:0;right:0;top:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));z-index:49;background:transparent;}',
 
       /* 地圖標題列:手機隱藏「冒險地圖」文字,控制項靠左不撐開 */
       'body.m-mobile .m-maptitle{display:none !important;}',

@@ -42,8 +42,8 @@ await page.waitForTimeout(1500);
 await browser.close();
 server.close();
 
-// 三支外掛各自的開機 log:'[AFK] hooks OK' / '[AFK-mobile] hooks OK' / '[AFK-savedata] hooks OK'
-const need = ['[AFK]', '[AFK-mobile]', '[AFK-savedata]'];
+// 兩支外掛各自的開機 log:'[AFK] hooks OK' / '[AFK-mobile] hooks OK'
+const need = ['[AFK]', '[AFK-mobile]'];
 const okMap = {};
 for (const n of need) okMap[n] = logs.some((l) => l.includes(n) && l.includes('hooks OK'));
 const allOK = Object.values(okMap).every(Boolean);

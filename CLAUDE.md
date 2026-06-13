@@ -10,7 +10,7 @@
 
 > **已自動化**:`.github/workflows/sync-upstream.yml`(每小時 + 可手動)自動跑這套流程
 > ——腳本 `scripts/sync-upstream.mjs` 抓原版、補回外掛 `<script>`(保留各自 `?v=`)、補新圖,
-> 再用 `scripts/smoke-hooks.mjs`(Playwright)驗三支外掛 `hooks OK`,**通過才自動 commit/push**;
+> 再用 `scripts/smoke-hooks.mjs`(Playwright)驗兩支外掛 `hooks OK`,**通過才自動 commit/push**;
 > 掛點被原作者改壞時不會推壞版本,改開一個 issue 通知人工處理。
 
 ### 使用者說「合併原版 / 同步原版 / 更新原版」時 → 先用 GitHub Action,不要急著手動
@@ -43,7 +43,7 @@ curl -s --ssl-no-revoke -o D:/ppRepos/_scratch/scripts/orig_index.html \
 ```bash
 git show HEAD:index.html > D:/ppRepos/_scratch/scripts/current_index.html
 # diff 時把我們加的外掛 script 行濾掉,避免被當成差異
-diff <(grep -v -a "afk-offline.js\|afk-mobile.js\|afk-savedata.js\|可獨立維護" current_index.html) orig_index.html
+diff <(grep -v -a "afk-offline.js\|afk-mobile.js\|可獨立維護" current_index.html) orig_index.html
 ```
 
 ### 3. 算出原版新增、本地缺少的圖檔
@@ -56,7 +56,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 - `desktop.ini` 這種 Windows 垃圾檔**不要**收。
 
 ### 4. 用原版覆蓋 + 把外掛 `<script>` 補回 `</body>` 前
-**用 python 處理(中文 UTF-8 最穩),不要用 shell 字串拼**。讀原版內容 → 在 `</body>` 前插入三支外掛 script(**記得帶 `?v=` 版本號**,見「每次 push 前的檢查清單」) → 整份寫出。動手前 `assert` 原版只有一個 `</body>`、且尚未含外掛,避免插錯。
+**用 python 處理(中文 UTF-8 最穩),不要用 shell 字串拼**。讀原版內容 → 在 `</body>` 前插入兩支外掛 script(**記得帶 `?v=` 版本號**,見「每次 push 前的檢查清單」) → 整份寫出。動手前 `assert` 原版只有一個 `</body>`、且尚未含外掛,避免插錯。
 
 ### 5. 抓缺的圖 —— 走 blob SHA,別用中文檔名當參數
 中文檔名直接丟給 curl / 原生 exe,git-bash(MSYS)會重編碼把檔名弄壞。改走 **blob SHA(純 ASCII)**:
@@ -69,7 +69,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 ### 6. 自己驗證(不要丟給使用者測)
 本機開 http server + Playwright 無頭載入 `index.html`:
-- console 三支外掛都 `[AFK*] hooks OK` → 代表原作者沒改壞掛點(改了 id / DOM 順序才會失效,失效就回報哪個外掛哪個掛點要調)。
+- console 兩支外掛都 `[AFK*] hooks OK` → 代表原作者沒改壞掛點(改了 id / DOM 順序才會失效,失效就回報哪個外掛哪個掛點要調)。
 - 縮到手機尺寸確認手機版面沒爆。
 
 ### 7. commit + push + 清暫存
@@ -86,11 +86,11 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 | 檔案 | 功能 |
 |---|---|
-| `afk-offline.js` | 離線掛機(關瀏覽器也結算收益;24h 上限、撞死即停、per-slot 多分頁安全) |
+| `afk-offline.js` | 離線掛機(關瀏覽器也結算收益;24h 上限、撞死即停、存活回原狩獵圖續掛) |
 | `afk-mobile.js` | 手機版面(底部導覽列、一行式狀態列、浮動日誌面板、修正彈窗溢出) |
-| `afk-savedata.js` | 存檔匯入/匯出(整包 localStorage,格式對齊 savedata-manager 的 tool-lite) |
 
-> 三者互相低耦合;手機版的離線摘要會自動打開日誌,存檔匯入後離線外掛會自然結算。
+> 兩者互相低耦合;手機版的離線摘要會自動打開日誌。
+> (存檔匯入/匯出原本有 `afk-savedata.js`,原作者已內建匯出入功能後移除。)
 
 ## 🚨 每次 push 前的檢查清單
 
@@ -98,7 +98,6 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    ```html
    <script src="afk-offline.js?v=YYYYMMDDx"></script>
    <script src="afk-mobile.js?v=YYYYMMDDx"></script>
-   <script src="afk-savedata.js?v=YYYYMMDDx"></script>
    ```
    - 新增外掛時,**務必同時**加上對應的 `<script>` 行,否則功能不會生效。
    - 原作者更新覆蓋 `index.html` 後,**第一件事就是把上面這幾行補回去**。

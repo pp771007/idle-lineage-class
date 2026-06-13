@@ -85,12 +85,15 @@
     })();
 
     // 精簡狀態列:每 300ms 把遊戲的 Lv/HP/MP/金幣/EXP 鏡射到 #m-status(只讀 id,低耦合)
-    var elLv = strip.querySelector('#ms-lv'), elHp = strip.querySelector('#ms-hp'),
+    var elName = strip.querySelector('#ms-name'),
+        elLv = strip.querySelector('#ms-lv'), elHp = strip.querySelector('#ms-hp'),
         elMp = strip.querySelector('#ms-mp'), elGold = strip.querySelector('#ms-gold'),
         elExp = strip.querySelector('#ms-exp');
     function txt(id) { var e = document.getElementById(id); return e ? e.textContent.trim() : ''; }
     function mirror() {
       if (!document.body.classList.contains('m-mobile')) return;
+      // 暱稱(st-class);沒取名就退回職業(st-classname),都沒有才 '--'
+      if (elName) elName.textContent = txt('st-class') || txt('st-classname') || '--';
       if (elLv) elLv.textContent = txt('st-lv') || '--';
       if (elHp) elHp.textContent = txt('txt-hp') || '--';
       if (elMp) elMp.textContent = txt('txt-mp') || '--';
@@ -151,6 +154,7 @@
       var d = document.createElement('div');
       d.id = 'm-status';
       d.innerHTML =
+        '<span class="ms-seg ms-name"><b id="ms-name">--</b></span>' +
         '<span class="ms-seg">Lv <b id="ms-lv">--</b></span>' +
         '<span class="ms-seg ms-hp">HP <span id="ms-hp">--</span></span>' +
         '<span class="ms-seg ms-mp">MP <span id="ms-mp">--</span></span>' +
@@ -236,6 +240,7 @@
       'body.m-mobile #status-panel{display:none !important;}',
       'body.m-mobile #m-status{display:flex !important;flex:0 0 auto !important;align-items:center;flex-wrap:wrap;gap:1px 14px;padding:7px 12px 9px;position:relative;background:#0f172a;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0;line-height:1.2;}',
       'body.m-mobile #m-status .ms-seg{white-space:nowrap;}',
+      'body.m-mobile #m-status .ms-name{color:#fff;font-weight:bold;font-size:14px;max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
       'body.m-mobile #m-status #ms-lv{color:#fff;font-size:15px;}',
       'body.m-mobile #m-status .ms-hp{color:#f87171;font-weight:bold;}',
       'body.m-mobile #m-status .ms-mp{color:#60a5fa;font-weight:bold;}',

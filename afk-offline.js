@@ -4,8 +4,8 @@
  * 設計原則:完全不改原作者程式碼,只從外面「包住」全域函式(monkey-patch)。
  *   - 時間戳存在自己的 localStorage 鍵(afk_ts_<slot>),不碰原存檔格式。
  *   - 離線戰鬥直接呼叫原作者的 tick(),平衡/掉落跟著原版自動同步。
- *   - 撞死即停、結算到死亡前(不做不死,避免無敵 exploit)。
- *   - per-slot 心跳:3 分頁掛 3 個不同角色互不干擾;同一 slot 多開會被偵測略過。
+ *   - 撞死即停、結算到死亡前(不做不死,避免無敵 exploit);存活則結算後接回原狩獵圖續掛。
+ *   - per-slot 心跳:3 分頁掛 3 個不同角色用各自的 afk_ts_<slot>,互不干擾。
  *   - 時間切片 + 進度遮罩,8 小時補跑也不會凍結頁面。
  *
  * 掛接方式:在 index.html 的 </body> 前加一行
@@ -18,7 +18,6 @@
   // ----- 可調參數 ---------------------------------------------------------
   var CAP_HOURS        = 24;                      // 離線收益上限(小時)
   var CAP_MS           = CAP_HOURS * 3600 * 1000;
-  var LOCK_WINDOW_MS   = 15 * 1000;              // 心跳這麼新內 → 視為「另一分頁在跑同 slot / 剛重載」,略過結算
   var HEARTBEAT_MS     = 5 * 1000;              // 活著時多久蓋一次時間戳
   var OVERLAY_MIN_TICK = 3000;                  // 補跑超過這麼多 tick 才顯示進度遮罩(約 5 分鐘)
   var SLICE_MS         = 28;                    // 每個 frame 最多跑這麼久就讓出,避免凍結
@@ -241,10 +240,8 @@
     stamp(); // 不論如何先更新自己的心跳/錨點(宣告此分頁佔用此 slot)
     if (!last) return;                         // 沒有舊時間戳(外掛剛裝 / 全新角色)→ 不結算
     var gap = now - last;
-    if (gap < LOCK_WINDOW_MS) {                // 近期才有心跳 → 另一分頁在跑同 slot,或剛重載 → 略過
-      console.info('[AFK] slot ' + currentSlot + ' 近期活躍(gap=' + gap + 'ms)，略過離線結算。');
-      return;
-    }
+    // 不設「近期活躍就略過」的鎖:重新整理也照常結算那一小段 → 配合存活回原狩獵圖,刷新不會被丟回村莊。
+    // (gap < 一個 tick 會在下方 ticks<=0 自然 no-op;結算會更新時間戳,連續刷新不會重複給獎勵。)
     if (!savedMap || savedMap.indexOf('town_') === 0) {
       // 在村莊登出(安全區)→ 離線沒有戰鬥收益,不結算
       console.info('[AFK] 關閉時位於村莊/無有效地圖，無離線戰鬥收益。');
@@ -306,5 +303,5 @@
     forceCatchup: function (mins) { runCatchup(Math.floor((mins || 60) * 60000 / TICK_MS), true); }
   };
 
-  console.log('[AFK] hooks OK — 離線掛機外掛已啟用(上限 ' + CAP_HOURS + ' 小時，撞死即停，per-slot 多分頁安全)。');
+  console.log('[AFK] hooks OK — 離線掛機外掛已啟用(上限 ' + CAP_HOURS + ' 小時，撞死即停，存活回原狩獵圖)。');
 })();

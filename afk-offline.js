@@ -48,6 +48,11 @@
   function stamp() {
     try {
       if (!validSlot()) return;
+      // 只在「真的進到遊戲畫面」時記錄。開始選單/創角/載入前 game-screen 是 hidden,此時
+      // mapState 還是模組預設的 'training'、currentSlot 又預設 1 → 在這 stamp 會把「第一隻」的
+      // afk_map 蓋成 training(且只波及 slot 1),害離線結算跑錯地圖。守在這裡根治。
+      var gs = document.getElementById('game-screen');
+      if (!gs || gs.classList.contains('hidden')) return;
       localStorage.setItem(tsKey(), Date.now());
       if (typeof mapState !== 'undefined' && mapState && mapState.current) localStorage.setItem(mapKey(), mapState.current);
     } catch (e) {}
@@ -240,29 +245,25 @@
   // 載入後決定要不要結算離線。preMap/preTs 由 loadGame wrapper 在「原 loadGame 執行前」擷取——
   // 因為原 loadGame 會在村莊甦醒(內部呼叫 changeMap),而 changeMap 已被攔截會 stamp(),會把
   // afk_map/afk_ts 覆寫成現在(村莊),晚讀就拿不到真正的離線狀態。
-  // 診斷用:把訊息同時印到 console 與系統日誌(手機看得到);查清楚後可移除。
-  function dbg(msg) { console.info('[AFK] ' + msg); try { logSys('<span class="text-slate-400">[離線診斷] ' + msg + '</span>'); } catch (e) {} }
   function maybeCatchup(preMap, preTs) {
     if (!validSlot() || !state || !state.running) return;
     var last = preTs;
     var savedMap = preMap;
-    var usedBlob = false;
     if (!savedMap) {   // 後援:舊資料沒有 afk_map,退回讀存檔 blob
-      try { var raw = JSON.parse(localStorage.getItem('lineage_idle_save_' + currentSlot)); savedMap = (raw && raw.ms && raw.ms.current) || ''; usedBlob = true; } catch (e) {}
+      try { var raw = JSON.parse(localStorage.getItem('lineage_idle_save_' + currentSlot)); savedMap = (raw && raw.ms && raw.ms.current) || ''; } catch (e) {}
     }
     var now = Date.now();
-    dbg('slot=' + currentSlot + ' afk_map=' + (preMap || '空') + (usedBlob ? '(退回存檔地圖=' + (savedMap || '空') + ')' : '') + ' afk_ts前=' + (preTs ? Math.round((now - preTs) / 1000) + '秒' : '無'));
     stamp(); // 不論如何先更新自己的心跳/錨點(宣告此分頁佔用此 slot)
-    if (!last) { dbg('略過:沒有上次時間戳(全新角色/剛裝外掛)'); return; }
+    if (!last) return;                         // 沒有舊時間戳(外掛剛裝 / 全新角色)→ 不結算
     var gap = now - last;
     // 不設「近期活躍就略過」的鎖:重新整理也照常結算那一小段 → 配合存活回原狩獵圖,刷新不會被丟回村莊。
     // (gap < 一個 tick 會在下方 ticks<=0 自然 no-op;結算會更新時間戳,連續刷新不會重複給獎勵。)
     if (!savedMap || savedMap.indexOf('town_') === 0) {
-      dbg('略過:關閉時在村莊/無有效地圖(' + (savedMap || '空') + ')');
+      console.info('[AFK] 關閉時位於村莊/無有效地圖，無離線戰鬥收益。');
       return;
     }
     if (typeof isSiegeArea === 'function' && isSiegeArea(savedMap)) {
-      dbg('略過:關閉時在攻城區(' + savedMap + ')');
+      console.info('[AFK] 關閉時位於攻城區，略過離線結算。');
       return;
     }
 

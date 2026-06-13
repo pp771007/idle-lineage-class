@@ -337,8 +337,9 @@
       'body.m-mobile #item-modal > div{min-width:0 !important;max-width:100% !important;width:100% !important;flex:0 0 auto !important;}',
       'body.m-mobile #item-modal #modal-compare{max-width:100% !important;max-height:42vh !important;}',
 
-      /* 創角畫面手機化:外框限寬可捲;內層原本 flex-row + 固定寬高(會爆寬)→ 全部改直向堆疊、寬度滿版 */
-      'body.m-mobile #creation-screen{width:96vw !important;max-width:96vw !important;height:auto !important;max-height:94vh !important;overflow-y:auto !important;padding:16px !important;}',
+      /* 創角畫面手機化:外框釘在頂端、用可視高度(--app-h)當上限,避免 94vh 延伸到 Brave 底部
+         工具列後面把「開始冒險」鈕蓋住;內層原本 flex-row + 固定寬高(會爆寬)→ 全改直向堆疊、滿版 */
+      'body.m-mobile #creation-screen{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;margin:0 !important;width:96vw !important;max-width:96vw !important;height:auto !important;max-height:var(--app-h,94vh) !important;overflow-y:auto !important;padding:16px 16px 28px !important;}',
       'body.m-mobile #creation-panel{flex-direction:column !important;gap:12px !important;align-items:stretch !important;}',
       'body.m-mobile .m-cre-avatar{width:100% !important;height:220px !important;}',
       'body.m-mobile .m-cre-right{width:100% !important;height:auto !important;}',

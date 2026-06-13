@@ -1,0 +1,10 @@
+# 暫存 / 測試(一次性腳本、Playwright、截圖等)
+.scratch/
+
+# 相依套件
+node_modules/
+
+# OS / 編輯器雜物
+Thumbs.db
+desktop.ini
+.DS_Store

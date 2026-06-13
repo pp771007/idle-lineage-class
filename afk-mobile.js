@@ -224,11 +224,12 @@
     var css = [
       '#m-nav{display:none;}',
 
-      /* 原作者 body 是 flex 置中(桌機把遊戲框置中);手機改靠左上對齊,
-         否則 game-screen 一旦比 body 矮(高度取可視區、body 仍是整個 layout 高),
-         就會被垂直置中 → 上方擠出空白、底部 nav 被推到瀏覽器工具列後面看不到。 */
-      'body.m-mobile{padding:0 !important;align-items:flex-start !important;justify-content:flex-start !important;}',
-      'body.m-mobile #game-screen{flex-direction:column !important;gap:0 !important;max-width:none !important;width:100vw !important;height:100vh !important;height:100dvh !important;height:var(--app-h,100dvh) !important;margin:0 !important;padding:0 !important;}',
+      'body.m-mobile{padding:0 !important;}',
+      /* game-screen 用 fixed 釘在左上角:脫離原作者 body 的 flex 置中流,
+         避免它比 body 矮時被垂直置中(→ 上方空白、底部 nav 被工具列遮住)。
+         只動 game-screen,不動 body 對齊 → 開始選單/創角畫面照樣置中。
+         不下 z-index(fixed 配 z-index:auto 不建立 stacking context,內部 modal 行為不變)。 */
+      'body.m-mobile #game-screen{position:fixed !important;top:0 !important;left:0 !important;flex-direction:column !important;gap:0 !important;max-width:none !important;width:100vw !important;height:100vh !important;height:100dvh !important;height:var(--app-h,100dvh) !important;margin:0 !important;padding:0 !important;}',
 
       /* 精簡一行式狀態列(取代原本佔 1/3 高的大面板;原面板在手機隱藏) */
       '#m-status{display:none;}',

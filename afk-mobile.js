@@ -40,9 +40,12 @@
     colRight.classList.add('m-col-right');
 
     trackAppHeight();      // 量真實可視高度寫進 --app-h,蓋掉不可靠的 100vh
+    tagCreationPanel();    // 標記創角面板子層,給 CSS 改成手機直向堆疊
     injectCSS();
     var strip = buildStatusStrip();
     gs.insertBefore(strip, gs.firstChild);
+    var nameSeg = strip.querySelector('.ms-name');   // 點左上暱稱 → 取名
+    if (nameSeg) nameSeg.addEventListener('click', editNameMobile);
     var nav = buildNav();
     gs.appendChild(nav);
 
@@ -156,7 +159,7 @@
       var d = document.createElement('div');
       d.id = 'm-status';
       d.innerHTML =
-        '<span class="ms-seg ms-name"><b id="ms-name">--</b></span>' +
+        '<span class="ms-seg ms-name"><b id="ms-name">--</b><span class="ms-name-edit">✎</span></span>' +
         '<span class="ms-seg">Lv <b id="ms-lv">--</b></span>' +
         '<span class="ms-seg ms-hp">HP <span id="ms-hp">--</span></span>' +
         '<span class="ms-seg ms-mp">MP <span id="ms-mp">--</span></span>' +
@@ -211,6 +214,37 @@
     }
   }
 
+  // --- 手機取名:點左上暱稱跳輸入框(原作的 startEditName 把輸入塞進 #st-class,在手機是隱藏的) ----
+  //   邏輯比照原作 confirmEditName:過濾 HTML 特殊字元、上限 12 字、留空回未取名(顯示職業)。
+  function editNameMobile() {
+    try {
+      if (typeof player === 'undefined' || !player || !player.cls) return;   // 還沒有角色就不給取名
+      var cur = player.name || '';
+      var v = window.prompt('輸入暱稱(最多 12 字;留空則顯示職業)', cur);
+      if (v === null) return;   // 取消
+      v = v.replace(/[<>&"']/g, '').trim().slice(0, 12);
+      player.name = v || null;
+      if (typeof updateUI === 'function') updateUI();
+      if (typeof saveGame === 'function') saveGame();
+    } catch (e) { console.warn('[AFK-mobile] 取名失敗:', e); }
+  }
+
+  // --- 創角面板手機化:原作是 flex-row + 一堆固定寬高,手機會爆寬。標記關鍵子層讓 CSS 改直向堆疊 ---
+  function tagCreationPanel() {
+    var cp = document.getElementById('creation-panel');
+    if (!cp) return;
+    if (cp.children[0]) cp.children[0].classList.add('m-cre-avatar');     // 立繪框
+    var right = cp.children[1];
+    if (right) {
+      right.classList.add('m-cre-right');                                // 右側(職業/能力 + 按鈕)
+      var row = right.children[0];
+      if (row) {
+        row.classList.add('m-cre-row');                                  // 職業欄 + 能力欄(原並排)
+        if (row.children[0]) row.children[0].classList.add('m-cre-classbox');
+      }
+    }
+  }
+
   // --- 把「實際可視高度」(已扣掉手機瀏覽器上下工具列)寫進 --app-h --------------
   //   100vh 在手機是「工具列收起時」的高度,比當下可視區高 → 底部 nav 被頂到工具列底下看不到。
   //   優先用 visualViewport.height:它是「真正看得到的那塊」高度,會扣掉像 Brave 那種
@@ -247,7 +281,10 @@
       'body.m-mobile #status-panel{display:none !important;}',
       'body.m-mobile #m-status{display:flex !important;flex:0 0 auto !important;align-items:center;flex-wrap:wrap;gap:1px 14px;padding:7px 12px 9px;position:relative;background:#0f172a;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0;line-height:1.2;}',
       'body.m-mobile #m-status .ms-seg{white-space:nowrap;}',
-      'body.m-mobile #m-status .ms-name{color:#fff;font-weight:bold;font-size:14px;max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+      'body.m-mobile #m-status .ms-name{display:inline-flex;align-items:center;gap:3px;cursor:pointer;max-width:46vw;min-width:0;}',
+      'body.m-mobile #m-status .ms-name #ms-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-weight:bold;font-size:14px;}',
+      'body.m-mobile #m-status .ms-name .ms-name-edit{flex:0 0 auto;color:#94a3b8;font-size:11px;}',
+      'body.m-mobile #m-status .ms-name:active{opacity:.6;}',
       'body.m-mobile #m-status #ms-lv{color:#fff;font-size:15px;}',
       'body.m-mobile #m-status .ms-hp{color:#f87171;font-weight:bold;}',
       'body.m-mobile #m-status .ms-mp{color:#60a5fa;font-weight:bold;}',
@@ -300,8 +337,15 @@
       'body.m-mobile #item-modal > div{min-width:0 !important;max-width:100% !important;width:100% !important;flex:0 0 auto !important;}',
       'body.m-mobile #item-modal #modal-compare{max-width:100% !important;max-height:42vh !important;}',
 
-      /* 創角畫面手機化 */
-      'body.m-mobile #creation-screen{width:96vw !important;max-width:96vw !important;height:auto !important;max-height:94vh !important;overflow-y:auto !important;padding:16px !important;}'
+      /* 創角畫面手機化:外框限寬可捲;內層原本 flex-row + 固定寬高(會爆寬)→ 全部改直向堆疊、寬度滿版 */
+      'body.m-mobile #creation-screen{width:96vw !important;max-width:96vw !important;height:auto !important;max-height:94vh !important;overflow-y:auto !important;padding:16px !important;}',
+      'body.m-mobile #creation-panel{flex-direction:column !important;gap:12px !important;align-items:stretch !important;}',
+      'body.m-mobile .m-cre-avatar{width:100% !important;height:220px !important;}',
+      'body.m-mobile .m-cre-right{width:100% !important;height:auto !important;}',
+      'body.m-mobile .m-cre-row{flex-direction:column !important;height:auto !important;gap:12px !important;}',
+      'body.m-mobile .m-cre-classbox{width:100% !important;height:auto !important;}',
+      'body.m-mobile #stat-allocation{width:100% !important;height:auto !important;}',
+      'body.m-mobile #class-desc{max-height:110px !important;flex:0 0 auto !important;}'
     ].join('\n');
     var s = document.createElement('style');
     s.id = 'm-style';

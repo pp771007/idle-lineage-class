@@ -8,14 +8,53 @@
 
 ## 「合併原版」= 從原作者站台抓最新 `index.html` 更新本專案
 
-當我(使用者)說「**合併原版**」「**同步原版**」「**更新原版**」之類的指令時,流程如下:
+當我(使用者)說「**合併原版**」「**同步原版**」「**更新原版**」之類的指令時,流程如下。
+原則:原版整份覆蓋 `index.html` + 補回外掛 + 補新圖,我們從不改動原作者的遊戲碼。
 
-1. 從原作者站台 **https://shines871.github.io/idle-lineage-class/** 抓最新的 `index.html`(原始遊戲碼)。
-2. 跟本專案目前的 `index.html` **比對差異**,確認原作者更新了哪些東西。
-3. 用原版的 `index.html` 覆蓋本專案的 `index.html`(因為我們從不改動原作者的遊戲碼,直接換整份即可)。
-4. **覆蓋後第一件事**:把三支外掛的 `<script>` 引用補回 `</body>` 前(原版不會有這幾行),清單見下方「每次 push 前的檢查清單」。
-5. 載入遊戲開 console,確認各外掛 `[AFK*] hooks OK`、沒有缺掛點警告;若原作者改了結構(換 id / 換 DOM 順序)導致外掛掛點失效,回報是哪個外掛、哪個掛點要跟著調。
-6. `assets/` 若原版有新增圖檔也一併補上。
+### 1. 抓原版 `index.html`(放暫存區,別直接覆蓋)
+```bash
+curl -s --ssl-no-revoke -o D:/ppRepos/_scratch/scripts/orig_index.html \
+  https://shines871.github.io/idle-lineage-class/index.html
+```
+- `--ssl-no-revoke`:git-bash 的 curl 走 Schannel,對某些站憑證撤銷查不到會硬失敗(exit 35),加這個只跳過撤銷檢查。
+
+### 2. 確認原版乾淨 + 比對差異
+- `grep -c -a "afk-" orig_index.html` 應為 **0**(原版不該有我們的外掛);`tail` 看結尾是正常 `</body></html>`、只有一個 `</body>`。
+- 跟「目前版本」做 diff,看原作者改了什麼(寫進 commit message 給使用者看):
+```bash
+git show HEAD:index.html > D:/ppRepos/_scratch/scripts/current_index.html
+# diff 時把我們加的外掛 script 行濾掉,避免被當成差異
+diff <(grep -v -a "afk-offline.js\|afk-mobile.js\|afk-savedata.js\|可獨立維護" current_index.html) orig_index.html
+```
+
+### 3. 算出原版新增、本地缺少的圖檔
+用 GitHub API 抓原作者 repo 完整檔案樹,逐筆比對 `assets/`:
+```bash
+gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
+  --jq '.tree[] | select(.type=="blob") | .path'
+```
+- 列出「原版有、本地 `idle-lineage-class/` 沒有」的 `assets/*`。
+- `desktop.ini` 這種 Windows 垃圾檔**不要**收。
+
+### 4. 用原版覆蓋 + 把外掛 `<script>` 補回 `</body>` 前
+**用 python 處理(中文 UTF-8 最穩),不要用 shell 字串拼**。讀原版內容 → 在 `</body>` 前插入三支外掛 script(**記得帶 `?v=` 版本號**,見「每次 push 前的檢查清單」) → 整份寫出。動手前 `assert` 原版只有一個 `</body>`、且尚未含外掛,避免插錯。
+
+### 5. 抓缺的圖 —— 走 blob SHA,別用中文檔名當參數
+中文檔名直接丟給 curl / 原生 exe,git-bash(MSYS)會重編碼把檔名弄壞。改走 **blob SHA(純 ASCII)**:
+```bash
+# 先拿到 path → sha 對照(含中文 path 沒關係,jq 輸出是資料不是 exe 參數)
+gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
+  --jq '.tree[] | select(.type=="blob") | [.path, .sha] | @tsv'
+```
+再對每個缺檔 `gh api repos/shines871/idle-lineage-class/git/blobs/<sha>` 拿 base64 → decode 寫檔;**寫檔路徑用 python 的 unicode 字串**,檔名才正確(終端顯示亂碼是 console 編碼問題,實際檔名是對的,用 `git -c core.quotepath=false status` 驗)。
+
+### 6. 自己驗證(不要丟給使用者測)
+本機開 http server + Playwright 無頭載入 `index.html`:
+- console 三支外掛都 `[AFK*] hooks OK` → 代表原作者沒改壞掛點(改了 id / DOM 順序才會失效,失效就回報哪個外掛哪個掛點要調)。
+- 縮到手機尺寸確認手機版面沒爆。
+
+### 7. commit + push + 清暫存
+`git add -A` → commit(描述原作者這次更新了什麼)→ push → 刪掉 `_scratch/scripts/` 這次產生的中繼檔。
 
 ## ⭐ 核心原則:所有功能都用「外掛 JS」處理
 

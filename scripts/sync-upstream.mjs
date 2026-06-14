@@ -81,8 +81,12 @@ try {
 }
 
 const changed = htmlChanged || assetsAdded.length > 0;
+// 從 <title> 動態抓遊戲名(原作者改名也會自動正確),給 release 標題/說明用
+const titleMatch = merged.match(/<title>([^<]*)<\/title>/);
+const gameTitle = (titleMatch ? titleMatch[1] : '放置天堂').trim();
 setOutput('changed', changed ? 'true' : 'false');
 setOutput('html_changed', htmlChanged ? 'true' : 'false');
 setOutput('assets_added', String(assetsAdded.length));
+setOutput('game_title', gameTitle);
 console.log(`index.html 變更: ${htmlChanged} | 新增圖檔: ${assetsAdded.length}`);
 if (assetsAdded.length) console.log(assetsAdded.join('\n'));

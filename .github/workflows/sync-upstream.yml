@@ -58,12 +58,13 @@ jobs:
         run: |
           TAG="v$(TZ='Asia/Taipei' date +%Y%m%d-%H%M)"
           SHA="$(git rev-parse HEAD)"
+          GAME="${{ steps.merge.outputs.game_title }}"
+          ADDED="${{ steps.merge.outputs.assets_added }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "已有同名 release $TAG,略過(避免重複)。"
           else
-            gh release create "$TAG" --target "$SHA" \
-              --title "同步原作者更新 $TAG" \
-              --notes "已自動同步原作者最新版,並套上外掛(離線掛機 / 手機版面 / 怪物掉落查詢)。原始碼請由下方 Source code (zip / tar.gz) 下載。本次新增圖檔 ${{ steps.merge.outputs.assets_added }} 張。"
+            printf '《%s》加掛版 — 已自動同步原作者最新版,並套上下列外掛(不改動原遊戲內容):\n\n- 🌙 離線掛機:關閉瀏覽器也自動結算收益(上限 24 小時、撞死即停、存活回原狩獵圖)\n- 📱 手機版面:底部分頁、精簡狀態列、角色資訊/日誌彈窗、創角畫面手機化、登出鈕\n- 📖 怪物/掉落查詢:首頁搜尋怪物/地圖/掉落物,看數值、出沒地圖與掉落機率(可切席琳的世界 ×3)\n\n原始碼請由下方 Source code (zip / tar.gz) 下載。\n線上遊玩:https://pp771007.github.io/idle-lineage-class/\n本次同步新增圖檔 %s 張。\n' "$GAME" "$ADDED" > /tmp/relnotes.md
+            gh release create "$TAG" --target "$SHA" --title "《${GAME}》加掛版 ${TAG}" --notes-file /tmp/relnotes.md
           fi
 
       - name: 掛點失效 → 開 issue 通知 (不自動推壞版本)

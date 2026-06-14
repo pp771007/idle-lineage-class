@@ -37,8 +37,11 @@
   }
 
   // ----- 名稱查詢 ---------------------------------------------------------
+  // CASTLE_EXTRA 類地圖(如風木地監)只有 getCastleAreas() 動態才有中文名、靜態表查不到,在這補上
+  var EXTRA_MAP_NAMES = { windwood_dungeon: '風木地監' };
   function mapNameOf(id) {
     try {
+      if (EXTRA_MAP_NAMES[id]) return EXTRA_MAP_NAMES[id];
       if (typeof MAP_CATEGORIES !== 'undefined') {
         for (var c in MAP_CATEGORIES) {
           for (var i = 0; i < MAP_CATEGORIES[c].length; i++) if (MAP_CATEGORIES[c][i].v === id) return MAP_CATEGORIES[c][i].t;
@@ -84,18 +87,30 @@
     if (!hits.length) { results.innerHTML = '<div class="m-dex-hint">找不到符合的怪物</div>'; return; }
     var truncated = hits.length > MAX_RESULTS;
     if (truncated) hits = hits.slice(0, MAX_RESULTS);
-    var html = hits.map(function (h) { return cardHTML(h, sherine); }).join('');
+    var html = hits.map(function (h) { return cardHTML(h, sherine, q); }).join('');
     if (truncated) html += '<div class="m-dex-hint">符合的太多,只顯示前 ' + MAX_RESULTS + ' 筆,請輸入更精確的關鍵字。</div>';
     results.innerHTML = html;
   }
 
   var ELE = { fire: '🔥 火', water: '💧 水', earth: '🪨 地', wind: '🌪 風', none: '無' };
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  // 把符合搜尋字串的部分用 <mark> 標色(不分大小寫;在已跳脫的字串上比對,Chinese 無大小寫問題)
+  function hl(text, q) {
+    var s = esc(text);
+    if (!q) return s;
+    var eq = esc(q); if (!eq) return s;
+    var low = s.toLowerCase(), elow = eq.toLowerCase(), out = '', i = 0, idx;
+    while ((idx = low.indexOf(elow, i)) >= 0) {
+      out += s.slice(i, idx) + '<mark class="m-dex-hl">' + s.slice(idx, idx + eq.length) + '</mark>';
+      i = idx + eq.length;
+    }
+    return out + s.slice(i);
+  }
   function fmt(n) { try { return (n == null ? '-' : Number(n).toLocaleString()); } catch (e) { return '' + n; } }
   function fmtPct(p) { return p < 0.01 ? p.toFixed(3) : (p < 1 ? p.toFixed(2) : (Number.isInteger(p) ? '' + p : p.toFixed(1))); }
   function st(k, v) { return '<span class="m-dex-stat"><b>' + k + '</b> ' + esc(v) + '</span>'; }
 
-  function cardHTML(h, sherine) {
+  function cardHTML(h, sherine, q) {
     var m = h.mob;
     var tags = '';
     if (m.boss) tags += '<span class="m-dex-tag tag-boss">BOSS</span>';
@@ -107,15 +122,15 @@
       st('HP', fmt(m.hp)) + st('攻擊', dmg) + st('命中', m.hit != null ? m.hit : '-') +
       st('AC', m.ac != null ? m.ac : '-') + st('魔防', m.mr != null ? m.mr : '-') +
       st('經驗', fmt(m.exp)) + st('金幣', gold) + '</div>';
-    var mapsHTML = h.maps.length ? h.maps.map(esc).join('、') : '—';
+    var mapsHTML = h.maps.length ? h.maps.map(function (nm) { return hl(nm, q); }).join('、') : '—';
     var dropsHTML = h.drops.length
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
           var pct = d[2] * (sherine ? 3 : 1); if (pct > 100) pct = 100;
-          return '<tr><td>' + esc(d[1]) + '</td><td class="m-dex-pct">' + fmtPct(pct) + '%</td></tr>';
+          return '<tr><td>' + hl(d[1], q) + '</td><td class="m-dex-pct">' + fmtPct(pct) + '%</td></tr>';
         }).join('') + '</tbody></table>'
       : '<div class="m-dex-nodrop">無專屬掉落表</div>';
     return '<div class="m-dex-card">' +
-      '<div class="m-dex-name">' + esc(m.n) + ' ' + tags + '</div>' + stats +
+      '<div class="m-dex-name">' + hl(m.n, q) + ' ' + tags + '</div>' + stats +
       '<div class="m-dex-sub">出沒地圖</div><div class="m-dex-maps">' + mapsHTML + '</div>' +
       '<div class="m-dex-sub">掉落' + (sherine ? '（席琳的世界 ×3）' : '') + '</div>' + dropsHTML +
       '</div>';
@@ -186,6 +201,7 @@
       '.m-dex-hint{color:#94a3b8;text-align:center;padding:22px 8px;font-size:14px;line-height:1.6;}',
       '.m-dex-card{background:#111c30;border:1px solid #334155;border-radius:10px;padding:12px;}',
       '.m-dex-name{font-size:16px;font-weight:bold;color:#fff;margin-bottom:8px;}',
+      '.m-dex-hl{background:#fde047;color:#1e293b;border-radius:3px;padding:0 2px;font-weight:bold;}',
       '.m-dex-tag{font-size:11px;font-weight:bold;padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:middle;}',
       '.tag-boss{background:#7f1d1d;color:#fecaca;}',
       '.tag-hard{background:#1e3a5f;color:#bfdbfe;}',

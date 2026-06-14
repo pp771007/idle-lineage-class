@@ -248,13 +248,32 @@
     if (sp && col) col.insertBefore(sp, col.firstChild);   // 移回左欄原位(手機仍隱藏)
   }
 
-  // --- 登出回首頁:先記下離線錨點(時間+當前狩獵地圖),再 reload 回到開始選單 ----------------
-  //   用 reload 而非手動拆遊戲狀態:最乾淨、天然回首頁,且離線結算下次載入該角色時自然觸發。
-  //   手機 beforeunload 常不觸發,所以先主動呼叫外掛的 stamp() 把錨點落地保險。
+  // --- 登出回首頁:跳「自製」確認視窗(不用原生 confirm:iOS Safari 會抑制原生彈窗導致按了沒反應) ---
+  //   按確定 → 先記下離線錨點(時間+當前狩獵地圖,手機 beforeunload 常不觸發,故主動 stamp),再 reload 回首頁。
   function doLogout() {
-    if (!window.confirm('登出後會開始離線掛機(上限 24 小時),確定回首頁?')) return;
-    try { if (window.__afk && window.__afk.stamp) window.__afk.stamp(); } catch (e) {}
-    try { location.reload(); } catch (e) {}
+    var m = document.getElementById('m-logout-modal') || buildLogoutModal();
+    m.classList.add('open');
+  }
+  function buildLogoutModal() {
+    var m = document.createElement('div');
+    m.id = 'm-logout-modal';
+    m.innerHTML =
+      '<div id="m-logout-card">' +
+        '<div id="m-logout-msg">登出後會開始離線掛機（上限 24 小時）。<br>確定回首頁？</div>' +
+        '<div id="m-logout-btns">' +
+          '<button id="m-logout-cancel" type="button">取消</button>' +
+          '<button id="m-logout-ok" type="button">確定回首頁</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(m);
+    function close() { m.classList.remove('open'); }
+    m.addEventListener('click', function (e) { if (e.target === m) close(); });   // 點背景關閉
+    m.querySelector('#m-logout-cancel').addEventListener('click', close);
+    m.querySelector('#m-logout-ok').addEventListener('click', function () {
+      try { if (window.__afk && window.__afk.stamp) window.__afk.stamp(); } catch (e) {}
+      try { location.reload(); } catch (e) {}
+    });
+    return m;
   }
 
   // --- 創角面板手機化:原作是 flex-row + 一堆固定寬高,手機會爆寬。標記關鍵子層讓 CSS 改直向堆疊 ---
@@ -361,6 +380,18 @@
       'body.m-mobile #item-modal{flex-direction:column !important;align-items:stretch !important;width:94vw !important;max-width:94vw !important;max-height:90dvh !important;max-height:90vh !important;overflow-y:auto !important;gap:8px !important;z-index:70 !important;}',
       'body.m-mobile #item-modal > div{min-width:0 !important;max-width:100% !important;width:100% !important;flex:0 0 auto !important;}',
       'body.m-mobile #item-modal #modal-compare{max-width:100% !important;max-height:42vh !important;}',
+
+      /* 登出確認視窗(自製,取代原生 confirm:iOS 會抑制原生彈窗) */
+      '#m-logout-modal{display:none;position:fixed;inset:0;z-index:90;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
+      '#m-logout-modal.open{display:flex;}',
+      '#m-logout-card{width:min(360px,92vw);background:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}',
+      '#m-logout-msg{color:#e2e8f0;font-size:15px;line-height:1.7;text-align:center;margin-bottom:18px;}',
+      '#m-logout-btns{display:flex;gap:10px;}',
+      '#m-logout-btns button{flex:1;padding:11px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit;border:1px solid #334155;}',
+      '#m-logout-cancel{background:#1e293b;color:#cbd5e1;}',
+      '#m-logout-cancel:active{background:#334155;}',
+      '#m-logout-ok{background:#b45309;color:#fff;border-color:#d97706;}',
+      '#m-logout-ok:active{background:#92400e;}',
 
       /* 角色資訊彈窗:點暱稱叫出桌面版 #status-panel(手機平時隱藏);✕/點背景關閉 */
       '#m-stat-modal{display:none;}',

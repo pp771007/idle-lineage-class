@@ -62,7 +62,8 @@
     for (var mid in DB.maps) (DB.maps[mid] || []).forEach(function (mob) { (mobToMaps[mob] = mobToMaps[mob] || []).push(mid); });
     for (var id in DB.mobs) {
       var mob = DB.mobs[id];
-      var maps = (mobToMaps[id] || []).map(mapNameOf);
+      // 去重:原作者的地圖怪物清單可能把同一隻怪列兩次(如 windwood 重複列杜賓狗),否則出沒地圖會出現兩個同名
+      var maps = (mobToMaps[id] || []).map(mapNameOf).filter(function (n, i, a) { return a.indexOf(n) === i; });
       var drops = (MOB_DROPS[mob.n] || [])
         .map(function (e) { return [e[0], itemNameOf(e[0]), e[1]]; })
         .filter(function (d) { return DB.items[d[0]]; });

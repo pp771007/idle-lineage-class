@@ -403,6 +403,15 @@
       'body.m-mobile #m-stat-body{width:100%;}',
       'body.m-mobile #m-stat-body #status-panel{display:flex !important;width:100% !important;margin:0 !important;}',
 
+      /* 商店列(村莊雜貨商人等):手機窄寬下商品名稱用了 truncate 但文字容器沒 min-w-0,名稱會溢出壓到
+         數量輸入框上(看不清買什麼/多少錢)。粗粒度修法:讓文字容器可縮、名稱改換行、數量框縮窄、間距縮小。
+         只 scope 在穩定的 #shop-items-list .list-item;作者若重排商店,規則失效即回原樣(不會壞)。 */
+      'body.m-mobile #shop-items-list .list-item > div:first-child{min-width:0 !important;gap:8px !important;}',
+      'body.m-mobile #shop-items-list .list-item > div:first-child > div{min-width:0 !important;}',
+      'body.m-mobile #shop-items-list .list-item > div:first-child span{white-space:normal !important;overflow-wrap:break-word;}',
+      'body.m-mobile #shop-items-list .list-item input{width:44px !important;}',
+      'body.m-mobile #shop-items-list .list-item > div:last-child{gap:6px !important;}',
+
       /* 創角畫面手機化:外框釘在頂端、用可視高度(--app-h)當上限,避免 94vh 延伸到 Brave 底部
          工具列後面把「開始冒險」鈕蓋住;內層原本 flex-row + 固定寬高(會爆寬)→ 全改直向堆疊、滿版 */
       'body.m-mobile #creation-screen{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;margin:0 !important;width:96vw !important;max-width:96vw !important;height:auto !important;max-height:var(--app-h,94vh) !important;overflow-y:auto !important;padding:16px 16px 28px !important;}',

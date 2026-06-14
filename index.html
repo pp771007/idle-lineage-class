@@ -451,7 +451,10 @@
             </div>
 
             <div class="panel h-1/3 flex flex-col overflow-hidden relative">
-                <div class="panel-header text-slate-100 text-lg border-b border-blue-900/40">系統與物品日誌</div>
+                <div class="panel-header text-slate-100 text-lg border-b border-blue-900/40 flex items-center justify-between gap-2">
+                    <span class="shrink-0">系統與物品日誌</span>
+                    <span id="syslog-pandora" class="text-sm font-normal truncate text-right min-w-0"></span>
+                </div>
                 <div id="sys-log" class="flex-1 p-4 overflow-y-auto log-bg rounded-b-xl shadow-inner text-base"></div>
                 <!-- 🔒 系統與物品日誌捲動鎖定提示（同戰鬥日誌：向上捲動鎖定刷新、捲回底部自動解除） -->
                 <button id="sys-log-unlock" onclick="sysLogToBottom()" class="hidden absolute left-1/2 -translate-x-1/2 bottom-2 z-10 px-3 py-1 text-xs font-bold rounded-full shadow-lg bg-amber-700/90 hover:bg-amber-600 border border-amber-400 text-amber-50">🔒 已鎖定捲動 ▾ 回到最新</button>
@@ -7281,6 +7284,7 @@ function renderStatusEffects() {
 function updateUI() {
     if(state.ff) return; // 補跑期間不刷新畫面
     try { renderPandoraBanner(); } catch (e) {}   // 🔧 潘朵拉黑市稀有商品公告橫幅
+    try { renderSyslogPandora(); } catch (e) {}   // 🔧 系統日誌標題列右側：黑市拍賣中商品
     document.getElementById('st-lv').innerText = player.lv;
     { let rb = document.getElementById('btn-return-town'); if (rb) rb.textContent = siegeVictoryActive() ? '回城' : '回村'; }
     { let vb = document.getElementById('victory-badge'); if (vb) vb.style.display = siegeVictoryActive() ? 'inline-flex' : 'none'; }   // 攻城獲勝淡金黃標記（inline-flex 讓👑與文字水平置中）
@@ -11745,6 +11749,7 @@ function refreshPandoraMarket(force) {
         player.pandoraAnnounce = null;
     }
     try { renderPandoraBanner(); } catch (e) {}
+    try { renderSyslogPandora(); } catch (e) {}
     return true;
 }
 
@@ -11766,6 +11771,19 @@ function renderPandoraBanner() {
     }
 }
 
+// 系統與物品日誌標題列右側：顯示黑市目前拍賣的商品（1% 權重＝橘金色，其餘＝白色）
+function renderSyslogPandora() {
+    let el = document.getElementById('syslog-pandora');
+    if (!el) return;
+    let m = (typeof player !== 'undefined' && player) ? player.pandoraMarket : null;
+    let d = m ? DB.items[m.id] : null;
+    if (!d) { el.innerHTML = ''; return; }
+    // 1% 稀有：橘金（#f5a623，含淡光暈）；其餘：白。用 inline style 確保即時上色（Tailwind Play CDN 動態類別不一定同步生成）
+    let nameStyle = (m.weight === 1) ? 'color:#f5a623;text-shadow:0 0 4px rgba(245,166,35,.5);' : 'color:#ffffff;';
+    let soldTxt = m.sold ? '<span class="text-xs ml-1" style="color:#64748b;">（已售出）</span>' : '';
+    el.innerHTML = `<span class="text-xs" style="color:#94a3b8;">黑市拍賣中：</span><span class="font-bold" style="${nameStyle}">${d.n}</span>${soldTxt}`;
+}
+
 // 繪製黑市面板（單一商品 + 購買按鈕）
 function pandoraRenderMarket(div) {
     if (!div) return;
@@ -11777,6 +11795,7 @@ function pandoraRenderMarket(div) {
     let glow = getGlowClass(inst, d);
     let nameColor = getItemColor(inst);
     let isRare = (m.weight === 1);
+    let sold = !!m.sold;
     let afford = (player.gold || 0) >= m.price;
     let _elapsedT = ((typeof state !== 'undefined' && state) ? (state.ticks || 0) : 0) - (m.setTick || 0);
     let nextMin = Math.max(1, Math.ceil((PANDORA_CYCLE_TICKS - _elapsedT) / 600));   // 600 tick = 1 分鐘
@@ -11792,16 +11811,18 @@ function pandoraRenderMarket(div) {
     <div class="flex flex-col items-center justify-start h-full p-4 w-full overflow-y-auto">
         <h3 class="text-3xl font-bold text-purple-400 mb-1 drop-shadow-md">潘朵拉黑市</h3>
         <p class="text-slate-400 text-xs mb-3 text-center">每 10 分鐘隨機上架一件商品，售價依稀有度浮動。<br>距下次更換約 <span class="text-slate-200">${nextMin}</span> 分鐘。</p>
-        ${isRare ? `<p class="text-yellow-300 font-bold text-sm mb-2 animate-pulse">🌟 傳說級稀有商品上架中！🌟</p>` : ''}
+        ${isRare && !sold ? `<p class="text-yellow-300 font-bold text-sm mb-2 animate-pulse">🌟 傳說級稀有商品上架中！🌟</p>` : ''}
+        ${sold ? `<p class="text-red-400 font-bold text-sm mb-2">🚫 本輪商品已售出，約 ${nextMin} 分鐘後上架新商品。</p>` : ''}
 
         <!-- 拍賣品卡片：左圖示／中介紹價格／右購買 -->
-        <div class="relative w-full max-w-xl mt-2 rounded-2xl border-2 ${cardBorder} ${cardShadow} bg-gradient-to-b from-slate-800/90 to-slate-900/95 px-3 pt-6 pb-3">
+        <div class="relative w-full max-w-xl mt-2 rounded-2xl border-2 ${sold ? 'border-slate-600' : cardBorder} ${sold ? '' : cardShadow} bg-gradient-to-b from-slate-800/90 to-slate-900/95 px-3 pt-6 pb-3">
             <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-0.5 rounded-full text-[11px] font-bold tracking-[0.25em] border ${ribbonCls} shadow">${ribbonText}</div>
+            ${sold ? `<div class="absolute inset-0 rounded-2xl bg-black/45 flex items-center justify-center pointer-events-none z-10"><span class="text-3xl font-black text-red-500 border-4 border-red-500 rounded-lg px-5 py-1 -rotate-12 tracking-widest" style="text-shadow:0 0 8px rgba(0,0,0,.85);">已售出</span></div>` : ''}
             <!-- 固定高度內容列(120px)：三欄皆以 inline 樣式鎖定尺寸，不隨商品內容忽大忽小 -->
             <div class="flex items-stretch gap-3" style="height:120px;">
                 <!-- 左：固定尺寸展示框（112×112，垂直置中、圖片固定 80×80、不切框） -->
                 <div class="shrink-0 self-center rounded-xl bg-slate-950/70 border ${caseBorder} shadow-inner flex items-center justify-center" style="width:112px;height:112px;">
-                    <img src="${img}" onerror="this.src='https://placehold.co/100x100/1e293b/ffffff?text=?';" class="object-contain ${glow}" style="width:80px;height:80px;">
+                    <img src="${img}" onerror="this.src='https://placehold.co/100x100/1e293b/ffffff?text=?';" class="object-contain ${sold ? 'opacity-30 grayscale' : glow}" style="width:80px;height:80px;">
                 </div>
                 <!-- 中：固定高度欄位（名稱固定一行、能力介紹固定區域可內捲、價格/金幣固定） -->
                 <div class="flex-1 min-w-0 flex flex-col text-left" style="height:120px;min-height:0;">
@@ -11813,11 +11834,13 @@ function pandoraRenderMarket(div) {
                     </div>
                 </div>
                 <!-- 右：固定大小購買按鈕（84×112，內容固定） -->
-                <div class="shrink-0 self-center">
-                    <button id="btn-pandora-buy" onclick="buyPandoraItem()" ${afford ? '' : 'disabled'}
+                <div class="shrink-0 self-center relative z-20">
+                    ${sold
+                      ? `<button disabled class="btn bg-slate-700 border-slate-600 opacity-70 cursor-not-allowed text-base font-bold rounded-xl leading-tight flex flex-col items-center justify-center" style="width:84px;height:112px;"><span class="text-2xl leading-none">✅</span><span class="mt-1">已賣出</span></button>`
+                      : `<button id="btn-pandora-buy" onclick="buyPandoraItem()" ${afford ? '' : 'disabled'}
                         class="btn ${afford ? 'bg-purple-700 hover:bg-purple-600 border-purple-500' : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'} text-base font-bold rounded-xl leading-tight shadow-[0_0_15px_rgba(126,34,206,0.5)] flex flex-col items-center justify-center" style="width:84px;height:112px;">
                         <span class="text-2xl leading-none">🛒</span><span class="mt-1">購買</span>
-                    </button>
+                    </button>`}
                 </div>
             </div>
         </div>
@@ -11831,13 +11854,15 @@ function buyPandoraItem() {
     let msgEl = () => document.getElementById('pandora-msg');
     if (!m || !DB.items[m.id]) { let e = msgEl(); if (e) e.innerHTML = '<span class="text-red-400">商品已不存在。</span>'; return; }
     if ((player.gold || 0) < m.price) { let e = msgEl(); if (e) e.innerHTML = `<span class="text-red-400">金幣不足！需 ${m.price.toLocaleString()} 金幣。</span>`; return; }
+    if (m.sold) { let e = msgEl(); if (e) e.innerHTML = '<span class="text-red-400">本輪商品已售出，請等待下次上架。</span>'; return; }
     player.gold -= m.price;
     let gi = gainItem(m.id, 1, true, false, false);   // 黑市購買：即所見、不附帶詞綴
     let inst = gi || { id: m.id };
     logSys(`在潘朵拉黑市花費 <span class="text-yellow-300">${m.price.toLocaleString()}</span> 金幣購買了 <span class="${getItemColor(inst)} font-bold">${getItemFullName(inst)}</span>。`);
+    m.sold = true;   // 🔧 購買後標記「已售出」：本輪不可再購買，須等 10 分鐘刷新才會上架新商品
     updateUI(); saveGame();
     pandoraRenderMarket(_pandoraDiv);
-    let e2 = msgEl(); if (e2) e2.innerHTML = '<span class="text-green-400">購買成功！</span>';
+    let e2 = msgEl(); if (e2) e2.innerHTML = '<span class="text-green-400">購買成功！本輪商品已售出。</span>';
 }
 
 // ==========================================

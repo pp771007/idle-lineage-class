@@ -64,7 +64,14 @@
       var mob = DB.mobs[id];
       // 去重:原作者的地圖怪物清單可能把同一隻怪列兩次(如 windwood 重複列杜賓狗),否則出沒地圖會出現兩個同名
       var maps = (mobToMaps[id] || []).map(mapNameOf).filter(function (n, i, a) { return a.indexOf(n) === i; });
-      var drops = (MOB_DROPS[mob.n] || [])
+      // 合併「全部掉落表」:除了 MOB_DROPS,還有黑暗武器(DARK_WEAPON_DROPS)、三階黑暗精靈水晶(DARK_CRYSTAL_DROPS)
+      // 也是獨立掉落表、不在 MOB_DROPS,漏了就查不到。三張都用「怪物名」當 key、同格式 [[id,%]]。
+      var raw = [].concat(
+        (typeof MOB_DROPS !== 'undefined' && MOB_DROPS[mob.n]) || [],
+        (typeof DARK_WEAPON_DROPS !== 'undefined' && DARK_WEAPON_DROPS[mob.n]) || [],
+        (typeof DARK_CRYSTAL_DROPS !== 'undefined' && DARK_CRYSTAL_DROPS[mob.n]) || []
+      );
+      var drops = raw
         .map(function (e) { return [e[0], itemNameOf(e[0]), e[1]]; })
         .filter(function (d) { return DB.items[d[0]]; });
       drops.sort(function (a, b) { return b[2] - a[2]; });   // 機率高→低

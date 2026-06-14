@@ -249,7 +249,7 @@
   }
 
   // --- 登出回首頁:跳「自製」確認視窗(不用原生 confirm:iOS Safari 會抑制原生彈窗導致按了沒反應) ---
-  //   按確定 → 先記下離線錨點(時間+當前狩獵地圖,手機 beforeunload 常不觸發,故主動 stamp),再 reload 回首頁。
+  //   按確定 → 先存檔(補上原作每 5 分一次自動存檔的空窗,登出無損)、再記離線錨點(時間+當前狩獵地圖,手機 beforeunload 常不觸發,故主動 stamp),最後 reload 回首頁。
   function doLogout() {
     var m = document.getElementById('m-logout-modal') || buildLogoutModal();
     m.classList.add('open');
@@ -270,7 +270,8 @@
     m.addEventListener('click', function (e) { if (e.target === m) close(); });   // 點背景關閉
     m.querySelector('#m-logout-cancel').addEventListener('click', close);
     m.querySelector('#m-logout-ok').addEventListener('click', function () {
-      try { if (window.__afk && window.__afk.stamp) window.__afk.stamp(); } catch (e) {}
+      try { if (typeof window.saveGame === 'function') window.saveGame(); } catch (e) {}   // 先存當前進度,避免漏掉上次自動存檔後的收益
+      try { if (window.__afk && window.__afk.stamp) window.__afk.stamp(); } catch (e) {}   // 存完再蓋錨點 → 存檔時間=離線起算時間,離線結算不會漏算/重算
       try { location.reload(); } catch (e) {}
     });
     return m;

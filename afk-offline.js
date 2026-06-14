@@ -5,7 +5,7 @@
  *   - 時間戳存在自己的 localStorage 鍵(afk_ts_<slot>),不碰原存檔格式。
  *   - 離線戰鬥直接呼叫原作者的 tick(),平衡/掉落跟著原版自動同步。
  *   - 撞死即停、結算到死亡前(不做不死,避免無敵 exploit);存活則結算後接回原狩獵圖續掛。
- *   - per-slot 心跳:3 分頁掛 3 個不同角色用各自的 afk_ts_<slot>,互不干擾。
+ *   - per-slot 心跳:多分頁掛不同角色用各自的 afk_ts_<slot>,互不干擾。
  *   - 時間切片 + 進度遮罩,8 小時補跑也不會凍結頁面。
  *
  * 掛接方式:在 index.html 的 </body> 前加一行
@@ -39,7 +39,7 @@
   }
 
   // ----- 小工具 -----------------------------------------------------------
-  function validSlot() { return currentSlot === 1 || currentSlot === 2 || currentSlot === 3 || currentSlot === '1' || currentSlot === '2' || currentSlot === '3'; }
+  function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1 && n <= 4; }  // 原作存檔位 1~4(upstream: let currentSlot 1~4);原作加格時這裡上限要跟著調
   function tsKey()      { return TS_PREFIX + currentSlot; }
   function mapKey()     { return 'afk_map_' + currentSlot; }
   function readTs()     { try { return +localStorage.getItem(tsKey()) || 0; } catch (e) { return 0; } }

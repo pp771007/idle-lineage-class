@@ -2423,6 +2423,9 @@ function initCombatLogLock() {
     el.addEventListener('touchmove', onScroll, { passive: true });
 }
 
+// ⚡ 快速強化（批次強化）狀態：wpn=武器分頁、arm=防具分頁（含飾品）。sel 為 uid→true 的勾選集合。
+let quickEnh = { wpn: { active: false, target: 6, sel: {} }, arm: { active: false, target: 6, sel: {} } };
+
 function logCombat(msg, type="player") {
     if(state.ff) return; // 補跑期間不洗版
     const el = document.getElementById('combat-log');
@@ -2431,7 +2434,8 @@ function logCombat(msg, type="player") {
     // 單純以顏色區分，移除前綴標籤
     if (type === "player") { colorClass = "text-blue-300"; } // 我方普攻 (淺藍)
     else if (type === "player-heavy") { colorClass = "text-yellow-300 font-bold"; } // 我方重擊 (黃色粗體)
-    else if (type === "player-crit") { colorClass = "crit-hit"; } // 我方爆擊 (顯眼鮮紅＋微光)
+    else if (type === "player-crit") { colorClass = "crit-hit"; } // 我方爆擊 (顯眼鮮紅＋微光：僅保留給爆擊／含爆擊訊息)
+    else if (type === "player-special") { colorClass = "text-orange-300"; } // 我方特殊效果/寵物等非爆擊傷害 (沉穩橘色，較不搶眼)
     else if (type === "player-graze") { colorClass = "text-blue-200/80"; } // 我方擦傷 (較亮的淡藍，灰底上仍清楚)
     else if (type === "enemy") { colorClass = "text-red-400"; } // 敵方攻擊 (紅色)
     else if (type === "magic") { colorClass = "text-cyan-300"; } // 魔法技能 (青色)
@@ -3419,7 +3423,7 @@ function tick() {
                     if (r === 20 || (r !== 1 && hv >= r)) {
                         let dmg = Math.max(1, roll(1, Math.max(1, player.lv + pd.diceOff)) + cha - (target.dr || 0));
                         target.curHp -= dmg; target.justHit = pd.ele; mobWake(target);
-                        logCombat(`夥伴 [${nm}] 撕咬 <span class="${getMobColor(target.lv)}">${target.n}</span>，造成 ${dmg} 點${pd.eleName}屬性傷害！`, 'player-crit');
+                        logCombat(`夥伴 [${nm}] 撕咬 <span class="${getMobColor(target.lv)}">${target.n}</span>，造成 ${dmg} 點${pd.eleName}屬性傷害！`, 'player-special');
                     } else {
                         logCombat(`夥伴 [${nm}] 的攻擊未命中。`, 'miss');
                     }
@@ -3876,7 +3880,7 @@ function procMoonburst(t) {
     mbDmg = Math.max(1, Math.floor(mbDmg * fragileMult(t)));   // 🔮 脆弱（白鳥5）
     t.curHp -= mbDmg;
     t.justHit = 'wind';
-    logCombat(`<span class="font-bold" style="color:#67e8f9;text-shadow:0 0 6px #06b6d4;">【月光爆裂】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${mbDmg} 點風屬性傷害！${counterTxt}`, 'player-crit');
+    logCombat(`<span class="font-bold" style="color:#67e8f9;text-shadow:0 0 6px #06b6d4;">【月光爆裂】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${mbDmg} 點風屬性傷害！${counterTxt}`, 'player-special');
     if (t.curHp <= 0) {
         let realIdx = mapState.mobs.findIndex(m => m && m.uid === t.uid);
         if (realIdx !== -1) killMob(realIdx);
@@ -3909,7 +3913,7 @@ function procMagicStrike(t, isSpread) {
     mobWake(t);
     wearHardSkin(t, null, true, false);   // 🔧 硬皮消磨：魔擊重擊 → 視為一般重擊 -2
     let mark = res.crit ? '會心一擊' : '重擊';
-    logCombat(`<span class="font-bold" style="color:#d8b4fe;text-shadow:0 0 6px #a855f7;">【${isSpread ? '擴散魔擊' : '魔擊'}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${res.dmg} 點傷害（${mark}!）。`, 'player-crit');
+    logCombat(`<span class="font-bold" style="color:#d8b4fe;text-shadow:0 0 6px #a855f7;">【${isSpread ? '擴散魔擊' : '魔擊'}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${res.dmg} 點傷害（${mark}!）。`, res.crit ? 'player-crit' : 'player-special');
     if (t.curHp <= 0) {
         let realIdx = mapState.mobs.findIndex(m => m && m.uid === t.uid);
         if (realIdx !== -1) killMob(realIdx);
@@ -3919,7 +3923,7 @@ function procMagicStrike(t, isSpread) {
     if (!isSpread && hasMastery('m_strike') && Math.random() < 0.30) {
         let _all = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
         if (_all.length) {
-            logCombat(`<span class="font-bold" style="color:#e9d5ff;text-shadow:0 0 8px #a855f7;">【魔擊精通】</span>魔力向四方擴散！`, 'player-crit');
+            logCombat(`<span class="font-bold" style="color:#e9d5ff;text-shadow:0 0 8px #a855f7;">【魔擊精通】</span>魔力向四方擴散！`, 'player-special');
             _all.forEach(m => procMagicStrike(m, true));
         }
     }
@@ -3964,7 +3968,7 @@ function rapidfireProc(arrowData) {
         mobWake(_t);
         if (_res.heavy) wearHardSkin(_t, null, true, false);   // 🔧 硬皮消磨：連射箭重擊 → 視為一般重擊 -2
         let _mark = (_res.heavy && _res.crit) ? '會心一擊' : (_res.crit ? '爆擊' : (_res.heavy ? '重擊' : ''));
-        logCombat(`【連射】箭矢命中 <span class="${getMobColor(_t.lv)}">${_t.n}</span>，造成 ${_rfDmg} 點傷害${_mark ? '（' + _mark + '!）' : ''}。`, (_res.heavy || _res.crit) ? 'player-crit' : 'player');
+        logCombat(`【連射】箭矢命中 <span class="${getMobColor(_t.lv)}">${_t.n}</span>，造成 ${_rfDmg} 點傷害${_mark ? '（' + _mark + '!）' : ''}。`, _res.crit ? 'player-crit' : (_res.heavy ? 'player-heavy' : 'player'));
         if (_t.curHp <= 0) killMob(_ti);
         moonburstProc(_t);   // 熾炎天使弓：每支連射箭矢也有機會觸發月光爆裂（主目標死亡自動轉移）
     }
@@ -4282,7 +4286,7 @@ function dragonStrikeProc() {
     if (Math.random() * 100 >= wpn.dragonStrike) return;
     let targets = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
     if (!targets.length) return;
-    logCombat(`<span class="font-bold" style="color:#fca5a5;text-shadow:0 0 6px #dc2626;">【龍的一擊】</span>劍中的龍魂咆哮，衝擊貫穿了所有敵人！`, 'player-crit');
+    logCombat(`<span class="font-bold" style="color:#fca5a5;text-shadow:0 0 6px #dc2626;">【龍的一擊】</span>劍中的龍魂咆哮，衝擊貫穿了所有敵人！`, 'player-special');
     targets.forEach(m => {
         if (!m || m.curHp <= 0 || m._dead) return;
         let dmg = roll(1, Math.max(1, Math.floor(player.d.str || 1))) + 25;
@@ -5226,7 +5230,7 @@ function tryInstakill(m, ik, skillName, idx) {
     if(typeof ik.p === 'number') { if(Math.random() >= ik.p) return false; }
     else if(!abnormalMagicHit(m, ik.cap)) return false;
     
-    logCombat(`${skillName} 使 <span class="${getMobColor(m.lv)}">${m.n}</span> 立即死亡！`, 'player-crit');
+    logCombat(`${skillName} 使 <span class="${getMobColor(m.lv)}">${m.n}</span> 立即死亡！`, 'player-special');
     m.curHp = 0; 
     killMob(idx);
     return true;
@@ -5603,7 +5607,7 @@ function allyProcMoonburst(ally, t) {
     let dmg = roll(1, 30) + 2 * en;
     let counterTxt = '';
     if (isElementCounter('wind', t.e)) { dmg += 6; counterTxt = ' <span class="text-emerald-300 font-bold">(剋屬性!)</span>'; }
-    logCombat(`<span class="font-bold" style="color:#67e8f9;text-shadow:0 0 6px #06b6d4;">【協力·${ally._allyName}·月光爆裂】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點風屬性傷害！${counterTxt}`, 'player-crit');
+    logCombat(`<span class="font-bold" style="color:#67e8f9;text-shadow:0 0 6px #06b6d4;">【協力·${ally._allyName}·月光爆裂】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點風屬性傷害！${counterTxt}`, 'player-special');
     _allyDamageMob(ally, t, dmg, 'wind');
 }
 // 普攻後判定（命中與否皆判定，與玩家一致）：瑪那回魔(僅命中) / 共鳴 / 魔擊 / 月光爆裂
@@ -5624,15 +5628,15 @@ function allyWeaponProcs(ally, target, hitInfo) {
         let t = _allyProcTarget(target);
         if (t) {
             let res = allyStrikeRoll(ally, t, { forceHeavy: true });
-            logCombat(`<span class="font-bold" style="color:#d8b4fe;text-shadow:0 0 6px #a855f7;">【協力·${ally._allyName}·魔擊】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${res.dmg} 點傷害（${res.crit?'會心一擊':'重擊'}!）。`, 'player-crit');
+            logCombat(`<span class="font-bold" style="color:#d8b4fe;text-shadow:0 0 6px #a855f7;">【協力·${ally._allyName}·魔擊】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${res.dmg} 點傷害（${res.crit?'會心一擊':'重擊'}!）。`, res.crit ? 'player-crit' : 'player-special');
             wearHardSkin(t, null, true, false);   // 🔧 硬皮消磨：傭兵魔擊重擊 -2
             _allyDamageMob(ally, t, res.dmg, getWpnEle(wpnInst, wpn));
             // 🔧 傭兵魔擊精通：30% 額外擴散魔擊（對全體各打一次，不再連鎖）
             if (allyHasMastery(ally, 'm_strike') && Math.random() < 0.30) {
                 let _all = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
                 if (_all.length) {
-                    logCombat(`<span class="font-bold" style="color:#e9d5ff;text-shadow:0 0 8px #a855f7;">【協力·${ally._allyName}·魔擊精通】</span>魔力向四方擴散！`, 'player-crit');
-                    _all.forEach(m => { let r2 = allyStrikeRoll(ally, m, { forceHeavy: true }); logCombat(`擴散魔擊命中 <span class="${getMobColor(m.lv)}">${m.n}</span>，造成 ${r2.dmg} 點傷害。`, 'player-crit'); _allyDamageMob(ally, m, r2.dmg, getWpnEle(wpnInst, wpn)); });
+                    logCombat(`<span class="font-bold" style="color:#e9d5ff;text-shadow:0 0 8px #a855f7;">【協力·${ally._allyName}·魔擊精通】</span>魔力向四方擴散！`, 'player-special');
+                    _all.forEach(m => { let r2 = allyStrikeRoll(ally, m, { forceHeavy: true }); logCombat(`擴散魔擊命中 <span class="${getMobColor(m.lv)}">${m.n}</span>，造成 ${r2.dmg} 點傷害。`, 'player-special'); _allyDamageMob(ally, m, r2.dmg, getWpnEle(wpnInst, wpn)); });
                 }
             }
         }
@@ -5643,7 +5647,7 @@ function allyWeaponProcs(ally, target, hitInfo) {
     if (wpn.dragonStrike && Math.random() * 100 < wpn.dragonStrike) {   // 🔧 龍的一擊（傭兵版）：用傭兵力量
         let _ts = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
         if (_ts.length) {
-            logCombat(`<span class="font-bold" style="color:#fca5a5;text-shadow:0 0 6px #dc2626;">【協力·${ally._allyName}·龍的一擊】</span>劍中的龍魂咆哮！`, 'player-crit');
+            logCombat(`<span class="font-bold" style="color:#fca5a5;text-shadow:0 0 6px #dc2626;">【協力·${ally._allyName}·龍的一擊】</span>劍中的龍魂咆哮！`, 'player-special');
             _ts.forEach(m => {
                 if (!m || m.curHp <= 0 || m._dead) return;
                 let dmg = roll(1, Math.max(1, Math.floor(d.str || 1))) + 25;
@@ -7469,7 +7473,11 @@ function renderTabs(force) {
     let wDiv = document.getElementById('tab-weapons'); wDiv.innerHTML = '';
     let aDiv = document.getElementById('tab-armors'); aDiv.innerHTML = '';
     let iDiv = document.getElementById('tab-items'); iDiv.innerHTML = '';
-    
+
+    // ⚡ 快速強化頭部（武器/防具分頁頂端，類似裝備分頁的負重列）
+    wDiv.appendChild(buildQuickEnhanceHeader('wpn'));
+    aDiv.appendChild(buildQuickEnhanceHeader('arm'));
+
 player.inv.forEach(i => {
     if(!DB.items[i.id]) return;
     let d = DB.items[i.id];
@@ -7513,10 +7521,20 @@ player.inv.forEach(i => {
     let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="w-6 h-6 object-contain pointer-events-none ${glowClass}">`;
     
     // 內容組合 (加入了 statusTag)
-    el.innerHTML = `<div class="flex items-center gap-2">${imgHtml}<span class="${getItemColor(i)} font-bold">${getItemFullName(i)}</span> ${statusTag} ${i.lock ? '<span class="text-xs text-red-500">[🔒]</span>' : ''} ${(i.junk && !i.lock) ? '<span class="text-xs text-amber-400 font-bold">[廢]</span>' : ''}</div>`;
-    
-    // 保留點擊開啟 Modal 功能 (所有項目皆可點擊)
-    el.onclick = () => openModal(i, false);
+    let _rowInner = `<div class="flex items-center gap-2">${imgHtml}<span class="${getItemColor(i)} font-bold">${getItemFullName(i)}</span> ${statusTag} ${i.lock ? '<span class="text-xs text-red-500">[🔒]</span>' : ''} ${(i.junk && !i.lock) ? '<span class="text-xs text-amber-400 font-bold">[廢]</span>' : ''}</div>`;
+
+    // ⚡ 快速強化模式：對應分頁啟用且為可強化裝備（未鎖定）時，右側顯示勾選欄，點整列切換勾選
+    let _qeType = (d.type === 'wpn' && !d.isArrow) ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : null);
+    if (_qeType && quickEnh[_qeType].active && !i.lock) {
+        let _checked = !!quickEnh[_qeType].sel[i.uid];
+        el.innerHTML = `<div class="flex items-center justify-between gap-2">${_rowInner}<input type="checkbox" class="pointer-events-none w-4 h-4 mr-1 flex-shrink-0" ${_checked ? 'checked' : ''}></div>`;
+        if (_checked) el.className += ' ring-2 ring-blue-500/70';
+        el.onclick = () => toggleQuickItem(_qeType, i.uid);
+    } else {
+        el.innerHTML = _rowInner;
+        // 保留點擊開啟 Modal 功能 (所有項目皆可點擊)
+        el.onclick = () => openModal(i, false);
+    }
     
     // 🎯 物品分流邏輯
     if (d.type === 'wpn') {
@@ -8019,10 +8037,20 @@ function showEnhanceOptions(uid, isEq) {
         act += `<button class="col-span-2 w-full btn border-yellow-600 bg-yellow-900 hover:bg-yellow-800 py-3 text-base font-bold text-yellow-300 shadow" onclick="executeEnhance('${scrollBless.uid}', '${item.uid}', ${isEq})">使用 ${DB.items[scrollBless.id].n} (擁有: ${scrollBless.cnt})</button>`;
     }
     
-    // 🌟 新增：一鍵強化到安定值按鈕 (裝備安定值必須 > 0，且目前強化值小於安定值才會顯示)
+    // 🌟 一鍵強化到指定值：右側可選目標強化值（預設＝安定值），逐級嘗試，過程中任一階失敗即視為失敗（爆裝）
     let safe = d.safe || 0;
-    if (safe > 0 && item.en < safe) {
-        act += `<button class="col-span-2 w-full btn border-blue-600 bg-blue-900 hover:bg-blue-800 py-3 text-base font-bold text-blue-300 shadow mt-2" onclick="executeAutoSafeEnhance('${item.uid}', ${isEq}, '${scrollNormId}')">一鍵強化至安定值 (+${safe})</button>`;
+    if (scrollNorm && (d.type === 'wpn' || d.type === 'arm')) {
+        let _cur = Number(item.en) || 0;
+        let _max = Math.max(safe, _cur) + 6;
+        let _def = Math.max(safe, _cur + 1);
+        let _opts = '';
+        for (let _t = _cur + 1; _t <= _max; _t++) {
+            _opts += `<option value="${_t}" ${_t === _def ? 'selected' : ''}>+${_t}${_t <= safe ? '（安定）' : ''}</option>`;
+        }
+        act += `<div class="col-span-2 flex gap-2 mt-2">`
+            + `<button class="flex-1 btn border-blue-600 bg-blue-900 hover:bg-blue-800 py-3 text-base font-bold text-blue-300 shadow" onclick="executeAutoSafeEnhance('${item.uid}', ${isEq}, '${scrollNormId}', Number(document.getElementById('auto-enh-target').value))">一鍵強化到指定值</button>`
+            + `<select id="auto-enh-target" class="btn border-blue-700 bg-slate-800 text-blue-200 font-bold px-2 py-3 rounded shadow">${_opts}</select>`
+            + `</div>`;
     }
     
     act += `<button class="col-span-2 w-full btn py-3 bg-slate-700 text-lg font-bold mt-2" onclick="returnToItemModal('${item.uid}', ${isEq})">返回</button>`;
@@ -8030,64 +8058,99 @@ function showEnhanceOptions(uid, isEq) {
     document.getElementById('modal-actions').innerHTML = act;
 }
 
-// 👇 新增功能：一鍵強化至安定值主程式
-function executeAutoSafeEnhance(targetUid, isEq, scrollId) {
+// 👇 一鍵強化到指定值：逐級嘗試直到目標值。安定值前必定成功；安定值起依固定機率，
+//    過程中任一階失敗即爆裝（視為失敗）；卷軸用盡則停在目前等級。
+function executeAutoSafeEnhance(targetUid, isEq, scrollId, goal) {
     let target;
     if (isEq) {
         target = Object.values(player.eq).find(e => e && e.uid === targetUid);
     } else {
         target = player.inv.find(i => i.uid === targetUid);
     }
-    
+
     if (!target) return;
-    target.en = Number(target.en) || 0;   // 🔧 舊存檔 en 可能為 undefined：未正規化會使 neededCount 成 NaN，污染卷軸堆疊數量（與 doEnhance 的防呆一致）
+    target.en = Number(target.en) || 0;   // 🔧 舊存檔 en 可能為 undefined：統一正規化為有效數字
 
     let d = DB.items[target.id];
     let safe = d.safe || 0;
-    
-    // 防呆：如果裝備沒有安定值，或已經大於等於安定值，中斷操作
-    if (safe <= 0 || target.en >= safe) return;
-    
+    let slot = isEq ? Object.keys(player.eq).find(k => player.eq[k] === target) : null;
+
+    // 目標值防呆：必須高於目前強化值
+    goal = Number(goal) || 0;
+    if (goal <= target.en) {
+        logSys(`<span class="text-red-400 font-bold">目標強化值必須高於目前 (+${target.en})。</span>`);
+        return;
+    }
+
     // 尋找背包裡的一般卷軸
     let scrollItem = player.inv.find(i => i.id === scrollId);
     let scrollName = DB.items[scrollId] ? DB.items[scrollId].n : "強化卷軸";
-    
-    // 玩家沒卷軸，或數量為 0
     if (!scrollItem || scrollItem.cnt <= 0) {
         logSys(`<span class="text-red-400 font-bold">${scrollName} 數量不足。</span>`);
         return;
     }
-    
-    // 計算需要幾張卷軸，以及實際上能用幾張 (例如差 6 級但只有 5 張，就只會消耗 5 張)
-    let neededCount = safe - target.en;
-    let useCount = Math.min(neededCount, scrollItem.cnt);
-    
-    // 消耗玩家背包裡的卷軸
-    scrollItem.cnt -= useCount;
-    if (scrollItem.cnt <= 0) {
-        // 如果卷軸被扣光了，將該卷軸從背包陣列移除
-        player.inv = player.inv.filter(i => i.uid !== scrollItem.uid);
-    }
-    
-    // 堆疊保護：如果強化的是「背包」裡且數量大於 1 的裝備，拆分出一件來衝
+
+    // 堆疊保護：若強化的是「背包」裡且數量大於 1 的裝備，拆分出一件來衝
     if (!isEq && target.cnt > 1) {
         target.cnt -= 1;
-        let singleItem = { ...target, cnt: 1, uid: uid() }; // 給拆出來的新裝備一個新 UID
+        let singleItem = { ...target, cnt: 1, uid: uid() };
         player.inv.push(singleItem);
-        target = singleItem; 
+        target = singleItem;
     }
-    
-    // 正式增加裝備強化等級
-    target.en += useCount;
-    
-    // 顯示系統廣播訊息
-    logSys(`消耗了 ${useCount} 張 ${scrollName}，<span class="text-yellow-400 font-bold">+${target.en} ${d.n} 發出銀色的光芒。</span>`);
-    
-    // 刷新與結算存檔
+
+    let fn0 = getItemFullName(target);
+    let used = 0, destroyed = false, hadRisk = false, ranOut = false;
+
+    // 逐級強化，直到抵達目標、卷軸用盡或爆裝
+    while (target.en < goal) {
+        if (!scrollItem || scrollItem.cnt <= 0) { ranOut = true; break; }
+        // 消耗一張卷軸
+        scrollItem.cnt -= 1; used += 1;
+        if (scrollItem.cnt <= 0) {
+            player.inv = player.inv.filter(i => i.uid !== scrollItem.uid);
+            scrollItem = null;
+        }
+
+        if (target.en < safe) {
+            target.en += 1;   // 安定值前必定成功
+        } else {
+            hadRisk = true;
+            let en = target.en, rate;
+            if (d.type === 'wpn') {                       // 武器一律安定值6
+                rate = en === 6 ? 0.60 : en === 7 ? 0.50 : en === 8 ? 0.40 : 0.35;
+            } else if (d.type === 'acc') {                // 飾品：一律安定值0
+                rate = en === 0 ? 0.50 : en === 1 ? 0.40 : en === 2 ? 0.30 : 0.20;
+            } else if (safe === 0) {                      // 防具：安定值0
+                rate = en <= 4 ? 0.50 : en === 5 ? 0.40 : en === 6 ? 0.30 : 0.20;
+            } else if (safe === 4) {                      // 防具：安定值4
+                rate = en === 4 ? 0.50 : en === 5 ? 0.40 : en === 6 ? 0.30 : 0.20;
+            } else {                                      // 防具：安定值6（其餘安定值防呆比照）
+                rate = en === safe ? 0.30 : 0.20;
+            }
+            if (Math.random() < rate) {
+                target.en += 1;   // 成功
+            } else {
+                destroyed = true; // 失敗即爆裝，過程視為失敗
+                break;
+            }
+        }
+    }
+
+    if (destroyed) {
+        if (isEq) { if (slot) player.eq[slot] = null; }
+        else { player.inv = player.inv.filter(i => i.uid !== target.uid); }
+        logSys(`消耗了 ${used} 張 ${scrollName}。<span class="text-red-500 font-bold">${fn0} 強烈的發出銀色的光芒就消失了。</span>`);
+    } else if (ranOut) {
+        logSys(`${scrollName} 不足，消耗了 ${used} 張，<span class="text-yellow-400 font-bold">+${target.en} ${d.n} 發出銀色的光芒。</span>`);
+    } else {
+        let prefix = hadRisk ? `<span class="text-green-300 font-bold">強化成功！</span>` : '';
+        logSys(`${prefix}消耗了 ${used} 張 ${scrollName}，<span class="text-yellow-400 font-bold">+${target.en} ${d.n} 發出銀色的光芒。</span>`);
+    }
+
     calcStats();
     renderTabs();
     closeModal();
-    saveGame(); 
+    saveGame();
 }
 
 function executeEnhance(scrollUid, targetUid, isEq) {
@@ -8095,6 +8158,123 @@ function executeEnhance(scrollUid, targetUid, isEq) {
     if (!scroll) return;
     activeScroll = scroll;
     doEnhance(targetUid, isEq);
+}
+
+// ========== ⚡ 快速強化（批次強化）==========
+// 強化成功率（與 doEnhance/executeAutoSafeEnhance 同一套固定機率），安定值之前由呼叫端視為必定成功
+function _enhanceRate(d, en, safe) {
+    if (d.type === 'wpn') return en === 6 ? 0.60 : en === 7 ? 0.50 : en === 8 ? 0.40 : 0.35;   // 武器一律安定值6
+    if (d.type === 'acc') return en === 0 ? 0.50 : en === 1 ? 0.40 : en === 2 ? 0.30 : 0.20;   // 飾品一律安定值0
+    if (safe === 0)       return en <= 4 ? 0.50 : en === 5 ? 0.40 : en === 6 ? 0.30 : 0.20;    // 防具安定值0
+    if (safe === 4)       return en === 4 ? 0.50 : en === 5 ? 0.40 : en === 6 ? 0.30 : 0.20;   // 防具安定值4
+    return en === safe ? 0.30 : 0.20;                                                          // 防具安定值6（其餘比照）
+}
+
+// 該分頁可被批次強化的背包裝備（未鎖定；武器分頁＝武器(非箭矢)，防具分頁＝防具/飾品）
+function _qeEligibleItems(type) {
+    return player.inv.filter(i => {
+        let d = DB.items[i.id]; if (!d || i.lock) return false;
+        if (type === 'wpn') return d.type === 'wpn' && !d.isArrow;
+        return d.type === 'arm' || d.type === 'acc';
+    });
+}
+
+// 模擬單一件裝備從 startEn 強化到 goal：每階消耗對應卷軸，安定值前必成功、安定值起依機率，失敗即爆裝。
+// scrollStacks 為 {scrollId:{cnt}} 的可變計數器（多件共用同一池），回傳 {en, destroyed, used}
+function _quickEnhanceUnit(d, startEn, goal, scrollStacks) {
+    let en = startEn, used = 0, destroyed = false;
+    let safe = d.safe || 0;
+    let scrollId = d.type === 'wpn' ? 'scroll_weapon' : (d.type === 'acc' ? 'scroll_acc' : 'scroll_armor');
+    while (en < goal) {
+        let st = scrollStacks[scrollId];
+        if (!st || st.cnt <= 0) break;   // 卷軸用盡：停在目前等級（不爆裝）
+        st.cnt -= 1; used += 1;
+        if (en < safe) { en += 1; continue; }   // 安定值前必定成功
+        if (Math.random() < _enhanceRate(d, en, safe)) en += 1;   // 安定值起：依機率
+        else { destroyed = true; break; }                         // 失敗即爆裝
+    }
+    return { en, destroyed, used };
+}
+
+function buildQuickEnhanceHeader(type) {
+    let st = quickEnh[type];
+    let hdr = document.createElement('div');
+    hdr.className = 'sticky top-0 z-10 mb-1 bg-slate-900 pb-1';
+    if (!st.active) {
+        hdr.innerHTML = `<button onclick="toggleQuickEnhance('${type}')" class="w-full btn border-blue-700 bg-blue-900/70 hover:bg-blue-800 py-1.5 text-sm font-bold text-blue-200 rounded shadow">⚡ 快速強化</button>`;
+        return hdr;
+    }
+    let eligible = _qeEligibleItems(type);
+    let allSel = eligible.length > 0 && eligible.every(i => st.sel[i.uid]);
+    let someSel = eligible.some(i => st.sel[i.uid]);
+    let target = st.target || 6;
+    let opts = '';
+    for (let t = 1; t <= 12; t++) opts += `<option value="${t}" ${t === target ? 'selected' : ''}>+${t}</option>`;
+    hdr.innerHTML = `<div class="flex items-center gap-1 bg-slate-900/80 border border-slate-700 rounded p-1">
+        <button onclick="cancelQuickEnhance('${type}')" class="btn border-slate-600 bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs font-bold text-white rounded">取消</button>
+        <button onclick="runQuickEnhance('${type}')" class="btn border-blue-600 bg-blue-800 hover:bg-blue-700 px-2 py-1 text-xs font-bold text-blue-200 rounded">強化</button>
+        <select id="qe-target-${type}" onchange="quickEnh['${type}'].target=Number(this.value)" class="bg-slate-800 border border-slate-600 text-blue-200 text-xs font-bold rounded px-1 py-1 ml-auto">${opts}</select>
+        <label class="flex items-center gap-1 text-xs text-slate-300 cursor-pointer select-none whitespace-nowrap"><input type="checkbox" ${allSel ? 'checked' : ''} onchange="quickEnhanceSelectAll('${type}', this.checked)"> 全選</label>
+    </div>`;
+    let cb = hdr.querySelector('label input'); if (cb) cb.indeterminate = someSel && !allSel;   // 部分勾選顯示半選
+    return hdr;
+}
+
+// 注意：renderTabs 有「背包/裝備內容簽章」快取，內容未變會提早 return。快速強化只改 quickEnh 狀態（不在簽章內），
+//       故這些切換一律用 renderTabs(true) 強制重建，否則畫面不會更新。
+function toggleQuickEnhance(type) { let st = quickEnh[type]; st.active = true; if (st.target == null) st.target = 6; st.sel = {}; renderTabs(true); }
+function cancelQuickEnhance(type) { let st = quickEnh[type]; st.active = false; st.sel = {}; renderTabs(true); }
+function quickEnhanceSelectAll(type, checked) { let st = quickEnh[type]; st.sel = {}; if (checked) _qeEligibleItems(type).forEach(i => st.sel[i.uid] = true); renderTabs(true); }
+function toggleQuickItem(type, uid) { let st = quickEnh[type]; if (st.sel[uid]) delete st.sel[uid]; else st.sel[uid] = true; renderTabs(true); }
+
+function runQuickEnhance(type) {
+    let st = quickEnh[type];
+    let goal = Number((document.getElementById('qe-target-' + type) || {}).value) || st.target || 0;
+    let entries = _qeEligibleItems(type).filter(i => st.sel[i.uid]);
+    if (!entries.length) { logSys(`<span class="text-red-400 font-bold">尚未勾選任何裝備。</span>`); return; }
+
+    // 三種卷軸共用計數池（武器/防具/飾品各自扣自己的卷軸）
+    let scrollStacks = {};
+    ['scroll_weapon', 'scroll_armor', 'scroll_acc'].forEach(sid => {
+        let it = player.inv.find(i => i.id === sid);
+        scrollStacks[sid] = { cnt: it ? (it.cnt || 0) : 0 };
+    });
+
+    let reached = 0, destroyed = 0, partial = 0, skipped = 0, usedTotal = 0;
+    let removeUids = new Set();
+    let survivors = [];
+
+    entries.forEach(entry => {
+        let d = DB.items[entry.id];
+        let cnt = entry.cnt || 1;
+        removeUids.add(entry.uid);
+        for (let u = 0; u < cnt; u++) {
+            if ((entry.en || 0) >= goal) { skipped++; survivors.push({ ...entry, cnt: 1, uid: uid() }); continue; }   // 已達/超過目標：原樣保留
+            let r = _quickEnhanceUnit(d, entry.en || 0, goal, scrollStacks);
+            usedTotal += r.used;
+            if (r.destroyed) { destroyed++; continue; }   // 爆裝：不保留
+            if (r.en >= goal) reached++; else partial++;  // 抵達 or 卷軸不足停在中途
+            survivors.push({ ...entry, cnt: 1, uid: uid(), en: r.en, lock: false });
+        }
+    });
+
+    // 套用結果：移除原件 → 回寫卷軸 → 加入存活件（同簽章疊加）
+    player.inv = player.inv.filter(i => !removeUids.has(i.uid));
+    ['scroll_weapon', 'scroll_armor', 'scroll_acc'].forEach(sid => {
+        let it = player.inv.find(i => i.id === sid);
+        if (it) { it.cnt = scrollStacks[sid].cnt; if (it.cnt <= 0) player.inv = player.inv.filter(x => x.uid !== it.uid); }
+    });
+    survivors.forEach(s => { let ex = player.inv.find(x => sameItemSig(x, s)); if (ex) ex.cnt = (ex.cnt || 1) + 1; else player.inv.push(s); });
+
+    st.active = false; st.sel = {};
+    let parts = [`成功 ${reached} 件`];
+    if (partial) parts.push(`卷軸不足停 ${partial} 件`);
+    if (skipped) parts.push(`已達標 ${skipped} 件`);
+    parts.push(`<span class="text-red-400">爆裝 ${destroyed} 件</span>`);
+    logSys(`<span class="text-blue-300 font-bold">快速強化完成（目標 +${goal}）：</span>${parts.join('、')}，消耗 ${usedTotal} 張卷軸。`);
+    calcStats();
+    renderTabs(true);
+    saveGame();
 }
 
 // 計算物品賣價（含詞綴疊乘）：與物品面板顯示價一致

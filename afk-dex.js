@@ -75,6 +75,8 @@
     var results = document.getElementById('m-dex-results');
     if (!input || !results) return;
     var sherine = document.getElementById('m-dex-sherine').checked;
+    var clearBtn = document.getElementById('m-dex-clear');
+    if (clearBtn) clearBtn.classList.toggle('show', !!input.value);   // 有字才顯示清除鈕
     var q = (input.value || '').trim().toLowerCase();
     if (!q) { results.innerHTML = '<div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋</div>'; return; }
     var hits = [];
@@ -139,7 +141,10 @@
     m.innerHTML =
       '<div id="m-dex-card-wrap">' +
         '<div id="m-dex-head">' +
-          '<input id="m-dex-input" type="text" placeholder="搜尋 怪物名 / 地圖 / 掉落物…" autocomplete="off">' +
+          '<span id="m-dex-inwrap">' +
+            '<input id="m-dex-input" type="text" placeholder="搜尋 怪物名 / 地圖 / 掉落物…" autocomplete="off">' +
+            '<button id="m-dex-clear" type="button" title="清除" aria-label="清除">✕</button>' +
+          '</span>' +
           '<button id="m-dex-close" type="button" title="關閉">✕</button>' +
         '</div>' +
         '<label id="m-dex-sherine-row"><input id="m-dex-sherine" type="checkbox"> 席琳的世界掉落率（×3）</label>' +
@@ -150,6 +155,10 @@
     document.getElementById('m-dex-input').addEventListener('input', doSearch);
     document.getElementById('m-dex-sherine').addEventListener('change', doSearch);
     document.getElementById('m-dex-close').addEventListener('click', closeModal);
+    document.getElementById('m-dex-clear').addEventListener('click', function () {
+      var i = document.getElementById('m-dex-input');
+      i.value = ''; doSearch(); i.focus();
+    });
     m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });   // 點背景關閉
   }
   function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); } }
@@ -163,8 +172,12 @@
       '#m-dex-modal.open{display:flex;}',
       '#m-dex-card-wrap{width:min(680px,96vw);max-height:92vh;max-height:calc(100dvh - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',
       '#m-dex-head{display:flex;gap:8px;padding:12px;border-bottom:1px solid #1e293b;flex:0 0 auto;}',
-      '#m-dex-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:10px 12px;font-size:15px;outline:none;font-family:inherit;}',
+      '#m-dex-inwrap{position:relative;flex:1 1 auto;min-width:0;display:flex;}',
+      '#m-dex-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:10px 40px 10px 12px;font-size:15px;outline:none;font-family:inherit;}',
       '#m-dex-input:focus{border-color:#eab308;}',
+      '#m-dex-clear{display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;background:#475569;color:#e2e8f0;border-radius:50%;font-size:12px;line-height:1;cursor:pointer;padding:0;}',
+      '#m-dex-clear.show{display:block;}',
+      '#m-dex-clear:active{background:#64748b;}',
       '#m-dex-close{flex:0 0 auto;width:42px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
       '#m-dex-close:active{background:#334155;}',
       '#m-dex-sherine-row{display:flex;align-items:center;gap:8px;padding:9px 14px;color:#cbd5e1;font-size:14px;border-bottom:1px solid #1e293b;cursor:pointer;flex:0 0 auto;}',

@@ -153,6 +153,14 @@
     line += parts.length ? parts.join('、') : '（無明顯收益）';
     line += '。';
     try { logSys(line); } catch (e) { console.log('[AFK]', line.replace(/<[^>]+>/g, '')); }
+    // 平均效率(對齊遊戲「本圖效率統計」的 經驗/10分、金幣/10分):用實際補跑時間換算
+    var preciseMin = doneTicks * TICK_MS / 60000;
+    if (preciseMin > 0 && (dExp > 0 || dGold > 0)) {
+      var exp10 = Math.floor(dExp / preciseMin * 10);
+      var gold10 = Math.floor(dGold / preciseMin * 10);
+      try { logSys(`<span class="text-amber-300">📊 平均效率：經驗 ${fmt(exp10)} / 10分、金幣 ${fmt(gold10)} / 10分</span>`); }
+      catch (e) { console.log('[AFK] 平均效率: 經驗 ' + exp10 + '/10分, 金幣 ' + gold10 + '/10分'); }
+    }
     if (died) {
       try { logSys('<span class="text-red-500 font-bold">離線期間角色陣亡，進度已結算至死亡前。</span>'); }
       catch (e) { console.log('[AFK] 離線期間陣亡，結算至死亡前。'); }

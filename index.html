@@ -659,6 +659,14 @@ const DB = {
         "wpn_xbow_gloom": { n: "幽暗十字弓", type: "wpn", isBow: true, ranged: true, rapidfire: 70, w2h: true, dmgS: 3, dmgL: 2, hit: 5, dmgBonus: 2, spd: 1.0, req: "elf,dark", safe: 6, p: 33300, gachaWeight: 5 },
         // ===== 魔力短劍（匕首，全職業） =====
         "wpn_manadagger": { n: "魔力短劍", type: "wpn", dmgS: 6, dmgL: 4, hit: 0, dmgBonus: 1, spd: 0.8, req: "all", safe: 6, p: 91000, eff: "mp_drain", unBonus: true, str: 1, mpR: 1, legend: true, gachaWeight: 1, d: "蘊含魔力的短劍。一般攻擊命中恢復 1 MP，並帶出血。" },   // 🔧 傳說武器：琥珀金名稱＋專屬藍色圖示光芒
+        // ===== 拉斯塔巴德地下洞穴：掉落武器 =====
+        "wpn_xbow_rasta":   { n: "拉斯塔巴德十字弓", type: "wpn", isBow: true, ranged: true, rapidfire: 45, w2h: true, dmgS: 3, dmgL: 3, hit: 2, dmgBonus: 2, spd: 0.9, req: "elf,dark", safe: 6, p: 2300, gachaWeight: 0 },
+        "wpn_bow_rasta":    { n: "拉斯塔巴德弓", type: "wpn", isBow: true, ranged: true, rapidfire: 55, w2h: true, dmgS: 2, dmgL: 2, hit: 2, dmgBonus: 2, spd: 0.9, req: "knight,elf", safe: 6, p: 1800, gachaWeight: 0 },
+        "wpn_small_katana": { n: "小武士刀", type: "wpn", dmgS: 8, dmgL: 8, hit: 1, spd: 0.9, req: "all", safe: 6, p: 11000, gachaWeight: 0 },
+        "wpn_sword_rasta":  { n: "拉斯塔巴德長劍", type: "wpn", dmgS: 10, dmgL: 12, hit: 1, spd: 1.1, req: "knight,elf,dark", safe: 6, p: 990, gachaWeight: 0 },
+        "wpn_dagger_rasta": { n: "拉斯塔巴德短劍", type: "wpn", dmgS: 4, dmgL: 3, hit: 2, spd: 0.8, req: "all", safe: 6, p: 1000, gachaWeight: 0 },
+        "wpn_wand_rasta":   { n: "拉斯塔巴德魔杖", type: "wpn", dmgS: 2, dmgL: 3, hit: 0, mdmg: 1, spd: 1.0, req: "mage", safe: 6, p: 10000, gachaWeight: 0 },
+        "wpn_dual_rasta":   { n: "拉斯塔巴德雙刀", type: "wpn", w2h: true, dmgS: 15, dmgL: 10, hit: 0, spd: 0.8, req: "dark", safe: 6, p: 10000, eff: "combo", gachaWeight: 0 },
         "hlm_elf": { n: "精靈皮盔", type: "arm", slot: "helm", ac: 1, req: "elf,mage", safe: 6, p: 120, gachaWeight: 100 },
         "hlm_oasis": { n: "歐西斯頭盔", type: "arm", slot: "helm", ac: 1, req: "all", safe: 4, p: 10, gachaWeight: 100 },
         "hlm_gnome": { n: "侏儒鐵盔", type: "arm", slot: "helm", ac: 2, req: "all", safe: 4, p: 30, gachaWeight: 100 },
@@ -749,6 +757,11 @@ const DB = {
         "arm_shadowglove": { n: "影子手套", type: "arm", slot: "gloves", ac: 1, con: 1, req: "dark", safe: 6, p: 1720, gachaWeight: 0 },   // 🔧 黑暗妖精：倫得以死亡誓約兌換
         "arm_shadowmask": { n: "影子面具", type: "arm", slot: "helm", ac: 2, req: "dark", safe: 6, p: 240, gachaWeight: 0 },   // 🔧 黑暗妖精：康以妖魔長老首級兌換
         "arm_shadowboots": { n: "影子長靴", type: "arm", slot: "boots", ac: 2, mhp: 50, hpR: 4, req: "dark", safe: 4, p: 2660, gachaWeight: 0 },   // 🔧 黑暗妖精：布魯迪卡以雪怪首級兌換
+        // ===== 拉斯塔巴德地下洞穴：掉落防具 =====
+        "arm_rasta_leather": { n: "拉斯塔巴德皮盔甲", type: "arm", slot: "armor", ac: 3, req: "all", safe: 4, p: 590, gachaWeight: 0 },
+        "bot_rasta": { n: "拉斯塔巴德長靴", type: "arm", slot: "boots", ac: 2, req: "all", safe: 4, p: 380, gachaWeight: 0 },
+        "clk_dark": { n: "黑暗斗篷", type: "arm", slot: "cloak", ac: 3, mhp: 30, req: "dark", safe: 4, p: 6350, gachaWeight: 0 },
+        "amr_rasta_robe": { n: "拉斯塔巴德長袍", type: "arm", slot: "armor", ac: 4, mpR: 5, req: "mage", safe: 4, p: 24000, gachaWeight: 0 },
         "arm_101": { n: "克特手套", type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 17500, gachaWeight: 1 },
         "arm_102": { n: "保護者手套", type: "arm", slot: "gloves", ac: 0, req: "elf", safe: 4, p: 4500, mhp: 20, mmp: 20, gachaWeight: 20 },
         "arm_103": { n: "小盾牌", type: "arm", slot: "shield", ac: 1, req: "all", safe: 4, p: 84, gachaWeight: 100, block: 20 },
@@ -1283,6 +1296,18 @@ const DB = {
         "nm_035": { n: "牧羊犬", lv: 5, s: "S", beh: "被動", race: "動物", e: "earth", hp: 30, ac: 10, mr: 30, exp: 26, goldMin: 13, goldMax: 36, atkSpd: 2, dmg: [1, 5], db: 0, hit: 0 },
         "nm_036": { n: "夢幻之島冰人", lv: 38, s: "L", beh: "被動", race: "元素", elem: true, e: "water", hp: 350, ac: -30, mr: 21, exp: 1450, goldMin: 243, goldMax: 364, atkSpd: 2, dmg: [2, 40], db: 40, hit: 29 },
         "sema": { hard: true, n: "西瑪", lv: 42, s: "S", boss: true, race: "四色", e: "none", hp: 8000, ac: -32, mr: 80, exp: 17650, goldMin: 1500, goldMax: 3000, atkSpd: 2.0, dmg: [4, 31], db: 62, hit: 55, mag: { skn: "極光雷電", sk: 'thunder', cd: 50, dmg: [2, 80], db: 182, ele: 'wind' } },
+        // ===== 拉斯塔巴德地下洞穴：歐姆族 =====
+        "ohm": { n: "歐姆", lv: 19, s: "S", beh: "被動", race: "歐姆", e: "earth", hp: 152, ac: -10, mr: 19, exp: 362, goldMin: 20, goldMax: 300, atkSpd: 2, dmg: [2, 19], db: 1, hit: 6 },
+        "ohm_rage": { n: "狂暴的歐姆", lv: 21, s: "S", beh: "被動", race: "歐姆", e: "earth", hp: 168, ac: -11, mr: 21, exp: 442, goldMin: 20, goldMax: 300, atkSpd: 2, dmg: [2, 21], db: 1, hit: 10 },
+        "ohm_armor": { n: "歐姆裝甲兵", lv: 23, s: "L", beh: "被動", race: "歐姆", e: "water", hp: 184, ac: -12, mr: 21, exp: 530, goldMin: 100, goldMax: 400, atkSpd: 3, dmg: [3, 21], db: 8, hit: 10 },
+        "ohm_armor_rage": { n: "狂暴的歐姆裝甲兵", lv: 25, s: "L", beh: "被動", race: "歐姆", e: "water", hp: 200, ac: -13, mr: 25, exp: 626, goldMin: 100, goldMax: 400, atkSpd: 2, dmg: [2, 25], db: 8, hit: 11 },
+        // ===== 拉斯塔巴德地下洞穴：黑暗妖精殘兵 =====
+        "de_remnant_bow": { n: "黑暗妖精殘兵(弓)", lv: 27, s: "S", beh: "被動", race: "黑暗妖精", e: "none", hp: 216, ac: -11, mr: 27, exp: 730, goldMin: 50, goldMax: 400, atkSpd: 1, dmg: [1, 27], db: 8, hit: 13 },
+        "de_remnant_sword": { n: "黑暗妖精殘兵(劍)", lv: 29, s: "S", beh: "被動", race: "黑暗妖精", e: "none", hp: 261, ac: -15, mr: 29, exp: 842, goldMin: 50, goldMax: 400, atkSpd: 1.5, dmg: [2, 20], db: 8, hit: 13 },
+        "de_remnant_xbow": { n: "黑暗妖精殘兵(十字弓)", lv: 29, s: "S", beh: "被動", race: "黑暗妖精", e: "none", hp: 232, ac: -12, mr: 29, exp: 842, goldMin: 50, goldMax: 400, atkSpd: 1, dmg: [1, 29], db: 9, hit: 11 },
+        "de_remnant_mage": { n: "黑暗妖精殘兵(法師)", lv: 30, s: "S", beh: "被動", race: "黑暗妖精", e: "none", hp: 240, ac: -10, mr: 30, exp: 901, goldMin: 50, goldMax: 400, atkSpd: 2, dmg: [2, 29], db: 7, hit: 10, mag: { skn: "冰錐", cd: 70, dmg: [2, 30], db: 38, ele: "water", alwaysHit: true }, mag2: { skn: "龍捲風", cd: 50, chance: 0.2, dmg: [3, 30], db: 48, ele: "wind", alwaysHit: true } },
+        "de_remnant_2h": { n: "黑暗妖精殘兵(雙手劍)", lv: 33, s: "S", beh: "被動", race: "黑暗妖精", e: "none", hp: 330, ac: -20, mr: 40, exp: 1090, goldMin: 50, goldMax: 400, atkSpd: 1, dmg: [2, 29], db: 2, hit: 15 },
+        "dark_spirit_caller": { n: "黑暗精靈使", lv: 45, s: "S", beh: "被動", race: "黑暗妖精", e: "earth", hp: 550, ac: -38, mr: 45, exp: 2026, goldMin: 50, goldMax: 400, atkSpd: 2, dmg: [2, 45], db: 22, hit: 25, mag: { skn: "邪靈之氣", type: "stat_debuff", cd: 70, acUp: 10, erDown: 10, dur: 6 }, mag2: { skn: "召喚闇之精靈", cd: 30, dmg: [3, 45], db: 48, ele: "none", alwaysHit: true } },
     },
 	
 	    // 👇 完整的城鎮系統資料庫
@@ -1666,6 +1691,9 @@ const DB = {
         "zone_39": ["nm_025", "nm_026", "nm_027", "nm_033"],
         "zone_40": ["nm_025", "nm_026", "nm_027", "nm_033"],
         "zone_41": ["nm_025", "nm_026", "nm_027", "nm_033", "nm_034"],
+        "rastabad_cave1": ["ohm", "ohm_rage", "ohm_armor", "ohm_armor_rage"],
+        "rastabad_cave2": ["de_remnant_bow", "de_remnant_sword", "de_remnant_xbow", "de_remnant_mage", "de_remnant_2h"],
+        "rastabad_cave3": ["de_remnant_bow", "de_remnant_sword", "de_remnant_xbow", "de_remnant_mage", "de_remnant_2h", "dark_spirit_caller"],
         "antaras_lair": ["antaras"],
         "fafurion_lair": ["fafurion"],
         "valakas_lair": ["valakas"],
@@ -1694,6 +1722,17 @@ const DB = {
     // ===== 怪物專屬掉落表（依「怪物掉落資料.md」）=====
     // 格式：怪物顯示名稱: [[物品ID, 掉落機率(%)], ...]  每樣獨立判定一次
     const MOB_DROPS = {
+        // ===== 拉斯塔巴德地下洞穴 =====
+        '歐姆': [['potion_haste', 1], ['scroll_revive', 1]],
+        '狂暴的歐姆': [['potion_haste', 1], ['scroll_revive', 1]],
+        '歐姆裝甲兵': [['wpn_xbow_rasta', 0.2]],
+        '狂暴的歐姆裝甲兵': [['wpn_xbow_rasta', 0.2], ['potion_haste', 1], ['potion_brave', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1]],
+        '黑暗妖精殘兵(弓)': [['wpn_small_katana', 0.1], ['wpn_bow_rasta', 0.5], ['arm_rasta_leather', 2], ['bot_rasta', 1], ['potion_haste', 1], ['new_item_140', 1]],
+        '黑暗妖精殘兵(劍)': [['wpn_sword_rasta', 0.5], ['clk_dark', 0.1], ['arm_rasta_leather', 3], ['bot_rasta', 2], ['potion_haste', 1], ['potion_brave', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1], ['bk_berserk', 0.1], ['bk_dark_str', 1], ['bk_dark_burn', 0.5], ['bk_dark_erup', 0.1]],
+        '黑暗妖精殘兵(十字弓)': [['wpn_dagger_rasta', 0.5], ['wpn_xbow_rasta', 1], ['potion_haste', 1], ['new_item_140', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1], ['bk_holy_dash', 0.1], ['bk_dark_stealth', 1], ['bk_dark_poison', 1], ['bk_dark_str', 1], ['bk_dark_crit', 0.1], ['bk_dark_erup', 0.1]],
+        '黑暗妖精殘兵(法師)': [['wpn_wand_rasta', 0.5], ['amr_rasta_robe', 0.1], ['potion_haste', 1], ['potion_blue', 1], ['new_item_140', 1], ['bk_dark_dex', 1]],
+        '黑暗妖精殘兵(雙手劍)': [['wpn_dual_rasta', 0.5]],
+        '黑暗精靈使': [['potion_haste', 1], ['new_item_140', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1], ['bk_holy_barrier', 0.005], ['bk_dark_stealth', 1], ['bk_dark_poison', 1], ['bk_dark_mrup', 1], ['bk_dark_burn', 1], ['bk_dark_poisonres', 0.5], ['bk_dark_double', 0.05], ['bk_dark_fang', 0.1], ['bk_dark_crit', 0.5]],
         '冰之女王侍女': [['bk_thunder_storm', 0.05], ['bk_cancel', 0.1]],
         '冰之女王': [['arm_88', 0.1], ['arm_63', 10], ['glv_crystal', 5], ['acc_116', 0.1], ['amu_int', 1], ['acc_122', 1], ['acc_128', 0.5], ['acc_129', 0.5], ['acc_130', 0.1], ['acc_131', 0.1], ['potion_haste', 1], ['scroll_weapon', 10], ['scroll_armor', 20], ['scroll_revive', 1], ['new_item_150', 1], ['new_item_151', 50], ['new_item_152', 5], ['bk_summon', 0.5], ['bk_invisible', 0.05], ['new_item_140', 1], ['potion_blue', 1], ['bk_fire_storm', 0.5], ['new_item_195', 1], ['bk_elf_winddash', 1], ['bk_elf_lifespring', 3], ['bk_elf_lifebless', 1], ['bk_elf_steelguard', 1], ['bk_magic_shield', 2], ['bk_dark_shadow', 1], ['bk_seal', 1]],
         '夢幻之島蘑菇': [['potion_haste',1], ['scroll_weapon',1], ['scroll_armor',2], ['potion_blue',1]],
@@ -2554,9 +2593,9 @@ function recomputeStats() {
         d.aspd = w.spd;
         if(w.mdmg) d.magicDmg += w.mdmg;
         if(w.mpR) d.mpR += w.mpR;
-        if(w.mpROverSafe && p.eq.wpn.en > (w.safe || 0)) d.mpR += (p.eq.wpn.en - (w.safe || 0)) * w.mpROverSafe;   // 突破安定值：每超過1階，MP自然恢復量 +mpROverSafe
-        if(w.extraMpPerEn)  d.extraMp  += p.eq.wpn.en * w.extraMpPerEn;    // 每強化+1 → 額外魔法點數
-        if(w.meleeHitPerEn) d.meleeHit += p.eq.wpn.en * w.meleeHitPerEn;   // 每強化+1 → 近距離命中
+        if(w.mpROverSafe && (p.eq.wpn.en||0) > (w.safe || 0)) d.mpR += ((p.eq.wpn.en||0) - (w.safe || 0)) * w.mpROverSafe;   // 突破安定值：每超過1階，MP自然恢復量 +mpROverSafe
+        if(w.extraMpPerEn)  d.extraMp  += (p.eq.wpn.en||0) * w.extraMpPerEn;    // 每強化+1 → 額外魔法點數
+        if(w.meleeHitPerEn) d.meleeHit += (p.eq.wpn.en||0) * w.meleeHitPerEn;   // 每強化+1 → 近距離命中
         // 武器祝福/遠古：依規格計入（同時影響遠近距離）
         // 祝福的武器：額外傷害+1、額外魔法點數+2、額外命中+1
         applyBlessStats(d, p.eq.wpn.bless, 'wpn');   // 祝福的/詛咒的
@@ -2571,10 +2610,10 @@ function recomputeStats() {
         let e = p.eq[k];
         if (!e || k === 'wpn') continue;
         let ed = DB.items[e.id];
-        d.ac -= (ed.ac||0) + e.en; 
+        d.ac -= (ed.ac||0) + (e.en||0);
         // 計算防具的基礎 MR 與強化的額外 MR 加成
 let baseMr = ed.mr || 0;
-let bonusMr = (ed.mrPerEn || 0) * e.en; 
+let bonusMr = (ed.mrPerEn || 0) * (e.en||0);
 d.mr += (baseMr + bonusMr);
         // ed.str/dex/int/con/wis 已於 Phase 1 計入屬性
         if(ed.mhp) p.mhp += ed.mhp;
@@ -2704,6 +2743,7 @@ d.mr += (baseMr + bonusMr);
     if(p.buffs.blue > 0) d.mpR += getWisBlueBonus(d.wis);          // 藍色藥水：依精神提升MP恢復
     if(p.buffs.cautious > 0) { d.magicDmg += 2; d.mpR += 2; }      // 慎重藥水
     if(p.buffs.sk_reduction_armor > 0) d.dr += Math.floor(p.lv/10);   // 增幅防禦：等同傷害減免 floor(等級/10)，併入 DR 顯示與計算
+    if(p.statuses && p.statuses.evilAura > 0) { d.ac += 10; d.er -= 10; }   // 🔧 邪靈之氣減益：AC+10、ER−10（持續6秒，由黑暗精靈使施放）
     
     // 技能buff（非屬性部分；STR/DEX/INT/CON/WIS 已於 Phase 1 計入）
     // meleeDmg/meleeHit -> 近距離；rangedDmg/rangedHit -> 遠距離（彼此獨立，依武器種類生效）
@@ -3065,6 +3105,7 @@ function tick() {
         if (player.statuses[k] > 0 && k !== 'poisonDmg' && k !== 'poisonTick' && k !== 'burnDmg' && k !== 'burnTick' && k !== 'scaldDmg' && k !== 'scaldTick') {
             player.statuses[k]--;
             if(k === 'cleave' && player.statuses.cleave === 0) calcStats();   // 🔧 切割到期：重算攻速
+            if(k === 'evilAura' && player.statuses.evilAura === 0) calcStats();   // 🔧 邪靈之氣到期：還原 AC/ER
             if(k === 'stun' || k === 'freeze' || k === 'stone' || k === 'paralyze') canAct = false;
         }
     }
@@ -3715,7 +3756,7 @@ function consumeArrow() {
 }
 
 // ===== 法杖共鳴：裝備指定魔法杖時，一般攻擊(不論命中與否)有 智力/60 機率免費施展光箭 =====
-const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless'];   // 🏅 巴列斯魔杖：共鳴
+const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta'];   // 🏅 巴列斯魔杖：共鳴；🔧 拉斯塔巴德魔杖：共鳴
 function wandLightArrowProc(target) {
     let wpn = player.eq.wpn;
     if (!wpn || !WAND_LIGHTARROW_IDS.includes(wpn.id)) return;
@@ -4401,6 +4442,14 @@ function applyMobMagic(mob, sk) {
         if(player.dead) return;
         player.statuses.armorBreak = 80;
         logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 使出 ${sk.skn || '破壞盔甲'}，破壞了你的防禦！（一般攻擊受傷 +50%，持續 8 秒）`, 'enemy');
+        return;
+    }
+    // 邪靈之氣：必定命中，使玩家 AC+10、ER−10，持續 dur 秒（數值套用於 calcStats 的 evilAura 判定）
+    if(sk.type === 'stat_debuff') {
+        if(player.dead) return;
+        player.statuses.evilAura = (sk.dur || 6) * 10;
+        calcStats();   // 立即套用 AC/ER 變化
+        logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放 ${sk.skn || '邪靈之氣'}，邪氣纏身！（AC+${sk.acUp || 10}、ER−${sk.erDown || 10}，持續 ${sk.dur || 6} 秒）`, 'enemy');
         return;
     }
     // 生命的祝福：場上所有血盟怪物（含自己）每 interval 秒回復 healDice + 等級/3 HP，持續 dur 秒
@@ -7034,7 +7083,7 @@ function doEnhance(targetUid, isEq = true) {
 const PLAYER_DEBUFF_NAME = {
     stun: '暈眩', freeze: '冰凍', stone: '石化', paralyze: '麻痺',
     silence: '沉默', magicseal: '魔法封印', poison: '中毒',
-    burn: '灼燒', scald: '燙傷'
+    burn: '灼燒', scald: '燙傷', evilAura: '邪靈之氣'
 };
 
 // 增益顏色設定：
@@ -7126,7 +7175,8 @@ function renderStatusEffects() {
         magicseal: 'text-fuchsia-500',// 魔法封印 (紫紅)
         poison: 'text-green-500',    // 中毒 (毒綠)
         burn: 'text-red-500',        // 灼燒 (火紅)
-        scald: 'text-orange-500'     // 燙傷 (橘紅)
+        scald: 'text-orange-500',    // 燙傷 (橘紅)
+        evilAura: 'text-purple-400'  // 邪靈之氣 (邪紫)
     };
 
     let debuffs = [];
@@ -7584,7 +7634,9 @@ const WEAPON_TAGS = {
     // 🔧 黑暗妖精武器：鋼爪 / 雙刀 / 匕首
     wpn_claw_bronze:['鋼爪'], wpn_claw_steel:['鋼爪'], wpn_claw_shadow:['鋼爪'], wpn_claw_silver:['鋼爪'], wpn_claw_dark:['鋼爪'], wpn_claw_gloom:['鋼爪'], wpn_claw_damascus:['鋼爪'],
     wpn_dual_bronze:['雙刀'], wpn_dual_steel:['雙刀'], wpn_dual_silver:['雙刀'], wpn_dual_gloom:['雙刀'], wpn_dual_dark:['雙刀'], wpn_dual_shadow:['雙刀'], wpn_dual_damascus:['雙刀'],
-    wpn_manadagger:['匕首']
+    wpn_manadagger:['匕首'],
+    // 🔧 拉斯塔巴德掉落武器：匕首(出血)/單手劍(反擊)/雙刀(連擊)
+    wpn_small_katana:['匕首'], wpn_dagger_rasta:['匕首'], wpn_sword_rasta:['單手劍'], wpn_dual_rasta:['雙刀']
 };
 function getWeaponTags(id){ return WEAPON_TAGS[id] || []; }
 function weaponHasBleed(id){ let t = getWeaponTags(id); return t.includes('匕首') || t.includes('矛'); }   // 匕首與矛皆帶出血特效
@@ -8177,7 +8229,8 @@ const MAP_CATEGORIES = {
         {v:'zone_32',t:'螞蟻洞窟1樓'},{v:'zone_33',t:'螞蟻洞窟2樓'},
         {v:'zone_34',t:'地下通道1樓'},{v:'zone_35',t:'地下通道2樓'},{v:'zone_36',t:'地下通道3樓'},
         {v:'eva_kingdom',t:'伊娃王國'},
-        {v:'zone_37',t:'象牙塔4樓'},{v:'zone_38',t:'象牙塔5樓'},{v:'zone_39',t:'象牙塔6樓'},{v:'zone_40',t:'象牙塔7樓'},{v:'zone_41',t:'象牙塔8樓'}
+        {v:'zone_37',t:'象牙塔4樓'},{v:'zone_38',t:'象牙塔5樓'},{v:'zone_39',t:'象牙塔6樓'},{v:'zone_40',t:'象牙塔7樓'},{v:'zone_41',t:'象牙塔8樓'},
+        {v:'rastabad_cave1',t:'拉斯塔巴德地下洞穴1樓'},{v:'rastabad_cave2',t:'拉斯塔巴德地下洞穴2樓'},{v:'rastabad_cave3',t:'拉斯塔巴德地下洞穴3樓'}
     ],
     special: [
         {v:'training',t:'新兵修練場'}, {v:'dream_island',t:'夢幻之島'},

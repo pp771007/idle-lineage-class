@@ -669,6 +669,8 @@ const DB = {
         "wpn_dagger_rasta": { n: "拉斯塔巴德短劍", type: "wpn", dmgS: 4, dmgL: 3, hit: 2, spd: 0.8, req: "all", safe: 6, p: 1000, gachaWeight: 80 },
         "wpn_wand_rasta":   { n: "拉斯塔巴德魔杖", type: "wpn", dmgS: 2, dmgL: 3, hit: 0, mdmg: 1, spd: 1.0, req: "mage", safe: 6, p: 10000, gachaWeight: 80 },
         "wpn_dual_rasta":   { n: "拉斯塔巴德雙刀", type: "wpn", w2h: true, dmgS: 15, dmgL: 10, hit: 0, spd: 0.8, req: "dark", safe: 6, p: 10000, eff: "combo", gachaWeight: 50 },
+        "wpn_xbow_heavy_rasta": { n: "拉斯塔巴德重十字弓", type: "wpn", isBow: true, ranged: true, rapidfire: 45, w2h: true, dmgS: 3, dmgL: 3, hit: 2, dmgBonus: 3, spd: 0.9, req: "elf", safe: 6, p: 5300, gachaWeight: 80 },
+        "wpn_spear_rasta":  { n: "拉斯塔巴德矛", type: "wpn", dmgS: 8, dmgL: 8, hit: 0, spd: 1.1, req: "knight,elf", safe: 6, p: 1800, gachaWeight: 100 },
         "hlm_elf": { n: "精靈皮盔", type: "arm", slot: "helm", ac: 1, req: "elf,mage", safe: 6, p: 120, gachaWeight: 100 },
         "hlm_oasis": { n: "歐西斯頭盔", type: "arm", slot: "helm", ac: 1, req: "all", safe: 4, p: 10, gachaWeight: 100 },
         "hlm_gnome": { n: "侏儒鐵盔", type: "arm", slot: "helm", ac: 2, req: "all", safe: 4, p: 30, gachaWeight: 100 },
@@ -764,6 +766,7 @@ const DB = {
         "bot_rasta": { n: "拉斯塔巴德長靴", type: "arm", slot: "boots", ac: 2, req: "all", safe: 4, p: 380, gachaWeight: 100 },
         "clk_dark": { n: "黑暗斗篷", type: "arm", slot: "cloak", ac: 3, mhp: 30, req: "dark", safe: 4, p: 6350, gachaWeight: 60 },
         "amr_rasta_robe": { n: "拉斯塔巴德長袍", type: "arm", slot: "armor", ac: 4, mpR: 5, req: "mage", safe: 4, p: 14000, gachaWeight: 10 },
+        "shd_rasta": { n: "拉斯塔巴德圓盾", type: "arm", slot: "shield", ac: 2, req: "all", safe: 4, p: 500, gachaWeight: 100, block: 35 },
         "arm_101": { n: "克特手套", type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 17500, gachaWeight: 1 },
         "arm_102": { n: "保護者手套", type: "arm", slot: "gloves", ac: 0, req: "elf", safe: 4, p: 4500, mhp: 20, mmp: 20, gachaWeight: 30 },
         "arm_103": { n: "小盾牌", type: "arm", slot: "shield", ac: 1, req: "all", safe: 4, p: 84, gachaWeight: 100, block: 20 },
@@ -853,6 +856,8 @@ const DB = {
         "scroll_armor": { n: "對盔甲施法的卷軸", p: 9000, c: "text-white", d: "強化防具 (安定值4/0)", gachaWeight: 100 },
         "scroll_weapon_b": { n: "祝福的 對武器施法的卷軸", p: 22500, c: "text-yellow-300", d: "祝福的：成功時隨機提升 +1~+3 (強化武器，安定值6)", isB: true, gachaWeight: 0 },
         "scroll_armor_b": { n: "祝福的 對盔甲施法的卷軸", p: 9000, c: "text-yellow-300", d: "祝福的：成功時隨機提升 +1~+3 (強化防具，安定值4/0)", isB: true, gachaWeight: 0 },
+        "scroll_weapon_c": { n: "詛咒的 對武器施法的卷軸", p: 33334, c: "c-cursed", d: "詛咒的：消耗1個使武器強化值-1（100%成功）", isC: true, gachaWeight: 20 },
+        "scroll_armor_c": { n: "詛咒的 對盔甲施法的卷軸", p: 33334, c: "c-cursed", d: "詛咒的：消耗1個使防具強化值-1（100%成功）", isC: true, gachaWeight: 20 },
         "scroll_acc": { n: "對飾品施法的卷軸", p: 50000, c: "text-white", d: "強化飾品 (無安定值)", gachaWeight: 10 },
         "new_item_bless_wpn": { n: "賦予武器祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧恩』處用來祝福武器（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
         "new_item_bless_arm": { n: "賦予盔甲祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧恩』處用來祝福防具（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
@@ -1310,6 +1315,13 @@ const DB = {
         "de_remnant_mage": { n: "黑暗妖精殘兵(法師)", lv: 30, s: "S", beh: "被動", race: "黑暗妖精", e: "none", hp: 240, ac: -10, mr: 30, exp: 901, goldMin: 50, goldMax: 400, atkSpd: 2, dmg: [2, 29], db: 7, hit: 10, mag: { skn: "冰錐", cd: 70, dmg: [2, 30], db: 38, ele: "water", alwaysHit: true }, mag2: { skn: "龍捲風", cd: 50, chance: 0.2, dmg: [3, 30], db: 48, ele: "wind", alwaysHit: true } },
         "de_remnant_2h": { n: "黑暗妖精殘兵(雙手劍)", lv: 33, s: "S", beh: "被動", race: "黑暗妖精", e: "none", hp: 330, ac: -20, mr: 40, exp: 1090, goldMin: 50, goldMax: 400, atkSpd: 1, dmg: [2, 29], db: 2, hit: 15 },
         "dark_spirit_caller": { n: "黑暗精靈使", lv: 45, s: "S", beh: "被動", race: "黑暗妖精", e: "earth", hp: 550, ac: -38, mr: 45, exp: 2026, goldMin: 50, goldMax: 400, atkSpd: 2, dmg: [2, 45], db: 22, hit: 25, mag: { skn: "邪靈之氣", type: "stat_debuff", cd: 70, acUp: 10, erDown: 10, dur: 6 }, mag2: { skn: "召喚闇之精靈", cd: 30, dmg: [3, 45], db: 48, ele: "none", alwaysHit: true } },
+        // ===== 拉斯塔巴德正門：黑暗妖精守軍（主動）=====
+        "de_gate_xbow": { n: "黑暗妖精警衛(十字弓)", lv: 36, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 240, ac: -20, mr: 10, exp: 1297, goldMin: 118, goldMax: 198, atkSpd: 2, dmg: [2, 36], db: 18, hit: 18 },
+        "de_gate_apprentice": { n: "黑暗妖精魔法學徒", lv: 26, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 180, ac: -8, mr: 75, exp: 2026, goldMin: 120, goldMax: 200, atkSpd: 2, dmg: [2, 21], db: 11, hit: 11, mag: { skn: "冰錐", cd: 50, dmg: [2, 26], db: 40, ele: "water", alwaysHit: true } },
+        "de_gate_spear": { n: "黑暗妖精警衛(矛)", lv: 40, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 800, ac: -23, mr: 30, exp: 1601, goldMin: 153, goldMax: 254, atkSpd: 2, dmg: [2, 40], db: 40, hit: 28 },
+        "de_gate_patrol": { n: "黑暗妖精巡守", lv: 38, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 500, ac: -20, mr: 40, exp: 1445, goldMin: 241, goldMax: 390, atkSpd: 1, dmg: [1, 38], db: 19, hit: 28 },
+        "de_gate_soldier": { n: "黑暗妖精士兵", lv: 38, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 500, ac: -28, mr: 35, exp: 1445, goldMin: 241, goldMax: 390, atkSpd: 2, dmg: [2, 38], db: 41, hit: 28 },
+        "de_gate_general": { n: "黑暗妖精將軍", lv: 43, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 900, ac: -40, mr: 45, exp: 1850, goldMin: 50, goldMax: 400, atkSpd: 2, dmg: [2, 43], db: 60, hit: 29 },
     },
 	
 	    // 👇 完整的城鎮系統資料庫
@@ -1696,6 +1708,7 @@ const DB = {
         "rastabad_cave1": ["ohm", "ohm_rage", "ohm_armor", "ohm_armor_rage"],
         "rastabad_cave2": ["de_remnant_bow", "de_remnant_sword", "de_remnant_xbow", "de_remnant_mage", "de_remnant_2h"],
         "rastabad_cave3": ["de_remnant_bow", "de_remnant_sword", "de_remnant_xbow", "de_remnant_mage", "de_remnant_2h", "dark_spirit_caller"],
+        "rastabad_gate": ["de_gate_xbow", "de_gate_apprentice", "de_gate_spear", "de_gate_patrol", "de_gate_soldier", "de_gate_general"],
         "antaras_lair": ["antaras"],
         "fafurion_lair": ["fafurion"],
         "valakas_lair": ["valakas"],
@@ -1735,6 +1748,13 @@ const DB = {
         '黑暗妖精殘兵(法師)': [['wpn_wand_rasta', 0.5], ['amr_rasta_robe', 0.1], ['potion_haste', 1], ['potion_blue', 1], ['new_item_140', 1], ['bk_dark_dex', 1]],
         '黑暗妖精殘兵(雙手劍)': [['wpn_dual_rasta', 0.5]],
         '黑暗精靈使': [['potion_haste', 1], ['new_item_140', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1], ['bk_holy_barrier', 0.005], ['bk_dark_stealth', 1], ['bk_dark_poison', 1], ['bk_dark_mrup', 1], ['bk_dark_burn', 1], ['bk_dark_poisonres', 0.5], ['bk_dark_double', 0.05], ['bk_dark_fang', 0.1], ['bk_dark_crit', 0.5]],
+        // ===== 拉斯塔巴德正門：黑暗妖精守軍 =====
+        '黑暗妖精警衛(十字弓)': [['wpn_xbow_heavy_rasta', 0.5], ['potion_haste', 1], ['new_item_140', 1], ['scroll_armor', 0.5], ['scroll_weapon', 0.5], ['bk_holy_dash', 0.05], ['bk_dark_poison', 1], ['bk_dark_burn', 1], ['bk_dark_poisonres', 1]],
+        '黑暗妖精魔法學徒': [['wpn_wand_rasta', 1], ['amr_rasta_robe', 0.1], ['potion_haste', 1], ['new_item_140', 1], ['bk_dark_dex', 1]],
+        '黑暗妖精警衛(矛)': [['wpn_spear_rasta', 0.5], ['arm_rasta_leather', 0.5], ['shd_rasta', 1], ['potion_haste', 1], ['scroll_armor', 0.5], ['scroll_weapon', 0.5], ['bk_dark_mrup', 1], ['bk_dark_burn', 1], ['bk_dark_fang', 0.1]],
+        '黑暗妖精巡守': [['wpn_small_katana', 1], ['wpn_bow_rasta', 2], ['arm_rasta_leather', 0.5], ['bot_rasta', 1], ['potion_haste', 1], ['new_item_140', 1]],
+        '黑暗妖精士兵': [['wpn_sword_rasta', 1], ['arm_rasta_leather', 0.5], ['bot_rasta', 1], ['potion_haste', 1], ['new_item_140', 1], ['scroll_armor', 0.5], ['scroll_weapon', 0.5], ['bk_dark_poison', 1], ['bk_dark_burn', 1], ['bk_dark_str', 1]],
+        '黑暗妖精將軍': [['potion_brave', 1], ['new_item_140', 1], ['scroll_armor', 0.5], ['scroll_weapon', 0.5], ['bk_reduction_armor', 0.05], ['bk_meteor', 0.001], ['bk_dark_poison', 1], ['bk_dark_burn', 1], ['bk_dark_poisonres', 1], ['bk_dark_dex', 0.6], ['bk_dark_double', 0.1], ['bk_dark_fang', 0.5]],
         '冰之女王侍女': [['bk_thunder_storm', 0.05], ['bk_cancel', 0.1]],
         '冰之女王': [['arm_88', 0.1], ['arm_63', 10], ['glv_crystal', 5], ['acc_116', 0.1], ['amu_int', 1], ['acc_122', 1], ['acc_128', 0.5], ['acc_129', 0.5], ['acc_130', 0.1], ['acc_131', 0.1], ['potion_haste', 1], ['scroll_weapon', 10], ['scroll_armor', 20], ['scroll_revive', 1], ['new_item_150', 1], ['new_item_151', 50], ['new_item_152', 5], ['bk_summon', 0.5], ['bk_invisible', 0.05], ['new_item_140', 1], ['potion_blue', 1], ['bk_fire_storm', 0.5], ['new_item_195', 1], ['bk_elf_winddash', 1], ['bk_elf_lifespring', 3], ['bk_elf_lifebless', 1], ['bk_elf_steelguard', 1], ['bk_magic_shield', 2], ['bk_dark_shadow', 1], ['bk_seal', 1]],
         '夢幻之島蘑菇': [['potion_haste',1], ['scroll_weapon',1], ['scroll_armor',2], ['potion_blue',1]],
@@ -1792,7 +1812,7 @@ const DB = {
         '巴拉卡斯': [['wpn_katana',10], ['wpn_siruge',5], ['amr_plate',10], ['arm_88',1], ['glv_glove',10], ['arm_82',0.1], ['acc_116',0.2], ['acc_117',0.2], ['amu_str',0.2], ['amu_int',0.2], ['acc_127',6], ['acc_128',6], ['acc_129',6], ['blt_body',1], ['acc_130',1], ['acc_131',1], ['potion_haste',1], ['scroll_weapon',100], ['scroll_armor',100], ['scroll_acc',50], ['new_item_150',1], ['new_item_151',100], ['new_item_152',10], ['new_item_153',2], ['new_item_157',100], ['new_item_158',10], ['new_item_159',2], ['bk_fireball',20], ['bk_slow',15], ['bk_charm',15], ['bk_str_up',10], ['bk_haste_spell',10], ['bk_summon',3], ['bk_invisible',1], ['bk_resurrection',1], ['new_item_192',100], ['potion_blue',1]],
         '巴風特': [['wpn_katana',2], ['wpn_2hsword',5], ['amr_plate',5], ['arm_88',0.1], ['glv_glove',10], ['acc_116',0.01], ['acc_127',0.5], ['acc_129',0.5], ['blt_body',0.1], ['acc_131',0.1], ['potion_haste',1], ['scroll_weapon',10], ['scroll_armor',20], ['scroll_acc',1], ['new_item_150',1], ['new_item_151',5], ['new_item_152',0.5], ['new_item_153',0.1], ['new_item_154',5], ['new_item_155',0.5], ['new_item_156',0.1], ['new_item_161',0.5], ['new_item_162',0.1], ['bk_charm',1], ['bk_earthquake',2], ['bk_summon',0.2], ['bk_rock_prison',5], ['bk_quake',1], ['new_item_195',1], ['bk_elf_dancefire',1], ['bk_magic_shield',1], ['bk_weaken',1], ['bk_bless_wpn',0.1]],
         '希爾黛斯': [['new_item_160',0.5], ['new_item_161',0.5], ['new_item_162',0.1], ['bk_slow',0.5], ['bk_ice_lance',0.001], ['potion_blue',1], ['bk_ice_spike',0.5], ['bk_elf_lifespring',0.1], ['bk_elf_lifebless',0.01],['new_item_213',1]],
-        '強盜': [['wpn_20', 0.5], ['arm_69', 0.5], ['hlm_mr', 0.5], ['wpn_shortbow',1], ['wpn_32',0.01], ['arm_42',2], ['arm_66',3], ['arm_98',0.1], ['arm_49',1], ['potion_heal',1], ['potion_strong',1], ['potion_haste',1], ['potion_ult',1], ['new_item_225',0.1], ['item_death_oath',1]],
+        '強盜': [['wpn_20', 0.5], ['arm_69', 0.5], ['hlm_mr', 0.5], ['wpn_shortbow',1], ['wpn_32',0.01], ['arm_42',2], ['arm_66',3], ['arm_98',0.1], ['arm_49',1], ['potion_heal',1], ['potion_strong',1], ['potion_haste',1], ['potion_ult',1], ['item_death_oath',1]],
         '強盜頭目': [['hlm_mr', 5], ['wpn_katana',1], ['wpn_silversword',3], ['arm_62',5], ['arm_87',5], ['scroll_acc',0.1], ['arm_42',10], ['potion_heal',1], ['potion_strong',1], ['potion_haste',1], ['potion_ult',1], ['new_item_152',0.5], ['new_item_153',0.1], ['new_item_155',0.5], ['new_item_156',0.1], ['new_item_158',0.5], ['new_item_159',0.1], ['new_item_161',0.5], ['new_item_162',0.1], ['item_nightvision',10]],
         '影魔': [['acc_129',0.005], ['acc_131',0.001], ['potion_heal',1], ['potion_strong',1], ['potion_ult',1], ['potion_blue',1], ['bk_ice_spike',0.5], ['bk_magic_shield',0.01], ['bk_dark_shadow',0.1]],
         '思克巴': [['acc_117',0.001], ['bk_ice_lance',0.01], ['bk_summon',0.02], ['bk_blizzard',0.005], ['potion_blue',1], ['bk_ice_spike',0.5], ['bk_elf_release',0.1], ['bk_elf_lifespring',0.1], ['bk_elf_triple',0.05], ['new_item_226',0.01]],
@@ -2493,7 +2513,7 @@ function logSys(msg) {
 // 不需要刷畫面的場合（如 buildAlly 換身重算）請呼叫 recomputeStats()。
 // ===== 🔧 負重系統：計入負重的裝備欄位 + 物品重量表（依名稱）=====
 const WEIGHT_COUNT_SLOTS = ['wpn','shield','helm','armor','tshirt','cloak','gloves','boots','amulet','ring1','ring2','belt'];
-const ITEM_WEIGHTS = {"亞連":10,"武士刀":40,"長劍":40,"斧":60,"雙手劍":150,"屠龍劍":180,"釘錘":30,"弓":30,"矛":80,"戰斧":120,"巴迪須":120,"柴刀":120,"精靈弓":30,"歐西斯弓":30,"闊劍":70,"木棒":30,"精靈匕首":10,"歐西斯匕首":10,"匕首":10,"貝卡合金":100,"法丘":60,"弗萊爾":15,"闊矛":75,"吉薩":80,"戟":150,"槍":180,"露西錘":150,"戰錘":50,"流星錘":120,"帕提森":80,"彎刀":40,"侏儒戰斧":280,"精靈之矛":30,"歐西斯之矛":30,"小侏儒短劍":40,"精靈短劍":20,"歐西斯短劍":30,"短劍":30,"三叉戟":25,"瑟魯基之劍":120,"尤米弓":40,"短弓":20,"十字弓":50,"獵人之弓":30,"熾炎天使弓":25,"紅騎士之劍":40,"侵略者之劍":40,"骰子匕首":10,"大馬士革刀":45,"短劍的劍身":20,"長劍的劍身":30,"奧里哈魯根的劍身":35,"細劍":60,"鎖子甲破壞者":40,"銀長劍":50,"銀劍":40,"橡木魔法杖":15,"美基魔法杖":20,"巫術魔法杖":15,"力量魔法杖":15,"瑪那魔杖":15,"水晶魔杖":15,"失去魔力的巴列斯魔杖":15,"巴列斯魔杖":15,"潘的角":9,"覆上米索莉的角":24,"覆上奧里哈魯根的角":55,"巨斧":250,"狂戰士斧":200,"銀斧":270,"青銅鋼爪":20,"鋼鐵鋼爪":30,"暗影鋼爪":30,"銀光鋼爪":20,"黑暗鋼爪":20,"幽暗鋼爪":30,"大馬士革鋼爪":40,"青銅雙刀":20,"鋼鐵雙刀":30,"銀光雙刀":20,"幽暗雙刀":30,"黑暗雙刀":20,"暗影雙刀":30,"大馬士革雙刀":40,"黑暗十字弓":30,"幽暗十字弓":40,"魔力短劍":30,"拉斯塔巴德十字弓":70,"拉斯塔巴德弓":50,"小武士刀":30,"拉斯塔巴德長劍":30,"拉斯塔巴德短劍":20,"拉斯塔巴德魔杖":15,"拉斯塔巴德雙刀":40,"精靈皮盔":3,"歐西斯頭盔":30,"侏儒鐵盔":40,"頭盔":30,"騎士面甲":40,"抗魔法頭盔":35,"艾爾穆的祝福":13,"治癒魔法頭盔":50,"敏捷魔法頭盔":50,"力量魔法頭盔":50,"皮帽子":10,"銀釘皮帽":20,"皮頭盔":30,"骷髏頭盔":30,"鋼鐵頭盔":50,"法師之帽":20,"死亡騎士頭盔":50,"精靈敏捷頭盔":13,"精靈體質頭盔":13,"騎士頭巾":0,"紅騎士頭巾":20,"巴土瑟之帽":20,"卡士柏之帽":20,"馬庫爾之帽":20,"西瑪之帽":20,"克特頭盔":50,"淨化頭飾":0,"金屬盔甲":450,"水晶盔甲":350,"青銅盔甲":450,"藤甲":400,"皮甲":350,"鏈甲":300,"歐西斯鏈甲":300,"鱗甲":250,"銀釘皮甲":150,"環甲":250,"歐西斯環甲":250,"小藤甲":70,"皮夾克":30,"抗魔法鏈甲":300,"綿質長袍":10,"木甲":80,"精靈護胸金屬板":100,"精靈金屬盔甲":250,"精靈鏈甲":150,"木製的夾克":40,"皮背心":30,"皮盔甲":50,"銀釘皮背心":130,"硬皮背心":150,"骷髏盔甲":150,"鋼鐵金屬盔甲":470,"法師長袍":60,"水龍鱗盔甲":300,"地龍鱗盔甲":300,"火龍鱗盔甲":300,"風龍鱗盔甲":300,"死亡騎士盔甲":250,"黑長者長袍":30,"克特盔甲":250,"T恤":5,"精靈T恤":5,"精靈斗篷":10,"歐西斯斗篷":10,"侏儒斗篷":10,"保護者斗篷":10,"隱身斗篷":10,"抗魔法斗篷":10,"瑪那斗篷":10,"短統靴":10,"長靴":15,"巴列斯長靴":10,"皮涼鞋":8,"銀釘皮涼鞋":10,"皮長靴":10,"鋼鐵長靴":50,"深水長靴":15,"死亡騎士長靴":15,"黑長者涼鞋":10,"克特長靴":15,"手套":10,"水晶手套":20,"腕甲":10,"力量手套":18,"鋼鐵手套":40,"死亡騎士手套":15,"影子手套":10,"影子面具":10,"影子長靴":10,"拉斯塔巴德皮盔甲":70,"拉斯塔巴德長靴":10,"黑暗斗篷":20,"拉斯塔巴德長袍":30,"克特手套":15,"保護者手套":10,"小盾牌":30,"精靈盾牌":50,"阿克海盾牌":50,"大盾牌":100,"侏儒圓盾":100,"反射之盾":50,"伊娃之盾":50,"塔盾":120,"木盾":25,"銀騎士之盾":100,"皮盾牌":25,"銀釘皮盾":35,"骷髏盾牌":30,"紅騎士盾牌":50,"鋼鐵盾牌":140,"受詛咒的魔法書":0,"魔法能量之書":20,"傳送控制戒指":3,"變形控制戒指":3,"抗魔戒指":3,"守護戒指":3,"長者戒指":3,"力量項鍊":5,"敏捷項鍊":5,"體質項鍊":5,"智力項鍊":5,"精神項鍊":5,"妖魔戰士項鍊":5,"守護項鍊":3,"長老項鍊":3,"抗魔項鍊":3,"老舊的身體腰帶":50,"老舊的精神腰帶":50,"老舊的靈魂腰帶":50,"身體腰帶":50,"精神腰帶":50,"靈魂腰帶":50,"多羅皮帶":50,"歐吉皮帶":50,"勇敢皮帶":50,"光明身體腰帶":50,"光明精神腰帶":50,"光明靈魂腰帶":50,"守護皮帶":50,"抗魔皮帶":50};
+const ITEM_WEIGHTS = {"亞連":10,"武士刀":40,"長劍":40,"斧":60,"雙手劍":150,"屠龍劍":180,"釘錘":30,"弓":30,"矛":80,"戰斧":120,"巴迪須":120,"柴刀":120,"精靈弓":30,"歐西斯弓":30,"闊劍":70,"木棒":30,"精靈匕首":10,"歐西斯匕首":10,"匕首":10,"貝卡合金":100,"法丘":60,"弗萊爾":15,"闊矛":75,"吉薩":80,"戟":150,"槍":180,"露西錘":150,"戰錘":50,"流星錘":120,"帕提森":80,"彎刀":40,"侏儒戰斧":280,"精靈之矛":30,"歐西斯之矛":30,"小侏儒短劍":40,"精靈短劍":20,"歐西斯短劍":30,"短劍":30,"三叉戟":25,"瑟魯基之劍":120,"尤米弓":40,"短弓":20,"十字弓":50,"獵人之弓":30,"熾炎天使弓":25,"紅騎士之劍":40,"侵略者之劍":40,"骰子匕首":10,"大馬士革刀":45,"短劍的劍身":20,"長劍的劍身":30,"奧里哈魯根的劍身":35,"細劍":60,"鎖子甲破壞者":40,"銀長劍":50,"銀劍":40,"橡木魔法杖":15,"美基魔法杖":20,"巫術魔法杖":15,"力量魔法杖":15,"瑪那魔杖":15,"水晶魔杖":15,"失去魔力的巴列斯魔杖":15,"巴列斯魔杖":15,"潘的角":9,"覆上米索莉的角":24,"覆上奧里哈魯根的角":55,"巨斧":250,"狂戰士斧":200,"銀斧":270,"青銅鋼爪":20,"鋼鐵鋼爪":30,"暗影鋼爪":30,"銀光鋼爪":20,"黑暗鋼爪":20,"幽暗鋼爪":30,"大馬士革鋼爪":40,"青銅雙刀":20,"鋼鐵雙刀":30,"銀光雙刀":20,"幽暗雙刀":30,"黑暗雙刀":20,"暗影雙刀":30,"大馬士革雙刀":40,"黑暗十字弓":30,"幽暗十字弓":40,"魔力短劍":30,"拉斯塔巴德十字弓":70,"拉斯塔巴德弓":50,"小武士刀":30,"拉斯塔巴德長劍":30,"拉斯塔巴德短劍":20,"拉斯塔巴德魔杖":15,"拉斯塔巴德雙刀":40,"拉斯塔巴德重十字弓":100,"拉斯塔巴德矛":80,"拉斯塔巴德圓盾":50,"精靈皮盔":3,"歐西斯頭盔":30,"侏儒鐵盔":40,"頭盔":30,"騎士面甲":40,"抗魔法頭盔":35,"艾爾穆的祝福":13,"治癒魔法頭盔":50,"敏捷魔法頭盔":50,"力量魔法頭盔":50,"皮帽子":10,"銀釘皮帽":20,"皮頭盔":30,"骷髏頭盔":30,"鋼鐵頭盔":50,"法師之帽":20,"死亡騎士頭盔":50,"精靈敏捷頭盔":13,"精靈體質頭盔":13,"騎士頭巾":0,"紅騎士頭巾":20,"巴土瑟之帽":20,"卡士柏之帽":20,"馬庫爾之帽":20,"西瑪之帽":20,"克特頭盔":50,"淨化頭飾":0,"金屬盔甲":450,"水晶盔甲":350,"青銅盔甲":450,"藤甲":400,"皮甲":350,"鏈甲":300,"歐西斯鏈甲":300,"鱗甲":250,"銀釘皮甲":150,"環甲":250,"歐西斯環甲":250,"小藤甲":70,"皮夾克":30,"抗魔法鏈甲":300,"綿質長袍":10,"木甲":80,"精靈護胸金屬板":100,"精靈金屬盔甲":250,"精靈鏈甲":150,"木製的夾克":40,"皮背心":30,"皮盔甲":50,"銀釘皮背心":130,"硬皮背心":150,"骷髏盔甲":150,"鋼鐵金屬盔甲":470,"法師長袍":60,"水龍鱗盔甲":300,"地龍鱗盔甲":300,"火龍鱗盔甲":300,"風龍鱗盔甲":300,"死亡騎士盔甲":250,"黑長者長袍":30,"克特盔甲":250,"T恤":5,"精靈T恤":5,"精靈斗篷":10,"歐西斯斗篷":10,"侏儒斗篷":10,"保護者斗篷":10,"隱身斗篷":10,"抗魔法斗篷":10,"瑪那斗篷":10,"短統靴":10,"長靴":15,"巴列斯長靴":10,"皮涼鞋":8,"銀釘皮涼鞋":10,"皮長靴":10,"鋼鐵長靴":50,"深水長靴":15,"死亡騎士長靴":15,"黑長者涼鞋":10,"克特長靴":15,"手套":10,"水晶手套":20,"腕甲":10,"力量手套":18,"鋼鐵手套":40,"死亡騎士手套":15,"影子手套":10,"影子面具":10,"影子長靴":10,"拉斯塔巴德皮盔甲":70,"拉斯塔巴德長靴":10,"黑暗斗篷":20,"拉斯塔巴德長袍":30,"克特手套":15,"保護者手套":10,"小盾牌":30,"精靈盾牌":50,"阿克海盾牌":50,"大盾牌":100,"侏儒圓盾":100,"反射之盾":50,"伊娃之盾":50,"塔盾":120,"木盾":25,"銀騎士之盾":100,"皮盾牌":25,"銀釘皮盾":35,"骷髏盾牌":30,"紅騎士盾牌":50,"鋼鐵盾牌":140,"受詛咒的魔法書":0,"魔法能量之書":20,"傳送控制戒指":3,"變形控制戒指":3,"抗魔戒指":3,"守護戒指":3,"長者戒指":3,"力量項鍊":5,"敏捷項鍊":5,"體質項鍊":5,"智力項鍊":5,"精神項鍊":5,"妖魔戰士項鍊":5,"守護項鍊":3,"長老項鍊":3,"抗魔項鍊":3,"老舊的身體腰帶":50,"老舊的精神腰帶":50,"老舊的靈魂腰帶":50,"身體腰帶":50,"精神腰帶":50,"靈魂腰帶":50,"多羅皮帶":50,"歐吉皮帶":50,"勇敢皮帶":50,"光明身體腰帶":50,"光明精神腰帶":50,"光明靈魂腰帶":50,"守護皮帶":50,"抗魔皮帶":50};
 function getLoadColor(tier){ return ['text-white','text-yellow-400','text-orange-400','text-red-500'][tier||0]; }
 
 function recomputeStats() {
@@ -2551,15 +2571,15 @@ function recomputeStats() {
         d.ac -= Math.floor(p.lv / 6);          // 每提升6 AC-1
         d.mr += Math.floor(p.lv / 12);         // 每提升12 MR+1
         d.meleeDmg += Math.floor(p.lv / 4);    // 每提升4 近距離傷害+1
-        d.rangedDmg += Math.floor(p.lv / 12);  // 每提升12 遠距離傷害+1
+        d.rangedDmg += Math.floor(p.lv / 10);  // 每提升10 遠距離傷害+1
         d.extraHit += Math.floor(p.lv / 3);    // 每提升3 額外命中+1
         d.er += Math.floor(p.lv / 4);          // 每提升4 ER+1
     } else if (p.cls === 'elf') {
         d.mr = 25;
         d.ac -= Math.floor(p.lv / 7);          // 每提升7 AC-1
         d.mr += Math.floor(p.lv / 3);          // 每提升3 MR+1
-        d.rangedDmg += Math.floor(p.lv / 10);  // 每提升10 遠距離傷害+1
-        d.meleeDmg += Math.floor(p.lv / 12);   // 每提升12 近距離傷害+1
+        d.rangedDmg += Math.floor(p.lv / 4);   // 每提升4 遠距離傷害+1
+        d.meleeDmg += Math.floor(p.lv / 7);    // 每提升7 近距離傷害+1
         d.extraHit += Math.floor(p.lv / 5);    // 每提升5 額外命中+1
         d.er += Math.floor(p.lv / 6);          // 每提升6 ER+1
     } else if (p.cls === 'dark') {             // 黑暗妖精
@@ -2567,7 +2587,8 @@ function recomputeStats() {
         d.ac -= Math.floor(p.lv / 6);          // 每提升6 AC-1
         d.mr += Math.floor(p.lv / 2);          // 每提升2 MR+1
         d.er += Math.floor(p.lv / 4);          // 每提升4 ER+1
-        d.extraDmg += Math.floor(p.lv / 10);   // 每提升10 額外攻擊+1（額外攻擊＝近+遠傷害，對近/遠攻擊皆生效）
+        d.meleeDmg += Math.floor(p.lv / 5);    // 每提升5 近距離傷害+1
+        d.rangedDmg += Math.floor(p.lv / 8);   // 每提升8 遠距離傷害+1
         d.extraHit += Math.floor(p.lv / 3);    // 每提升3 額外命中+1（額外命中＝近+遠命中，對近/遠攻擊皆生效）
     } else { // mage
         d.mr = 15;
@@ -6474,18 +6495,18 @@ function rollAffixesOld() {
     return { attr: false, bless: (Math.random() < 0.01 * m), anc: false };
 }
 function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
-    // 卷軸變祝福機率
+    // 卷軸變祝福／詛咒機率：各 1%（互斥）
     if (!forceNormal && (id === 'scroll_weapon' || id === 'scroll_armor')) {
-        if (Math.random() < 0.01) {
-            id = id + '_b'; // 將卷軸變成祝福的
-        }
+        let _r = Math.random();
+        if (_r < 0.01) id = id + '_b';        // 1% 變成祝福的
+        else if (_r < 0.02) id = id + '_c';   // 1% 變成詛咒的
     }
 
     let d = DB.items[id];
     
-    // 安全防護：若資料庫還沒設定 _b 的祝福卷軸，退回給普通版
+    // 安全防護：若資料庫還沒設定 _b 祝福／_c 詛咒卷軸，退回給普通版
     if (!d) {
-        id = id.replace('_b', '');
+        id = id.replace('_b', '').replace('_c', '');
         d = DB.items[id];
     }
 
@@ -6588,6 +6609,7 @@ function getItemColor(item) {
     //    詞綴字本身仍保留各自專屬色（見 getItemFullName）
     if (item.bless) return blessColorClass(item.bless);
     if (d && d.isB) return 'c-blessed';
+    if (d && d.isC) return 'c-cursed';   // 詛咒的卷軸：名稱紅色
     return d.c || 'text-white';
 }
 
@@ -6602,7 +6624,7 @@ function getGlowClass(item, d) {
     if ((item && item.id === 'wpn_manadagger') || (d && d.n === '魔力短劍')) return 'mana-glow';   // 🔧 魔力短劍：專屬藍色圖示光芒（凌駕傳說琥珀金光）
     if (d && d.legend) return 'legend-glow';   // 🏅 傳說武器：琥珀金圖示光芒
     let bless = (item && item.bless) || (d && d.isB);
-    let cursed = !!(item && item.bless === 'cursed');
+    let cursed = !!(item && item.bless === 'cursed') || !!(d && d.isC);   // 詛咒裝備或詛咒卷軸：紅光
     let anc = (item && item.anc) || (d && d.isAnc);
     let attr = !!(item && getAttrAffix(item.attr));
     if (cursed) return 'curse-glow';   // 含詛咒：一律單詛咒紅光（即使二/三詞綴）
@@ -7716,7 +7738,7 @@ const WEAPON_TAGS = {
     wpn_dual_bronze:['雙刀'], wpn_dual_steel:['雙刀'], wpn_dual_silver:['雙刀'], wpn_dual_gloom:['雙刀'], wpn_dual_dark:['雙刀'], wpn_dual_shadow:['雙刀'], wpn_dual_damascus:['雙刀'],
     wpn_manadagger:['匕首'],
     // 🔧 拉斯塔巴德掉落武器：匕首(出血)/單手劍(反擊)/雙刀(連擊)
-    wpn_small_katana:['匕首'], wpn_dagger_rasta:['匕首'], wpn_sword_rasta:['單手劍'], wpn_dual_rasta:['雙刀']
+    wpn_small_katana:['匕首'], wpn_dagger_rasta:['匕首'], wpn_sword_rasta:['單手劍'], wpn_dual_rasta:['雙刀'], wpn_spear_rasta:['矛']
 };
 function getWeaponTags(id){ return WEAPON_TAGS[id] || []; }
 function weaponHasBleed(id){ let t = getWeaponTags(id); return t.includes('匕首') || t.includes('矛'); }   // 匕首與矛皆帶出血特效
@@ -7991,17 +8013,22 @@ function showEnhanceOptions(uid, isEq) {
     if (!item) return;
     let d = DB.items[item.id];
     
-    let scrollNorm, scrollBless;
+    let scrollNorm, scrollBless, scrollCurse;
     let scrollNormId = ''; // 🌟 紀錄該裝備對應的一般卷軸 ID
-    
+    let scrollCurseId = ''; // 詛咒卷軸 ID（武器/盔甲）
+
     if (d.type === 'wpn') {
         scrollNormId = 'scroll_weapon';
         scrollNorm = player.inv.find(i => i.id === 'scroll_weapon');
         scrollBless = player.inv.find(i => i.id === 'scroll_weapon_b');
+        scrollCurseId = 'scroll_weapon_c';
+        scrollCurse = player.inv.find(i => i.id === 'scroll_weapon_c');
     } else if (d.type === 'arm') {
         scrollNormId = 'scroll_armor';
         scrollNorm = player.inv.find(i => i.id === 'scroll_armor');
         scrollBless = player.inv.find(i => i.id === 'scroll_armor_b');
+        scrollCurseId = 'scroll_armor_c';
+        scrollCurse = player.inv.find(i => i.id === 'scroll_armor_c');
     } else if (d.type === 'acc') {
         scrollNormId = 'scroll_acc';
         scrollNorm = player.inv.find(i => i.id === 'scroll_acc');
@@ -8018,8 +8045,8 @@ function showEnhanceOptions(uid, isEq) {
         return;
     }
     
-    // 武器/防具：如果兩種卷軸都沒有，直接跳錯
-    if (!scrollNorm && !scrollBless) {
+    // 武器/防具：如果一般／祝福／詛咒卷軸全都沒有，直接跳錯
+    if (!scrollNorm && !scrollBless && !scrollCurse) {
         logSys(`<span class="text-red-400 font-bold">強化卷軸不足。</span>`);
         return;
     }
@@ -8035,6 +8062,9 @@ function showEnhanceOptions(uid, isEq) {
     }
     if (scrollBless) {
         act += `<button class="col-span-2 w-full btn border-yellow-600 bg-yellow-900 hover:bg-yellow-800 py-3 text-base font-bold text-yellow-300 shadow" onclick="executeEnhance('${scrollBless.uid}', '${item.uid}', ${isEq})">使用 ${DB.items[scrollBless.id].n} (擁有: ${scrollBless.cnt})</button>`;
+    }
+    if (scrollCurse) {
+        act += `<button class="col-span-2 w-full btn border-red-800 bg-red-950 hover:bg-red-900 py-3 text-base font-bold c-cursed shadow" onclick="executeCurseDeEnhance('${item.uid}', ${isEq}, '${scrollCurseId}')">使用 ${DB.items[scrollCurse.id].n} (擁有: ${scrollCurse.cnt})｜強化值 -1</button>`;
     }
     
     // 🌟 一鍵強化到指定值：右側可選目標強化值（預設＝安定值），逐級嘗試，過程中任一階失敗即視為失敗（爆裝）
@@ -8158,6 +8188,39 @@ function executeEnhance(scrollUid, targetUid, isEq) {
     if (!scroll) return;
     activeScroll = scroll;
     doEnhance(targetUid, isEq);
+}
+
+// 詛咒卷軸：消耗 1 個，使裝備強化值 -1（100% 成功、不爆裝）
+function executeCurseDeEnhance(targetUid, isEq, scrollId) {
+    let target = isEq ? Object.values(player.eq).find(e => e && e.uid === targetUid) : player.inv.find(i => i.uid === targetUid);
+    if (!target) return;
+    target.en = Number(target.en) || 0;
+    let d = DB.items[target.id];
+    if (target.en <= 0) { logSys(`<span class="text-red-400 font-bold">${d.n} 已是 +0，無法再降低強化值。</span>`); return; }
+
+    let scrollItem = player.inv.find(i => i.id === scrollId);
+    let scrollName = DB.items[scrollId] ? DB.items[scrollId].n : "詛咒卷軸";
+    if (!scrollItem || scrollItem.cnt <= 0) { logSys(`<span class="text-red-400 font-bold">${scrollName} 數量不足。</span>`); return; }
+
+    // 堆疊保護：背包內數量 > 1 先拆一件出來降階
+    if (!isEq && target.cnt > 1) {
+        target.cnt -= 1;
+        let single = { ...target, cnt: 1, uid: uid() };
+        player.inv.push(single);
+        target = single;
+    }
+
+    // 消耗 1 個詛咒卷軸
+    scrollItem.cnt -= 1;
+    if (scrollItem.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== scrollItem.uid);
+
+    target.en -= 1;   // 100% 成功降 1 階
+    logSys(`消耗了 1 個 <span class="c-cursed">${scrollName}</span>，<span class="text-red-300 font-bold">+${target.en} ${d.n} 散發出黯淡的光芒。</span>`);
+
+    calcStats();
+    renderTabs();
+    closeModal();
+    saveGame();
 }
 
 // ========== ⚡ 快速強化（批次強化）==========
@@ -8477,7 +8540,8 @@ const MAP_CATEGORIES = {
         {v:'zone_34',t:'地下通道1樓'},{v:'zone_35',t:'地下通道2樓'},{v:'zone_36',t:'地下通道3樓'},
         {v:'eva_kingdom',t:'伊娃王國'},
         {v:'zone_37',t:'象牙塔4樓'},{v:'zone_38',t:'象牙塔5樓'},{v:'zone_39',t:'象牙塔6樓'},{v:'zone_40',t:'象牙塔7樓'},{v:'zone_41',t:'象牙塔8樓'},
-        {v:'rastabad_cave1',t:'拉斯塔巴德地下洞穴1樓'},{v:'rastabad_cave2',t:'拉斯塔巴德地下洞穴2樓'},{v:'rastabad_cave3',t:'拉斯塔巴德地下洞穴3樓'}
+        {v:'rastabad_cave1',t:'拉斯塔巴德地下洞穴1樓'},{v:'rastabad_cave2',t:'拉斯塔巴德地下洞穴2樓'},{v:'rastabad_cave3',t:'拉斯塔巴德地下洞穴3樓'},
+        {v:'rastabad_gate',t:'拉斯塔巴德正門'}
     ],
     special: [
         {v:'training',t:'新兵修練場'}, {v:'dream_island',t:'夢幻之島'},

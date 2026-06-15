@@ -94,6 +94,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 | `afk-offline.js` | 離線掛機(關瀏覽器也結算收益;24h 上限、撞死即停、存活回原狩獵圖續掛) |
 | `afk-mobile.js` | 手機版面(底部導覽列、一行式狀態列、浮動日誌面板、修正彈窗溢出) |
 | `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;純讀 DB.mobs/maps/MOB_DROPS/items;桌機手機共用) |
+| `afk-wiki.js` | 小百科(首頁入口;三分頁:職業專精/武器特性/職業魔法;專精讀 MASTERY_DATA、魔法讀 DB.skills 依 skillReqLv 分級即時渲染,武器特性說明寫在檔內;桌機手機共用) |
 | `afk-fixes.js` | 通用修正(補原作者上游坑、桌機/手機通用、與裝置判定無關;目前:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉) |
 
 > 四者互相低耦合;手機版的離線摘要會自動打開日誌。afk-dex 純讀資料、桌機手機都掛。
@@ -108,9 +109,10 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    <script src="afk-offline.js?v=YYYYMMDDx"></script>
    <script src="afk-mobile.js?v=YYYYMMDDx"></script>
    <script src="afk-dex.js?v=YYYYMMDDx"></script>
+   <script src="afk-wiki.js?v=YYYYMMDDx"></script>
    <script src="afk-fixes.js?v=YYYYMMDDx"></script>
    ```
-   - 新增外掛時,**務必同時**加上對應的 `<script>` 行,否則功能不會生效。
+   - 新增外掛時,**務必同時**加上對應的 `<script>` 行(並同步加進 `scripts/sync-upstream.mjs` 的 `PLUGINS`、`scripts/smoke-hooks.mjs` 的 `need`),否則功能不會生效、或下次自動同步會被原版覆蓋掉。
    - 原作者更新覆蓋 `index.html` 後,**第一件事就是把上面這幾行補回去**。
 2. **改了任何外掛 JS → 一定要 bump `?v=` 版本號**(GitHub Pages / 瀏覽器會死命快取 JS;
    只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS。

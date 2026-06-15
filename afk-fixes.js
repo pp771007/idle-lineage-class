@@ -39,7 +39,8 @@
       var pending = false;
 
       var guarded = function () {
-        if (selectOpenInTabs()) { pending = true; return; }   // 下拉開著:延後此次重繪
+        // 包住自己的偵測:萬一原作者哪天改了 DOM 害這裡丟錯,也絕不能波及遊戲的 renderTabs → 出錯就直接走原版
+        try { if (selectOpenInTabs()) { pending = true; return; } } catch (e) {}
         return orig.apply(this, arguments);
       };
       guarded.__qeGuard = true;
@@ -63,9 +64,14 @@
       return true;
     }
 
-    if (!install()) {
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
-      else setTimeout(install, 0);
+    try {
+      if (!install()) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+        else setTimeout(install, 0);
+      }
+    } catch (e) {
+      // 補坑碼自己掛掉不該拖垮整支外掛(也不該害冒煙測試誤判) → 安靜停用即可
+      console.warn('[AFK-fixes] select-guard 安裝失敗,已略過:', e);
     }
   })();
 

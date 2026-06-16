@@ -63,7 +63,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "已有同名 release $TAG,略過(避免重複)。"
           else
-            printf '《%s》加掛版 — 已自動同步原作者最新版,並套上下列外掛(不改動原遊戲內容):\n\n- 🌙 離線掛機:關閉瀏覽器也自動結算收益(上限 24 小時、撞死即停、存活回原狩獵圖)\n- 📱 手機版面:底部分頁、精簡狀態列、角色資訊/日誌彈窗、創角畫面手機化、登出鈕\n- 📖 怪物/掉落查詢:首頁搜尋怪物/地圖/掉落物,看數值、出沒地圖與掉落機率(可切席琳的世界 ×3)\n- 🔧 體驗修正:修掉原版在加掛環境下的操作小毛病(例如戰鬥中點開「強化裝備」的選單會一直被關掉)\n\n原始碼請由下方 Source code (zip / tar.gz) 下載。\n線上遊玩:https://pp771007.github.io/idle-lineage-class/\n本次同步新增圖檔 %s 張。\n' "$GAME" "$ADDED" > /tmp/relnotes.md
+            printf '《%s》加掛版 — 已自動同步原作者最新版,並套上下列外掛(不改動原遊戲內容):\n\n- 🌙 離線掛機:關閉瀏覽器也自動結算收益(上限 24 小時、撞死即停、存活回原狩獵圖)\n- 📱 手機版面:底部分頁、精簡狀態列、角色資訊/日誌彈窗、創角畫面手機化、登出鈕\n- 📖 怪物/掉落查詢:首頁搜尋怪物/地圖/掉落物,看數值、出沒地圖與掉落機率(可切席琳的世界 ×3)\n- 📚 小百科:首頁入口,三分頁查職業專精/武器特性/職業魔法的詳細說明\n- 🔧 體驗修正:修掉原版在加掛環境下的操作小毛病(例如戰鬥中點開「強化裝備」的選單會一直被關掉)\n\n原始碼請由下方 Source code (zip / tar.gz) 下載。\n線上遊玩:https://pp771007.github.io/idle-lineage-class/\n本次同步新增圖檔 %s 張。\n' "$GAME" "$ADDED" > /tmp/relnotes.md
             gh release create "$TAG" --target "$SHA" --title "《${GAME}》加掛版 ${TAG}" --notes-file /tmp/relnotes.md
           fi
 

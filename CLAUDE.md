@@ -10,7 +10,7 @@
 
 > **已自動化**:`.github/workflows/sync-upstream.yml`(每小時 + 可手動)自動跑這套流程
 > ——腳本 `scripts/sync-upstream.mjs` 抓原版、補回外掛 `<script>`(保留各自 `?v=`)、補新圖,
-> 再用 `scripts/smoke-hooks.mjs`(Playwright)驗四支外掛 `hooks OK`,**通過才自動 commit/push**;
+> 再用 `scripts/smoke-hooks.mjs`(Playwright)驗五支外掛 `hooks OK`,**通過才自動 commit/push**;
 > 推送成功後再**打 tag(台灣時間 `v YYYYMMDD-HHMM`)+ 開 GitHub Release**(Release 自動附原始碼 zip/tar.gz 供下載)。
 > 掛點被原作者改壞時不會推壞版本,改開一個 issue 通知人工處理。
 
@@ -60,7 +60,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 - `desktop.ini` 這種 Windows 垃圾檔**不要**收。
 
 ### 4. 用原版覆蓋 + 把外掛 `<script>` 補回 `</body>` 前
-**用 python 處理(中文 UTF-8 最穩),不要用 shell 字串拼**。讀原版內容 → 在 `</body>` 前插入四支外掛 script(**記得帶 `?v=` 版本號**,見「每次 push 前的檢查清單」) → 整份寫出。動手前 `assert` 原版只有一個 `</body>`、且尚未含外掛,避免插錯。
+**用 python 處理(中文 UTF-8 最穩),不要用 shell 字串拼**。讀原版內容 → 在 `</body>` 前插入五支外掛 script(**記得帶 `?v=` 版本號**,見「每次 push 前的檢查清單」) → 整份寫出。動手前 `assert` 原版只有一個 `</body>`、且尚未含外掛,避免插錯。
 
 ### 5. 抓缺的圖 —— 走 blob SHA,別用中文檔名當參數
 中文檔名直接丟給 curl / 原生 exe,git-bash(MSYS)會重編碼把檔名弄壞。改走 **blob SHA(純 ASCII)**:
@@ -73,7 +73,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 ### 6. 自己驗證(不要丟給使用者測)
 本機開 http server + Playwright 無頭載入 `index.html`:
-- console 四支外掛都 `[AFK*] hooks OK` → 代表原作者沒改壞掛點(改了 id / DOM 順序才會失效,失效就回報哪個外掛哪個掛點要調)。
+- console 五支外掛都 `[AFK*] hooks OK` → 代表原作者沒改壞掛點(改了 id / DOM 順序才會失效,失效就回報哪個外掛哪個掛點要調)。
 - 縮到手機尺寸確認手機版面沒爆。
 
 ### 7. commit + push + 清暫存

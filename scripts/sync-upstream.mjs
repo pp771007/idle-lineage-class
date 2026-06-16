@@ -3,7 +3,7 @@
  *
  * 做的事(等同手動「合併原版」流程,跑在 Linux runner 上,中文檔名直接用 URL 不必走 blob SHA):
  *   1. 抓原作者 GitHub Pages 的最新 index.html
- *   2. 把本專案四支外掛的 <script>(保留各自現有的 ?v= 版本號)插回 </body> 前
+ *   2. 把本專案五支外掛的 <script>(保留各自現有的 ?v= 版本號)插回 </body> 前
  *   3. 跟現有 index.html 比對 → 一模一樣就什麼都不做(changed=false)
  *   4. 比對原作者 repo 檔案樹,補下載本地缺少的 assets 新圖
  *   5. 把結果寫進 GITHUB_OUTPUT(changed / assets_added),由 workflow 決定要不要推

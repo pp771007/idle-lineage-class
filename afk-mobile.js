@@ -459,6 +459,15 @@
     var css = [
       '#m-nav{display:none;}',
 
+      /* 原作者後來自己加了一套原生手機支援(index.html 的 @media max-width:820px:置頂 #mobile-vitals
+         血條列 + 把幾個面板壓成 flex:none 固定高)。那套和本外掛「單欄輪播 + 底部導覽」版面重疊衝突,
+         於 m-mobile 下蓋回。scope 在 body.m-mobile #id,比原作者 #id 規則更specific 即可勝出;
+         原作者哪天移除這些規則,選擇器不命中就自動失效(不會弄壞)。 */
+      'body.m-mobile #mobile-vitals{display:none !important;}',   /* 原生置頂 HP/MP 細條 → 與本外掛 #m-status 重複(雙血條),隱藏 */
+      'body.m-mobile #tab-content-panel{flex:1 1 auto !important;height:auto !important;min-height:0 !important;}',   /* 背包欄:原生 height:70vh 害底部留空 → 還原撐滿 */
+      'body.m-mobile #automation-panel{flex:1 1 auto !important;}',   /* 設定欄:原生 flex:none 害填不滿 → 還原撐滿 */
+      'body.m-mobile #automation-panel > div:last-child{max-height:none !important;}',   /* 解除原生 220px 內捲上限,讓內容隨欄高自然捲動 */
+
       'body.m-mobile{padding:0 !important;}',
       /* game-screen 用 fixed 釘在左上角:脫離原作者 body 的 flex 置中流,
          避免它比 body 矮時被垂直置中(→ 上方空白、底部 nav 被工具列遮住)。

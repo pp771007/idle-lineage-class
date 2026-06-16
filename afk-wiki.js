@@ -47,7 +47,7 @@
     if (!s) return '';
     var t;
     if (s >= 3600) { var h = s / 3600; t = (Number.isInteger(h) ? h : h.toFixed(1)) + ' 小時'; }
-    else if (s >= 300) { var m = s / 60; t = (Number.isInteger(m) ? m : m.toFixed(1)) + ' 分鐘'; }
+    else if (s >= 120) { var m = s / 60; t = (Number.isInteger(m) ? m : m.toFixed(1)) + ' 分鐘'; }
     else t = s + ' 秒';
     return '，持續 ' + t;
   }
@@ -75,26 +75,26 @@
   var EFFECT_OVERRIDE = {
     sk_sunlight: '照亮周圍，但也更容易被怪物發現',
     sk_reveal: '顯現出隱形的目標', sk_helm_str2: '顯現出隱形的目標',
-    sk_magic_shield: '短時間張開一道魔法屏障護身',
-    sk_invisible: '讓自己隱身一小段時間',
+    sk_magic_shield: '張開一道魔法屏障護身',
+    sk_invisible: '讓自己隱身',
     sk_resurrection: '死亡時有機會自動復活（被動）',
-    sk_holy_barrier: '短時間張開神聖防禦屏障',
+    sk_holy_barrier: '張開一道神聖防禦屏障',
     sk_soul_up: '全面提振身體活力（綜合增益）',
     sk_antidote: '解除中毒狀態',
     sk_holy_light: '驅散身上的詛咒',
     sk_cancel: '解除自己身上的魔法狀態',
     sk_teleport: '傳送到指定的地圖',
     sk_energy_sense: '感測周遭的能量與情報',
-    sk_charm: '魅惑一隻怪物，讓牠暫時為你作戰',
+    sk_charm: '魅惑一隻怪物，使牠轉而為你作戰',
     sk_mana_drain: '消耗自身 HP，對怪物施放命中後吸取牠的 MP',
-    sk_regen: '一段時間內持續回復 HP',
+    sk_regen: '持續回復 HP：每 30 秒回一次、共 5 次（約 2 分半）',
     sk_load_up: '提高負重上限（效果結束後才能再次施放）',
-    sk_reduction_armor: '提升受到傷害的減免（依等級，持續一段時間）',
+    sk_reduction_armor: '提升受到傷害的減免（依等級）',
     sk_shock_stun: '對目標造成物理傷害，並有機率使其暈眩（需非弓武器）',
     sk_elf_worldtree: '提升妖精森林、眠龍洞穴一帶的區域掉落率（被動）',
     sk_elf_singleres: '提升所選屬性的單一抗性',
-    sk_elf_earthshield: '短時間張開一道大地屏障',
-    sk_elf_flamesoul: '一段時間內，近距離普攻傷害必定打出最高值（效果結束後才能再施放）',
+    sk_elf_earthshield: '張開一道大地屏障',
+    sk_elf_flamesoul: '近距離普攻傷害必定打出最高值（效果結束後才能再施放）',
     sk_elf_mind: '消耗少量 HP 轉換成 MP',
     sk_elf_soul: '消耗較多 HP 轉換成較多 MP',
     sk_elf_summon: '召喚一隻屬性精靈為你作戰（依你的屬性）',
@@ -119,7 +119,11 @@
     return out.join('、');
   }
   function skillEffect(id, sk) {
-    if (EFFECT_OVERRIDE[id]) return EFFECT_OVERRIDE[id];
+    if (EFFECT_OVERRIDE[id]) {
+      var ov = EFFECT_OVERRIDE[id];
+      if (sk.type === 'buff' && sk.dur) ov += durTxt(sk.dur);   // 持續型增益自動補上實際時間
+      return ov;
+    }
     if (sk.type === 'atk') {
       if (sk.instakill) {
         var who = sk.instakill.tag === 'undead' ? '不死類' : (sk.instakill.tag === 'element' ? '元素類' : '');

@@ -59,6 +59,15 @@
       healBar = buildHealBar();
       battleView.parentNode.insertBefore(healBar, battleView.nextSibling);
     }
+
+    // 戰鬥畫面喝水列下方:即時鏡射「背包→能力→狀態」(#dt-buffs:增益/減益)一份,
+    //   讓戰鬥中不用切分頁也看得到當前狀態。內容由 mirror() 每 300ms 從 #dt-buffs 複製 innerHTML。
+    var battleBuffs = null;
+    if (healBar && healBar.parentNode) {
+      battleBuffs = document.createElement('div');
+      battleBuffs.id = 'm-battle-buffs';
+      healBar.parentNode.insertBefore(battleBuffs, healBar.nextSibling);
+    }
     function setHealRow(row, itemId, cnt, empty) {
       if (!row) return;
       var ic = row.querySelector('.m-heal-ic'), c = row.querySelector('.m-heal-cnt');
@@ -142,6 +151,8 @@
       var townView = document.getElementById('town-view');
       document.body.classList.toggle('m-intown', !!(townView && !townView.classList.contains('hidden')));
       updateHealBar();
+      // 戰鬥畫面狀態鏡射:把 #dt-buffs(背包→能力→狀態)同步到喝水列下方的 #m-battle-buffs
+      if (battleBuffs) { var dtb = document.getElementById('dt-buffs'); battleBuffs.innerHTML = dtb ? dtb.innerHTML : ''; }
       // 村莊時遊戲會給 combat-log-panel 加 hidden(沒有戰鬥日誌):強制切系統日誌、隱藏「切到戰鬥」鈕
       var noCombat = !combatLog || combatLog.classList.contains('hidden');
       document.body.classList.toggle('mlog-nocombat', noCombat);
@@ -495,6 +506,11 @@
       'body.m-mobile #m-heal-bar .m-fruit-go{border-color:#22c55e;background:linear-gradient(#16a34a,#15803d);}',   /* 安特的水果列用綠色區分 */
       'body.m-mobile #m-heal-bar .m-heal-row.m-empty .m-heal-ic,body.m-mobile #m-heal-bar .m-heal-row.m-empty .m-heal-cnt,body.m-mobile #m-heal-bar .m-heal-row.m-empty .m-heal-go{filter:grayscale(.65);opacity:.5;}',
       'body.m-mobile.m-intown #m-heal-bar{display:none !important;}',
+
+      /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
+      '#m-battle-buffs{display:none;}',
+      'body.m-mobile.mview-battle #m-battle-buffs{display:block;flex:0 0 auto;margin:2px 12px 8px;padding:8px 12px;max-height:22vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:10px;color:#e2e8f0;font-size:13px;line-height:1.5;}',
+      'body.m-mobile.m-intown #m-battle-buffs{display:none !important;}',
 
       /* 三欄:滿寬,一次只顯示一欄,內部自行捲動 */
       'body.m-mobile .m-col-left,body.m-mobile .m-col-center,body.m-mobile .m-col-right{width:100% !important;max-width:none !important;flex:1 1 auto !important;min-height:0 !important;gap:8px !important;overflow:hidden;}',

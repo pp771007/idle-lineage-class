@@ -57,6 +57,14 @@
     if (sk.dmgDice) return '（威力約 ' + dice(sk.dmgDice) + '）';
     return '';
   }
+  function healTxt(sk) {
+    if (!sk.healDice && !sk.healBase) return '回復 HP';
+    var base = sk.healBase || 0;
+    var lo = base + (sk.healDice ? sk.healDice[0] : 0);
+    var hi = base + (sk.healDice ? sk.healDice[0] * sk.healDice[1] : 0);
+    if (sk.hot) return '每 ' + sk.hot.interval + ' 秒回復 HP 約 ' + lo + '~' + hi + '、共 ' + sk.hot.ticks + ' 次';
+    return '回復 HP 約 ' + lo + '~' + hi;
+  }
 
   // ===== 魔法:把資料欄位翻成玩家看得懂的效果說明 ============================
   var STAT_LABEL = {
@@ -73,25 +81,24 @@
   };
   // 少數效果不在數值欄位裡(隱身、解除、傳送、暗系被動等),這裡用白話補上
   var EFFECT_OVERRIDE = {
-    sk_sunlight: '照亮周圍，但也更容易被怪物發現',
-    sk_reveal: '顯現出隱形的目標', sk_helm_str2: '顯現出隱形的目標',
-    sk_magic_shield: '張開一道魔法屏障護身',
-    sk_invisible: '讓自己隱身',
+    sk_sunlight: '打完一批怪後，下一批出現得更快（接戰等待從約 5 秒縮短為約 1 秒），加快打怪節奏',
+    sk_reveal: '顯現平時隱形、打不到的怪物（如史巴托），讓你能攻擊牠', sk_helm_str2: '顯現平時隱形、打不到的怪物（如史巴托），讓你能攻擊牠',
+    sk_magic_shield: '完全擋下接下來受到的一次攻擊（用掉後消失，3 秒內無法再施展）',
+    sk_invisible: '隱身——滿血的一般怪物不會主動攻擊你',
     sk_resurrection: '死亡時有機會自動復活（被動）',
-    sk_holy_barrier: '張開一道神聖防禦屏障',
-    sk_soul_up: '全面提振身體活力（綜合增益）',
+    sk_holy_barrier: '受到的傷害減少 30%',
+    sk_soul_up: 'HP 與 MP 上限各提升 20%',
     sk_antidote: '解除中毒狀態',
     sk_holy_light: '驅散身上的詛咒',
     sk_cancel: '解除自己身上的魔法狀態',
-    sk_teleport: '傳送到指定的地圖',
-    sk_energy_sense: '感測周遭的能量與情報',
-    sk_charm: '魅惑一隻怪物，使牠轉而為你作戰',
+    sk_teleport: '讓當前的怪物消失、重新出現一批（可用來換掉難纏的怪；帶傳送控制戒指則會引來強敵）',
+    sk_energy_sense: '查看目標怪物的屬性弱點',
+    sk_charm: '魅惑一隻非王級怪物，使牠為你作戰（成功率最高約 6 成；有召喚精通時，對比你低等的怪必定成功）',
     sk_mana_drain: '消耗自身 HP，對怪物施放命中後吸取牠的 MP',
-    sk_regen: '持續回復 HP：每 30 秒回一次、共 5 次（約 2 分半）',
     sk_load_up: '提高負重上限（效果結束後才能再次施放）',
     sk_reduction_armor: '提升受到傷害的減免（依等級）',
     sk_shock_stun: '對目標造成物理傷害，並有機率使其暈眩（需非弓武器）',
-    sk_elf_worldtree: '提升妖精森林、眠龍洞穴一帶的區域掉落率（被動）',
+    sk_elf_worldtree: '讓妖精森林、眠龍洞穴一帶的區域額外掉落率由 20% 提升到 30%（被動）',
     sk_elf_singleres: '提升所選屬性的單一抗性',
     sk_elf_earthshield: '張開一道大地屏障',
     sk_elf_flamesoul: '近距離普攻傷害必定打出最高值（效果結束後才能再施放）',
@@ -100,15 +107,15 @@
     sk_elf_summon: '召喚一隻屬性精靈為你作戰（依你的屬性）',
     sk_elf_summon2: '召喚一隻上級屬性精靈為你作戰',
     sk_summon: '召喚一隻生物為你作戰（隨等級提升強度）',
-    sk_dark_stealth: '隱沒於暗影之中（隱身）',
-    sk_dark_poison: '為武器淬上劇毒，攻擊使目標中毒',
-    sk_dark_poisonres: '提升對毒素的抵抗',
-    sk_dark_burn: '燃起鬥志（戰鬥增益）',
-    sk_dark_walkhaste: '步伐加快、攻擊速度提升（可與加速術疊加）',
-    sk_dark_dodge: '看穿魔法軌跡，可閃避魔法攻擊',
-    sk_dark_crit: '凝聚全力打出一記致命一擊',
-    sk_dark_double: '攻擊蘊含雙重之力',
-    sk_dark_refine: '提煉出魔石（取得材料，被動）'
+    sk_dark_stealth: '暗影隱身：閃過接下來受到的一次攻擊（用掉後進入冷卻）',
+    sk_dark_poison: '攻擊時 50% 機率使目標中毒（每秒造成該次傷害的 30%、持續 5 秒；有劇毒精通則必定中毒）',
+    sk_dark_poisonres: '你自己受到的中毒傷害減半',
+    sk_dark_burn: '攻擊時 10% 機率打出 1.5 倍傷害',
+    sk_dark_walkhaste: '攻擊速度提升 15%（可與加速術疊加）',
+    sk_dark_dodge: '有 50% 機率閃過原本「必中」的魔法攻擊（用掉後進入冷卻）',
+    sk_dark_crit: '消耗一半當前 HP 與全部 MP，打出一記必中、必重擊的攻擊；剩下的 MP 越多傷害越高（滿 MP 約 10 倍，對血盟敵人再 ×2）',
+    sk_dark_double: '使用雙刀或鋼爪時，有機率打出 2 倍傷害（45 級起 5%，每 5 級 +1%）',
+    sk_dark_refine: '提高黑魔石（黑暗妖精素材）的取得：沉默洞穴一帶掉率提升，其他野外／地監也才會掉到（被動）'
   };
   function statDeltaTxt(d) {
     var out = [];
@@ -135,7 +142,7 @@
       if (sk.status) seg += '，使其' + (STATUS_LABEL[sk.status.kind] || sk.status.kind) + durTxt(sk.status.dur);
       return seg;
     }
-    if (sk.type === 'heal') return '回復 HP' + powerTxt(sk);
+    if (sk.type === 'heal') return healTxt(sk);
     if (sk.type === 'convert') return '消耗 HP 轉換成 MP';
     if (sk.type === 'buff') {
       var parts = [];

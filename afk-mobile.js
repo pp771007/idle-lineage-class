@@ -555,8 +555,8 @@
          手機浮動面板寬度窄,扣掉標題與右側 ⇆/✕ 鈕後剩沒幾字 → 商品名被 truncate 切掉顯示不完整。
          有商品時(:not(:empty))讓它換到標題下方整行、正常折行不截斷;沒商品(:empty)維持原樣不佔行高。
          scope 在手機浮動日誌的 .m-log-hdr,桌機與原作改版皆不受影響。 */
-      'body.m-mobile #m-log-body .panel-header.m-log-hdr{flex-wrap:wrap !important;}',
-      'body.m-mobile #m-log-body .panel-header.m-log-hdr #syslog-pandora:not(:empty){flex:1 1 100% !important;white-space:normal !important;overflow:visible !important;text-overflow:clip !important;text-align:left !important;line-height:1.35 !important;margin-top:2px !important;}',
+      'body.m-mobile #m-log-body .panel-header.m-log-hdr{flex-wrap:wrap !important;row-gap:0 !important;}',
+      'body.m-mobile #m-log-body .panel-header.m-log-hdr #syslog-pandora:not(:empty){flex:1 1 100% !important;white-space:normal !important;overflow:visible !important;text-overflow:clip !important;text-align:left !important;line-height:1.2 !important;margin-top:0 !important;}',
 
       /* 地圖標題列:手機隱藏「冒險地圖」文字,控制項靠左不撐開 */
       'body.m-mobile .m-maptitle{display:none !important;}',

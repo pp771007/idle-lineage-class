@@ -258,6 +258,60 @@
             75%      { filter: drop-shadow(0 0 11px rgba(245, 158, 11, 1)) drop-shadow(0 0 28px rgba(245, 158, 11, 0.85)) drop-shadow(0 0 52px rgba(245, 158, 11, 0.55)) brightness(1.75) saturate(2.2); }
         }
         .tri-glow { animation: triGlow 2.4s infinite linear; }
+
+        #mobile-vitals { display: none; }   /* 桌機隱藏：置頂常駐 HP/MP 細條僅手機顯示 */
+
+        /* ===== 📱 手機 / 小螢幕：三欄改為單欄垂直堆疊、整頁可捲動 ===== */
+        @media (max-width: 820px) {
+            body { height: auto !important; min-height: 100vh; display: block !important; padding: 6px !important; align-items: initial !important; justify-content: initial !important; overflow: visible !important; }
+            html { overflow-x: hidden; }   /* 防止任何元素造成的水平捲動，垂直維持可捲動 */
+            #game-screen { flex-direction: column; height: auto; max-width: 100%; gap: 10px; }
+            #col-left, #col-center, #col-right { width: 100% !important; }
+            /* 自動化設定：壓成可內捲的小方塊，避免把地圖擠到太下面 */
+            #automation-panel { flex: none; }
+            #automation-panel > div:last-child { max-height: 220px; }
+            /* 戰鬥 / 系統日誌：固定高度、內部可捲動 */
+            #combat-log-panel { flex: none; height: 200px; }
+            #syslog-panel { flex: none; height: 170px; }
+            /* 背包頁籤內容：固定高度、內部可捲動 */
+            #tab-content-panel { flex: none; height: 70vh; min-height: 340px; }
+            /* 戰鬥區怪物列：放不下時可橫向捲動 */
+            #mob-list { overflow-x: auto; }
+            /* 地圖標題列在窄螢幕換行排列 */
+            #col-center .panel-header { flex-wrap: wrap; gap: 6px; }
+            /* 村莊 NPC 卡片在窄螢幕改單欄 */
+            #town-npc-container { grid-template-columns: 1fr; }
+            /* 📱 置頂常駐 HP/MP 細條：捲動時也看得到血量/魔力 */
+            #mobile-vitals {
+                display: flex; flex-direction: row; align-items: center; gap: 8px;
+                position: sticky; top: 0; z-index: 20;
+                margin: -6px -6px 4px -6px; padding: 5px 8px;
+                background: rgba(10, 15, 28, 0.96); border-bottom: 1px solid #334155;
+            }
+            #mobile-vitals .mv-bars { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+            #mv-action-btn { flex: 0 0 auto; height: 34px; padding: 0 16px; font-size: 14px; font-weight: 700; color: #fff; border: 1px solid #34d399; border-radius: 6px; white-space: nowrap; background: #047857; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+            #mobile-vitals .mv-row { display: flex; align-items: center; gap: 6px; }
+            #mobile-vitals .mv-label { width: 24px; text-align: right; font-size: 11px; font-weight: 700; }
+            #mobile-vitals .mv-bar { position: relative; flex: 1; height: 15px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
+            #mobile-vitals .mv-bar > div { height: 100%; transition: width 0.2s ease-out; }
+            #mobile-vitals .mv-bar > span { position: absolute; inset: 0; text-align: center; font-size: 10px; line-height: 15px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.95); }
+
+            /* ===== 創角 / 載入 / 選職業畫面：手機改為單欄、不固定寬高 ===== */
+            #creation-screen { position: relative !important; width: 100% !important; max-width: 100%; padding: 14px !important; gap: 16px; }
+            #creation-screen h1 { font-size: 1.75rem; }
+            #main-menu { margin: 20px 0 !important; }
+            #main-menu button { width: 100% !important; max-width: 360px; }
+            #slot-select-panel { margin: 16px 0 !important; }
+            #slot-list { width: 100% !important; }
+            /* 創角面板：圖片在上、控制項在下 */
+            #creation-panel { flex-direction: column !important; align-items: stretch !important; gap: 14px; }
+            #creation-img-wrap { width: 100% !important; height: 300px !important; }
+            #creation-controls { width: 100% !important; height: auto !important; }
+            #creation-row { flex-direction: column !important; height: auto !important; gap: 14px; }
+            #creation-class-box { width: 100% !important; height: auto !important; }
+            #stat-allocation { height: auto !important; }
+            #class-desc { flex: none; max-height: 130px; }
+        }
     </style>
 </head>
 <body class="h-screen w-screen flex items-center justify-center p-4">
@@ -282,14 +336,14 @@
         </div>
 
         <div id="creation-panel" class="hidden flex flex-row gap-6 items-start">
-            
-            <div class="w-[340px] h-[480px] border-4 border-amber-800 p-2 bg-slate-950/40 rounded-lg shadow-[0_0_30px_rgba(0,0,0,0.9)] outline outline-1 outline-offset-4 outline-amber-700/40 flex items-center justify-center shrink-0 overflow-hidden">
+
+            <div id="creation-img-wrap" class="w-[340px] h-[480px] border-4 border-amber-800 p-2 bg-slate-950/40 rounded-lg shadow-[0_0_30px_rgba(0,0,0,0.9)] outline outline-1 outline-offset-4 outline-amber-700/40 flex items-center justify-center shrink-0 overflow-hidden">
                 <img id="class-preview-img" src="assets/start/m_knight.png" alt="職業預覽" class="w-full h-full object-cover object-top rounded pointer-events-none drop-shadow-[0_10px_15px_rgba(0,0,0,0.8)]">
             </div>
-            
-            <div class="flex-1 h-[480px] flex flex-col justify-between min-w-0">
-                <div class="flex gap-4 flex-1 h-[410px]">
-                    <div class="w-[290px] h-[410px] bg-slate-800/50 p-5 rounded-xl border border-slate-700 flex flex-col shrink-0">
+
+            <div id="creation-controls" class="flex-1 h-[480px] flex flex-col justify-between min-w-0">
+                <div id="creation-row" class="flex gap-4 flex-1 h-[410px]">
+                    <div id="creation-class-box" class="w-[290px] h-[410px] bg-slate-800/50 p-5 rounded-xl border border-slate-700 flex flex-col shrink-0">
                         <h2 class="text-lg text-yellow-400 mb-4 font-bold shrink-0">1. 選擇職業</h2>
                         <div class="grid grid-cols-2 gap-2.5 shrink-0">
                             <button onclick="selectClass('m_knight')" id="btn-class-m_knight" class="btn py-2 text-base font-bold">男騎士</button>
@@ -331,9 +385,17 @@
 
     <!-- 遊戲主畫面 -->
     <div id="game-screen" class="hidden w-full h-full max-w-[1600px] flex gap-4">
-        
+        <!-- 📱 手機版置頂常駐 HP/MP 細條（桌機 display:none） -->
+        <div id="mobile-vitals">
+            <div class="mv-bars">
+                <div class="mv-row"><span class="mv-label" style="color:#f87171">HP</span><div class="mv-bar"><div id="mv-hp-fill" style="background:#dc2626;width:100%"></div><span id="mv-hp-txt">0/0</span></div></div>
+                <div class="mv-row"><span class="mv-label" style="color:#60a5fa">MP</span><div class="mv-bar"><div id="mv-mp-fill" style="background:#2563eb;width:100%"></div><span id="mv-mp-txt">0/0</span></div></div>
+            </div>
+            <button id="mv-action-btn" onclick="returnToTown()">回村</button>
+        </div>
+
 <!-- 左側：狀態與自動化 -->
-        <div class="w-[340px] flex flex-col gap-4">
+        <div id="col-left" class="w-[340px] flex flex-col gap-4">
             <!-- 新增了 id="status-panel"，並加入去底色與加深背景的樣式確保文字可讀 -->
             <div id="status-panel" class="panel bg-cover bg-top bg-no-repeat" style="background-blend-mode: multiply; background-color: rgba(30, 41, 59, 0.85);">
                 <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span id="st-classname">職業</span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放肯特城"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
@@ -351,7 +413,7 @@
                 </div>
             </div>
 
-            <div class="panel flex-1 overflow-hidden flex flex-col">
+            <div id="automation-panel" class="panel flex-1 overflow-hidden flex flex-col">
                 <div class="panel-header text-center">自動化設定</div>
                 <div class="p-4 text-base flex flex-col gap-4 overflow-y-auto">
                     <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
@@ -402,7 +464,7 @@
         </div>
 
         <!-- 中間：地圖與日誌 -->
-        <div class="flex-1 flex flex-col gap-4">
+        <div id="col-center" class="flex-1 flex flex-col gap-4">
             <div class="panel">
                 <div class="panel-header flex justify-between items-center">
     <span class="text-xl flex items-center gap-4">冒險地圖 <span id="status-alerts" class="text-sm font-normal"></span> <span id="siege-timer" class="hidden text-base font-bold text-red-300 anim-flash"></span></span>
@@ -452,7 +514,7 @@
                 <button id="combat-log-unlock" onclick="combatLogToBottom()" class="hidden absolute left-1/2 -translate-x-1/2 bottom-2 z-10 px-3 py-1 text-xs font-bold rounded-full shadow-lg bg-amber-700/90 hover:bg-amber-600 border border-amber-400 text-amber-50">🔒 已鎖定捲動 ▾ 回到最新</button>
             </div>
 
-            <div class="panel h-1/3 flex flex-col overflow-hidden relative">
+            <div id="syslog-panel" class="panel h-1/3 flex flex-col overflow-hidden relative">
                 <div class="panel-header text-slate-100 text-lg border-b border-blue-900/40 flex items-center justify-between gap-2">
                     <span class="shrink-0">系統與物品日誌</span>
                     <span id="syslog-pandora" class="text-sm font-normal truncate text-right min-w-0"></span>
@@ -464,7 +526,7 @@
         </div>
 
         <!-- 右側：清單面板 -->
-        <div class="w-[380px] flex flex-col gap-3">
+        <div id="col-right" class="w-[380px] flex flex-col gap-3">
             <div class="panel p-2 grid grid-cols-3 gap-2 bg-slate-800 tab-bar">
                 <button class="btn active text-base py-2 font-bold px-0" onclick="switchTab('stats', this)">能力</button>
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('equip', this)">裝備</button>
@@ -477,7 +539,7 @@
                 <button id="btn-sell-junk" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #6b2a10 0%, #b3490e 28%, #5a230e 52%, #9a3e0c 76%, #4a1d0c 100%); color: #fed7aa; border-color: #c2410c;" onclick="sellAllJunk()">賣出廢品</button>
             </div>
 
-            <div class="panel flex-1 flex flex-col overflow-hidden relative">
+            <div id="tab-content-panel" class="panel flex-1 flex flex-col overflow-hidden relative">
                 <!-- 能力 -->
                 <div id="tab-stats" class="p-5 overflow-y-auto h-full flex flex-col gap-5 text-lg">
                     <div class="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -668,6 +730,8 @@ const DB = {
         "amr_laia_robe":     { n: "蕾雅長袍", type: "arm", slot: "armor", ac: 2, mmp: 100, req: "mage", safe: 4, p: 58000, gachaWeight: 1 },
         "acc_necro_king_ring": { n: "冥法軍王之戒", type: "acc", slot: "amulet", ac: 0, cha: 3, req: "mage,elf", safe: 0, p: 193000, gachaWeight: 1 },
         "acc_laia_amulet":   { n: "蕾雅項鍊", type: "acc", slot: "amulet", ac: 0, con: -2, int: 1, wis: 1, req: "mage", safe: 0, p: 100000, gachaWeight: 1 },
+        "acc_darkmage_amulet": { n: "黑法師項鍊", type: "acc", slot: "amulet", ac: 0, con: -1, int: 2, req: "mage", safe: 0, p: 100000, gachaWeight: 1 },
+        "acc_summoner_amulet": { n: "喚獸師項鍊", type: "acc", slot: "amulet", ac: 0, wis: -1, cha: 2, req: "mage", safe: 0, p: 100000, gachaWeight: 1 },
         "acc_law_king_chain": { n: "法令軍王之鍊", type: "acc", slot: "amulet", ac: 0, mmp: 15, mpR: 5, req: "mage,elf", safe: 0, p: 100000, gachaWeight: 1 },
         "acc_laia_ring":     { n: "蕾雅戒指", type: "acc", slot: "ring", ac: 5, req: "all", safe: 0, p: 250000, gachaWeight: 1, stunResist: 5, d: "5%機率抵抗暈眩。" },
         "wpn_icequeen_wand": { n: "冰之女王魔杖", type: "wpn", dmgS: 3, dmgL: 4, hit: 5, dmgBonus: 1, spd: 1.0, req: "mage", safe: 6, p: 143340, legend: true, gachaWeight: 1, procSkill: "sk_ice_spike", d: "攻擊時 1% 機率額外施放冰錐（每+1發動機率+1%，不需學習、不耗MP，效果同法師冰錐）。" },
@@ -696,6 +760,7 @@ const DB = {
         "wpn_sword_rasta":  { n: "拉斯塔巴德長劍", type: "wpn", dmgS: 10, dmgL: 12, hit: 1, spd: 1.1, req: "knight,elf,dark", safe: 6, p: 990, gachaWeight: 50 },
         "wpn_dagger_rasta": { n: "拉斯塔巴德短劍", type: "wpn", dmgS: 4, dmgL: 3, hit: 2, spd: 0.8, req: "all", safe: 6, p: 1000, gachaWeight: 80 },
         "wpn_wand_rasta":   { n: "拉斯塔巴德魔杖", type: "wpn", dmgS: 2, dmgL: 3, hit: 0, mdmg: 1, spd: 1.0, req: "mage", safe: 6, p: 10000, gachaWeight: 80 },
+        "wpn_darkmage_wand": { n: "黑法師之杖", type: "wpn", dmgS: 1, dmgL: 1, hit: 0, dmgBonus: 0, mdmg: 2, mpR: 5, spd: 1.0, req: "mage", safe: 6, p: 94510, gachaWeight: 5 },   // 共鳴（見 WAND_LIGHTARROW_IDS）
         "wpn_dual_rasta":   { n: "拉斯塔巴德雙刀", type: "wpn", w2h: true, dmgS: 15, dmgL: 10, hit: 0, spd: 0.8, req: "dark", safe: 6, p: 10000, eff: "combo", gachaWeight: 50 },
         "wpn_xbow_heavy_rasta": { n: "拉斯塔巴德重十字弓", type: "wpn", isBow: true, ranged: true, rapidfire: 45, w2h: true, dmgS: 3, dmgL: 3, hit: 2, dmgBonus: 3, spd: 0.9, req: "elf", safe: 6, p: 5300, gachaWeight: 80 },
         "wpn_spear_rasta":  { n: "拉斯塔巴德矛", type: "wpn", dmgS: 8, dmgL: 8, hit: 0, spd: 1.1, req: "knight,elf", safe: 6, p: 1800, gachaWeight: 100 },
@@ -796,6 +861,8 @@ const DB = {
         "bot_rasta": { n: "拉斯塔巴德長靴", type: "arm", slot: "boots", ac: 2, req: "all", safe: 4, p: 380, gachaWeight: 100 },
         "clk_dark": { n: "黑暗斗篷", type: "arm", slot: "cloak", ac: 3, mhp: 30, req: "dark", safe: 4, p: 6350, gachaWeight: 60 },
         "amr_rasta_robe": { n: "拉斯塔巴德長袍", type: "arm", slot: "armor", ac: 4, mpR: 5, req: "mage", safe: 4, p: 14000, gachaWeight: 10 },
+        "amr_darkmage_robe": { n: "黑法師長袍", type: "arm", slot: "armor", ac: 4, mmp: 5, mpR: 5, req: "mage", safe: 4, p: 53100, gachaWeight: 10 },
+        "amr_summoner_robe": { n: "喚獸師長袍", type: "arm", slot: "armor", ac: 4, mhp: 5, mpR: 5, req: "mage", safe: 4, p: 53100, gachaWeight: 10 },
         "shd_rasta": { n: "拉斯塔巴德圓盾", type: "arm", slot: "shield", ac: 2, req: "all", safe: 4, p: 500, gachaWeight: 100, block: 35 },
         "arm_101": { n: "克特手套", type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 17500, gachaWeight: 1 },
         "arm_102": { n: "保護者手套", type: "arm", slot: "gloves", ac: 0, req: "elf", safe: 4, p: 4500, mhp: 20, mmp: 20, gachaWeight: 30 },
@@ -818,7 +885,7 @@ const DB = {
         "arm_115": { n: "魔法能量之書", type: "arm", slot: "shield", ac: 2, req: "mage", safe: 4, p: 9800, int: 1, gachaWeight: 20, block: 10 },
         "acc_116": { n: "傳送控制戒指", type: "acc", slot: "ring", ac: 0, req: "all", safe: 0, p: 150000, gachaWeight: 1, d: "攜帶在背包即可生效（無需裝備）：手動施放傳送術/使用瞬移卷軸時必定遭遇 BOSS。" },
         "acc_117": { n: "變形控制戒指", type: "acc", slot: "ring", ac: 0, req: "all", safe: 0, p: 150000, gachaWeight: 1, d: "攜帶在背包即可生效（無需裝備）：使用變形卷軸時可指定變身型態。" },
-        "acc_summon_ctrl": { n: "召喚控制戒指", type: "acc", slot: "ring", ac: 0, req: "all", safe: 0, p: 50000, gachaWeight: 1, d: "裝備後：你（非傭兵）的召喚物——夥伴/迷魅/造屍術/召喚術/召喚屬性精靈/召喚強力屬性精靈——命中擲骰若為 19 且原本未命中，視為命中。" },
+        "acc_summon_ctrl": { n: "召喚控制戒指", type: "acc", slot: "ring", ac: 0, req: "all", safe: 0, p: 50000, gachaWeight: 1, d: "裝備後，你的召喚物攻擊擲骰 19 時視為命中。" },
         "rng_earth": { n: "地靈戒指", type: "acc", slot: "ring", ac: 0, resEarth: 10, req: "all", safe: 0, p: 50000, gachaWeight: 1, d: "蘊含大地之力的戒指，地屬性抗性 +10。" },
         "rng_water": { n: "水靈戒指", type: "acc", slot: "ring", ac: 0, resWater: 10, req: "all", safe: 0, p: 50000, gachaWeight: 1, d: "蘊含流水之力的戒指，水屬性抗性 +10。" },
         "rng_wind": { n: "風靈戒指", type: "acc", slot: "ring", ac: 0, resWind: 10, req: "all", safe: 0, p: 50000, gachaWeight: 1, d: "蘊含疾風之力的戒指，風屬性抗性 +10。" },
@@ -1407,6 +1474,7 @@ const DB = {
         "de_train_hellhound": { n: "地獄束縛犬", lv: 40, s: "S", beh: "主動", race: "惡魔", e: "earth", hp: 657, ac: -40, mr: 0, exp: 1601, goldMin: 110, goldMax: 300, atkSpd: 1, dmg: [1, 39], db: 20, hit: 20, tamedByAura: true, mag: { skn: "火焰噴吐", cd: 70, dmg: [4, 30], db: 28, ele: "fire", alwaysHit: true } },
         "de_train_soulknight": { n: "魂騎士", lv: 41, s: "S", beh: "主動", race: "拉斯塔巴德", e: "earth", hp: 1080, ac: -43, mr: 50, exp: 1682, goldMin: 110, goldMax: 300, atkSpd: 1, dmg: [1, 41], db: 25, hit: 24, mag: { skn: "地面震裂", cd: 70, dmg: [3, 40], db: 18, ele: "earth", alwaysHit: true } },
         "de_train_hellslave": { n: "地獄奴隸", lv: 43, s: "S", beh: "主動", race: "拉斯塔巴德", e: "earth", hp: 962, ac: -41, mr: 45, exp: 1850, goldMin: 110, goldMax: 300, atkSpd: 1, dmg: [1, 43], db: 30, hit: 25 },
+        "de_train_summoner": { n: "喚獸師", lv: 30, s: "S", beh: "主動", race: "拉斯塔巴德", e: "earth", hp: 600, ac: -28, mr: 35, exp: 962, goldMin: 10, goldMax: 200, atkSpd: 2, dmg: [2, 32], db: 20, hit: 15 },
         "de_train_gatekeeper": { n: "拉斯塔巴德守門人", lv: 40, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 800, ac: -27, mr: 30, exp: 1601, goldMin: 110, goldMax: 400, atkSpd: 1.5, dmg: [2, 40], db: 15, hit: 25 },
         // ===== 魔獸軍王之室（純BOSS房，需軍王的鑰匙入場） =====
         "de_king_baranka": { n: "魔獸軍王巴蘭卡", lv: 63, s: "L", beh: "被動", race: "拉斯塔巴德", e: "water", boss: true, hard: true, hp: 17290, ac: -58, mr: 65, exp: 39700, goldMin: 1250, goldMax: 4000, atkSpd: 0.5, dmg: [3, 63], db: 63, hit: 63 },
@@ -1416,6 +1484,7 @@ const DB = {
         "de_lab_wind":  { n: "風元素守護者", lv: 42, s: "S", beh: "主動", race: "元素", elem: true, e: "wind",  hp: 725, ac: -37, mr: 60, exp: 1765, goldMin: 100, goldMax: 300, atkSpd: 3, dmg: [3, 39], db: 75, hit: 27 },
         "de_lab_fire":  { n: "火元素守護者", lv: 42, s: "S", beh: "主動", race: "元素", elem: true, e: "fire",  hp: 725, ac: -37, mr: 60, exp: 1765, goldMin: 100, goldMax: 300, atkSpd: 3, dmg: [3, 39], db: 75, hit: 27 },
         "de_lab_mage":  { n: "黑暗妖精法師", lv: 40, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 500, ac: -32, mr: 70, exp: 1601, goldMin: 10, goldMax: 100, atkSpd: 2, dmg: [2, 39], db: 5, hit: 20, mag: { skn: "冰錐", cd: 70, dmg: [4, 30], db: 28, ele: "water", alwaysHit: true }, mag2: { skn: "龍捲風", cd: 90, chance: 0.5, dmg: [4, 30], db: 40, ele: "wind", alwaysHit: true } },
+        "de_lab_blackmage": { n: "黑法師", lv: 32, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 380, ac: -22, mr: 25, exp: 1025, goldMin: 120, goldMax: 200, atkSpd: 2, dmg: [2, 21], db: 18, hit: 13, mag: { skn: "極寒冰錐", cd: 60, dmg: [3, 26], db: 40, ele: "water", alwaysHit: true, sec: { type: "freeze", pbase: 100 } } },   // 🔧 極寒冰錐：必中、3D26+40水魔法，freeze pbase100 → (100-MR)/2% 機率冰凍6秒
         // ===== 冥法軍訓練場 =====
         "de_necro_avenger":    { n: "黑暗復仇者", lv: 45, s: "S", beh: "主動", race: "拉斯塔巴德", e: "earth", hard: true, hp: 1056, ac: -52, mr: 55, exp: 2026, goldMin: 100, goldMax: 300, atkSpd: 1, dmg: [1, 45], db: 39, hit: 29 },
         "de_necro_warlock":    { n: "血色術士", lv: 46, s: "S", beh: "主動", race: "拉斯塔巴德", e: "earth", hard: true, hp: 1198, ac: -54, mr: 70, exp: 2117, goldMin: 110, goldMax: 300, atkSpd: 2, dmg: [2, 46], db: 25, hit: 24, mag: { skn: "黑霧", cd: 50, dmg: [4, 46], db: 35, ele: "none", alwaysHit: true } },
@@ -1832,12 +1901,12 @@ const DB = {
         "rastabad_cave2": ["de_remnant_bow", "de_remnant_sword", "de_remnant_xbow", "de_remnant_mage", "de_remnant_2h"],
         "rastabad_cave3": ["de_remnant_bow", "de_remnant_sword", "de_remnant_xbow", "de_remnant_mage", "de_remnant_2h", "dark_spirit_caller"],
         "rastabad_gate": ["de_gate_xbow", "de_gate_apprentice", "de_gate_spear", "de_gate_patrol", "de_gate_soldier", "de_gate_general"],
-        "rastabad_beast": ["de_gate_general", "de_train_blacktiger", "de_train_tamer", "de_train_cursetamer", "de_train_hellhound", "de_train_soulknight", "de_train_hellslave", "de_train_gatekeeper"],
+        "rastabad_beast": ["de_gate_general", "de_train_blacktiger", "de_train_tamer", "de_train_cursetamer", "de_train_hellhound", "de_train_soulknight", "de_train_hellslave", "de_train_summoner", "de_train_gatekeeper"],
         "king_baranka_room": ["de_king_baranka"],
         "law_king_room": ["de_king_laia"],
         "necro_king_room": ["de_king_heruby"],
         "assassin_king_room": ["de_king_slayer"],
-        "dark_magic_lab": ["de_lab_earth", "de_lab_water", "de_lab_wind", "de_lab_fire", "de_lab_mage", "de_train_gatekeeper"],
+        "dark_magic_lab": ["de_lab_earth", "de_lab_water", "de_lab_wind", "de_lab_fire", "de_lab_mage", "de_lab_blackmage", "de_train_gatekeeper"],
         "necro_training": ["de_necro_avenger", "de_necro_warlock", "de_necro_omwarrior", "de_necro_darklord", "de_necro_bloodknight", "de_necro_omheavy", "de_train_gatekeeper"],
         "antaras_lair": ["antaras"],
         "fafurion_lair": ["fafurion"],
@@ -1872,9 +1941,9 @@ const DB = {
         '狂暴的歐姆': [['potion_haste', 1], ['scroll_revive', 1]],
         '歐姆裝甲兵': [['wpn_xbow_rasta', 0.2]],
         '狂暴的歐姆裝甲兵': [['wpn_xbow_rasta', 0.2], ['potion_haste', 1], ['potion_brave', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1]],
-        '黑暗妖精殘兵(弓)': [['wpn_small_katana', 0.1], ['wpn_bow_rasta', 0.5], ['arm_rasta_leather', 2], ['bot_rasta', 1], ['potion_haste', 1], ['new_item_140', 1]],
+        '黑暗妖精殘兵(弓)': [['wpn_small_katana', 0.1], ['wpn_bow_rasta', 0.5], ['arm_rasta_leather', 2], ['bot_rasta', 1], ['potion_haste', 1], ['new_item_140', 1], ['quest_ring_darkdweller', 0.1]],
         '黑暗妖精殘兵(劍)': [['wpn_sword_rasta', 0.5], ['clk_dark', 0.1], ['arm_rasta_leather', 3], ['bot_rasta', 2], ['potion_haste', 1], ['potion_brave', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1], ['bk_berserk', 0.1], ['bk_dark_str', 1], ['bk_dark_burn', 0.5], ['bk_dark_erup', 0.1]],
-        '黑暗妖精殘兵(十字弓)': [['wpn_dagger_rasta', 0.5], ['wpn_xbow_rasta', 1], ['potion_haste', 1], ['new_item_140', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1], ['bk_holy_dash', 0.1], ['bk_dark_stealth', 1], ['bk_dark_poison', 1], ['bk_dark_str', 1], ['bk_dark_crit', 0.1], ['bk_dark_erup', 0.1]],
+        '黑暗妖精殘兵(十字弓)': [['wpn_dagger_rasta', 0.5], ['wpn_xbow_rasta', 1], ['potion_haste', 1], ['new_item_140', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1], ['bk_holy_dash', 0.1], ['bk_dark_stealth', 1], ['bk_dark_poison', 1], ['bk_dark_str', 1], ['bk_dark_crit', 0.1], ['bk_dark_erup', 0.1], ['quest_ring_darkdweller', 0.1]],
         '黑暗妖精殘兵(法師)': [['wpn_wand_rasta', 0.5], ['amr_rasta_robe', 0.1], ['potion_haste', 1], ['potion_blue', 1], ['new_item_140', 1], ['bk_dark_dex', 1]],
         '黑暗妖精殘兵(雙手劍)': [['wpn_dual_rasta', 0.5]],
         '黑暗精靈使': [['potion_haste', 1], ['new_item_140', 1], ['scroll_weapon', 0.5], ['scroll_armor', 1], ['bk_holy_barrier', 0.005], ['bk_dark_stealth', 1], ['bk_dark_poison', 1], ['bk_dark_mrup', 1], ['bk_dark_burn', 1], ['bk_dark_poisonres', 0.5], ['bk_dark_double', 0.05], ['bk_dark_fang', 0.1], ['bk_dark_crit', 0.5], ['quest_ring_elfcaller', 0.001]],
@@ -1893,6 +1962,7 @@ const DB = {
         '地獄束縛犬': [['potion_haste', 1], ['quest_ring_beasttamer', 0.05], ['mat_legion_beast', 0.05]],
         '魂騎士': [['wpn_official_2h', 0.01], ['glv_official', 0.05], ['bot_official', 0.05], ['blt_dark', 0.05], ['potion_haste', 1], ['quest_ring_beasttamer', 0.05], ['mat_legion_beast', 0.05]],
         '地獄奴隸': [['potion_haste', 1], ['mat_legion_beast', 0.05]],
+        '喚獸師': [['amr_summoner_robe', 0.01], ['acc_summoner_amulet', 0.001], ['quest_ring_summoner', 0.01]],
         // ===== 魔獸軍王之室 BOSS =====
         '魔獸軍王巴蘭卡': [['wpn_baranka_claw', 1], ['wpn_baranka_steelclaw', 0.1], ['hlm_official', 2], ['hlm_baranka', 0.1], ['amr_official', 2], ['amr_baranka', 0.1], ['glv_official', 3], ['glv_baranka', 1], ['bot_kingbeast', 0.1], ['bot_official', 3], ['bot_baranka', 0.1], ['blt_dark', 5], ['potion_haste', 1], ['mat_legion_beast', 100], ['mat_crest_beast', 10]],
         '法令軍王蕾雅': [['wpn_laia_wand', 0.03], ['wpn_priest_wand', 3], ['hlm_priest', 3], ['amr_laia_robe', 0.1], ['amr_kinglaw', 0.1], ['amr_priest', 3], ['glv_priest', 3], ['bot_priest', 3], ['acc_laia_amulet', 0.1], ['acc_law_king_chain', 0.1], ['acc_laia_ring', 0.05], ['blt_dark', 1], ['mat_legion_law', 100], ['mat_crest_law', 10]],
@@ -1904,6 +1974,7 @@ const DB = {
         '風元素守護者': [['mat_legion_law', 0.05], ['mat_wind_breath', 0.1]],
         '火元素守護者': [['mat_legion_law', 0.05], ['mat_fire_breath', 0.1]],
         '黑暗妖精法師': [['mat_legion_law', 0.05], ['wpn_wand_rasta', 1], ['amr_rasta_robe', 0.1], ['potion_haste', 1], ['new_item_140', 1], ['bk_dark_dex', 1], ['bk_tornado', 0.05], ['bk_ice_spike', 1]],
+        '黑法師': [['wpn_darkmage_wand', 0.01], ['amr_darkmage_robe', 0.05], ['acc_darkmage_amulet', 0.001], ['quest_ring_darkmage', 0.01]],
         // ===== 冥法軍訓練場 =====
         '黑暗復仇者': [['wpn_dark_sword', 0.01], ['amr_official', 0.05], ['mat_legion_necro', 0.1]],
         '血色術士': [['wpn_red_crystalwand', 0.1], ['hlm_priest', 0.05], ['amr_priest', 0.05], ['amr_dark_cape', 1], ['bot_priest', 0.05], ['potion_haste', 1], ['mat_legion_necro', 0.1]],
@@ -2095,7 +2166,7 @@ function sameItemSig(a, b) { return itemSig(a) === itemSig(b); }
 const SAVE_VERSION = 2;   // v1 = 未標版本的舊存檔
 const SAVE_DEFAULTS = {
     name: null, bonus: 0, panaceaUsed: 0, bloodPledge: null,
-    magicShieldCd: 0, reviveScrollCd: 0, lastMapByCat: {}, tracking: null, ismaelAccUsed: false, sherineWorld: false,
+    magicShieldCd: 0, reviveScrollCd: 0, lastMapByCat: {}, lastBattleMap: null, tracking: null, ismaelAccUsed: false, sherineWorld: false,
     masteryQuest: null, mastery: null, masteryChangeCnt: 0,
     elfEle: null, poly: null, summon: null, charmed: null, hot: null,
     manualCd: {}, blessings: {},
@@ -3427,20 +3498,25 @@ function tick() {
         let isPureBossMap = PURE_BOSS_MAPS.includes(mapState.current) && !KING_ROOMS[mapState.current];   // 🔧 軍王之室仍屬純BOSS房(免自動瞬移/追蹤)，但版面用三格
         if(!mapState.spawnAt) mapState.spawnAt = [null, null, null];
         let nowT = state.ticks;
-        for(let i=0; i<3; i++) {
-            if(mapState.mobs[i]) { mapState.spawnAt[i] = null; continue; } // 有怪：清除排程
-            if(isPureBossMap && i !== 1) continue;                          // 純 BOSS 房只生中央
-            let delay;
-            if(isPureBossMap) {
-                delay = 1800;                                               // 🔧 純BOSS房：BOSS死亡後固定 3 分鐘(1800 tick=180秒)才刷新，不受日光術/席琳的世界加速影響
-            } else if(KING_ROOMS[mapState.current]) {
-                delay = 50;                                                 // 🔧 軍王之室：固定 5 秒復活，不受日光術/席琳的世界加速影響
-            } else {
-                delay = (player.buffs.sk_sunlight > 0) ? 10 : 50;          // 50 tick = 5 秒（日光術約 1 秒）
-                if (sherineWorldActive() && !isSiegeArea(mapState.current)) delay = Math.max(1, delay - 10);   // 🔮 席琳的世界：搜索時間 −1 秒（與日光術疊加）
+        if(KING_ROOMS[mapState.current] && state._kbRespawnAt != null) {
+            // 🔧 軍王之室復活等待中：15 秒內不刷任何怪；時間到則消耗 1 把鑰匙、從頭重生軍王與兩側小怪（補跑期間延後到即時再執行）
+            if(!state.ff && nowT >= state._kbRespawnAt) { state._kbRespawnAt = null; kbRoomRespawn(); }
+        } else {
+            for(let i=0; i<3; i++) {
+                if(mapState.mobs[i]) { mapState.spawnAt[i] = null; continue; } // 有怪：清除排程
+                if(isPureBossMap && i !== 1) continue;                          // 純 BOSS 房只生中央
+                let delay;
+                if(isPureBossMap) {
+                    delay = 1800;                                               // 🔧 純BOSS房：BOSS死亡後固定 3 分鐘(1800 tick=180秒)才刷新，不受日光術/席琳的世界加速影響
+                } else if(KING_ROOMS[mapState.current]) {
+                    delay = 50;                                                 // 🔧 軍王之室：固定 5 秒復活，不受日光術/席琳的世界加速影響
+                } else {
+                    delay = (player.buffs.sk_sunlight > 0) ? 10 : 50;          // 50 tick = 5 秒（日光術約 1 秒）
+                    if (sherineWorldActive() && !isSiegeArea(mapState.current)) delay = Math.max(1, delay - 10);   // 🔮 席琳的世界：搜索時間 −1 秒（與日光術疊加）
+                }
+                if(mapState.spawnAt[i] == null) mapState.spawnAt[i] = nowT + delay; // 空格剛出現：排程 delay 後（一般 5 秒；純BOSS房 3 分鐘）
+                if(nowT >= mapState.spawnAt[i]) { spawnMob(i); mapState.spawnAt[i] = null; }
             }
-            if(mapState.spawnAt[i] == null) mapState.spawnAt[i] = nowT + delay; // 空格剛出現：排程 delay 後（一般 5 秒；純BOSS房 3 分鐘）
-            if(nowT >= mapState.spawnAt[i]) { spawnMob(i); mapState.spawnAt[i] = null; }
         }
     }
     
@@ -3757,10 +3833,10 @@ function spawnMob(idx) {
             if (uniquePool.length > 0) safePool = uniquePool;
         }
         mobId = safePool[Math.floor(Math.random() * safePool.length)];
-        // 血盟特殊敵人：已加入任一血盟陣營者，於非BOSS房狩獵地區有 0.1% 機率遇到敵對血盟。
+        // 血盟特殊敵人：已加入任一血盟陣營者，於非BOSS房狩獵地區有 0.3% 機率遇到敵對血盟。
         // 兩陣營遇到的敵人相同；排除「與自己性別職業對應」的血盟敵人；依詩蒂陣營玩家不論職業都不會遇到依詩蒂本人。
         // 從符合條件者中平均抽一隻；場上可同時有多隻不同名的血盟敵人，但不會有同名兩隻。
-        if(player.bloodPledge && !PURE_BOSS_MAPS.includes(mapState.current) && !isSiegeArea(mapState.current) && Math.random() < 0.001) {
+        if(player.bloodPledge && !PURE_BOSS_MAPS.includes(mapState.current) && !isSiegeArea(mapState.current) && Math.random() < 0.003) {
             let onField = mapState.mobs.filter(m => m).map(m => m.n);
             let candidates = Object.keys(DB.mobs).filter(id => {
                 let d = DB.mobs[id];
@@ -4015,7 +4091,7 @@ function consumeArrow() {
 }
 
 // ===== 法杖共鳴：裝備指定魔法杖時，一般攻擊(不論命中與否)有 智力/60 機率免費施展光箭 =====
-const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta', 'wpn_red_crystalwand', 'wpn_laia_wand', 'wpn_icequeen_wand', 'wpn_demon_scythe'];   // 🏅 共鳴：含蕾雅魔杖／冰之女王魔杖／惡魔鐮刀
+const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta', 'wpn_red_crystalwand', 'wpn_laia_wand', 'wpn_icequeen_wand', 'wpn_demon_scythe', 'wpn_darkmage_wand'];   // 🏅 共鳴：含蕾雅魔杖／冰之女王魔杖／惡魔鐮刀／黑法師之杖
 function wandLightArrowProc(target) {
     let wpn = player.eq.wpn;
     if (!wpn || !WAND_LIGHTARROW_IDS.includes(wpn.id)) return;
@@ -4787,7 +4863,7 @@ function killPlayer() {
     player.buffs.sk_charm = 0;
     // 協力傭兵：死亡當下不解散；改由「祈求復活回城」時解散（原地復活/返生術/復活卷軸則保留）
     player.skills.forEach(s => { if(DB.skills[s] && DB.skills[s].summon) player.buffs[s] = 0; });
-    player.blessings = {};   // 死亡清空所有盟主祝福
+    // 🔧 盟主祝福不再因死亡清空：只有時間到才會消失（亦不受攻城影響）
     let msg = "你的角色已經死亡。（死亡不損失經驗值。）";
     
     // 顯示系統與戰鬥日誌
@@ -5429,8 +5505,23 @@ function settleDeadMobs() {
         }
     }
     if (changed) renderMobs();
-    // 🔧 魔獸軍王之室：擊敗頭目（掉落已於 killMob 發放）後傳送回村/回城；補跑期間延後到回到即時再執行
-    if (state._kbVictory && !state.ff) { state._kbVictory = false; kbVictoryTeleport(); }
+    // 🔧 軍王之室：擊敗頭目（掉落已於 killMob 發放）後處理；補跑期間延後到回到即時再執行。
+    //   身上仍有「軍王的鑰匙」→ 留在室內，清空全部怪物，15 秒後消耗 1 把鑰匙從頭復活軍王；
+    //   無鑰匙 → 傳送回村/回城（原行為）。
+    if (state._kbVictory && !state.ff) {
+        state._kbVictory = false;
+        let _hasKey = KING_ROOMS[mapState.current] && player.inv.some(i => i.id === 'item_king_key' && (i.cnt || 1) >= 1);
+        if (_hasKey) {
+            mapState.mobs = [null, null, null];
+            mapState.spawnAt = [null, null, null];
+            mapState.targetIdx = -1;
+            state._kbRespawnAt = state.ticks + 150;   // 15 秒（150 tick）後復活
+            renderMobs(); updateUI();
+            logSys('<span class="text-amber-300 font-bold">⚔ 軍王已倒下！室內怪物盡數消散…</span> 15 秒後將消耗 <span class="text-amber-300">1 把軍王的鑰匙</span>，軍王再度甦醒。');
+        } else {
+            kbVictoryTeleport();
+        }
+    }
 }
 // 🔧 魔獸軍王之室：擊敗巴蘭卡後的傳送（目的地同「回村/回城」按鈕：攻城獲勝→獲勝城池城堡，否則→職業/血盟起始村）
 function kbVictoryTeleport() {
@@ -5441,6 +5532,20 @@ function kbVictoryTeleport() {
     if (!player.lastMapByCat) player.lastMapByCat = {};
     player.lastMapByCat.special = 'training';
     saveGame();        // 傳送後存檔，使重新載入時人物位於村莊（而非已清空的BOSS房）
+}
+// 🔧 軍王之室：等待 15 秒後消耗 1 把「軍王的鑰匙」，從頭重生中央軍王與兩側小怪；沒鑰匙則保險傳送回村/回城
+function kbRoomRespawn() {
+    if (!KING_ROOMS[mapState.current]) { state._kbRespawnAt = null; return; }
+    let _ki = player.inv.findIndex(i => i.id === 'item_king_key' && (i.cnt || 1) >= 1);
+    if (_ki < 0) { kbVictoryTeleport(); return; }   // 等待期間鑰匙意外用罄：傳送回村/回城
+    let _kit = player.inv[_ki];
+    if ((_kit.cnt || 1) > 1) _kit.cnt -= 1; else player.inv.splice(_ki, 1);
+    spawnMob(1); spawnMob(0); spawnMob(2);          // 中央軍王 + 兩側小怪，全新滿血
+    mapState.spawnAt = [null, null, null];
+    mapState.targetIdx = -1;
+    renderTabs(true); renderMobs(); updateUI();
+    logSys('<span class="text-amber-300 font-bold">你消耗了 1 把 軍王的鑰匙，軍王再度甦醒！</span>');
+    saveGame();
 }
 
 function checkLvUp() {
@@ -7769,7 +7874,14 @@ function updateUI() {
     try { renderPandoraBanner(); } catch (e) {}   // 🔧 潘朵拉黑市稀有商品公告橫幅
     try { renderSyslogPandora(); } catch (e) {}   // 🔧 系統日誌標題列右側：黑市拍賣中商品
     document.getElementById('st-lv').innerText = player.lv;
-    { let rb = document.getElementById('btn-return-town'); if (rb) rb.textContent = siegeVictoryActive() ? '回城' : '回村'; }
+    { let _inTown = mapState.current.startsWith('town_');   // 🔧 村莊→藍色「出發」一鍵回上一張戰鬥地圖；戰鬥地圖→綠色回村/回城
+      let _txt = _inTown ? '出發' : (siegeVictoryActive() ? '回城' : '回村');
+      let _fn  = _inTown ? departToLastBattle : returnToTown;
+      let rb = document.getElementById('btn-return-town');
+      if (rb) { rb.textContent = _txt; rb.onclick = _fn; rb.style.background = _inTown ? '#1d4ed8' : ''; rb.style.borderColor = _inTown ? '#93c5fd' : ''; }
+      // 📱 手機常駐快捷鍵：與桌機按鈕同步（藍＝出發、綠＝回村/回城）
+      let mb = document.getElementById('mv-action-btn');
+      if (mb) { mb.textContent = _txt; mb.onclick = _fn; mb.style.background = _inTown ? '#1d4ed8' : '#047857'; mb.style.borderColor = _inTown ? '#93c5fd' : '#34d399'; } }
     { let vb = document.getElementById('victory-badge'); if (vb) vb.style.display = siegeVictoryActive() ? 'inline-flex' : 'none'; }   // 攻城獲勝淡金黃標記（inline-flex 讓👑與文字水平置中）
     applyAreaBackground();   // 區域背景：地監/攻城→戰鬥區、城堡→村莊畫面
     
@@ -7796,6 +7908,13 @@ function updateUI() {
     document.getElementById('bar-hp').style.width = `${Math.max(0, (player.hp/player.mhp)*100)}%`;
     document.getElementById('txt-mp').innerText = `${Math.floor(player.mp)}/${Math.floor(player.mmp)}`;
     document.getElementById('bar-mp').style.width = `${Math.max(0, (player.mp/player.mmp)*100)}%`;
+    // 📱 手機置頂常駐 HP/MP 細條：同步主血條數值（桌機隱藏，更新無副作用）
+    { let _mh = document.getElementById('mv-hp-fill'); if (_mh) {
+        _mh.style.width = `${Math.max(0, (player.hp/player.mhp)*100)}%`;
+        document.getElementById('mv-hp-txt').innerText = `${Math.floor(player.hp)}/${Math.floor(player.mhp)}`;
+        document.getElementById('mv-mp-fill').style.width = `${Math.max(0, (player.mp/player.mmp)*100)}%`;
+        document.getElementById('mv-mp-txt').innerText = `${Math.floor(player.mp)}/${Math.floor(player.mmp)}`;
+    } }
     // 🏰 城堡護衛：狀態欄顯示名字＋HP
     { let _gr = document.getElementById('castle-guard-row'), _g = player.castleGuard;
       if (_gr) { if (_g && siegeVictoryActive()) { _gr.classList.remove('hidden');
@@ -9286,6 +9405,26 @@ function returnToTown() {
     // 🔧 自軍王之室手動回城／回村：同樣將「特殊」記憶位置改為新兵修練場（避免下次自動回到需鑰匙的軍王之室）
     if (_wasKingRoom) { if (!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat.special = 'training'; saveGame(); }
 }
+// 🔧 村莊「出發」按鈕：一鍵回到上一張戰鬥地圖。軍王之室需鑰匙，無鑰匙顯示鑰匙不足。
+function departToLastBattle() {
+    if (player.statuses && (player.statuses.stone > 0 || player.statuses.paralyze > 0 || player.statuses.freeze > 0 || player.statuses.stun > 0)) {
+        logSys('你目前無法行動（石化／麻痺／冰凍／暈眩），無法出發。');
+        return;
+    }
+    let tgt = player.lastBattleMap;
+    if (!tgt || (!DB.maps[tgt] && !KING_ROOMS[tgt])) { logSys('<span class="text-slate-400">尚無上一張戰鬥地圖，請從地圖選單選擇前往。</span>'); return; }
+    if (KING_ROOMS[tgt] && !player.inv.some(i => i.id === 'item_king_key' && (i.cnt || 1) >= 1)) {
+        logSys('<span class="text-red-400">鑰匙不足，無法進入軍王之室。</span>');
+        return;
+    }
+    setMapSelectors(tgt);
+    if (document.getElementById('map-select').value !== tgt) {   // 目標目前不可前往（如攻城已結束、地圖未開放）
+        syncMapSelectors();
+        logSys('<span class="text-slate-400">上一張戰鬥地圖目前無法前往。</span>');
+        return;
+    }
+    changeMap();   // 走既有切換流程（軍王之室在此消耗 1 把鑰匙）
+}
 
 // ===== 攻城戰（第一階段：核心循環）=====
 function siegeWarrants() { return pledgeCountItem('new_item_241'); }   // 王族搜索狀數量
@@ -9697,8 +9836,10 @@ function changeMap(force) {
         }
     }
     mapState.current = document.getElementById('map-select').value;
+    if (!mapState.current.startsWith('town_')) player.lastBattleMap = mapState.current;   // 🔧 記住最後所在的戰鬥地圖，供村莊「出發」按鈕一鍵返回
     { let _c = mapCategoryOf(mapState.current); if(_c) { if(!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat[_c] = mapState.current; } }   // 記住各分類最後到過的地圖
     mapState.mobs = [null, null, null];
+    state._kbRespawnAt = null;    // 🔧 離開/進入任何地圖即取消軍王之室未完成的復活倒數（避免殘留狀態）
     mapState.forceBoss = false;   // 🔧 傳送戒指的必出BOSS僅在施放傳送的當下有效：換地圖即失效，需再次手動施放傳送術
     if(typeof auditReset === 'function') auditReset();   // 換地圖：效率統計重置
     
@@ -10275,7 +10416,7 @@ function siegeComingSoon(label) {
     alert((label || '此') + '功能尚未開放，敬請期待！');
 }
 
-// 交出 1 張王族搜索狀，獲得（或刷新）盟主祝福，持續 8 小時
+// 交出 1 張王族搜索狀，獲得（或刷新）盟主祝福，持續 24 小時（只受時間影響，不因攻城/死亡消失）
 function activateBlessing(key) {
     if (!BLESSING_DEFS[key]) return;
     // 僅在「剩餘時間不到 4 小時」時才能消耗王族搜索狀刷新；剩餘超過 4 小時則不消耗、不刷新
@@ -10293,8 +10434,8 @@ function activateBlessing(key) {
     player.inv[idx].cnt -= 1;
     if (player.inv[idx].cnt <= 0) player.inv.splice(idx, 1);
     if (!player.blessings) player.blessings = {};
-    player.blessings[key] = Date.now() + 8 * 3600 * 1000;   // 8 小時（已生效則刷新）
-    logSys(`你交出 1 張 王族搜索狀，獲得盟主的祝福：<span class="text-amber-300 font-bold">${BLESSING_DEFS[key].n}</span>（持續 8 小時）。`);
+    player.blessings[key] = Date.now() + 24 * 3600 * 1000;   // 24 小時（已生效則刷新）
+    logSys(`你交出 1 張 王族搜索狀，獲得盟主的祝福：<span class="text-amber-300 font-bold">${BLESSING_DEFS[key].n}</span>（持續 24 小時）。`);
     calcStats();
     renderTabs();
     updateUI();
@@ -12460,8 +12601,8 @@ function pandoraPrice(id) {
     let base = Math.max(1, d.p || 1);
     let w = Math.max(1, Math.min(100, d.gachaWeight || 100));
     let t = (100 - w) / 99;                          // 0 = 權重100(便宜)，1 = 權重1(昂貴)
-    let loMult = Math.round(1   + 99      * t);      // 1   → 100
-    let hiMult = Math.round(20  + 1980    * t);      // 20  → 2000
+    let loMult = Math.round(1   + 99      * t);      // 1   → 100（最小值不變）
+    let hiMult = Math.round(40  + 3960    * t);      // 40  → 4000（最大值加倍：原 20→2000）
     let flat   = Math.round(100 + 9999900 * t);      // 100 → 10,000,000
     let mult = loMult + Math.floor(Math.random() * (hiMult - loMult + 1));
     return base * mult + flat;

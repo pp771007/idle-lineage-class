@@ -159,7 +159,7 @@
     var parts = [];
     if (dGold > 0) parts.push(`<span class="text-yellow-400 font-bold">${fmt(dGold)} 金幣</span>`);
     if (dLv   > 0) parts.push(`<span class="text-green-400 font-bold">升 ${dLv} 級</span>`);
-    if (dExp  > 0) parts.push(`${fmt(dExp)} 經驗`);
+    if (dExp  > 0) parts.push(`<span class="text-purple-400 font-bold">${fmt(dExp)} 經驗</span>`);
     if (itemStr)   parts.push(itemStr);
     line += parts.length ? parts.join('、') : '（無明顯收益）';
     line += '。';

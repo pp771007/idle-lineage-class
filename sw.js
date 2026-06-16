@@ -16,7 +16,7 @@
  *     啟用時清掉、重新抓最新。
  *   - 日常新增背景圖(新檔名)不需要 bump:URL 不一樣,本來就會去抓新的。
  * ========================================================================== */
-const CACHE_VERSION = 'bg-v2';
+const CACHE_VERSION = 'bg-v3';
 const SCENE_PATH = '/assets/background/';
 
 self.addEventListener('install', () => {

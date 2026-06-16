@@ -139,7 +139,7 @@
     var dropsHTML = h.drops.length
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
           var pct = d[2] * (sherine ? 3 : 1); if (pct > 100) pct = 100;
-          return '<tr><td>' + hl(d[1], q) + '</td><td class="m-dex-pct">' + fmtPct(pct) + '%</td></tr>';
+          return '<tr><td><span class="m-dex-droplink" data-item="' + esc(d[1]) + '">' + hl(d[1], q) + '</span></td><td class="m-dex-pct">' + fmtPct(pct) + '%</td></tr>';
         }).join('') + '</tbody></table>'
       : '<div class="m-dex-nodrop">無專屬掉落表</div>';
     return '<div class="m-dex-card">' +
@@ -187,12 +187,13 @@
       var i = document.getElementById('m-dex-input');
       i.value = ''; doSearch(); i.focus();
     });
-    // 點出沒地圖名稱 → 把搜尋框設成該地圖名(等於查那張圖的所有怪)。事件委派,結果重繪也持續有效。
+    // 點「出沒地圖」→ 查該圖所有怪;點「掉落物」→ 查所有會掉這件的怪。事件委派,結果重繪也持續有效。
     document.getElementById('m-dex-results').addEventListener('click', function (e) {
-      var link = e.target.closest ? e.target.closest('.m-dex-maplink') : null;
+      if (!e.target.closest) return;
+      var link = e.target.closest('.m-dex-maplink') || e.target.closest('.m-dex-droplink');
       if (!link) return;
       var i = document.getElementById('m-dex-input');
-      i.value = link.getAttribute('data-map') || '';
+      i.value = link.getAttribute('data-map') || link.getAttribute('data-item') || '';
       doSearch();
       var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
     });
@@ -233,6 +234,8 @@
       '.m-dex-maps{font-size:13px;color:#e2e8f0;line-height:1.6;}',
       '.m-dex-maplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
       '.m-dex-maplink:active{color:#38bdf8;}',
+      '.m-dex-droplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
+      '.m-dex-droplink:active{color:#38bdf8;}',
       '.m-dex-nodrop{font-size:13px;color:#64748b;}',
       '.m-dex-drops{width:100%;border-collapse:collapse;font-size:13px;}',
       '.m-dex-drops td{padding:3px 4px;border-bottom:1px solid #1e293b;color:#e2e8f0;}',

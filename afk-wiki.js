@@ -121,6 +121,7 @@
     sk_magic_shield: '完全擋下接下來受到的一次攻擊（用掉後消失，3 秒內無法再施展）',
     sk_invisible: '隱身——滿血的一般怪物不會主動攻擊你',
     sk_resurrection: '死亡後可立即原地復活（消耗 MP），復活時回復 1～200 隨機 HP（MP 不恢復）；無冷卻、無次數限制，只要 MP 足夠就能一直用',
+    sk_undead_bane: '只對「不死類」怪物有效（圖鑑會標不死）：施放後有機率讓目標直接死亡，不是造成傷害。成功率看「你的等級＋魔法命中」對上「怪的等級＋魔防」，越壓制成功率越高，但封頂約 60%（再難打也保有最低成功率）；對王級（BOSS）一律無效',
     sk_holy_barrier: '受到的傷害減少 30%',
     sk_soul_up: 'HP 與 MP 上限各提升 20%',
     sk_abs_barrier: '與這個世界完全隔絕，持續 7 秒：期間不受任何傷害，但同時無法攻擊、施法、喝藥水或使用道具，HP／MP 也不會自然恢復；效果結束後要再等 12 秒才能再次施放',
@@ -557,11 +558,63 @@
     menu.appendChild(row);
   }
 
+  // ===== 能力值(本檔維護) ==================================================
+  var STATS_SECTIONS = [
+    { t: '💪 力量（STR）', lines: [
+      '近距離（近戰）<b>傷害、命中、爆擊率</b>的主要來源。',
+      '和體質一起撐起<b>負重上限</b>：上限約 ＝（⌊(力量×3＋體質×2)÷5⌋＋1）×50。',
+      '部分武器特性靠力量觸發：力量魔法杖「魔擊」、匕首／矛「出血」的機率都是<b>力量 ÷ 60</b>；屠龍劍「龍的一擊」固定傷害 ＝ 1～力量 ＋ 25。'
+    ]},
+    { t: '🏹 敏捷（DEX）', lines: [
+      '遠距離（弓）<b>傷害、命中、爆擊率</b>的主要來源。',
+      '同時提升你自己的<b>防禦與迴避</b>——越高越不容易被怪打中。'
+    ]},
+    { t: '❤️ 體質（CON）', lines: [
+      '決定每升一級的 <b>HP 成長量</b>（體質越高，等級帶來的血越多）。',
+      '決定 <b>HP 自然恢復</b>的上限，並和力量一起撐起<b>負重上限</b>。',
+      '還會提升<b>喝 HP 藥水的回復量</b>。'
+    ]},
+    { t: '🔮 智力（INT）', lines: [
+      '魔法<b>傷害、命中、爆擊率</b>的主要來源，並提升 <b>MP 上限</b>、降低魔法的 <b>MP 消耗</b>。',
+      '魔杖類特性靠智力觸發：魔杖「共鳴」、光箭機率 ＝<b>智力 ÷ 60</b>；神官魔杖「魔爆」＝單體 <b>智力 ÷ 100</b>、全體 <b>智力 ÷ 60</b>。'
+    ]},
+    { t: '🧠 精神（WIS）', lines: [
+      '決定<b>魔防</b>、<b>MP 自然恢復</b>，以及每升一級的 <b>MP 成長量</b>。',
+      '喝藍藥水的 MP 恢復加成、擊殺怪物回 MP 也看精神。',
+      '妖精「鏡反射」的反彈機率 ＝<b>精神</b>%（每 1 點精神 +1%）。'
+    ]},
+    { t: '✨ 魅力（CHA）', lines: [
+      '召喚物與被「迷魅／誘捕」的夥伴，其<b>命中與傷害</b>都隨魅力提升。',
+      '召喚／夥伴的<b>數量</b>以魅力 <b>60</b> 封頂（超過 60 只再加傷害命中、不再增加數量）。',
+      '第六屬性：配點＋萬能藥同樣最多到 60，但裝備與套裝（如四大軍王、白鳥）可以突破 60。'
+    ]}
+  ];
+  var STAT_CAP_SECTIONS = [
+    { t: '能力值上限與配點', lines: [
+      '每項能力值的「<b>自然值</b>」（基礎＋配點＋萬能藥）上限一律 <b>60</b>，不分等級。<b>裝備與增益不算進這個上限</b>，可以再往上疊加超過 60。',
+      '配點來源：創角時的初始點數，加上 <b>50 級以後每升一級 +1 點</b>。',
+      '想重來：用「<b>回憶蠟燭</b>」可把配點與萬能藥全部歸零、重新分配。'
+    ]},
+    { t: '🧪 萬能藥（永久加屬性）', lines: [
+      '共 6 種（力量／敏捷／體質／智力／精神／魅力），每喝 1 瓶讓對應能力值<b>永久 +1</b>，沒有等級限制。',
+      '總共最多喝 <b>60 瓶</b>（六種<b>合計</b>，不是每種各 60）；喝滿要用回憶蠟燭重置後才能再喝。',
+      '一樣受單項上限 60 限制：某項自然值已經 60，就不能再對它喝。',
+      '用回憶蠟燭重置時，會依「喝過的瓶數」退回等量的「<b>純白的萬能藥</b>」；3 個純白萬能藥可在<b>象牙塔的塔斯</b>處製作成任一屬性的萬能藥。'
+    ]},
+    { t: '✦ 萬能藥稀有掉落', lines: [
+      '打<b>等級 40 以上、且非血盟</b>的怪有機率掉萬能藥，擊殺後隨機給 6 種其中一種。',
+      '機率：<b>頭目 1%</b>、<b>一般怪 0.01%</b>（萬分之一）。',
+      '例外：<b>夢幻之島的頭目不掉</b>。',
+      '（另外，四大元素精靈王等部分頭目本來就會固定掉特定屬性的萬能藥，那是各自的掉落表，與上面這個通用稀有掉落分開計算。）'
+    ]}
+  ];
+
   // ===== 面板 =============================================================
   var TABS = [
     { k: 'mastery', n: '職業專精' },
     { k: 'weapon', n: '武器特性' },
     { k: 'combat', n: '戰鬥機制' },
+    { k: 'stats', n: '能力值' },
     { k: 'magic', n: '職業魔法' },
     { k: 'quest', n: '任務' },
     { k: 'set', n: '套裝' },
@@ -637,6 +690,7 @@
     if (key === 'mastery') return renderMastery(cls);
     if (key === 'weapon') return renderWeapon();
     if (key === 'combat') return renderCombat();
+    if (key === 'stats') return renderStats();
     if (key === 'magic') return renderMagic();
     if (key === 'quest') return renderQuest(cls);
     if (key === 'set') return renderSet();
@@ -671,6 +725,7 @@
     { key: 'mastery', cls: true, label: '職業專精' },
     { key: 'weapon', cls: false, label: '武器特性' },
     { key: 'combat', cls: false, label: '戰鬥機制' },
+    { key: 'stats', cls: false, label: '能力值' },
     { key: 'magic', cls: false, label: '職業魔法' },
     { key: 'quest', cls: true, label: '任務' },
     { key: 'set', cls: false, label: '套裝' },
@@ -823,6 +878,16 @@
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }).join('');
     return note + secs;
+  }
+
+  function renderStats() {
+    var note = '<div class="m-wiki-note">角色有六種能力值，各自影響戰鬥與生存的不同面向。下面先列各項作用，再說明上限、配點與「萬能藥」。</div>';
+    function card(s) {
+      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+    }
+    return note + STATS_SECTIONS.map(card).join('') +
+      '<div class="m-wiki-sub">上限・配點・萬能藥</div>' + STAT_CAP_SECTIONS.map(card).join('');
   }
 
   function renderTower() {

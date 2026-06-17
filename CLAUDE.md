@@ -94,7 +94,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 | `afk-offline.js` | 離線掛機(關瀏覽器也結算收益;24h 上限、撞死即停、存活回原狩獵圖續掛) |
 | `afk-mobile.js` | 手機版面(底部導覽列、一行式狀態列、浮動日誌面板、修正彈窗溢出) |
 | `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;純讀 DB.mobs/maps/MOB_DROPS/items;桌機手機共用) |
-| `afk-wiki.js` | 小百科(首頁入口;**7 分頁 + 關鍵字搜尋**:職業專精/武器特性/職業魔法/任務/套裝/強化/席琳;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**改前先讀下方「小百科維護準則」**) |
+| `afk-wiki.js` | 小百科(首頁入口;**8 分頁 + 關鍵字搜尋**:職業專精/武器特性/職業魔法/任務/套裝/強化/席琳/傲慢之塔;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**改前先讀下方「小百科維護準則」**) |
 | `afk-fixes.js` | 通用修正(補原作者上游坑、桌機/手機通用、與裝置判定無關;目前:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉) |
 | `afk-sw.js` | 背景大圖快取 Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
 | `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |
@@ -109,7 +109,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 ## 📚 小百科(afk-wiki.js)維護準則
 
-小百科已長成「**7 分頁 + 關鍵字搜尋**」:職業專精 / 武器特性 / 職業魔法 / 任務 / 套裝 / 強化 / 席琳。**改它前先讀這節**——以下都是使用者反覆要求過的點,別再犯。
+小百科已長成「**8 分頁 + 關鍵字搜尋**」:職業專精 / 武器特性 / 職業魔法 / 任務 / 套裝 / 強化 / 席琳 / 傲慢之塔。**改它前先讀這節**——以下都是使用者反覆要求過的點,別再犯。
 
 ### 「更新小百科內容」SOP(使用者說「更新小百科」就照這跑)
 
@@ -120,7 +120,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    重點抓:新技能(`sk_`)、新套裝(`set_`/`DB.sets`)、新試煉/精通 NPC、新武器特性 `eff`、席琳套裝(`SHERINE_SET_TEXT`)、`MASTERY_DATA` 變動。
 3. **把新內容補進對應分頁**——分兩種:
    - **讀遊戲資料、自動同步的**(通常不用改):職業專精讀 `MASTERY_DATA`、職業魔法讀 `DB.skills`、席琳套裝讀 `SHERINE_SET_TEXT`、掉落查詢純讀 `DB`。
-   - **本檔手動維護的清單(這些才要手動補)**:武器特性 `WEAPON_TRAITS`、套裝 `SETS`、強化機制 `ENHANCE_SECTIONS`、席琳各區 `SHERINE_SECTIONS`、任務 `QUEST_BY_CLASS`/`QUEST_COMMON`、技能白話補充 `EFFECT_OVERRIDE`。例:作者新增「惡魔套裝(set_12)」→ 手動加進 `SETS`。
+   - **本檔手動維護的清單(這些才要手動補)**:武器特性 `WEAPON_TRAITS`、套裝 `SETS`、強化機制 `ENHANCE_SECTIONS`、席琳各區 `SHERINE_SECTIONS`、傲慢之塔 `TOWER_SECTIONS`、任務 `QUEST_BY_CLASS`/`QUEST_COMMON`、技能白話補充 `EFFECT_OVERRIDE`。例:作者新增「惡魔套裝(set_12)」→ 手動加進 `SETS`。
 4. 補完照「每次 push 前檢查清單」bump `afk-wiki.js?v=`、無頭瀏覽器測過再推。
 
 ### 內容鐵則(踩過、別再犯)

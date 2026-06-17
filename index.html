@@ -783,7 +783,7 @@ const DB = {
         "hlm_bone": { n: "骷髏頭盔", type: "arm", slot: "helm", ac: 3, req: "all", safe: 0, p: 100, gachaWeight: 100 },
         "hlm_steel": { n: "鋼鐵頭盔", type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 18250, gachaWeight: 20 },
         "hlm_mage": { n: "法師之帽", type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 4250, gachaWeight: 50 },
-        "hlm_dk": { n: "死亡騎士頭盔", type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 36000, gachaWeight: 1 },
+        "hlm_dk": { n: "死亡騎士頭盔", type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 36000, gachaWeight: 1, d: "死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、攻速+35%）。" },
         "arm_50": { n: "精靈敏捷頭盔", type: "arm", slot: "helm", ac: 1, req: "elf", safe: 6, p: 4800, dex: 1, gachaWeight: 20 },
         "arm_51": { n: "精靈體質頭盔", type: "arm", slot: "helm", ac: 1, req: "elf", safe: 6, p: 4800, con: 1, gachaWeight: 20 },
         "arm_52": { n: "騎士頭巾", type: "arm", slot: "helm", ac: 1, req: "knight", p: 1, gachaWeight: 0 },
@@ -792,7 +792,7 @@ const DB = {
         "arm_55": { n: "卡士柏之帽", type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 23500, mmp: 25, gachaWeight: 1 },
         "arm_56": { n: "馬庫爾之帽", type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 23500, int: 1, gachaWeight: 1 },
         "arm_57": { n: "西瑪之帽", type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 23500, mmp: 15, mpR: 2, gachaWeight: 1 },
-        "hlm_kurt": { n: "克特頭盔", type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 32000, gachaWeight: 1 },
+        "hlm_kurt": { n: "克特頭盔", type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 32000, gachaWeight: 1, d: "克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、攻速+35%）。" },
         "arm_58": { n: "淨化頭飾", type: "arm", slot: "helm", ac: 0, req: "elf", p: 1, gachaWeight: 0 },
         "amr_plate": { n: "金屬盔甲", type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 51800, gachaWeight: 30 },
         "arm_59": { n: "水晶盔甲", type: "arm", slot: "armor", ac: 8, req: "knight", safe: 4, p: 48000, gachaWeight: 20 },   // 🔧 由 惡魔(10%)／密密(0.1%)／黑暗復仇者(0.1%) 掉落；潘朵拉權重 20（進黑市/血盟野外抽獎池）
@@ -825,9 +825,9 @@ const DB = {
         "arm_81": { n: "地龍鱗盔甲", type: "arm", slot: "armor", ac: 9, resEarth: 20, req: "all", safe: 4, p: 336000, gachaWeight: 1 },
         "arm_82": { n: "火龍鱗盔甲", type: "arm", slot: "armor", ac: 9, resFire: 20, req: "all", safe: 4, p: 336000, gachaWeight: 1 },
         "arm_83": { n: "風龍鱗盔甲", type: "arm", slot: "armor", ac: 9, resWind: 20, req: "all", safe: 4, p: 336000, gachaWeight: 1 },
-        "amr_dk": { n: "死亡騎士盔甲", type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 128000, gachaWeight: 1 },
+        "amr_dk": { n: "死亡騎士盔甲", type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 128000, gachaWeight: 1, d: "死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、攻速+35%）。" },
         "arm_84": { n: "黑長者長袍", type: "arm", slot: "armor", ac: 5, req: "mage", safe: 4, p: 124000, mmp: 50, mpR: 5, gachaWeight: 1 },
-        "amr_kurt": { n: "克特盔甲", type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 126000, gachaWeight: 1 },
+        "amr_kurt": { n: "克特盔甲", type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 126000, gachaWeight: 1, d: "克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、攻速+35%）。" },
         "tsh_tshirt": { n: "T恤", type: "arm", slot: "tshirt", ac: 0, req: "all", safe: 4, p: 8500, gachaWeight: 50 },
         "arm_85": { n: "精靈T恤", type: "arm", slot: "tshirt", ac: 0, req: "elf", safe: 6, p: 6600, gachaWeight: 20 },
         "clk_elf": { n: "精靈斗篷", type: "arm", slot: "cloak", ac: 1, req: "all", safe: 6, p: 900, gachaWeight: 100 },
@@ -845,9 +845,9 @@ const DB = {
         "arm_93": { n: "皮長靴", type: "arm", slot: "boots", ac: 2, req: "all", safe: 4, p: 720, gachaWeight: 100 },
         "arm_94": { n: "鋼鐵長靴", type: "arm", slot: "boots", ac: 3, req: "all", safe: 4, p: 16500, gachaWeight: 20 },
         "arm_95": { n: "深水長靴", type: "arm", slot: "boots", ac: 2, req: "all", safe: 4, p: 36500, mpR: 1, gachaWeight: 10 },
-        "bot_dk": { n: "死亡騎士長靴", type: "arm", slot: "boots", ac: 3, req: "knight", safe: 4, p: 24000, gachaWeight: 1 },
+        "bot_dk": { n: "死亡騎士長靴", type: "arm", slot: "boots", ac: 3, req: "knight", safe: 4, p: 24000, gachaWeight: 1, d: "死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、攻速+35%）。" },
         "arm_96": { n: "黑長者涼鞋", type: "arm", slot: "boots", ac: 2, req: "mage", safe: 4, p: 21000, mmp: 25, mpR: 5, gachaWeight: 1 },
-        "arm_97": { n: "克特長靴", type: "arm", slot: "boots", ac: 3, req: "knight", safe: 4, p: 22000, gachaWeight: 1 },
+        "arm_97": { n: "克特長靴", type: "arm", slot: "boots", ac: 3, req: "knight", safe: 4, p: 22000, gachaWeight: 1, d: "克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、攻速+35%）。" },
         "glv_glove": { n: "手套", type: "arm", slot: "gloves", ac: 0, req: "all", safe: 4, p: 1720, gachaWeight: 100 },
         "glv_official": { n: "武官手套", type: "arm", slot: "gloves", ac: 1, mhp: 10, req: "knight,dark", safe: 6, p: 5900, gachaWeight: 10 },
         "bot_official": { n: "武官長靴", type: "arm", slot: "boots", ac: 2, mhp: 20, req: "knight,dark", safe: 6, p: 8900, gachaWeight: 10 },
@@ -855,7 +855,7 @@ const DB = {
         "arm_98": { n: "腕甲", type: "arm", slot: "gloves", ac: 0, req: "knight,elf", safe: 4, p: 11550, rangedHit: 2, gachaWeight: 20 },
         "arm_99": { n: "力量手套", type: "arm", slot: "gloves", ac: 0, req: "all", safe: 4, p: 19800, str: 2, gachaWeight: 5 },
         "arm_100": { n: "鋼鐵手套", type: "arm", slot: "gloves", ac: 1, req: "all", safe: 4, p: 11550, gachaWeight: 20 },
-        "glv_dk": { n: "死亡騎士手套", type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 18500, gachaWeight: 1 },
+        "glv_dk": { n: "死亡騎士手套", type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 18500, gachaWeight: 1, d: "死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、攻速+35%）。" },
         "arm_shadowglove": { n: "影子手套", type: "arm", slot: "gloves", ac: 1, con: 1, req: "dark", safe: 6, p: 1720, gachaWeight: 50 },   // 🔧 黑暗妖精：倫得以死亡誓約兌換
         "arm_shadowmask": { n: "影子面具", type: "arm", slot: "helm", ac: 2, req: "dark", safe: 6, p: 1240, gachaWeight: 50 },   // 🔧 黑暗妖精：康以妖魔長老首級兌換
         "arm_shadowboots": { n: "影子長靴", type: "arm", slot: "boots", ac: 2, mhp: 50, hpR: 4, req: "dark", safe: 4, p: 2660, gachaWeight: 50 },   // 🔧 黑暗妖精：布魯迪卡以雪怪首級兌換
@@ -867,7 +867,7 @@ const DB = {
         "amr_darkmage_robe": { n: "黑法師長袍", type: "arm", slot: "armor", ac: 4, mmp: 5, mpR: 5, req: "mage", safe: 4, p: 53100, gachaWeight: 10 },
         "amr_summoner_robe": { n: "喚獸師長袍", type: "arm", slot: "armor", ac: 4, mhp: 5, mpR: 5, req: "mage", safe: 4, p: 53100, gachaWeight: 10 },
         "shd_rasta": { n: "拉斯塔巴德圓盾", type: "arm", slot: "shield", ac: 2, req: "all", safe: 4, p: 500, gachaWeight: 100, block: 35 },
-        "arm_101": { n: "克特手套", type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 17500, gachaWeight: 1 },
+        "arm_101": { n: "克特手套", type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 17500, gachaWeight: 1, d: "克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、攻速+35%）。" },
         "arm_102": { n: "保護者手套", type: "arm", slot: "gloves", ac: 0, req: "elf", safe: 4, p: 4500, mhp: 20, mmp: 20, gachaWeight: 30 },
         "arm_103": { n: "小盾牌", type: "arm", slot: "shield", ac: 1, req: "all", safe: 4, p: 84, gachaWeight: 100, block: 20 },
         "shd_elf": { n: "精靈盾牌", type: "arm", slot: "shield", ac: 2, req: "all", safe: 6, p: 3200, gachaWeight: 100, block: 40 },
@@ -4290,11 +4290,11 @@ function consumeArrow() {
             // 2. 背包也沒箭，檢查是否開啟自動購買
             let autoBuyCheckbox = document.getElementById('set-auto-buy-arrow');
             if (autoBuyCheckbox && autoBuyCheckbox.checked) {
-                let cost = 200; // 1000 銀箭，5 銀箭 = 1 金幣 → 200 金幣
+                let cost = shopPrice(200); // 1000 銀箭，5 銀箭 = 1 金幣 → 200 金幣（攻城獲勝 8 折亦適用）
                 if (player.gold >= cost) {
                     player.gold -= cost;
                     gainItem('wpn_22', 1000, true, true);
-                    logSys(`自動花費 200 金幣購買了 1000 銀箭。`);
+                    logSys(`自動花費 ${cost} 金幣購買了 1000 銀箭。`);
                     let freshArrow = player.inv.find(i => i.id === 'wpn_22');
                     if (freshArrow) equipItem(freshArrow);
                 } else {
@@ -4946,9 +4946,11 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0) {
     if(player.dead) return;
     if(!mob || mob.curHp <= 0) return;   // 🔧 攻擊者已死亡（如連擊中被反擊/居合反殺）：死怪不得繼續攻擊
 
+    // 🗼 沉睡：必定被命中、無法迴避，受擊後立即清醒
+    let _asleep = !!(player.statuses && player.statuses.sleep > 0);
     // 🔧 暗隱術：100% 迴避一次物理攻擊（迴避後失效並進入 5 秒冷卻）；否則依 ER 有效迴避率判定
     let _stealthDodge = !!(player.buffs && player.buffs.sk_dark_stealth > 0);
-    if (_stealthDodge || roll(1, 100) <= effResistPct(player.d.er)) {
+    if (!_asleep && (_stealthDodge || roll(1, 100) <= effResistPct(player.d.er))) {
         logCombat(`${player.name || '你'} 成功迴避攻擊。`, 'evade');
         if (hasMastery('d_evade')) { let _s = player._darkEvadeStack || 0; player._darkEvadeStack = 0; if (player.d) player.d.er -= _s; player._darkEvadeSure = true; player._darkEvadeCrit = true; }   // 🔧 迴避精通：清空累積ER，下次一般攻擊必中且必爆
         if (player._setShadow3) { player.hp = Math.min(player.mhp, player.hp + 20); }   // 🔧 暗影 3/5：觸發迴避恢復 20 HP
@@ -4978,6 +4980,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0) {
 
     if (rollHit === 20) { hit = true; heavy = true; }
     else if (rollHit !== 1 && hitValue >= rollHit) hit = true;
+    if (_asleep) hit = true;   // 🗼 沉睡：必定命中
 
     if (hit) {
         // 大地屏障：免疫一般攻擊傷害
@@ -5057,7 +5060,8 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0) {
         if(heavy) atkMsg += " (重擊!)";
         if(blocked) atkMsg += ` <span class="text-cyan-300 font-bold">(格檔！減少 ${blockReduced} 點傷害)</span>`;
         logCombat(atkMsg, 'enemy');
-        
+        if (_asleep && player.statuses.sleep > 0) { player.statuses.sleep = 0; logCombat('<span class="text-sky-200">你從沉睡中驚醒！</span>', 'magic'); }   // 🗼 沉睡：受擊即醒
+
         if (player.hp <= 0) killPlayer();
         else if (stunChance > 0 && Math.random() * 100 < stunChance) {   // 衝擊之暈：命中後依機率附加暈眩
             if (playerStunResisted()) { logCombat('<span class="text-sky-300 font-bold">你抵抗了暈眩！</span>', 'magic'); updateUI(); }
@@ -5306,13 +5310,14 @@ function applyMobMagic(mob, sk) {
     }
 
     if(sk.dmg) {
+        let _asleepM = !!(player.statuses && player.statuses.sleep > 0);   // 🗼 沉睡：必定被命中、受擊即醒（無法迴避魔法）
         // 🔮 月光 5/5：ER 也能迴避魔法攻擊（必中技能改為先判定 ER）
-        if (player._setMoon5 && roll(1, 100) <= effResistPct(player.d.er)) {
+        if (!_asleepM && player._setMoon5 && roll(1, 100) <= effResistPct(player.d.er)) {
             logCombat(`<span class="font-bold" style="color:#c4b5fd;">【月光 5/5】</span>你迴避掉 <span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放的 ${sk.skn || '魔法'}。`, 'evade');
             return;
         }
         // 🔧 暗影閃避：50% 迴避「必定命中」的傷害魔法，成功後失效並冷卻 5 秒
-        if (player.buffs && player.buffs.sk_dark_dodge > 0 && sk.alwaysHit && Math.random() < 0.5) {
+        if (!_asleepM && player.buffs && player.buffs.sk_dark_dodge > 0 && sk.alwaysHit && Math.random() < 0.5) {
             player.buffs.sk_dark_dodge = 0; player._darkDodgeCd = state.ticks + 50; calcStats();
             logCombat(`<span class="font-bold" style="color:#c4b5fd;">【暗影閃避】</span>你看穿並閃過了 <span class="${getMobColor(mob.lv)}">${mob.n}</span> 的 ${sk.skn || '魔法'}。`, 'evade');
             return;
@@ -5352,6 +5357,7 @@ function applyMobMagic(mob, sk) {
 
         player.hp -= dmg;
         logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，對你造成 ${dmg} 點魔法傷害。`, 'enemy');
+        if (_asleepM && player.statuses.sleep > 0) { player.statuses.sleep = 0; logCombat('<span class="text-sky-200">你從沉睡中驚醒！</span>', 'magic'); }   // 🗼 沉睡：受到魔法攻擊即醒
         
         if(sk.vamp || sk.vampFull) {
             let heal = sk.vampFull ? dmg : roll(sk.vamp[0], sk.vamp[1]);   // vampFull：恢復等同本次傷害量
@@ -7342,7 +7348,7 @@ function autoActions() {
             let current = player.inv.find(i => i.id === potId);
             let count = current ? current.cnt : 0;
             let needed = 100 - count;
-            let unitPrice = DB.items[potId].p;
+            let unitPrice = shopPrice(DB.items[potId].p);   // 攻城獲勝 8 折亦適用
             if (needed > 0 && player.gold >= needed * unitPrice) {
                 player.gold -= needed * unitPrice;
                 gainItem(potId, needed, true, true);
@@ -7370,7 +7376,7 @@ function autoActions() {
             if(item) {
                  useItem(item.uid, true);
             } else if (document.getElementById(cfg.buyId) && document.getElementById(cfg.buyId).checked) {
-                 let price = DB.items[cfg.pot].p;
+                 let price = shopPrice(DB.items[cfg.pot].p);   // 攻城獲勝 8 折亦適用
                  if(player.gold >= price) {
                      player.gold -= price;
                      gainItem(cfg.pot, 1, true, true);
@@ -7387,8 +7393,9 @@ function autoActions() {
             let item = player.inv.find(i => i.id === 'scroll_teleport');
             if (!item) {
                 let buyChk = document.getElementById('set-auto-buy-teleport');
-                if (buyChk && buyChk.checked && player.gold >= DB.items.scroll_teleport.p) {
-                    player.gold -= DB.items.scroll_teleport.p;
+                let _tpCost = shopPrice(DB.items.scroll_teleport.p);   // 攻城獲勝 8 折亦適用
+                if (buyChk && buyChk.checked && player.gold >= _tpCost) {
+                    player.gold -= _tpCost;
                     gainItem('scroll_teleport', 1, true, true);
                     item = player.inv.find(i => i.id === 'scroll_teleport');
                 }
@@ -8249,7 +8256,11 @@ function renderStatusEffects() {
             if(k === 'sk_charm' || DB.skills[k].summon) {
                 let _creature = (k === 'sk_charm') ? player.charmed : player.summon;
                 if(_creature && _creature.skId === k) {
-                    let cnt = (_creature.kind === 'melee' && k !== 'sk_charm') ? Math.floor(Math.min(60, player.d.cha||0)/6) : 0;
+                    let _chaC = Math.min(60, player.d.cha || 0);
+                    let cnt = (k === 'sk_charm') ? 0
+                        : (_creature.kind === 'melee') ? Math.floor(_chaC / 6)
+                        : (hasMastery('e_spirit') && (k === 'sk_elf_summon' || k === 'sk_elf_summon2')) ? Math.min(4, 1 + Math.floor(_chaC / 20))   // 🏅 精靈精通：屬性精靈顯示數量 1+魅力/20（上限4）
+                        : 0;
                     let suffix = cnt > 1 ? ` ${cnt}` : '';
                     buffs.push(`<span class="${getBuffColor(k, DB.skills[k])} font-bold">${_creature.n}${suffix}</span>`);
                 }

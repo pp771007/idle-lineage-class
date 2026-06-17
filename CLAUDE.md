@@ -97,6 +97,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 | `afk-wiki.js` | 小百科(首頁入口;**7 分頁 + 關鍵字搜尋**:職業專精/武器特性/職業魔法/任務/套裝/強化/席琳;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**改前先讀下方「小百科維護準則」**) |
 | `afk-fixes.js` | 通用修正(補原作者上游坑、桌機/手機通用、與裝置判定無關;目前:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉) |
 | `afk-sw.js` | 背景大圖快取 Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
+| `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |
 
 > 前五支互相低耦合;手機版的離線摘要會自動打開日誌。afk-dex 純讀資料、桌機手機都掛。
 > `afk-sw.js` + 根目錄 `sw.js`:只對 `/assets/background/` 的場景大圖做 cache-first(回訪/重整/改版都秒出、
@@ -148,6 +149,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    <script src="afk-wiki.js?v=YYYYMMDDx"></script>
    <script src="afk-fixes.js?v=YYYYMMDDx"></script>
    <script src="afk-sw.js?v=YYYYMMDDx"></script>
+   <script src="afk-toast.js?v=YYYYMMDDx"></script>
    ```
    - 新增外掛時,**務必同時**加上對應的 `<script>` 行(並同步加進 `scripts/sync-upstream.mjs` 的 `PLUGINS`;**有 DOM 掛點的**再加進 `scripts/smoke-hooks.mjs` 的 `need`——像 `afk-sw.js` 這種純註冊、無 DOM 掛點的就不必),否則功能不會生效、或下次自動同步會被原版覆蓋掉。
    - 原作者更新覆蓋 `index.html` 後,**第一件事就是把上面這幾行補回去**。

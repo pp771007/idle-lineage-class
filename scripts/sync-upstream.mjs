@@ -36,6 +36,7 @@ const PLUGINS = [
   { file: 'afk-wiki.js',    comment: '小百科外掛(專精/武器特性/職業魔法;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-fixes.js',   comment: '通用修正外掛(補原作者坑,桌機/手機通用;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-sw.js',      comment: '背景大圖快取 Service Worker 註冊(可獨立維護;原作者更新後重新加回此行即可)' },
+  { file: 'afk-toast.js',   comment: '手機 toast 提示(點按鈕的系統日誌訊息浮現;可獨立維護,原作者更新後重新加回此行即可)' },
 ];
 
 function setOutput(k, v) {

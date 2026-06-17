@@ -8,6 +8,8 @@
  * 怎麼避免洗頻(核心):只抓「click 事件同步派發期間」呼叫的 logSys。
  *   戰鬥/掛機是 tick(setInterval)在跑,掉落/金幣/升級那些洗版訊息不在任何 click 的
  *   同步窗內,自然不會被抓到 → 只有「真的點了按鈕」才會冒 toast。
+ *   另一道防線:一次點擊若同步吐出大量 logSys(如載入存檔時把整段離線掛機掉落一次性
+ *   寫進日誌),屬「批次洗版」非按鈕回饋 → 超過 FLOOD_CAP 就整批略過(不會冒幾百則)。
  *
  * 範圍:只在 body.m-mobile(手機版面,由 afk-mobile.js 依 matchMedia 切換)顯示;
  *   桌機系統日誌常駐可見,不需要 toast。
@@ -23,6 +25,7 @@
   var TOAST_MS = 3500;          // 每則 toast 停留時間(毫秒)
   var MAX_TOASTS = 3;           // 畫面同時最多幾張,超過移除最舊
   var MAX_LINES_PER_CLICK = 4;  // 單次點擊抓到多則(如某些一鍵操作)時最多顯示幾則
+  var FLOOD_CAP = 6;            // 單次點擊產生超過這麼多則 logSys → 視為結算/批次洗版,整批不冒 toast
   var NAV_H = 56;               // 配合 afk-mobile #m-nav 高度,toast 浮在導覽列上方
 
   function init() {
@@ -44,26 +47,36 @@
 
     // click 派發是同步的:capture 階段先把旗標立起來(早於各 onclick),
     // onclick 同步呼叫的 logSys 會被收進 buf;本輪 task 跑完後用 setTimeout(0) flush。
+    // 一次點擊若同步吐出大量 logSys(如載入存檔時的離線結算把整段掛機掉落一次性寫日誌),
+    // 是「批次洗版」而非按鈕回饋 → 超過 FLOOD_CAP 就標記整批略過,不冒 toast。
     var inClick = false;
     var buf = [];
+    var flooded = false;
     document.addEventListener('click', function () {
       inClick = true;
       buf = [];
+      flooded = false;
       setTimeout(function () {
         var msgs = buf;
+        var wasFlood = flooded;
         buf = [];
         inClick = false;
-        if (!msgs.length) return;
+        flooded = false;
+        if (wasFlood || !msgs.length) return;                        // 批次洗版整批略過
         if (!document.body.classList.contains('m-mobile')) return;   // 只手機顯示
         showToast(msgs);
       }, 0);
     }, true);
 
     // 包住 logSys:原行為照跑(訊息照樣進日誌);若在點擊同步窗內,順手收進 buf。
+    // 補跑/結算期間(state.ff)的訊息不收(那是背景批次,不是使用者點按鈕的即時回饋)。
     var orig = window.logSys;
     window.logSys = function (msg) {
       var r = orig.apply(this, arguments);
-      if (inClick && typeof msg === 'string') buf.push(msg);
+      if (inClick && typeof msg === 'string' && !(window.state && window.state.ff)) {
+        if (buf.length >= FLOOD_CAP) flooded = true;   // 超量 → 標記整批洗版,停止累積
+        else buf.push(msg);
+      }
       return r;
     };
 

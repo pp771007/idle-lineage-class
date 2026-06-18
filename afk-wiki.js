@@ -629,6 +629,18 @@
   ];
   var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all' };
 
+  // 把內文裡「見「分頁名」」的分頁名做成可點的跳頁連結(只認 TABS 裡的分頁名,避免誤把一般引號詞變連結)。
+  // 在 esc 之後執行也安全:「」不是 HTML 特殊字元、不會被 esc 動到。
+  var _tabByName = null;
+  function linkifyTabs(html) {
+    if (!html || html.indexOf('見「') < 0) return html;
+    if (!_tabByName) { _tabByName = {}; TABS.forEach(function (t) { _tabByName[t.n] = t.k; }); }
+    return html.replace(/(見「)([^」]+)(」)/g, function (m, pre, name, post) {
+      var k = _tabByName[name];
+      return k ? pre + '<span class="m-wiki-jump" data-goto-tab="' + k + '">' + name + '</span>' + post : m;
+    });
+  }
+
   function buildModal() {
     if (document.getElementById('m-wiki-modal')) return;
     var m = document.createElement('div');
@@ -669,6 +681,15 @@
     clearBtn.addEventListener('click', function () { input.value = ''; state.q = ''; clearBtn.classList.remove('show'); render(); input.focus(); });
     // 職業魔法分頁的「職業篩選」按鈕(事件委派;body innerHTML 重繪後仍有效)
     document.getElementById('m-wiki-body').addEventListener('click', function (e) {
+      // 「見「X」」跳頁連結:切到該分頁(順手清掉搜尋,否則還停在搜尋結果看不到分頁)
+      var jump = e.target.closest ? e.target.closest('[data-goto-tab]') : null;
+      if (jump) {
+        var inp = document.getElementById('m-wiki-input'); if (inp) inp.value = '';
+        var cb = document.getElementById('m-wiki-clear'); if (cb) cb.classList.remove('show');
+        state.q = ''; state.tab = jump.getAttribute('data-goto-tab');
+        render();
+        return;
+      }
       var b = e.target.closest ? e.target.closest('[data-magiccls]') : null;
       if (!b) return;
       state.magicCls = b.getAttribute('data-magiccls');
@@ -769,7 +790,7 @@
     if (q) {   // 搜尋模式:收起分頁/職業列,顯示跨全部分頁與職業的結果
       tabsEl.style.display = 'none';
       clsRow.style.display = 'none';
-      body.innerHTML = renderSearch(q);
+      body.innerHTML = linkifyTabs(renderSearch(q));
       highlightEl(body, q);
       return;
     }
@@ -778,7 +799,7 @@
     var showCls = (state.tab === 'mastery' || state.tab === 'quest');
     clsRow.style.display = showCls ? 'flex' : 'none';
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
-    body.innerHTML = (state.tab === 'magic') ? renderMagic(state.magicCls) : tabHTML(state.tab, state.cls);
+    body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : tabHTML(state.tab, state.cls));
   }
 
   function renderMastery(cls) {
@@ -1018,6 +1039,8 @@
       '#m-wiki-clear.show{display:block;}',
       '#m-wiki-clear:active{background:#64748b;}',
       'mark.m-wiki-hl{background:#fde047;color:#1e293b;border-radius:2px;padding:0 1px;}',
+      '.m-wiki-jump{color:#7dd3fc;font-weight:bold;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px;cursor:pointer;}',
+      '.m-wiki-jump:active{color:#38bdf8;}',
       '.m-wiki-cnt{color:#7dd3fc;font-size:12px;font-weight:normal;}',
       '#m-wiki-tabs{display:flex;flex-wrap:nowrap;gap:6px;padding:10px 12px 4px;flex:0 0 auto;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}',
       '#m-wiki-tabs::-webkit-scrollbar{height:5px;}',

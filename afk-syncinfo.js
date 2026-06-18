@@ -34,29 +34,35 @@
     if (document.getElementById('afk-syncinfo-style')) return;
     var s = document.createElement('style');
     s.id = 'afk-syncinfo-style';
-    s.textContent = '#afk-syncinfo{color:#64748b;font-size:12px;text-align:center;letter-spacing:.3px;margin-top:2px;}';
+    s.textContent =
+      '#afk-syncinfo{color:#64748b;font-size:12px;text-align:center;letter-spacing:.3px;margin-top:2px;line-height:1.6;}' +
+      '#afk-syncinfo .afk-si-sep{margin:0 6px;opacity:.6;}';
     document.head.appendChild(s);
   }
 
   function init() {
     var menu = document.getElementById('main-menu');
-    if (!menu) { console.warn('[AFK-syncinfo] 找不到 #main-menu,最後同步時間不顯示。'); return; }
+    if (!menu) { console.warn('[AFK-syncinfo] 找不到 #main-menu,原作者/最後同步資訊不顯示。'); return; }
     if (document.getElementById('afk-syncinfo')) return;
     injectCSS();
     var foot = document.createElement('div');
     foot.id = 'afk-syncinfo';
-    foot.textContent = '原版最後同步：載入中…';
+    foot.innerHTML =
+      '<span class="afk-si-author">原作者：秋玥</span>' +
+      '<span class="afk-si-sep">·</span>' +
+      '<span class="afk-si-time">原版最後同步：載入中…</span>';
     menu.appendChild(foot);
-    console.log('[AFK-syncinfo] hooks OK — 首頁顯示原版最後同步時間。');
+    console.log('[AFK-syncinfo] hooks OK — 首頁顯示原作者與原版最後同步時間。');
 
+    var timeEl = foot.querySelector('.afk-si-time'), sepEl = foot.querySelector('.afk-si-sep');
     fetch('last-sync.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         var t = j && j.syncedAt ? fmtTpe(j.syncedAt) : '';
-        if (t) foot.textContent = '原版最後同步：' + t;
-        else foot.style.display = 'none';
+        if (t) { timeEl.textContent = '原版最後同步：' + t; }
+        else { timeEl.style.display = 'none'; sepEl.style.display = 'none'; }   // 讀不到時間只藏時間段,作者照顯示
       })
-      .catch(function () { foot.style.display = 'none'; });
+      .catch(function () { timeEl.style.display = 'none'; sepEl.style.display = 'none'; });
   }
 
   ready(init);

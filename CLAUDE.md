@@ -98,7 +98,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 | `afk-fixes.js` | 通用修正(補原作者上游坑、桌機/手機通用、與裝置判定無關;目前:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉) |
 | `afk-sw.js` | 背景大圖快取 Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
 | `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |
-| `afk-syncinfo.js` | 首頁顯示「原版最後同步時間」(讀根目錄 `last-sync.json`→ 顯示在 `#main-menu` 最下方;時間由自動同步流程寫入,換算台灣時間顯示;讀不到安靜隱藏) |
+| `afk-syncinfo.js` | 首頁顯示「原作者:秋玥 · 原版最後同步時間」(顯示在 `#main-menu` 最下方;作者為固定文字、時間讀根目錄 `last-sync.json` 換算台灣時間;時間讀不到只藏時間段、作者照顯示) |
 
 > **小百科 / 掉落查詢的「獨立頁」(`?view=`)**:`index.html?view=wiki`、`index.html?view=dex` 會讓對應外掛把面板鋪滿整頁(藏掉創角/遊戲畫面、改 `document.title`、隱藏關閉鈕、背景點擊不關),並在最上方加一條**頁首導覽**(`#m-standalone-nav`:🏠首頁 / 📚小百科 / 📖掉落查詢,active 標亮)可互切與回首頁。看起來像獨立網頁。首頁兩顆入口旁各有一顆 `↗` 小鈕用 `window.open` 開新分頁到這網址;原本點主鈕開 modal 的行為保留。(頁首 `buildStandaloneNav` 在兩支外掛各有一份相同實作,只有 active 那支會跑、用 id 去重。)**資料仍來自 index.html 的 `DB`/`MOB_DROPS`/… 全域**(無法真的抽成獨立檔——那些 const 夾在原作者主程式裡、且每小時自動同步會整支覆蓋),所以獨立頁就是「重用 index.html 當資料源、只顯示該面板」。全寫在外掛內、不動原作者碼,自動同步不會洗掉。
 

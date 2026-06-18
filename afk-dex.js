@@ -183,7 +183,7 @@
     if (d.req) add('需求職業', itReqCN(d.req));
     if (d.slot) add('部位', IT_SLOT[d.slot] || d.slot);
     if (d.type === 'wpn') {
-      if (d.dmgS != null) add('攻擊力', d.dmgS === d.dmgL ? d.dmgS : '近 ' + d.dmgS + '　遠 ' + d.dmgL);
+      if (d.dmgS != null) add('攻擊力', d.dmgS === d.dmgL ? d.dmgS : '對小型怪 ' + d.dmgS + '　對大型怪 ' + d.dmgL);
       add('額外傷害', d.dmgBonus);
       add('命中', d.hit);
       add('魔法傷害', d.mdmg);

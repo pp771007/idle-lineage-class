@@ -29,6 +29,15 @@
   function standaloneUrl() {
     return location.href.split('?')[0].split('#')[0] + '?view=' + VIEW;
   }
+  // 獨立頁:把目前搜尋字寫進網址(replaceState,不灌爆上一頁/下一頁),方便複製連結分享給別人
+  function syncUrl() {
+    if (!isStandalone()) return;
+    try {
+      var inp = document.getElementById('m-dex-input');
+      var q = inp ? inp.value.trim() : '';
+      history.replaceState(null, '', location.pathname + '?view=' + VIEW + (q ? '&q=' + encodeURIComponent(q) : ''));
+    } catch (e) {}
+  }
 
   function init() {
     if (typeof DB === 'undefined' || !DB || !DB.mobs || !DB.maps || !DB.items || typeof MOB_DROPS === 'undefined') {
@@ -57,6 +66,8 @@
     }
     buildStandaloneNav('dex');
     openModal();
+    // 網址帶 ?q= 時自動帶入搜尋(分享連結用)
+    try { var q0 = new URLSearchParams(location.search).get('q'); if (q0) { var inp = document.getElementById('m-dex-input'); if (inp) { inp.value = q0; doSearch(); } } } catch (e) {}
   }
 
   // 獨立頁頁首:首頁 / 小百科 / 掉落查詢 互切(與 afk-wiki 共用同一條,只在 active 標亮)。
@@ -126,6 +137,7 @@
     var input = document.getElementById('m-dex-input');
     var results = document.getElementById('m-dex-results');
     if (!input || !results) return;
+    syncUrl();   // 同步搜尋字到網址(獨立頁才會動)
     var sherine = document.getElementById('m-dex-sherine').checked;
     var clearBtn = document.getElementById('m-dex-clear');
     if (clearBtn) clearBtn.classList.toggle('show', !!input.value);   // 有字才顯示清除鈕

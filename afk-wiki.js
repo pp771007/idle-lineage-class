@@ -33,6 +33,31 @@
   function standaloneUrl() {
     return location.href.split('?')[0].split('#')[0] + '?view=' + VIEW;   // 去掉現有 query/hash 再帶 view
   }
+  // 獨立頁:狀態(搜尋字/分頁/職業)←→ 網址,方便複製連結分享(replaceState,不灌爆瀏覽記錄)
+  function _wikiParam(n) { try { return new URLSearchParams(location.search).get(n); } catch (e) { return null; } }
+  var _tabSet = null, _clsSet = null;
+  function _validTab(k) { if (!_tabSet) { _tabSet = {}; TABS.forEach(function (t) { _tabSet[t.k] = 1; }); } return !!(k && _tabSet[k]); }
+  function _validCls(k) { if (!_clsSet) { _clsSet = {}; CLASSES.forEach(function (c) { _clsSet[c.k] = 1; }); } return !!(k && _clsSet[k]); }
+  function syncUrl() {
+    if (!isStandalone()) return;
+    try {
+      var u = location.pathname + '?view=' + VIEW;
+      if (state.q && state.q.trim()) u += '&q=' + encodeURIComponent(state.q.trim());   // 搜尋優先
+      else { u += '&tab=' + state.tab; if (state.tab === 'mastery' || state.tab === 'quest') u += '&cls=' + state.cls; }   // 否則記分頁(職業相關再帶職業)
+      history.replaceState(null, '', u);
+    } catch (e) {}
+  }
+  function applyUrlState(saved) {   // 載入時依網址還原(分享連結打開就是該畫面);saved 為先擷取的參數(openModal 的 render 會先把網址覆寫掉)
+    var p = saved || { q: _wikiParam('q'), tab: _wikiParam('tab'), cls: _wikiParam('cls') };
+    var q = p.q, tab = p.tab, cls = p.cls;
+    if (q) {
+      state.q = q;
+      var inp = document.getElementById('m-wiki-input'); if (inp) inp.value = q;
+      var cb = document.getElementById('m-wiki-clear'); if (cb) cb.classList.toggle('show', !!q);
+    } else if (_validTab(tab)) { state.tab = tab; }
+    if (_validCls(cls)) state.cls = cls;
+    render();
+  }
 
   function init() {
     if (typeof DB === 'undefined' || !DB || !DB.skills || typeof MASTERY_DATA === 'undefined') {
@@ -59,7 +84,10 @@
       var x = document.getElementById('m-wiki-close'); if (x) x.style.display = 'none';
     }
     buildStandaloneNav('wiki');
+    // 先擷取網址參數:openModal() 的 render 會用 replaceState 覆寫網址,晚讀就拿不到原本的 ?tab= 等
+    var _u = { q: _wikiParam('q'), tab: _wikiParam('tab'), cls: _wikiParam('cls') };
     openModal();
+    applyUrlState(_u);   // 依網址 ?q= / ?tab= / ?cls= 還原(分享連結用)
   }
 
   // 獨立頁頁首:首頁 / 小百科 / 掉落查詢 互切(小百科與掉落查詢共用同一條,只在 active 標亮)。
@@ -820,6 +848,7 @@
   function render() {
     var body = document.getElementById('m-wiki-body');
     if (!body) return;
+    syncUrl();   // 狀態變動時同步到網址(獨立頁才會動)
     var tabsEl = document.getElementById('m-wiki-tabs');
     var clsRow = document.getElementById('m-wiki-cls');
     var q = (state.q || '').trim().toLowerCase();

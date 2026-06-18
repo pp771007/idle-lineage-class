@@ -232,22 +232,15 @@
     function closeLog() { document.body.classList.remove('mlog-open'); updateLogNavActive(false); }
     function toggleLog() { if (document.body.classList.contains('mlog-open')) closeLog(); else openLog(); }
 
-    // iOS(含 iPadOS 13+ 偽裝成 Mac):有些只該在 iOS WebKit 套用的修正(如倉庫清單捲動)靠這個 class 區隔,避免波及安卓。
-    var IS_IOS = /iP(hone|ad|od)/.test(navigator.platform || '') ||
-                 /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
-                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
     function apply(on) {
       if (on) {
         document.body.classList.add('m-mobile');
-        document.body.classList.toggle('m-ios', IS_IOS);
         logsIntoSheet();
         if (!/mview-(battle|config|bag)/.test(document.body.className)) setView('battle');
         if (!/mlog-(combat|sys)/.test(document.body.className)) setLog('combat');
         mirror();
       } else {
         document.body.classList.remove('m-mobile');
-        document.body.classList.remove('m-ios');
         document.body.classList.remove('mlog-open');
         logsToColumn();
       }
@@ -722,11 +715,13 @@
       'body.m-mobile #interaction-content .list-item input{width:44px !important;}',
       'body.m-mobile #interaction-content .list-item > div:last-child{gap:6px !important;flex-wrap:wrap;justify-content:flex-end;margin-left:auto;}',
 
-      /* 倉庫雙清單(背包/倉庫)在 iOS(Brave 等皆 WebKit)上,滑內層清單時手勢被鏈到外層→背景捲動、清單不動。
-         overscroll-behavior:contain 阻止捲動鏈出去;-webkit-overflow-scrolling:touch 讓清單成為慣性捲動的觸控主體;
-         touch-action:pan-y 明示縱向捲動。
-         ⚠ 只套在 iOS(body.m-ios):安卓套了反而怪怪的(touch-action/overscroll 在安卓 WebView 會干擾正常捲動),故用 m-ios 隔離。 */
-      'body.m-mobile.m-ios #wh-inv-list,body.m-mobile.m-ios #wh-store-list{-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important;touch-action:pan-y !important;}',
+      /* 倉庫捲動的根因是「巢狀垂直捲動」:外層 #interaction-content 本身 overflow-y:auto 會捲,
+         內層兩個清單(#wh-inv-list/#wh-store-list)又各自 overflow-y:auto + max-height:340px 會捲。
+         iOS WebKit 無法乾淨判斷手勢屬於哪一層(原本鏈到外層→背景捲;之前用 -webkit-overflow-scrolling:touch
+         反而讓內層變成另一個捲動圖層→要先點一下才捲)。
+         解法:手機上讓兩個清單「不要自己捲」(取消 max-height/overflow),整個倉庫面板交給外層單一捲動 →
+         沒有巢狀就沒有哪層的爭議,iOS/安卓都正常。桌機維持原本各自捲(滑鼠滾輪無此問題)。 */
+      'body.m-mobile #wh-inv-list,body.m-mobile #wh-store-list{max-height:none !important;overflow:visible !important;}',
 
       /* 潘朵拉黑市卡片:原作用「左圖固定 112px + 右購買鈕固定 84px」的橫向列(行內 height:120px),
          手機窄寬下中間名稱/說明/價格欄被擠到只剩約 20px → 文字一字一行整個糊掉。改成直向堆疊:

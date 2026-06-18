@@ -52,6 +52,23 @@
     initTipPeek();   // 手機「長按物品看詳情」(取代桌機 hover tooltip)
     initWhQty();     // 手機倉庫存/取數量:自製視窗取代原生 prompt(iOS 連點會被抑制)
 
+    // 手機:點「回村/回城」後自動收起日誌浮層。日誌展開時會蓋住村莊的 NPC/商店/倉庫,否則每次回村都要先手動關一次。
+    //   回村兩顆鈕(桌機 #btn-return-town、手機 #mv-action-btn)都指向全域 returnToTown,包它最省。
+    //   只在「地圖真的有換」時關(被石化/暈眩擋住而沒回成的情況 mapState 不變 → 不關,也不會吃掉那則提示)。
+    if (typeof window.returnToTown === 'function' && !window.returnToTown.__afkWrapped) {
+      var _returnToTown = window.returnToTown;
+      window.returnToTown = function () {
+        var before = (typeof mapState !== 'undefined' && mapState) ? mapState.current : null;
+        var r = _returnToTown.apply(this, arguments);
+        try {
+          var after = (typeof mapState !== 'undefined' && mapState) ? mapState.current : null;
+          if (after && after !== before && document.body.classList.contains('m-mobile')) closeLog();
+        } catch (e) {}
+        return r;
+      };
+      window.returnToTown.__afkWrapped = true;
+    }
+
     // 手機戰鬥畫面:在怪物(#battle-view)正下方插「手動喝水列」(桌機隱藏)
     //   每列 = [藥水圖示][數量][按鈕];背包有安特的水果時自動多出第二列(食用)。
     var battleView = document.getElementById('battle-view');

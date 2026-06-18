@@ -37,6 +37,7 @@ const PLUGINS = [
   { file: 'afk-fixes.js',   comment: '通用修正外掛(補原作者坑,桌機/手機通用;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-sw.js',      comment: '背景大圖快取 Service Worker 註冊(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-toast.js',   comment: '手機 toast 提示(點按鈕的系統日誌訊息浮現;可獨立維護,原作者更新後重新加回此行即可)' },
+  { file: 'afk-syncinfo.js', comment: '首頁顯示原版最後同步時間(可獨立維護;原作者更新後重新加回此行即可)' },
 ];
 
 function setOutput(k, v) {
@@ -117,6 +118,9 @@ if (bgChanged.length && existsSync(SW_FILE)) {
 }
 
 const changed = htmlChanged || assetsAdded.length > 0 || assetsChanged.length > 0;
+// 記錄本次同步時間,供玩家端首頁(afk-syncinfo)顯示「原版最後同步」。
+// 無條件寫;但 workflow 只在 changed 時才 commit 這檔,故倉庫裡的時間=最後一次真的有合併更新的時間。
+writeFileSync('last-sync.json', JSON.stringify({ syncedAt: new Date().toISOString() }) + '\n');
 // 從 <title> 動態抓遊戲名(原作者改名也會自動正確),給 release 標題/說明用
 const titleMatch = merged.match(/<title>([^<]*)<\/title>/);
 const gameTitle = (titleMatch ? titleMatch[1] : '放置天堂').trim();

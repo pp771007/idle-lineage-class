@@ -43,7 +43,7 @@ await browser.close();
 server.close();
 
 // 各外掛的開機 log:'[AFK] hooks OK' / '[AFK-mobile] hooks OK' / '[AFK-dex] hooks OK' / '[AFK-wiki] hooks OK' / '[AFK-fixes] hooks OK'
-const need = ['[AFK]', '[AFK-mobile]', '[AFK-dex]', '[AFK-wiki]', '[AFK-fixes]'];
+const need = ['[AFK]', '[AFK-mobile]', '[AFK-dex]', '[AFK-wiki]', '[AFK-fixes]', '[AFK-syncinfo]'];
 const okMap = {};
 for (const n of need) okMap[n] = logs.some((l) => l.includes(n) && l.includes('hooks OK'));
 const allOK = Object.values(okMap).every(Boolean);

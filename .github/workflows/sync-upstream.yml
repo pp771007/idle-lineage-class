@@ -47,7 +47,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html assets sw.js
+          git add index.html assets sw.js last-sync.json
           MSG="chore(sync): 自動同步原作者最新 index.html(新增 ${{ steps.merge.outputs.assets_added }} 張、更新 ${{ steps.merge.outputs.assets_changed }} 張)"
           if [ "${{ steps.merge.outputs.bg_changed }}" != "0" ]; then
             git commit -m "$MSG" -m "⚠ 原作者更新了 ${{ steps.merge.outputs.bg_changed }} 張既有背景圖,已自動重抓並 bump 背景快取至 ${{ steps.merge.outputs.sw_version }}(實際檔名見本次變更)。"

@@ -117,6 +117,8 @@
       var hay = (mob.n + ' ' + maps.join(' ') + ' ' + drops.map(function (d) { return d[1]; }).join(' ')).toLowerCase();
       INDEX.push({ id: id, mob: mob, maps: maps, drops: drops, hay: hay });
     }
+    // 怪物等級低→高排序(同級以名稱排,讓結果順序穩定);所有搜尋結果都依此順序顯示
+    INDEX.sort(function (a, b) { return (a.mob.lv || 0) - (b.mob.lv || 0) || String(a.mob.n).localeCompare(String(b.mob.n)); });
   }
 
   // ----- 搜尋 + 渲染 ------------------------------------------------------

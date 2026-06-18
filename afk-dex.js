@@ -237,7 +237,7 @@
           var pct = d[2] * (sherine ? 3 : 1); if (pct > 100) pct = 100;
           return '<tr>' +
             '<td>' +
-              '<button class="m-dex-iview" data-id="' + esc(d[0]) + '" title="看數值與圖片" aria-label="看數值與圖片">👁</button>' +
+              '<button class="m-dex-iview" data-id="' + esc(d[0]) + '" title="看數值與圖片" aria-label="看數值與圖片">ℹ️</button>' +
               '<span class="m-dex-iname">' + hl(d[1], q) + '</span>' +
               '<button class="m-dex-isearch" data-item="' + esc(d[1]) + '" title="查會掉這件的怪" aria-label="查會掉這件的怪">🔍</button>' +
             '</td>' +
@@ -361,7 +361,7 @@
     document.getElementById('m-dex-results').addEventListener('click', function (e) {
       if (!e.target.closest) return;
       var iview = e.target.closest('.m-dex-iview');
-      if (iview) { openItemPop(iview.getAttribute('data-id')); return; }   // 點 👁 → 看數值與圖片
+      if (iview) { openItemPop(iview.getAttribute('data-id')); return; }   // 點 ℹ️ → 看數值與圖片
       var link = e.target.closest('.m-dex-maplink') || e.target.closest('.m-dex-isearch');   // 點地圖 / 🔍 → 搜尋
       if (!link) return;
       var i = document.getElementById('m-dex-input');
@@ -417,7 +417,7 @@
       '.m-dex-maps{font-size:13px;color:#e2e8f0;line-height:1.6;}',
       '.m-dex-maplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
       '.m-dex-maplink:active{color:#38bdf8;}',
-      /* 掉落物:文字左邊 👁(看詳情)、右邊 🔍(查會掉的怪);文字本身不可點,靠左右圖示一眼分辨兩個動作。 */
+      /* 掉落物:文字左邊 ℹ️(看詳情)、右邊 🔍(查會掉的怪);文字本身不可點,靠左右圖示一眼分辨兩個動作。 */
       '.m-dex-iview,.m-dex-isearch{border:none;background:none;cursor:pointer;font-size:15px;line-height:1;padding:2px 3px;vertical-align:middle;}',
       '.m-dex-iview{margin-right:5px;}',
       '.m-dex-isearch{margin-left:5px;}',

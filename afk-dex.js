@@ -235,16 +235,17 @@
     var dropsHTML = h.drops.length
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
           var pct = d[2] * (sherine ? 3 : 1); if (pct > 100) pct = 100;
-          return '<tr><td>' +
-            '<button class="m-dex-isearch" data-item="' + esc(d[1]) + '" title="搜尋會掉落此物的怪" aria-label="搜尋會掉落此物的怪">🔍</button>' +
-            '<span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看數值與圖片">' + hl(d[1], q) + '</span>' +
-            '</td><td class="m-dex-pct">' + fmtPct(pct) + '%</td></tr>';
+          return '<tr>' +
+            '<td><span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看這件的數值與圖片">' + hl(d[1], q) + '</span></td>' +
+            '<td class="m-dex-pct">' + fmtPct(pct) + '%</td>' +
+            '<td class="m-dex-actcell"><button class="m-dex-isearch" data-item="' + esc(d[1]) + '" title="查有哪些怪會掉這件">🔍 查怪</button></td>' +
+            '</tr>';
         }).join('') + '</tbody></table>'
       : '<div class="m-dex-nodrop">無專屬掉落表</div>';
     return '<div class="m-dex-card">' +
       '<div class="m-dex-name">' + hl(m.n, q) + ' ' + tags + '</div>' + stats +
       '<div class="m-dex-sub">出沒地圖</div><div class="m-dex-maps">' + mapsHTML + '</div>' +
-      '<div class="m-dex-sub">掉落' + (sherine ? '（席琳的世界 ×3）' : '') + '</div>' + dropsHTML +
+      '<div class="m-dex-sub">掉落' + (sherine ? '（席琳的世界 ×3）' : '') + (h.drops.length ? ' <span class="m-dex-subhint">· 點名稱看數值/圖片、按「🔍 查怪」找會掉的怪</span>' : '') + '</div>' + dropsHTML +
       '</div>';
   }
 
@@ -413,11 +414,12 @@
       '.m-dex-maps{font-size:13px;color:#e2e8f0;line-height:1.6;}',
       '.m-dex-maplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
       '.m-dex-maplink:active{color:#38bdf8;}',
-      '.m-dex-isearch{border:none;background:none;cursor:pointer;font-size:12.5px;padding:0 5px 0 0;line-height:1;opacity:.85;}',
-      '.m-dex-isearch:hover{opacity:1;}',
-      '.m-dex-isearch:active{opacity:.5;}',
-      '.m-dex-iname{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
+      '.m-dex-actcell{width:1%;white-space:nowrap;text-align:right;padding-left:8px !important;}',
+      '.m-dex-isearch{border:1px solid #334155;background:#1e293b;color:#cbd5e1;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold;padding:3px 8px;line-height:1.3;white-space:nowrap;}',
+      '.m-dex-isearch:active{background:#334155;}',
+      '.m-dex-iname{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',   /* 點名稱=看數值/圖片(檢視) */
       '.m-dex-iname:active{color:#38bdf8;}',
+      '.m-dex-subhint{font-size:11px;color:#64748b;font-weight:normal;}',
       '#m-dex-itempop{display:none;position:absolute;inset:0;z-index:1002;background:rgba(2,6,23,.66);align-items:center;justify-content:center;padding:24px 14px;}',
       '#m-dex-itempop.open{display:flex;}',
       '#m-dex-itempop-card{position:relative;width:min(420px,94vw);max-height:84vh;overflow-y:auto;background:#0f172a;border:1px solid #475569;border-radius:12px;padding:16px;box-shadow:0 16px 50px rgba(0,0,0,.6);}',

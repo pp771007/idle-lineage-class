@@ -669,11 +669,10 @@
     m.id = 'm-wiki-modal';
     m.innerHTML =
       '<div id="m-wiki-wrap">' +
-        '<div id="m-wiki-head">' +
-          '<span id="m-wiki-title">📚 小百科</span>' +
+        '<div id="m-wiki-searchrow">' +
+          '<span id="m-wiki-inwrap"><input id="m-wiki-input" type="text" placeholder="搜尋關鍵字（例:出血、套裝、屠龍劍）…" autocomplete="off"><button id="m-wiki-clear" type="button" title="清除">✕</button></span>' +
           '<button id="m-wiki-close" type="button" title="關閉">✕</button>' +
         '</div>' +
-        '<div id="m-wiki-searchrow"><input id="m-wiki-input" type="text" placeholder="搜尋關鍵字（例:出血、套裝、屠龍劍）…" autocomplete="off"><button id="m-wiki-clear" type="button" title="清除">✕</button></div>' +
         '<div id="m-wiki-tabs"></div>' +
         '<div id="m-wiki-cls"></div>' +
         '<div id="m-wiki-body"></div>' +
@@ -1148,14 +1147,13 @@
       '#m-wiki-modal.open{display:flex;}',
       '#m-wiki-modal[data-standalone]{padding-top:58px;}',
       '#m-wiki-wrap{width:min(680px,96vw);max-height:92vh;max-height:calc(100dvh - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',
-      '#m-wiki-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #1e293b;flex:0 0 auto;}',
-      '#m-wiki-title{flex:1 1 auto;font-size:17px;font-weight:bold;color:#fff;}',
       '#m-wiki-close{flex:0 0 auto;width:42px;height:38px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
       '#m-wiki-close:active{background:#334155;}',
-      '#m-wiki-searchrow{position:relative;display:flex;padding:10px 12px 2px;flex:0 0 auto;}',
+      '#m-wiki-searchrow{display:flex;gap:8px;align-items:center;padding:12px 12px 4px;flex:0 0 auto;}',
+      '#m-wiki-inwrap{position:relative;flex:1 1 auto;min-width:0;display:flex;}',
       '#m-wiki-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:9px 34px 9px 12px;font-size:14px;outline:none;font-family:inherit;}',
       '#m-wiki-input:focus{border-color:#6366f1;}',
-      '#m-wiki-clear{display:none;position:absolute;right:19px;top:calc(50% + 4px);transform:translateY(-50%);width:24px;height:24px;border:none;background:#475569;color:#e2e8f0;border-radius:50%;font-size:11px;line-height:1;cursor:pointer;padding:0;}',
+      '#m-wiki-clear{display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);width:24px;height:24px;border:none;background:#475569;color:#e2e8f0;border-radius:50%;font-size:11px;line-height:1;cursor:pointer;padding:0;}',
       '#m-wiki-clear.show{display:block;}',
       '#m-wiki-clear:active{background:#64748b;}',
       'mark.m-wiki-hl{background:#fde047;color:#1e293b;border-radius:2px;padding:0 1px;}',

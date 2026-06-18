@@ -97,6 +97,12 @@
       var fruit = (typeof player !== 'undefined' && player && player.inv) ? player.inv.find(function (x) { return x.id === 'new_item_141' && (x.cnt || 0) > 0; }) : null;
       var fruitRow = healBar.querySelector('.m-heal-fruit');
       if (fruitRow) { fruitRow.classList.toggle('m-show', !!fruit); if (fruit) setHealRow(fruitRow, 'new_item_141', fruit.cnt || 0, false); }
+      // 左側兩個卷軸勾選:回填設定面板的當前值(從設定面板或讀檔改動時跟著動)
+      var cbs = healBar.querySelectorAll('.m-scroll-cb');
+      for (var i = 0; i < cbs.length; i++) {
+        var t = document.getElementById(cbs[i].getAttribute('data-target'));
+        if (t && cbs[i].checked !== t.checked) cbs[i].checked = t.checked;
+      }
     }
     // 主動施放技能快捷鈕:只在「已學的 type:manual 技能」集合變動時重建按鈕(避免每 300ms 重畫);
     //   每次都更新「冷卻中／MP 不足」的灰階提示(純視覺,實際限制仍由 manualCast 把關)。
@@ -393,9 +399,38 @@
   function buildHealBar() {
     var bar = document.createElement('div');
     bar.id = 'm-heal-bar';
-    bar.appendChild(makeHealRow('pot'));
-    bar.appendChild(makeHealRow('fruit'));
+    bar.appendChild(buildScrollToggles());   // 左側:鏡射自動化設定的「魔法卷軸/瞬移卷軸」兩個勾選
+    var rows = document.createElement('div');
+    rows.className = 'm-heal-rows';
+    rows.appendChild(makeHealRow('pot'));
+    rows.appendChild(makeHealRow('fruit'));
+    bar.appendChild(rows);
     return bar;
+  }
+  // 手動喝水列左側的兩個 checkbox,直接鏡射自動化設定面板的 set-magicbarrier / set-teleport:
+  //   勾選 → 把對應的設定 checkbox 設成同值(遊戲每 tick 直接讀 .checked,故不必另發事件);
+  //   反向同步(從設定面板改動)由 updateHealBar 每 300ms 回填。
+  function buildScrollToggles() {
+    var wrap = document.createElement('div');
+    wrap.className = 'm-scroll-toggles';
+    wrap.appendChild(makeScrollToggle('set-magicbarrier', '魔法卷軸(魔法屏障)', 'text-cyan-300'));
+    wrap.appendChild(makeScrollToggle('set-teleport', '瞬間移動卷軸(遇BOSS)', 'text-sky-300'));
+    return wrap;
+  }
+  function makeScrollToggle(targetId, label, colorClass) {
+    var lab = document.createElement('label');
+    lab.className = 'm-scroll-tog';
+    var cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.className = 'm-scroll-cb'; cb.setAttribute('data-target', targetId);
+    cb.addEventListener('change', function () {
+      var t = document.getElementById(targetId);
+      if (t && t.checked !== cb.checked) t.checked = cb.checked;
+    });
+    var span = document.createElement('span');
+    span.className = 'm-scroll-lab ' + colorClass;
+    span.textContent = label;
+    lab.appendChild(cb); lab.appendChild(span);
+    return lab;
   }
   function makeHealRow(kind) {
     var row = document.createElement('div');
@@ -553,7 +588,13 @@
 
       /* 手機戰鬥畫面:怪物下方的手動喝水列(桌機與非戰鬥/村莊一律隱藏)。每列=[圖示][數量][按鈕] */
       '#m-heal-bar{display:none;}',
-      'body.m-mobile.mview-battle #m-heal-bar{display:flex;flex-direction:column;gap:8px;flex:0 0 auto;margin:10px 12px 2px;}',
+      'body.m-mobile.mview-battle #m-heal-bar{display:flex;flex-direction:row;align-items:center;gap:10px;flex:0 0 auto;margin:10px 12px 2px;}',
+      'body.m-mobile #m-heal-bar .m-heal-rows{display:flex;flex-direction:column;gap:8px;flex:1 1 auto;min-width:0;}',
+      'body.m-mobile #m-heal-bar .m-scroll-toggles{display:flex;flex-direction:column;gap:8px;flex:0 0 auto;}',
+      'body.m-mobile #m-heal-bar .m-scroll-tog{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:bold;white-space:nowrap;}',
+      'body.m-mobile #m-heal-bar .m-scroll-cb{width:18px;height:18px;flex:0 0 auto;margin:0;}',
+      'body.m-mobile #m-heal-bar .m-scroll-lab.text-cyan-300{color:#67e8f9;}',
+      'body.m-mobile #m-heal-bar .m-scroll-lab.text-sky-300{color:#7dd3fc;}',
       'body.m-mobile #m-heal-bar .m-heal-row{display:flex;align-items:center;gap:10px;}',
       'body.m-mobile #m-heal-bar .m-heal-fruit{display:none;}',                /* 沒有安特的水果就不顯示這列 */
       'body.m-mobile #m-heal-bar .m-heal-fruit.m-show{display:flex;}',

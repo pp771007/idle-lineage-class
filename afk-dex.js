@@ -167,8 +167,13 @@
     var q = (input.value || '').trim().toLowerCase();
     if (!q) { results.innerHTML = '<div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜裝備名可直接點看數值</div>'; return; }
     // 命中「全域特殊掉落」關鍵字 → 自動展開下方規則面板(萬能藥/席琳結晶等不在怪物掉落表內)
-    var special = matchesSpecial(q);
-    if (special) { var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true; }
+    var spId = matchSpecialId(q), special = !!spId;
+    if (spId) {   // 自動展開外層面板 + 展開/高亮/捲到對應那一條規則
+      var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true;
+      Array.prototype.forEach.call(document.querySelectorAll('.m-dex-sp-item'), function (it) { it.classList.remove('m-dex-sp-hit'); });
+      var hit = document.querySelector('.m-dex-sp-item[data-spid="' + spId + '"]');
+      if (hit) { hit.open = true; hit.classList.add('m-dex-sp-hit'); try { hit.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+    }
     var itemHTML = itemMatchesHTML(q);   // 先列出名稱符合的裝備(可點看數值;含沒被怪掉的)
     var hits = [];
     for (var i = 0; i < INDEX.length && hits.length <= MAX_RESULTS; i++) if (INDEX[i].hay.indexOf(q) >= 0) hits.push(INDEX[i]);
@@ -385,60 +390,64 @@
   // ----- 全域特殊掉落規則 -------------------------------------------------
   // 這些不在任一隻怪的 MOB_DROPS 表內,是遊戲依「等級/類型/地圖/技能」即時判定的條件掉落,
   // 所以不會出現在上面的怪物卡掉落清單。整理成一個預設收合的面板,點開才展開,不佔主版面。
-  // 搜到下列關鍵字時(doSearch)會自動展開,讓搜「萬能藥 / 席琳結晶」也能找到對應規則。
-  var SPECIAL_KEYS = ['萬能藥', '屬性藥', '席琳結晶', '黑魔石', '銀礦石', '祝福卷軸', '賦予祝福', '施法卷軸', '詛咒', '進化果實', '暴走兔', '狐狸', '攜帶物', '米索莉', '精靈玉', '元素石'];
-  function matchesSpecial(q) { return SPECIAL_KEYS.some(function (k) { return q.indexOf(k.toLowerCase()) >= 0; }); }
-
-  function spBlock(title, lines) {
-    return '<div class="m-dex-sp-block"><div class="m-dex-sp-h">' + title + '</div><ul>' +
-      lines.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul></div>';
+  // 全域特殊掉落規則:每條一個可摺疊區塊(預設收合,面板保持精簡);搜到該條關鍵字會自動展開+高亮+捲到它
+  var SPECIAL_BLOCKS = [
+    { id: 'panacea', title: '🧪 萬能藥（屬性藥）', keys: ['萬能藥', '屬性藥'], lines: [
+      '條件：怪物等級 40 以上、且不是血盟',
+      '一般怪 0.01%、頭目 1%，掉落時隨機給 力量／敏捷／體質／智力／精神／魅力 萬能藥之一',
+      '夢幻之島的頭目不走這條，改走自己的一般掉落表（搜該頭目可看到牠固定掉的萬能藥）',
+      '機率固定，<b>不受</b>「席琳的世界 ×3」影響'
+    ] },
+    { id: 'sherine', title: '🔮 席琳結晶（席琳的世界限定）', keys: ['席琳結晶'], lines: [
+      '條件：開啟「席琳的世界」後，被席琳化的怪掉（血盟怪、等級 20 以下不掉）',
+      '一般怪：等級 21~30 為 0.001%、31~40 為 0.002%、41 以上為 0.003%',
+      '頭目：一般頭目 0.1%、夢幻之島頭目 0.01%',
+      '三大龍（安塔瑞斯／法利昂／巴拉卡斯）：10%',
+      '機率固定，<b>不受</b>席琳世界 ×3 影響'
+    ] },
+    { id: 'blessscroll', title: '✦ 賦予祝福卷軸（等級 40 以上頭目）', keys: ['賦予祝福', '祝福卷軸'], lines: [
+      '條件：等級 40 以上頭目，夢幻之島、攻城區除外',
+      '賦予武器祝福卷軸 0.1%、賦予盔甲祝福卷軸 0.1%、賦予飾品祝福卷軸 0.01%',
+      '會受「席琳的世界 ×3」加成'
+    ] },
+    { id: 'castscroll', title: '📜 施法卷軸掉落時變祝福／詛咒', keys: ['施法卷軸', '詛咒'], lines: [
+      '打怪掉到「對武器施法的卷軸」或「對盔甲施法的卷軸」時，<b>各有 1% 變成「祝福的」、1% 變成「詛咒的」</b>（兩者互斥）。',
+      '「對飾品施法的卷軸」沒有這個隨機（要靠肯特城伊賽馬利或活動取得）。祝福的／詛咒的效果見小百科「強化」分頁。'
+    ] },
+    { id: 'fruit', title: '🐾 進化果實（寵物進化用）', keys: ['進化果實', '暴走兔', '狐狸', '小獵犬', '聖伯納'], lines: [
+      '打死「有屬性」的怪有機率掉對應的進化果實，機率 ＝ <b>0.0001% × 怪物等級</b>（怪越高機率越大）。',
+      '水屬性怪 → 暴走兔；火 → 狐狸；地 → 小獵犬；風 → 聖伯納。進化玩法見小百科「帶寵物」分頁。'
+    ] },
+    { id: 'areadrop', title: '🌿 區域額外掉落（妖精森林周邊、眠龍洞穴 1~3 樓）', keys: ['米索莉', '精靈玉', '元素石'], lines: [
+      '該區所有怪：粗糙的米索莉塊／精靈玉／元素石 各 20%',
+      '學會「世界樹的呼喚」則各 30%',
+      '會受「席琳的世界 ×3」加成'
+    ] },
+    { id: 'blackstone', title: '⛏ 黑魔石（黑暗妖精素材）', keys: ['黑魔石'], lines: [
+      '沉默洞穴周邊：二級黑魔石 20%、三級黑魔石 10%（學「提煉魔石」提高為 30%／15%）',
+      '其他野外／地監：需學「提煉魔石」才掉，二級 1%、三級 0.5%、四級 0.1%',
+      '機率固定，<b>不受</b>席琳世界 ×3 影響'
+    ] },
+    { id: 'silverore', title: '🪙 銀礦石（黑暗妖精製作材料）', keys: ['銀礦石'], lines: [
+      '石頭高崙／鋼鐵高崙：100%',
+      '侏儒／侏儒戰士／黑騎士／哈柏哥布林／蜥蜴人：各 50%'
+    ] },
+    { id: 'pledgedrop', title: '🎁 野外血盟敵人／攻城敵人 額外掉落', keys: ['攜帶物'], lines: [
+      '擊殺時 1% 機率額外掉一件物品：從幾乎所有可掉物依稀有度隨機抽（越稀有越難中、常見物權重加倍）',
+      '抽到裝備一定帶強化：多在 +0～該裝備安定值；超出安定值的機率 +1 為 0.1%、+2 0.01%、+3 0.001%、+4 0.0001%。另 1% 帶「祝福的」'
+    ] }
+  ];
+  var SPECIAL_KEYS = SPECIAL_BLOCKS.reduce(function (a, b) { return a.concat(b.keys); }, []);
+  function matchSpecialId(q) {
+    for (var i = 0; i < SPECIAL_BLOCKS.length; i++) { var b = SPECIAL_BLOCKS[i]; for (var j = 0; j < b.keys.length; j++) { if (q.indexOf(b.keys[j].toLowerCase()) >= 0) return b.id; } }
+    return null;
   }
+  function matchesSpecial(q) { return matchSpecialId(q) !== null; }
   function specialPanelHTML() {
-    var body =
-      spBlock('🧪 萬能藥（屬性藥）', [
-        '條件：怪物等級 40 以上、且不是血盟',
-        '一般怪 0.01%、頭目 1%，掉落時隨機給 力量／敏捷／體質／智力／精神／魅力 萬能藥之一',
-        '夢幻之島的頭目不走這條，改走自己的一般掉落表（搜該頭目可看到牠固定掉的萬能藥）',
-        '機率固定，<b>不受</b>「席琳的世界 ×3」影響'
-      ]) +
-      spBlock('🔮 席琳結晶（席琳的世界限定）', [
-        '條件：開啟「席琳的世界」後，被席琳化的怪掉（血盟怪、等級 20 以下不掉）',
-        '一般怪：等級 21~30 為 0.001%、31~40 為 0.002%、41 以上為 0.003%',
-        '頭目：一般頭目 0.1%、夢幻之島頭目 0.01%',
-        '三大龍（安塔瑞斯／法利昂／巴拉卡斯）：10%',
-        '機率固定，<b>不受</b>席琳世界 ×3 影響'
-      ]) +
-      spBlock('✦ 賦予祝福卷軸（等級 40 以上頭目）', [
-        '條件：等級 40 以上頭目，夢幻之島、攻城區除外',
-        '賦予武器祝福卷軸 0.1%、賦予盔甲祝福卷軸 0.1%、賦予飾品祝福卷軸 0.01%',
-        '會受「席琳的世界 ×3」加成'
-      ]) +
-      spBlock('📜 施法卷軸掉落時變祝福／詛咒', [
-        '打怪掉到「對武器施法的卷軸」或「對盔甲施法的卷軸」時，<b>各有 1% 變成「祝福的」、1% 變成「詛咒的」</b>（兩者互斥）。',
-        '「對飾品施法的卷軸」沒有這個隨機（要靠肯特城伊賽馬利或活動取得）。祝福的／詛咒的效果見小百科「強化」分頁。'
-      ]) +
-      spBlock('🐾 進化果實（寵物進化用）', [
-        '打死「有屬性」的怪有機率掉對應的進化果實，機率 ＝ <b>0.0001% × 怪物等級</b>（怪越高機率越大）。',
-        '水屬性怪 → 暴走兔；火 → 狐狸；地 → 小獵犬；風 → 聖伯納。進化玩法見小百科「帶寵物」分頁。'
-      ]) +
-      spBlock('🌿 區域額外掉落（妖精森林周邊、眠龍洞穴 1~3 樓）', [
-        '該區所有怪：粗糙的米索莉塊／精靈玉／元素石 各 20%',
-        '學會「世界樹的呼喚」則各 30%',
-        '會受「席琳的世界 ×3」加成'
-      ]) +
-      spBlock('⛏ 黑魔石（黑暗妖精素材）', [
-        '沉默洞穴周邊：二級黑魔石 20%、三級黑魔石 10%（學「提煉魔石」提高為 30%／15%）',
-        '其他野外／地監：需學「提煉魔石」才掉，二級 1%、三級 0.5%、四級 0.1%',
-        '機率固定，<b>不受</b>席琳世界 ×3 影響'
-      ]) +
-      spBlock('🪙 銀礦石（黑暗妖精製作材料）', [
-        '石頭高崙／鋼鐵高崙：100%',
-        '侏儒／侏儒戰士／黑騎士／哈柏哥布林／蜥蜴人：各 50%'
-      ]) +
-      spBlock('🎁 野外血盟敵人／攻城敵人 額外掉落', [
-        '擊殺時 1% 機率額外掉一件物品：從幾乎所有可掉物依稀有度隨機抽（越稀有越難中、常見物權重加倍）',
-        '抽到裝備一定帶強化：多在 +0～該裝備安定值；超出安定值的機率 +1 為 0.1%、+2 0.01%、+3 0.001%、+4 0.0001%。另 1% 帶「祝福的」'
-      ]);
+    var body = SPECIAL_BLOCKS.map(function (b) {
+      return '<details class="m-dex-sp-item" data-spid="' + b.id + '"><summary class="m-dex-sp-h">' + b.title + '</summary>' +
+        '<ul>' + b.lines.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul></details>';
+    }).join('');
     return '<details id="m-dex-special">' +
       '<summary><span class="m-dex-sp-label">📋 全域特殊掉落規則（依條件觸發，不列在各怪掉落表內）</span></summary>' +
       '<div class="m-dex-sp-body">' + body + '</div>' +
@@ -576,12 +585,17 @@
       '#m-dex-special > summary::before{content:"▸ ";color:#94a3b8;}',
       '#m-dex-special[open] > summary::before{content:"▾ ";}',
       '#m-dex-special > summary:hover{color:#fde047;}',
-      '.m-dex-sp-body{max-height:42vh;overflow-y:auto;padding:2px 14px 12px;}',
-      '.m-dex-sp-block{margin-top:10px;}',
-      '.m-dex-sp-h{font-size:13px;font-weight:bold;color:#e2e8f0;margin-bottom:3px;}',
-      '.m-dex-sp-body ul{margin:0;padding-left:18px;list-style:disc;}',
-      '.m-dex-sp-body li{font-size:12px;color:#94a3b8;line-height:1.55;margin:1px 0;}',
-      '.m-dex-sp-body b{color:#cbd5e1;}'
+      '.m-dex-sp-body{max-height:42vh;overflow-y:auto;padding:6px 12px 12px;}',
+      '.m-dex-sp-item{margin-top:6px;border:1px solid #1e293b;border-radius:7px;background:#0f1a2e;overflow:hidden;}',
+      '.m-dex-sp-item > summary.m-dex-sp-h{font-size:13px;font-weight:bold;color:#e2e8f0;padding:7px 10px;cursor:pointer;list-style:none;user-select:none;}',
+      '.m-dex-sp-item > summary::-webkit-details-marker{display:none;}',
+      '.m-dex-sp-item > summary.m-dex-sp-h::before{content:"▸ ";color:#64748b;}',
+      '.m-dex-sp-item[open] > summary.m-dex-sp-h::before{content:"▾ ";}',
+      '.m-dex-sp-item > summary.m-dex-sp-h:hover{color:#fde047;}',
+      '.m-dex-sp-item.m-dex-sp-hit{border-color:#fcd34d;box-shadow:0 0 0 1px rgba(252,211,77,.35);}',
+      '.m-dex-sp-item ul{margin:0;padding:0 12px 9px 28px;list-style:disc;}',
+      '.m-dex-sp-item li{font-size:12px;color:#94a3b8;line-height:1.55;margin:1px 0;}',
+      '.m-dex-sp-item b{color:#cbd5e1;}'
     ].join('\n');
     var s = document.createElement('style');
     s.id = 'm-dex-style';

@@ -179,6 +179,48 @@
   function fmtPct(p) { return p < 0.01 ? (p < 0.001 ? p.toFixed(4) : p.toFixed(3)) : (p < 1 ? p.toFixed(2) : (Number.isInteger(p) ? '' + p : p.toFixed(1))); }
   function st(k, v) { return '<span class="m-dex-stat"><b>' + k + '</b> ' + esc(v) + '</span>'; }
 
+  // ----- 製作資訊:讀遊戲 CRAFT_RECIPES(物品→在哪個 NPC、要什麼材料);作者加新配方自動出現 ------
+  var _craftIndex = null;   // itemId -> [{npcId, req, yield}]
+  var _npcInfo = null;      // npcId -> {name, town}
+  function buildCraftIndex() {
+    _craftIndex = {};
+    if (typeof CRAFT_RECIPES === 'undefined' || !CRAFT_RECIPES) return;
+    for (var npcId in CRAFT_RECIPES) {
+      (CRAFT_RECIPES[npcId] || []).forEach(function (r) {
+        if (!r || !r.result) return;
+        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: npcId, req: r.req || [], yield: r.yield || 1 });
+      });
+    }
+  }
+  function buildNpcInfo() {
+    _npcInfo = {};
+    try {
+      if (typeof DB === 'undefined' || !DB.towns) return;
+      for (var tid in DB.towns) {
+        var t = DB.towns[tid]; if (!t || !t.npcs) continue;
+        t.npcs.forEach(function (n) { if (n && n.id && !_npcInfo[n.id]) _npcInfo[n.id] = { name: n.n, town: t.n }; });
+      }
+    } catch (e) {}
+  }
+  function craftInfoHTML(id) {
+    if (_craftIndex === null) buildCraftIndex();
+    if (_npcInfo === null) buildNpcInfo();
+    var recs = _craftIndex[id];
+    if (!recs || !recs.length) return '';
+    var blocks = recs.map(function (rec) {
+      var npc = _npcInfo[rec.npcId] || { name: rec.npcId, town: '' };
+      var where = esc(npc.name) + (npc.town ? '（' + esc(npc.town) + '）' : '');
+      var mats = rec.req.map(function (m) {
+        var mn = (DB.items[m.id] && DB.items[m.id].n) || m.id;
+        return esc(mn) + ' ×' + m.cnt;
+      }).join('、');
+      var y = (rec.yield && rec.yield > 1) ? '（一次產出 ' + rec.yield + ' 個）' : '';
+      return '<div class="m-dex-craft-where">在 <b>' + where + '</b> 製作' + y + '</div>' +
+        '<div class="m-dex-craft-mats">材料：' + (mats || '—') + '</div>';
+    }).join('');
+    return '<div class="m-dex-craft"><div class="m-dex-craft-h">🔨 製作</div>' + blocks + '</div>';
+  }
+
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
   var IT_REQ = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', all: '全職業' };
@@ -249,7 +291,7 @@
     var desc = d.d ? '<div class="m-dex-idesc">' + d.d + '</div>' : '';   // d 為遊戲內建文字(可含 <br>),原樣顯示
     var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
     return '<div class="m-dex-ihead">' + img + '<div class="m-dex-iname-big' + nameCls + '">' + esc(d.n) + '</div></div>' +
-      (rows.length ? '<table class="m-dex-itable"><tbody>' + rows.join('') + '</tbody></table>' : '') + desc + searchBtn;
+      (rows.length ? '<table class="m-dex-itable"><tbody>' + rows.join('') + '</tbody></table>' : '') + desc + craftInfoHTML(id) + searchBtn;
   }
   function openItemPop(id) {
     var pop = document.getElementById('m-dex-itempop'); if (!pop) return;
@@ -485,6 +527,10 @@
       '.m-dex-itable td{padding:4px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;vertical-align:top;}',
       '.m-dex-ik{color:#94a3b8;white-space:nowrap;width:1%;}',
       '.m-dex-idesc{font-size:12.5px;color:#cbd5e1;line-height:1.6;background:#111c30;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;}',
+      '.m-dex-craft{margin-top:10px;background:#111c30;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;font-size:12.5px;line-height:1.55;}',
+      '.m-dex-craft-h{color:#fcd34d;font-weight:bold;margin-bottom:3px;}',
+      '.m-dex-craft-where{color:#e2e8f0;}',
+      '.m-dex-craft-mats{color:#94a3b8;}',
       '.m-dex-pop-search{margin-top:12px;width:100%;border:1px solid #334155;background:#1e293b;color:#7dd3fc;border-radius:8px;padding:11px;font-size:13.5px;font-weight:bold;cursor:pointer;font-family:inherit;}',
       '.m-dex-pop-search:active{background:#334155;}',
       '.m-dex-nodrop{font-size:13px;color:#64748b;}',

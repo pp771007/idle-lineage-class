@@ -701,6 +701,7 @@
     { k: 'set', n: '套裝' },
     { k: 'legend', n: '傳說裝備' },
     { k: 'enhance', n: '強化' },
+    { k: 'craft', n: '製作' },
     { k: 'load', n: '負重' },
     { k: 'sherine', n: '席琳' },
     { k: 'pledge', n: '血盟' },
@@ -799,6 +800,7 @@
     if (key === 'set') return renderSet();
     if (key === 'legend') return renderLegend();
     if (key === 'enhance') return renderEnhance();
+    if (key === 'craft') return renderCraft();
     if (key === 'sherine') return renderSherine();
     if (key === 'tower') return renderTower();
     if (key === 'load') return renderLoad();
@@ -836,6 +838,7 @@
     { key: 'set', cls: false, label: '套裝' },
     { key: 'legend', cls: false, label: '傳說裝備' },
     { key: 'enhance', cls: false, label: '強化' },
+    { key: 'craft', cls: false, label: '製作' },
     { key: 'load', cls: false, label: '負重' },
     { key: 'sherine', cls: false, label: '席琳' },
     { key: 'pledge', cls: false, label: '血盟' },
@@ -1048,6 +1051,32 @@
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }).join('');
     return note + secs;
+  }
+
+  // 製作:直接讀遊戲 CRAFT_RECIPES + DB.towns(NPC名/地點),依 NPC 分組列出配方。作者新增配方會自動出現。
+  function renderCraft() {
+    if (typeof CRAFT_RECIPES === 'undefined' || !CRAFT_RECIPES) return '<div class="m-wiki-hint">查無製作資料。</div>';
+    var npcInfo = {};
+    if (typeof DB !== 'undefined' && DB.towns) {
+      for (var tid in DB.towns) {
+        var t = DB.towns[tid]; if (!t || !t.npcs) continue;
+        t.npcs.forEach(function (n) { if (n && n.id && !npcInfo[n.id]) npcInfo[n.id] = { name: n.n, town: t.n }; });
+      }
+    }
+    var itemName = function (id) { return (DB.items[id] && DB.items[id].n) || id; };
+    var note = '<div class="m-wiki-note">各製作 NPC 能做的裝備／道具與所需材料（讀遊戲資料，作者新增配方會自動出現）。想知道某件東西在哪做，直接用上面搜尋打它的名字。</div>';
+    var html = note;
+    for (var npcId in CRAFT_RECIPES) {
+      var recs = CRAFT_RECIPES[npcId]; if (!recs || !recs.length) continue;
+      var info = npcInfo[npcId] || { name: npcId, town: '' };
+      html += '<div class="m-wiki-sub">🔨 ' + esc(info.name) + (info.town ? '（' + esc(info.town) + '）' : '') + '</div>';
+      html += recs.map(function (r) {
+        var nm = itemName(r.result) + ((r.yield && r.yield > 1) ? '（一次 ×' + r.yield + '）' : '');
+        var mats = (r.req || []).map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') || '—';
+        return '<div class="m-wiki-kv"><b>' + esc(nm) + '</b>' + esc(mats) + '</div>';
+      }).join('');
+    }
+    return html;
   }
 
   function renderSherine() {

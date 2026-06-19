@@ -1029,10 +1029,10 @@ const DB = {
         // 不死鳥之心（製作材料，不死鳥 1% 掉落）
         "new_phoenix_heart": { n: "不死鳥之心", type: "etc", p: 0, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "不死鳥體內不滅的核心。製作材料。" },
         // ===== 🦴 寵物裝備（之牙）：裝在「寵物裝備」欄，能力只影響項圈夥伴，可用對飾品施法的卷軸強化至+5 =====
-        "pet_fang_hound":   { n: "獵犬之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 10000,  c: "text-amber-300", petHit: 2,            d: "寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 10 },
-        "pet_fang_steel":   { n: "鋼鐵之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 10000,  c: "text-amber-300", petDmg: 2,            d: "寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 10 },
-        "pet_fang_ruin":    { n: "破滅之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 100000, c: "text-amber-300", petDmg: 2, petHit: 3, legend: true, d: "寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 1 },
-        "pet_fang_victory": { n: "勝利之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 100000, c: "text-amber-300", petDmg: 3, petHit: 1, legend: true, d: "寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 1 },
+        "pet_fang_hound":   { n: "獵犬之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 10000,  c: "text-white", petHit: 2,            d: "寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 10 },
+        "pet_fang_steel":   { n: "鋼鐵之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 10000,  c: "text-white", petDmg: 2,            d: "寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 10 },
+        "pet_fang_ruin":    { n: "破滅之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 100000, c: "text-white", petDmg: 2, petHit: 3, d: "寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 1 },
+        "pet_fang_victory": { n: "勝利之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 100000, c: "text-white", petDmg: 3, petHit: 1, d: "寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 1 },
         "scroll_weapon": { n: "對武器施法的卷軸", p: 22500, c: "text-white", d: "強化武器 (安定值6)", gachaWeight: 50 },
         "scroll_armor": { n: "對盔甲施法的卷軸", p: 9000, c: "text-white", d: "強化防具 (安定值4/0)", gachaWeight: 100 },
         "scroll_weapon_b": { n: "祝福的 對武器施法的卷軸", p: 22500, c: "text-yellow-300", d: "祝福的：成功時隨機提升 +1~+3 (強化武器，安定值6)", isB: true, gachaWeight: 0 },
@@ -6839,7 +6839,8 @@ function tryInstakill(m, ik, skillName, idx) {
 // 出血：對怪物施加一層出血（每秒造成 hitDmg 的 20%，持續 8 秒）。預設最多 5 層；🔧 出血精通：匕首/矛/雙刀可達 10 層、每秒總傷害 ×(1+0.1×層數)；已滿時新層取代最舊層。
 function applyBleed(m, hitDmg, maxLayers, masteryBoost) {
     if(!m.bleeds) m.bleeds = [];
-    let cap = maxLayers || 5;
+    let cap = Math.max(maxLayers || 5, m._bleedCap || 0);   // 🔧 多來源共用同一出血層陣列：取「本段出血曾出現過的最高上限」，避免低上限來源(如玩家匕首5層)把高上限來源(黑妖傭兵出血精通10層)的層數砍掉
+    m._bleedCap = cap;
     let dps = Math.max(1, Math.floor(hitDmg * 0.20));
     while(m.bleeds.length >= cap) m.bleeds.shift();      // 超過上限：移除最舊的，由新層取代
     m.bleeds.push({ dmg: dps, ticksLeft: 80 });          // 8 秒 = 80 ticks
@@ -6880,7 +6881,7 @@ function processMobStatusTick(m, i) {
             if(m.curHp <= 0) { killMob(i); return true; }
             if(!state.ff) renderMobs();
         }
-        if(m.bleeds.length === 0) m._bleedMastery = false;   // 出血結束：清除精通旗標
+        if(m.bleeds.length === 0) { m._bleedMastery = false; m._bleedCap = 0; }   // 出血結束：清除精通旗標與層數上限
     }
     return m.curHp <= 0;
 }
@@ -11183,7 +11184,7 @@ function doBianUncurse(slotKey) {
     let _e = document.getElementById('interaction-content'); if (_e) renderBianBless(_e);
 }
 function renderBianBless(el) {
-    let slots = [{k:'wpn',n:'武器'},{k:'shield',n:'盾牌'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'pet',n:'寵物裝備'}];
+    let slots = [{k:'wpn',n:'武器'},{k:'shield',n:'盾牌'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'}];   // 🦴 寵物裝備不支援祝福，故不列入
     let cnt = id => pledgeCountItem(id);
     let rows = slots.map(sl => {
         let it = player.eq[sl.k];
@@ -14044,7 +14045,8 @@ function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製
     // 產出（逐個產生，使每件各自有 1% 機率取得隨機詞綴；靜音後統一記錄一次）
     for (let k = 0; k < makeCount; k++) {
         _forceSherineSet = !!sherine;   // 🔮 席琳製作：每件成品必定附帶隨機一種席琳套裝效果（其餘詞綴機率照舊）
-        gainItem(recipe.result, recipe.yield || 1, true, false);
+        let _petGearResult = !!(DB.items[recipe.result] && DB.items[recipe.result].slot === 'pet');   // 🦴 寵物裝備：白板製作，不附任何詞綴
+        gainItem(recipe.result, recipe.yield || 1, true, _petGearResult);
         _forceSherineSet = false;
     }
     let totalOut = (recipe.yield || 1) * makeCount;

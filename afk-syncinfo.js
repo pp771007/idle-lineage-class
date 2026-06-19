@@ -38,7 +38,10 @@
       '#afk-syncinfo{color:#64748b;font-size:12px;text-align:center;letter-spacing:.3px;margin-top:2px;line-height:1.6;}' +
       '#afk-syncinfo .afk-si-sep{margin:0 6px;opacity:.6;}' +
       '#afk-syncinfo .afk-si-row{margin-top:1px;}' +
-      '#afk-syncinfo .afk-si-link{color:#7dd3fc;text-decoration:underline;}';
+      '#afk-syncinfo .afk-si-link{color:#7dd3fc;text-decoration:underline;}' +
+      // 原作者名:彩虹漸層流動(會動)
+      '#afk-syncinfo .afk-si-name{font-weight:bold;background:linear-gradient(90deg,#f472b6,#fb923c,#fde047,#34d399,#22d3ee,#a78bfa,#f472b6);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:afk-si-flow 6s linear infinite;}' +
+      '@keyframes afk-si-flow{to{background-position:220% 0;}}';
     document.head.appendChild(s);
   }
 
@@ -51,7 +54,7 @@
     foot.id = 'afk-syncinfo';
     foot.innerHTML =
       '<div class="afk-si-row">' +
-        '<span class="afk-si-author">原作者：秋玥 <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(原版連結)</a></span>' +
+        '<span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span> <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(原版連結)</a></span>' +
         '<span class="afk-si-sep">·</span>' +
         '<span class="afk-si-time">原版最後同步：載入中…</span>' +
       '</div>' +

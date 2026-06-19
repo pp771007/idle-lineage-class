@@ -1214,11 +1214,11 @@ const DB = {
         "amr_fallen": { n: "墮落長袍", type: "arm", slot: "armor", ac: 13, mmp: 100, mpR: 5, req: "mage", safe: 0, p: 150000, legend: true, gachaWeight: 1, d: "墮落者的傳說長袍。MP+100、MP自然恢復+5。" },
         "glv_fallen": { n: "墮落手套", type: "arm", slot: "gloves", ac: 2, mhp: 100, con: 1, req: "knight", safe: 4, p: 150000, legend: true, gachaWeight: 1, d: "墮落者的傳說手套。HP+100、體質+1。" },
         "bot_fallen": { n: "墮落長靴", type: "arm", slot: "boots", ac: 2, mhp: 100, req: "elf", safe: 4, p: 150000, legend: true, gachaWeight: 1, d: "墮落者的傳說長靴。HP+100。" },
-        "wpn_blackflame_sword": { n: "黑焰之劍", type: "wpn", dmgS: 16, dmgL: 10, hit: 2, dmgBonus: 0, spd: 1.1, req: "knight", safe: 6, p: 10000, legend: true, gachaWeight: 30, unBonus: true, d: "炎魔之力鍛成的黑焰之劍。反擊、居合、對不死/狼人加成。" },
-        "wpn_redflame_bow": { n: "赤焰之弓", type: "wpn", isBow: true, ranged: true, rapidfire: 70, w2h: true, dmgS: 3, dmgL: 3, hit: 2, dmgBonus: 4, spd: 1.0, req: "elf", safe: 6, p: 10000, legend: true, gachaWeight: 30, d: "炎魔之力灌注的赤焰之弓。連射 70%。" },
-        "wpn_redflame_sword": { n: "赤焰之劍", type: "wpn", dmgS: 14, dmgL: 6, hit: 4, dmgBonus: 0, spd: 1.1, req: "elf", safe: 6, p: 10000, legend: true, gachaWeight: 30, unBonus: true, d: "炎魔之力灌注的赤焰之劍。反擊、居合、對不死/狼人加成。" },
-        "wpn_mana_orb": { n: "瑪那水晶球", type: "arm", slot: "shield", ac: 2, block: 10, mmp: 100, int: 1, req: "mage", safe: 4, p: 10000, legend: true, gachaWeight: 30, d: "凝聚瑪那之力的水晶球盾。格檔 10%、MP+100、智力+1。" },
-        "wpn_death_finger": { n: "死亡之指", type: "wpn", w2h: true, dmgS: 17, dmgL: 15, hit: 3, dmgBonus: 2, spd: 0.9, req: "dark", safe: 6, p: 10000, legend: true, gachaWeight: 30, eff: "combo", procPoison: { rate: 2, dur: 15, tick: 3, dmg: [1, 8] }, d: "墮落之力凝成的死亡之指。連擊；攻擊時 2% 機率對目標觸發毒咒。" },
+        "wpn_blackflame_sword": { n: "黑焰之劍", type: "wpn", dmgS: 16, dmgL: 10, hit: 2, dmgBonus: 0, spd: 1.1, req: "knight", safe: 6, p: 10000, gachaWeight: 30, unBonus: true, d: "炎魔之力鍛成的黑焰之劍。反擊、居合、對不死/狼人加成。" },
+        "wpn_redflame_bow": { n: "赤焰之弓", type: "wpn", isBow: true, ranged: true, rapidfire: 70, w2h: true, dmgS: 3, dmgL: 3, hit: 2, dmgBonus: 4, spd: 1.0, req: "elf", safe: 6, p: 10000, gachaWeight: 30, d: "炎魔之力灌注的赤焰之弓。連射 70%。" },
+        "wpn_redflame_sword": { n: "赤焰之劍", type: "wpn", dmgS: 14, dmgL: 6, hit: 4, dmgBonus: 0, spd: 1.1, req: "elf", safe: 6, p: 10000, gachaWeight: 30, unBonus: true, d: "炎魔之力灌注的赤焰之劍。反擊、居合、對不死/狼人加成。" },
+        "wpn_mana_orb": { n: "瑪那水晶球", type: "arm", slot: "shield", ac: 2, block: 10, mmp: 100, int: 1, req: "mage", safe: 4, p: 10000, gachaWeight: 30, d: "凝聚瑪那之力的水晶球盾。格檔 10%、MP+100、智力+1。" },
+        "wpn_death_finger": { n: "死亡之指", type: "wpn", w2h: true, dmgS: 17, dmgL: 15, hit: 3, dmgBonus: 2, spd: 0.9, req: "dark", safe: 6, p: 10000, gachaWeight: 30, eff: "combo", procPoison: { rate: 2, dur: 15, tick: 3, dmg: [1, 8] }, d: "墮落之力凝成的死亡之指。連擊；攻擊時 2% 機率對目標觸發毒咒。" },
         // ===== 🌑 暗影神殿：材料 / 鑰匙 =====
         "mat_chaos_head": { n: "混沌首級", type: "etc", p: 1, c: "text-purple-300", noUse: true, gachaWeight: 0, d: "製作材料。" },
         "mat_death_head": { n: "死亡首級", type: "etc", p: 1, c: "text-purple-300", noUse: true, gachaWeight: 0, d: "製作材料。" },
@@ -5166,10 +5166,13 @@ function playerAttack() {
             if (!target.st) target.st = newMobStatus();
             let _pPct = hasMastery('d_poison') ? 2.0 : 0.6;   // 🔧 劇毒精通：每秒 200%；否則 60%
             let _pUnit = Math.max(1, Math.floor(result.dmg * _pPct));
-            target.st.poison = 50; target.st.poisonTick = 10;   // 持續 5 秒、每秒一次（重新施加即刷新持續時間）
-            target.st.poisonStacks = 1;                          // 中毒最多 1 層
-            target.st.poisonUnit = Math.max(target.st.poisonUnit || 0, _pUnit);   // 取較高傷害（新<原→保留原；新>原→取代）
-            target.st.poisonDmg = target.st.poisonUnit;
+            // 🔧 新規則：未中毒、或新傷害「高於」現有時才上毒（取代傷害並刷新5秒）；新傷害未更高則完全不更新，須等舊毒5秒跑完、敵人脫離中毒後才能再上毒
+            if ((target.st.poison || 0) <= 0 || _pUnit > (target.st.poisonUnit || 0)) {
+                target.st.poison = 50; target.st.poisonTick = 10;   // 持續 5 秒、每秒一次
+                target.st.poisonStacks = 1;                          // 中毒最多 1 層
+                target.st.poisonUnit = _pUnit;
+                target.st.poisonDmg = _pUnit;
+            }
         }
         target.justHit = getWpnEle(player.eq.wpn, wpn);
         if (player._setBeauty5 && result.heavy) player._beautyNextSure = true;   // 🔮 麗人 5/5：觸發重擊 → 下一次一般攻擊必中
@@ -6960,10 +6963,13 @@ function allyAttackOnce(ally) {
             if (!t.st) t.st = newMobStatus();
             let _pPct = allyHasMastery(ally, 'd_poison') ? 2.0 : 0.6;   // 🔧 劇毒精通：每秒 200%；否則 60%
             let _pUnit = Math.max(1, Math.floor(dmg * _pPct));
-            t.st.poison = 50; t.st.poisonTick = 10;                      // 持續 5 秒、1 層、重新施加即刷新持續時間
-            t.st.poisonStacks = 1;
-            t.st.poisonUnit = Math.max(t.st.poisonUnit || 0, _pUnit);   // 取較高傷害
-            t.st.poisonDmg = t.st.poisonUnit;
+            // 🔧 新規則（與玩家一致）：未中毒、或新傷害高於現有時才上毒（取代並刷新5秒）；否則不更新，須等舊毒跑完
+            if ((t.st.poison || 0) <= 0 || _pUnit > (t.st.poisonUnit || 0)) {
+                t.st.poison = 50; t.st.poisonTick = 10;                      // 持續 5 秒、1 層
+                t.st.poisonStacks = 1;
+                t.st.poisonUnit = _pUnit;
+                t.st.poisonDmg = _pUnit;
+            }
         }
         let mark = (heavy && isCrit) ? '會心一擊' : (isCrit ? '爆擊' : (heavy ? '重擊' : ''));
         logCombat(`${kp}<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>攻擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');

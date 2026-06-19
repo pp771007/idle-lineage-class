@@ -46,6 +46,7 @@
     }
     injectCSS();
     buildIndexes();
+    buildItemIndex();
     if (isStandalone()) { buildModal(); enterStandalone(); console.log('[AFK-dex] hooks OK — 掉落查詢獨立頁(' + INDEX.length + ' 隻怪)。'); return; }
     var menu = document.getElementById('main-menu');
     if (!menu) { console.warn('[AFK-dex] 找不到 #main-menu,查詢功能停用。'); return; }
@@ -132,6 +133,28 @@
     INDEX.sort(function (a, b) { return (a.mob.lv || 0) - (b.mob.lv || 0) || String(a.mob.n).localeCompare(String(b.mob.n)); });
   }
 
+  // 裝備(武器/防具/飾品)名稱索引:讓搜尋能直接點出任一件裝備看數值——包含製作/兌換/任務取得、沒有怪會掉的(如 50 級試煉獎勵、傳說裝備)
+  var ITEM_INDEX = [];
+  function buildItemIndex() {
+    ITEM_INDEX = [];
+    for (var id in DB.items) {
+      var d = DB.items[id];
+      if (!d || !d.n) continue;
+      if (d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc') continue;
+      ITEM_INDEX.push({ id: id, n: d.n, hay: String(d.n).toLowerCase() });
+    }
+    ITEM_INDEX.sort(function (a, b) { return a.n.length - b.n.length || a.n.localeCompare(b.n); });   // 名稱短的(較接近完整匹配)排前面
+  }
+  var ITEM_MATCH_MAX = 24;
+  function itemMatchesHTML(q) {
+    var ms = [];
+    for (var i = 0; i < ITEM_INDEX.length && ms.length <= ITEM_MATCH_MAX; i++) if (ITEM_INDEX[i].hay.indexOf(q) >= 0) ms.push(ITEM_INDEX[i]);
+    if (!ms.length) return '';
+    var more = ms.length > ITEM_MATCH_MAX; if (more) ms = ms.slice(0, ITEM_MATCH_MAX);
+    var names = ms.map(function (it) { return '<span class="m-dex-iname" data-id="' + esc(it.id) + '" title="看數值">' + hl(it.n, q) + '</span>'; }).join('、');
+    return '<div class="m-dex-card"><div class="m-dex-imatch-h">🔎 符合的裝備（點名稱看數值）</div><div class="m-dex-imatch">' + names + (more ? '　…還有更多，請輸入更精確的名稱' : '') + '</div></div>';
+  }
+
   // ----- 搜尋 + 渲染 ------------------------------------------------------
   function doSearch() {
     var input = document.getElementById('m-dex-input');
@@ -146,17 +169,19 @@
     // 命中「全域特殊掉落」關鍵字 → 自動展開下方規則面板(萬能藥/席琳結晶等不在怪物掉落表內)
     var special = matchesSpecial(q);
     if (special) { var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true; }
+    var itemHTML = itemMatchesHTML(q);   // 先列出名稱符合的裝備(可點看數值;含沒被怪掉的)
     var hits = [];
     for (var i = 0; i < INDEX.length && hits.length <= MAX_RESULTS; i++) if (INDEX[i].hay.indexOf(q) >= 0) hits.push(INDEX[i]);
     if (!hits.length) {
+      if (itemHTML) { results.innerHTML = itemHTML + (special ? '<div class="m-dex-hint">另見下方<b>「全域特殊掉落規則」</b>。</div>' : '<div class="m-dex-hint">（上面這些裝備沒有固定掉落的怪，多為製作／兌換／任務取得）</div>'); return; }
       results.innerHTML = special
         ? '<div class="m-dex-hint">「' + esc(input.value.trim()) + '」沒有固定掉落的怪物，請見下方<b>「全域特殊掉落規則」</b>。</div>'
-        : '<div class="m-dex-hint">找不到符合的怪物</div>';
+        : '<div class="m-dex-hint">找不到符合的怪物或裝備</div>';
       return;
     }
     var truncated = hits.length > MAX_RESULTS;
     if (truncated) hits = hits.slice(0, MAX_RESULTS);
-    var html = hits.map(function (h) { return cardHTML(h, sherine, q); }).join('');
+    var html = itemHTML + hits.map(function (h) { return cardHTML(h, sherine, q); }).join('');
     if (truncated) html += '<div class="m-dex-hint">符合的太多,只顯示前 ' + MAX_RESULTS + ' 筆,請輸入更精確的關鍵字。</div>';
     results.innerHTML = html;
   }
@@ -516,6 +541,8 @@
       /* 掉落物:點名稱=看詳情(慣例:點物品就是看它);查掉落來源的按鈕收進詳情卡裡。 */
       '.m-dex-iname{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
       '.m-dex-iname:active{color:#38bdf8;}',
+      '.m-dex-imatch-h{color:#fcd34d;font-weight:bold;font-size:13.5px;margin-bottom:6px;}',
+      '.m-dex-imatch{font-size:13.5px;line-height:1.9;color:#64748b;}',
       '#m-dex-itempop{display:none;position:absolute;inset:0;z-index:1002;background:rgba(2,6,23,.66);align-items:center;justify-content:center;padding:24px 14px;}',
       '#m-dex-itempop.open{display:flex;}',
       '#m-dex-itempop-card{position:relative;width:min(420px,94vw);max-height:84vh;overflow-y:auto;background:#0f172a;border:1px solid #475569;border-radius:12px;padding:16px;box-shadow:0 16px 50px rgba(0,0,0,.6);}',

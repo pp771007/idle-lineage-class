@@ -1071,7 +1071,7 @@
         '<div class="m-wiki-desc" style="margin-top:3px;">' + esc(legendEff(d)) + '</div>' +
       '</div>';
     }
-    var note = '<div class="m-wiki-note">「傳說」是最高稀有度（名字呈<span class="c-legend">琥珀金</span>），單件本身就帶獨特效果。這裡整理它們的<b>特色與獨特效果</b>；裝備本身的詳細數值請看遊戲內的裝備／物品欄。想知道哪些怪會掉，可到「掉落查詢」<b>搜裝備名</b>（會列出掉它的怪；製作／兌換／任務取得的則見「任務」分頁）。武器的特殊攻擊（橫掃／連擊／吸 MP…）詳見「武器特性」分頁。</div>';
+    var note = '<div class="m-wiki-note">「傳說」是最高稀有度（名字呈<span class="c-legend">琥珀金</span>），單件本身就帶獨特效果。這裡整理它們的<b>特色與獨特效果</b>。<b>想看詳細數值（攻擊力／防禦／加成等）：到「掉落查詢」搜該裝備名，點出現的裝備名稱就能看</b>——連製作／兌換／任務取得、沒有怪會掉的（如 50 級試煉獎勵）也查得到。武器的特殊攻擊（橫掃／連擊／吸 MP…）詳見「武器特性」分頁。</div>';
     var setNote = setCount ? '<div class="m-wiki-note" style="margin-top:8px;">死亡騎士、克特、惡魔、四大軍王等<b>成套</b>的傳說防具，價值在湊滿件數的變身／組合加成，不在此重列，請見「套裝」分頁。</div>' : '';
     var html = note + setNote;
     if (groups.wpn.length) html += '<div class="m-wiki-sub">⚔️ 傳說武器</div>' + groups.wpn.map(card).join('');

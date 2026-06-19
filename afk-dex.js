@@ -259,7 +259,7 @@
       wt = wt.filter(function (v, i) { return wt.indexOf(v) === i; });   // 去重(eff 與種類可能指到同一特性)
       if (wt.length) add('武器特性', wt.join('、'));
     } else if (d.ac != null && (d.type === 'arm' || d.type === 'acc')) {
-      add('防禦', sgn(d.ac));
+      add('防禦(AC)', sgn(-d.ac));   // 比照遊戲內裝備欄:AC 越低越強，正常防具顯示負值(遊戲是 -d.ac)；負 ac 的下行向裝備則顯示 +，避免「--1」
     }
     Object.keys(IT_STAT).forEach(function (k) { if (d[k]) add(IT_STAT[k], sgn(d[k])); });
     if (d.mr) add('魔防', sgn(d.mr));

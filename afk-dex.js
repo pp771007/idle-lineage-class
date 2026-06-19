@@ -178,6 +178,7 @@
   function fmt(n) { try { return (n == null ? '-' : Number(n).toLocaleString()); } catch (e) { return '' + n; } }
   function fmtPct(p) { return p < 0.01 ? (p < 0.001 ? p.toFixed(4) : p.toFixed(3)) : (p < 1 ? p.toFixed(2) : (Number.isInteger(p) ? '' + p : p.toFixed(1))); }
   function st(k, v) { return '<span class="m-dex-stat"><b>' + k + '</b> ' + esc(v) + '</span>'; }
+  function sgn(v) { return (v > 0 ? '+' : '') + v; }   // 帶正負號:正數加「+」、負數本身就有「-」(避免「+-10」)
 
   // ----- 製作資訊:讀遊戲 CRAFT_RECIPES(物品→在哪個 NPC、要什麼材料);作者加新配方自動出現 ------
   var _craftIndex = null;   // itemId -> [{npcId, req, yield}]
@@ -258,17 +259,17 @@
       wt = wt.filter(function (v, i) { return wt.indexOf(v) === i; });   // 去重(eff 與種類可能指到同一特性)
       if (wt.length) add('武器特性', wt.join('、'));
     } else if (d.ac != null && (d.type === 'arm' || d.type === 'acc')) {
-      add('防禦', '+' + d.ac);
+      add('防禦', sgn(d.ac));
     }
-    Object.keys(IT_STAT).forEach(function (k) { if (d[k]) add(IT_STAT[k], (d[k] > 0 ? '+' : '') + d[k]); });
-    if (d.mr) add('魔防', '+' + d.mr);
-    if (d.mhp) add('HP 上限', '+' + d.mhp);
-    if (d.hpR) add('HP 自然恢復', '+' + d.hpR);
-    if (d.mmp) add('MP 上限', '+' + d.mmp);
-    if (d.mpR) add('MP 自然恢復', '+' + d.mpR);
-    Object.keys(IT_RES).forEach(function (k) { if (d[k]) add(IT_RES[k] + '屬性抗性', '+' + d[k]); });
+    Object.keys(IT_STAT).forEach(function (k) { if (d[k]) add(IT_STAT[k], sgn(d[k])); });
+    if (d.mr) add('魔防', sgn(d.mr));
+    if (d.mhp) add('HP 上限', sgn(d.mhp));
+    if (d.hpR) add('HP 自然恢復', sgn(d.hpR));
+    if (d.mmp) add('MP 上限', sgn(d.mmp));
+    if (d.mpR) add('MP 自然恢復', sgn(d.mpR));
+    Object.keys(IT_RES).forEach(function (k) { if (d[k]) add(IT_RES[k] + '屬性抗性', sgn(d[k])); });
     if (d.block) add('格擋', d.block);
-    if (d.weightCap) add('負重上限', '+' + d.weightCap);
+    if (d.weightCap) add('負重上限', sgn(d.weightCap));
     // 每強化 +1 的額外加成(部分裝備有)
     var enBon = [];
     if (d.mrPerEn) enBon.push('魔防 +' + d.mrPerEn);

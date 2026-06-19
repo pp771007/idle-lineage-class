@@ -55,7 +55,7 @@
       var inp = document.getElementById('m-wiki-input'); if (inp) inp.value = q;
       var cb = document.getElementById('m-wiki-clear'); if (cb) cb.classList.toggle('show', !!q);
     } else if (_validTab(tab)) { state.tab = tab; }
-    if (_validCls(cls)) state.cls = cls;
+    if (_validCls(cls) || cls === 'all') state.cls = cls;   // 'all'=全職業任務篩選(任務分頁專用)
     render();
   }
 
@@ -400,10 +400,10 @@
   ];
   // 50 級試煉(依職業):接取 → 依序交付任務道具 → 完成開放「魔族神殿」→ 之後用炎魔交付物重複兌換傳說武器
   var TRIAL_50 = {
-    knight: { n: '騎士 50 級試煉', npc: '迪嘉勒廷 ＠象牙塔（需等級 50）', req: '兩階段依序交付：①丹特斯的召書 ×1 → ②精靈的私語 ×10', from: '丹特斯的召書：黑暗妖精將軍 1%（大洞穴隱遁者村莊／拉斯塔巴德正門／魔獸訓練場）；精靈的私語：在「精靈墓穴」打任何怪 1% 掉', rw: '完成後開放「魔族神殿」。之後可重複用「炎魔之劍」×1 兌換傳說武器「黑焰之劍」' },
-    elf: { n: '妖精 50 級試煉', npc: '迪嘉勒廷 ＠象牙塔（需等級 50）', req: '兩階段依序交付：①古代黑妖之秘笈 ×1 → ②密封的情報書 ×1', from: '古代黑妖之秘笈：巨大兵蟻 1%（沙漠／螞蟻洞窟 1~2 樓）；密封的情報書：在「大洞穴隱遁者村莊地區」打「魔族暗殺團」必掉。魔族暗殺團是特殊怪、不常駐，只有你正卡在這一步（缺密封的情報書）時，在這張圖每打一隻怪才有 1% 機率讓牠出現（一次只會有一隻）', rw: '完成後開放「魔族神殿」。之後可重複用「炎魔之爪」×1 兌換傳說「赤焰之弓」或「赤焰之劍」' },
-    mage: { n: '法師 50 級試煉', npc: '迪嘉勒廷 ＠象牙塔（需等級 50）', req: '一階段：交付 間諜報告書 ×1', from: '間諜報告書：在「大洞穴隱遁者村莊地區」打「魔族暗殺團」必掉。魔族暗殺團是特殊怪、不常駐，只有你正卡在這一步（缺間諜報告書）時，在這張圖每打一隻怪才有 1% 機率讓牠出現（一次只會有一隻）', rw: '完成後開放「魔族神殿」。之後可重複用「炎魔之心」×1 兌換傳說盾「瑪那水晶球」' },
-    dark: { n: '黑暗妖精 50 級試煉', npc: '布魯迪卡 ＠沉默洞穴（需等級 50）', req: '一階段：交付 混沌鑰匙 ×1', from: '混沌鑰匙：黑暗棲林者 1%（大洞穴隱遁者村莊／魔族神殿）', rw: '完成後開放「魔族神殿」。之後可重複用「墮落鑰匙」×1 兌換傳說「死亡之指」' }
+    knight: { n: '騎士 50 級試煉', npc: '迪嘉勒廷 ＠象牙塔（需等級 50）', req: '兩階段依序交付：①丹特斯的召書 ×1 → ②精靈的私語 ×10', from: '丹特斯的召書：黑暗妖精將軍 1%（大洞穴隱遁者村莊／拉斯塔巴德正門／魔獸訓練場）；精靈的私語：在「精靈墓穴」打任何怪 1% 掉', rw: '完成後開放「魔族神殿」。在魔族神殿打「炎魔的惡魔」（Lv61，每次掉 3 個）取得「炎魔之劍」，每 1 個回來找迪嘉勒廷換 1 把傳說武器「黑焰之劍」（可重複換）' },
+    elf: { n: '妖精 50 級試煉', npc: '迪嘉勒廷 ＠象牙塔（需等級 50）', req: '兩階段依序交付：①古代黑妖之秘笈 ×1 → ②密封的情報書 ×1', from: '古代黑妖之秘笈：巨大兵蟻 1%（沙漠／螞蟻洞窟 1~2 樓）；密封的情報書：在「大洞穴隱遁者村莊地區」打「魔族暗殺團」必掉。魔族暗殺團是特殊怪、不常駐，只有你正卡在這一步（缺密封的情報書）時，在這張圖每打一隻怪才有 1% 機率讓牠出現（一次只會有一隻）', rw: '完成後開放「魔族神殿」。在魔族神殿打「炎魔的惡魔」（Lv61，每次掉 3 個）取得「炎魔之爪」，每 1 個回來找迪嘉勒廷換 1 把傳說「赤焰之弓」或「赤焰之劍」（可重複換）' },
+    mage: { n: '法師 50 級試煉', npc: '迪嘉勒廷 ＠象牙塔（需等級 50）', req: '一階段：交付 間諜報告書 ×1', from: '間諜報告書：在「大洞穴隱遁者村莊地區」打「魔族暗殺團」必掉。魔族暗殺團是特殊怪、不常駐，只有你正卡在這一步（缺間諜報告書）時，在這張圖每打一隻怪才有 1% 機率讓牠出現（一次只會有一隻）', rw: '完成後開放「魔族神殿」。在魔族神殿打「炎魔的惡魔」（Lv61，每次掉 3 個）取得「炎魔之心」，每 1 個回來找迪嘉勒廷換傳說盾「瑪那水晶球」（可重複換）' },
+    dark: { n: '黑暗妖精 50 級試煉', npc: '布魯迪卡 ＠沉默洞穴（需等級 50）', req: '一階段：交付 混沌鑰匙 ×1', from: '混沌鑰匙：黑暗棲林者 1%（大洞穴隱遁者村莊／魔族神殿）', rw: '完成後開放「魔族神殿」。在魔族神殿打「墮落的司祭」（50% 掉「墮落鑰匙」），每 1 個墮落鑰匙回來找布魯迪卡換 1 把傳說「死亡之指」（可重複換）' }
   };
   // 完成 50 級試煉後、全職業共通的後續內容(魔族神殿→暗影神殿;不分職業,顯示一次)
   var TRIAL50_ENDGAME = [
@@ -774,6 +774,11 @@
       b.addEventListener('click', function () { state.cls = c.k; render(); });
       clsRow.appendChild(b);
     });
+    // 「全職業」篩選鈕(只在「任務」分頁出現):看不分職業的共通任務
+    var allBtn = document.createElement('button');
+    allBtn.className = 'm-wiki-clsbtn m-wiki-clsbtn-all'; allBtn.setAttribute('data-cls', 'all'); allBtn.textContent = '全職業';
+    allBtn.addEventListener('click', function () { state.cls = 'all'; render(); });
+    clsRow.appendChild(allBtn);
     var input = document.getElementById('m-wiki-input');
     var clearBtn = document.getElementById('m-wiki-clear');
     input.addEventListener('input', function () {
@@ -906,8 +911,10 @@
     }
     tabsEl.style.display = '';
     document.querySelectorAll('#m-wiki-tabs .m-wiki-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === state.tab); });
+    if (state.tab === 'mastery' && state.cls === 'all') state.cls = 'knight';   // 職業專精沒有「全職業」,退回真實職業
     var showCls = (state.tab === 'mastery' || state.tab === 'quest');
     clsRow.style.display = showCls ? 'flex' : 'none';
+    var _allBtn = clsRow.querySelector('.m-wiki-clsbtn-all'); if (_allBtn) _allBtn.style.display = (state.tab === 'quest') ? '' : 'none';   // 全職業鈕只在任務分頁
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
     body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : tabHTML(state.tab, state.cls), state.tab);
   }
@@ -945,10 +952,21 @@
       '<div class="m-wiki-desc"><b>獎勵：</b>' + esc(r.rw) + '</div>' +
     '</div>';
   }
+  function endgameCardHTML(s) {
+    return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' +
+      s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('') + '</div>';
+  }
   function renderQuest(cls) {
+    // 「全職業」篩選:不分職業的共通任務(雷德的復仇)＋完成任一職業 50 級試煉後共通開放的魔族神殿／暗影神殿
+    if (cls === 'all') {
+      var ah = '<div class="m-wiki-note">不分職業、所有人共通的任務與進程。各職業自己的試煉請切上面的職業。</div>';
+      ah += '<div class="m-wiki-sub">👥 全職業共通任務</div>' + QUEST_COMMON.map(questCard).join('');
+      ah += '<div class="m-wiki-sub">🔥 完成 50 級試煉後（魔族神殿 → 暗影神殿）</div>' + TRIAL50_ENDGAME.map(endgameCardHTML).join('');
+      return ah;
+    }
     var q = QUEST_BY_CLASS[cls];
     if (!q) return '<div class="m-wiki-hint">查無此職業的任務資料。</div>';
-    var html = '<div class="m-wiki-note">依「上方選的職業」顯示該職業的試煉／任務。試煉只有對應職業能接，材料多半要打特定怪掉落，「去哪打」欄已列出主要怪與機率。</div>';
+    var html = '<div class="m-wiki-note">這裡是「' + esc(q.name) + '」自己的試煉／任務。試煉只有本職業能接，材料多半要打特定怪掉落，「去哪打」欄已列出主要怪與機率。不分職業的共通任務請切上面的「全職業」。</div>';
     html += '<div class="m-wiki-sub">' + q.icon + ' ' + esc(q.name) + '試煉</div>' + q.trials.map(questCard).join('');
     if (TRIAL_50[cls]) html += '<div class="m-wiki-sub">🔥 50 級試煉（需等級 50）</div>' + questCard(TRIAL_50[cls]);
     if (q.attr) html += '<div class="m-wiki-sub">🌿 妖精屬性學習</div>' + questCard(q.attr);
@@ -959,12 +977,6 @@
       rw: '四選一精通能力（初次免費，之後更換要付費）；各精通內容見「職業專精」分頁'
     });
     if (q.legend) html += '<div class="m-wiki-sub">🐉 ' + esc(q.name) + '隱藏 / 傳說</div>' + q.legend.map(questCard).join('');
-    // 全職業任務(不分職業):雷德的復仇 + 完成 50 試煉後共通的魔族神殿→暗影神殿進程
-    html += '<div class="m-wiki-sub">👥 全職業任務</div>' + QUEST_COMMON.map(questCard).join('') +
-      TRIAL50_ENDGAME.map(function (s) {
-        return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' +
-          s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('') + '</div>';
-      }).join('');
     return html;
   }
 

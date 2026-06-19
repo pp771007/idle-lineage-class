@@ -1074,7 +1074,7 @@
     var sgn = function (v) { return (v > 0 ? '+' : '') + v; };
     var st = [];
     if (d.type === 'wpn') {
-      if (d.dmgS != null) st.push(d.dmgS === d.dmgL ? ('攻擊力 ' + d.dmgS) : ('攻擊力 對小型 ' + d.dmgS + '／對大型 ' + d.dmgL));
+      if (d.dmgS != null) st.push('攻擊力 對小型 ' + d.dmgS + '／對大型 ' + d.dmgL);
       if (d.dmgBonus) st.push('額外傷害 ' + sgn(d.dmgBonus));
       if (d.hit) st.push('命中 ' + sgn(d.hit));
       if (d.mdmg) st.push('魔法傷害 ' + sgn(d.mdmg));

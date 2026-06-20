@@ -4,6 +4,9 @@
 # 相依套件
 node_modules/
 
+# Cloudflare Wrangler 本機快取/狀態(cf-sync-trigger 部署時產生,不進 git)
+.wrangler/
+
 # OS / 編輯器雜物
 Thumbs.db
 desktop.ini

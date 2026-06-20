@@ -4,9 +4,12 @@ name: sync-upstream
 # 觸發:每天定時 + 可手動。原作者更新後基本上會自己同步,只有外掛掛點被改壞時才需人工。
 
 on:
+  # 主要排程改由 Cloudflare Worker(cf-sync-trigger/)每 15 分打 workflow_dispatch 觸發,
+  # 因為 GitHub 內建 schedule 排隊常延遲 1~2 小時(實測動輒隔 2~4 小時才跑)。
+  # 下面這條 schedule 只留「每小時一次」當保險:Cloudflare Worker 掛掉(PAT 失效 / CF 故障)時還有兜底。
   schedule:
-    - cron: '7,22,37,52 * * * *'   # 每 15 分檢查一次原作者更新;用 7/22/37/52 而非整 0/15/30/45,閃過 GitHub 整分排程大軍以降低排隊延遲(公開 repo,Actions 免費無上限;沒更新時約 15~20 秒空跑)
-  workflow_dispatch: {}     # 也可在 Actions 頁手動觸發 / gh workflow run 觸發
+    - cron: '52 * * * *'    # 每小時 52 分跑一次(保險用;閃過整分排程大軍);主力是 Cloudflare 每 15 分
+  workflow_dispatch: {}     # Cloudflare Worker 及手動(gh workflow run)都走這個入口
 
 permissions:
   contents: write

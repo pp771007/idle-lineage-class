@@ -126,6 +126,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    - **本檔手動維護的清單(這些才要手動補)**:武器特性 `WEAPON_TRAITS`、套裝 `SETS`、強化機制 `ENHANCE_SECTIONS`、負重 `LOAD_SECTIONS`、席琳各區 `SHERINE_SECTIONS`、血盟 `PLEDGE_SECTIONS`、傲慢之塔 `TOWER_SECTIONS`、任務 `QUEST_BY_CLASS`/`QUEST_COMMON`、技能白話補充 `EFFECT_OVERRIDE`。例:作者新增「惡魔套裝(set_12)」→ 手動加進 `SETS`。
    - **⭐ 全域掉落規則 → 補進掉落查詢的「全域特殊掉落規則」面板(`afk-dex.js` 的 `specialPanelHTML`)**:凡是「不綁特定怪、依條件觸發」的掉落(席琳結晶、施法卷軸變祝福/詛咒、賦予祝福卷軸、區域額外掉落、進化果實…這類掃描怪屬性/區域/全域機率的掉落),因為不在任一怪的 `MOB_DROPS` 裡、掉落查詢搜不到,**一律手動加一格 `spBlock` 到那個面板**(並把關鍵字加進 `SPECIAL_KEYS` 讓搜尋自動展開)。原版每次改動全域掉落都要同步補這裡,不要只更新小百科。
    - **⭐ 製作不一定都在 `CRAFT_RECIPES`,有「客製製作」另開資料結構,掉落查詢/製作頁要另外補讀**:掉落查詢物品卡與小百科製作頁的製作資訊只讀 `CRAFT_RECIPES`,但**有些裝備走獨立的客製製作系統、不在 `CRAFT_RECIPES`**,例:惡魔王武器走 `DEMONKING_RECIPES`+`DEMONKING_MATS`(炎魔之影:消耗 +11 以上指定惡魔武器、繼承其強化/詞綴/席琳套裝)。症狀=「某件裝備查不到在哪製作、且常常一整批」。**遇到「明明可做卻查不到製作」→ 去 `index.html` grep `_RECIPES`/`buildXXXCraftHTML`/該裝備 id**,找到那組客製配方後,**同時補進** `afk-dex.js` 的 `buildCraftIndex`(物品卡)**和** `afk-wiki.js` 的 `renderCraft`(製作頁),兩邊都要。
+   - **⭐ 「查不到取得方式」的裝備,多半是『潘朵拉的黑市』抽獎(轉蛋)或『靈魂之球』喚回**:掉落查詢物品卡已有「取得方式」列(`itemDetailHTML`)——`gachaWeight>0` → 自動顯示「潘朵拉的黑市抽獎(稀有度,依 `gachaRarity` 換算)」**已系統性涵蓋所有抽獎裝備、不必逐件補**;靈魂之球喚回的傳說魔杖(巴列斯/巴風特)走寫死的 `SOULORB_RESTORE` 對照表。**遇到新的「查不到取得方式」→ 先看 `d.gachaWeight`(>0 應該已自動顯示);若是新的喚回/兌換機制(grep `soulorb`/`_restore`/`eff:` 找新轉換),把結果裝備加進 `SOULORB_RESTORE` 或比照新增一個對照。** 掉落/製作另由搜尋鈕與 `craftInfoHTML` 呈現。
 4. 補完照「每次 push 前檢查清單」bump 對應外掛 `?v=`(動到 `afk-dex.js` 也要 bump 它)、無頭瀏覽器測過再推。
 
 ### 內容鐵則(踩過、別再犯)

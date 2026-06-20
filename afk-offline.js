@@ -20,9 +20,28 @@
   var CAP_MS           = CAP_HOURS * 3600 * 1000;
   var HEARTBEAT_MS     = 5 * 1000;              // 活著時多久蓋一次時間戳
   var OVERLAY_MIN_TICK = 3000;                  // 補跑超過這麼多 tick 才顯示進度遮罩(約 5 分鐘)
-  var SLICE_MS         = 250;                   // 每段最多跑這麼久就 await raf 讓出一次。進度遮罩只在「讓出時」才重繪、期間頁面凍結,
-                                                //   故這個值＝畫面更新間隔:放大→讓出次數少、等影格開銷低→結算快(長時間離線載入明顯較快),代價是進度畫面每 250ms 才更新一次、會稍頓。
-                                                //   (試過 28ms 畫面較順但載入太慢,使用者選擇優先載入速度,故用 250ms;250ms 仍遠低於「頁面無回應」門檻。)
+  // 「每段最多跑這麼久就 await raf 讓出一次」＝畫面更新間隔(進度遮罩只在讓出時重繪、期間頁面凍結)。
+  //   值小→讓出多、畫面順但等影格開銷大、結算慢;值大→相反。故依「要補跑的時間長短」動態取值:
+  //   短離線(本來就快)用小值求順,長離線(才需要快)用大值求速度,中間線性漸變 → 兼顧順暢與速度。
+  var SLICE_MIN_MS     = 28;                    // 短離線:接近一個影格(~16ms),畫面順
+  var SLICE_MAX_MS     = 250;                   // 長離線:讓出少、結算快
+  var SLICE_SHORT_TICK = 3000;                  // ≤5 分鐘(=遮罩門檻)以下一律用最小值(順)
+  var SLICE_LONG_TICK  = 36000;                 // ≥1 小時一律用最大值(快);兩者之間線性內插
+  function sliceFor(totalTicks) {
+    if (totalTicks <= SLICE_SHORT_TICK) return SLICE_MIN_MS;
+    if (totalTicks >= SLICE_LONG_TICK) return SLICE_MAX_MS;
+    var f = (totalTicks - SLICE_SHORT_TICK) / (SLICE_LONG_TICK - SLICE_SHORT_TICK);
+    return Math.round(SLICE_MIN_MS + f * (SLICE_MAX_MS - SLICE_MIN_MS));
+  }
+  // tick 數 → 友善時間字串(進度遮罩顯示「已結算 X / 共 Y」用)
+  function fmtCatchupTime(ticks) {
+    var s = Math.round(ticks * TICK_MS / 1000);
+    if (s < 60) return s + ' 秒';
+    var m = Math.floor(s / 60);
+    if (m < 60) return m + ' 分' + (s % 60 ? ' ' + (s % 60) + ' 秒' : '');
+    var h = Math.floor(m / 60);
+    return h + ' 小時' + (m % 60 ? ' ' + (m % 60) + ' 分' : '');
+  }
   var TS_PREFIX        = 'afk_ts_';
 
   // ----- 自我檢查:核心掛點都在才啟用,否則安靜退出(遊戲照常運作) ----------
@@ -109,7 +128,7 @@
     if (!overlayBar) return;
     var pct = Math.min(100, Math.round(frac * 100));
     overlayBar.style.width = pct + '%';
-    overlayTxt.textContent = pct + '%  (' + done + ' / ' + total + ' tick)';
+    overlayTxt.textContent = pct + '%　已結算 ' + fmtCatchupTime(done) + ' / 共 ' + fmtCatchupTime(total);
   }
   function removeOverlay() {
     if (overlayEl && overlayEl.parentNode) overlayEl.parentNode.removeChild(overlayEl);
@@ -243,6 +262,7 @@
     if (catchingUp) return;
     catchingUp = true;
 
+    var sliceMs = sliceFor(totalTicks);   // 依補跑長短決定畫面更新間隔:短→順、長→快
     var isClimb = !!(prePride && prePride.climb && !prePride.ranked && typeof enterPrideFloor === 'function');   // 排名挑戰不自動續
 
     // 暫停 live loop,避免結算期間與主迴圈交錯;結算後再以全新計時重啟
@@ -275,7 +295,7 @@
         if (player.dead || !state.running) { died = !!player.dead; break; }
         var t0 = performance.now();
         while (done < totalTicks && !player.dead && state.running &&
-               (performance.now() - t0) < SLICE_MS) {
+               (performance.now() - t0) < sliceMs) {
           tick();
           settleDeadMobs();
           done++;

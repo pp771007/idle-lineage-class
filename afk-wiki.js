@@ -143,55 +143,7 @@
     vacuum: '封印', magicseal: '封印', mrhalf: '魔防減半', armorbreak: '盔甲破壞'
   };
   // 少數效果不在數值欄位裡(隱身、解除、傳送、暗系被動等),這裡用白話補上
-  var EFFECT_OVERRIDE = {
-    sk_sunlight: '打完一批怪後，下一批出現得更快（接戰等待從約 5 秒縮短為約 1 秒），加快打怪節奏',
-    sk_reveal: '顯現平時隱形、打不到的怪物（如史巴托），讓你能攻擊牠', sk_helm_str2: '顯現平時隱形、打不到的怪物（如史巴托），讓你能攻擊牠',
-    sk_magic_shield: '完全擋下接下來受到的一次攻擊（用掉後消失，3 秒內無法再施展）',
-    sk_invisible: '隱身——滿血的一般怪物不會主動攻擊你',
-    sk_resurrection: '死亡後可立即原地復活（消耗 MP），復活時回復 1～200 隨機 HP（MP 不恢復）；無冷卻、無次數限制，只要 MP 足夠就能一直用',
-    sk_undead_bane: '只對「不死類」怪物有效（圖鑑會標不死）：施放後有機率讓目標直接死亡，不是造成傷害。成功率看「你的等級＋魔法命中」對上「怪的等級＋魔防」，越壓制成功率越高，但封頂約 60%（再難打也保有最低成功率）；對王級（BOSS）一律無效',
-    sk_holy_barrier: '受到的傷害減少 30%',
-    sk_soul_up: 'HP 與 MP 上限各提升 20%',
-    sk_abs_barrier: '與這個世界完全隔絕，持續 7 秒：期間不受任何傷害，但同時無法攻擊、施法、喝藥水或使用道具，HP／MP 也不會自然恢復；效果結束後要再等 12 秒才能再次施放',
-    sk_counter_barrier: '擺出反擊架式：原本只有單手劍被打中時能反擊，施放後連「雙手武器」被打中時也能反擊；若拿的武器本來就帶反擊（單手劍）或居合（武士刀）特性，反擊／居合那一擊的最終傷害再 ×2',
-    sk_antidote: '解除中毒狀態',
-    sk_holy_light: '驅散身上的詛咒',
-    sk_cancel: '解除自己身上的魔法狀態',
-    sk_teleport: '讓當前的怪物消失、重新出現一批（可用來換掉難纏的怪；帶傳送控制戒指則會引來強敵）',
-    sk_energy_sense: '查看目標怪物的屬性弱點',
-    sk_charm: '魅惑一隻非王級怪物，使牠為你作戰（持續 1 小時；成功率最高約 6 成，有召喚精通時對比你低等的怪必定成功）。迷魅不佔召喚增益名額、可與一隻召喚物並存；被迷魅夥伴的命中與傷害隨「完整魅力」提升（連超過 60 的魅力都算進去）',
-    sk_mana_drain: '消耗 50 HP，對怪物施放並（以異常魔法命中判定）命中後，吸取 1～(怪物等級÷2) 點 MP',
-    sk_load_up: '負重上限 +50（效果結束後才能再次施放）',
-    sk_reduction_armor: '提升傷害減免，數值 ＝ 等級 ÷ 10（無條件捨去，例：Lv50 → +5）',
-    sk_shock_stun: '造成一次武器物理傷害，並使目標暈眩 6 秒（暈眩成功率依等級差判定、非固定百分比；需裝備非弓武器）',
-    sk_elf_worldtree: '讓妖精森林、眠龍洞穴一帶的區域額外掉落率由 20% 提升到 30%（被動）',
-    sk_elf_singleres: '提升所選定屬性的抗性 +50',
-    sk_elf_earthshield: '張開一道大地屏障',
-    sk_elf_flamesoul: '近距離普攻傷害必定打出最高值（效果結束後才能再施放）',
-    sk_elf_mind: '消耗 8 HP 轉換成 2 MP',
-    sk_elf_soul: '消耗 50 HP 轉換成 15 MP',
-    sk_elf_mirror: '受到魔法傷害時，有「精神」%的機率（每 1 點精神 +1%）反射回去——對施法的目標造成與自己這次所受傷害等量、必定命中的固定傷害',
-    sk_elf_summon: '依你選定的屬性召喚屬性精靈為你作戰；預設 1 隻，學了「精靈精通」後隻數＝1＋魅力÷20（無條件捨去，魅力 60 時最多 4 隻）。造屍術／召喚術／屬性精靈這類召喚增益同時只能開一個，迷魅術可另外並存',
-    sk_elf_summon2: '召喚比一般屬性精靈更強的上級屬性精靈作戰；隻數規則同屬性精靈——預設 1 隻，學了「精靈精通」後＝1＋魅力÷20（無條件捨去，最多 4 隻）。造屍術／召喚術／屬性精靈這類召喚增益同時只能開一個，迷魅術可另外並存',
-    sk_summon: '召喚一隻生物為你作戰，等級越高召喚到的生物越強。始終只有 1 隻——魅力提升的是「這隻每輪攻擊幾段」、不是召喚更多隻：每輪攻擊段數＝魅力÷6（無條件捨去，即每 6 點魅力多打一段，魅力 60 時最多 10 段），命中與傷害也隨魅力提升，有「召喚精通」時命中傷害判定改用魅力×1.2。造屍術／召喚術／屬性精靈這類召喚增益同時只能開一個，迷魅術可另外並存',
-    sk_zombie: '造出一隻人形殭屍隨從替你作戰。始終只有 1 隻——魅力提升的是「這隻每輪攻擊幾段」、不是召喚更多隻：每輪攻擊段數＝魅力÷6（無條件捨去，即每 6 點魅力多打一段，魅力 60 時最多 10 段），命中與傷害也隨魅力提升，有「召喚精通」時命中傷害判定改用魅力×1.2。造屍術／召喚術／屬性精靈這類召喚增益同時只能開一個，迷魅術可另外並存',
-    sk_dark_stealth: '暗影隱身：閃過接下來受到的一次攻擊（用掉後進入冷卻）',
-    sk_dark_poison: '攻擊時 50% 機率使目標中毒（每秒造成該次傷害的 30%、持續 5 秒；有劇毒精通則必定中毒）',
-    sk_dark_poisonres: '你自己受到的中毒傷害減半',
-    sk_dark_burn: '攻擊時 10% 機率打出 1.5 倍傷害',
-    sk_dark_walkhaste: '攻擊速度提升 15%（可與加速術疊加）',
-    sk_dark_dodge: '有 50% 機率閃過原本「必中」的魔法攻擊（用掉後進入冷卻）',
-    sk_dark_crit: '消耗一半當前 HP 與全部 MP，打出一記必中、必重擊的攻擊；剩下的 MP 越多傷害越高（滿 MP 約 10 倍，對血盟敵人再 ×2）',
-    sk_dark_double: '使用雙刀或鋼爪時，有機率打出 2 倍傷害（45 級起 5%，每 5 級 +1%）',
-    sk_dark_refine: '被動：提高「黑魔石」（黑暗妖精製作素材）取得。沉默洞穴外圍二級黑魔石掉率 20%→30%、三級 10%→15%；其他野外／地監原本完全不掉，學會後才會掉（二級 1%、三級 0.5%、四級 0.1%；攻城區不掉）',
-    sk_elf_triple: '需裝備弓。對單體連續射出 3 箭物理攻擊，每箭各自判定命中與重擊',
-    sk_fire_prison: '火屬性範圍持續傷害：每 2 秒對全體敵人造成 1～15 點火魔法傷害（會隨智力與魔法傷害放大、受魔防減免）；效果結束才能再施放',
-    sk_blizzard_storm: '水屬性範圍持續傷害：每 4 秒對全體敵人造成 1～10 點水魔法傷害並嘗試冰凍（會隨智力與魔法傷害放大、受魔防減免）；效果結束才能再施放',
-    sk_elf_watervital: '期間你下次受到「治癒術」（自身的瞬間治癒，不含持續回復 HoT）時，恢復量加倍；觸發後 7 秒冷卻才能再次加倍。效果結束才能再施放',
-    sk_elf_energyboost: '負重超標（進入懲罰階）時，HP／MP 仍能自然恢復（平常背太重會停掉自然恢復）；效果結束才能再施放',
-    sk_elf_physboost: '負重超標（進入懲罰階）時，HP／MP 仍能自然恢復（平常背太重會停掉自然恢復）；效果結束才能再施放',
-    sk_elf_attrfire: '一般攻擊有 30% 機率造成 1.5 倍傷害；近戰和拿弓都吃得到，但弓的連射追加箭不適用。效果結束才能再施放'
-  };
+  // 法術白話補充已搬到 afk-extradata.js 的 AFK_EXTRA.skillNote(掉落查詢/小百科共用);skillEffect 於呼叫時即時讀,不依賴載入順序
   function statDeltaTxt(d) {
     var out = [];
     for (var k in d) {
@@ -220,6 +172,7 @@
     return pairs.join('、');
   }
   function skillEffect(id, sk) {
+    var EFFECT_OVERRIDE = (window.AFK_EXTRA && AFK_EXTRA.skillNote) || {};
     if (EFFECT_OVERRIDE[id]) {
       var ov = EFFECT_OVERRIDE[id];
       if (sk.type === 'buff' && sk.dur) ov += durTxt(sk.dur);   // 持續型增益自動補上實際時間
@@ -1116,20 +1069,16 @@
     if (isLegendSetPiece(d)) return '套裝效果見「套裝」分頁。';
     return d.d ? friendly(String(d.d).replace(/<br\s*\/?>/gi, '　')) : '';
   }
-  // 走特殊取得鏈的傳說裝:靈魂之球喚回(寫死,遊戲機制寫死在 soulorb 處理裡、無可讀資料)
-  var LEGEND_SOULORB = {
-    '巴風特魔杖': '帶著「失去魔力的巴風特魔杖」對「靈魂之球」使用即可喚回（會繼承原杖的席琳套裝效果）。<br>・失去魔力的巴風特魔杖：打「巴風特」約 0.1%、「炎魔的巴風特」約 0.0001%。<br>・靈魂之球：打「鬼魂／紅鬼魂」各約 0.01%。',
-    '巴列斯魔杖': '帶著「失去魔力的巴列斯魔杖」對「靈魂之球」使用即可喚回（會繼承原杖的席琳套裝效果）。<br>・失去魔力的巴列斯魔杖：打「巴列斯」約 1%、「炎魔的巴列斯」約 0.0001%。<br>・靈魂之球：打「鬼魂／紅鬼魂」各約 0.01%。',
-  };
-  // 傳回該傳說裝的「取得方式」HTML(無特殊取得鏈則回空字串,交給頁尾通則+掉落查詢)
-  function legendAcquire(d) {
-    if (LEGEND_SOULORB[d.n]) return LEGEND_SOULORB[d.n];
+  // 傳回該傳說裝的「取得方式」HTML(無特殊取得鏈則回空字串,交給頁尾通則+掉落查詢);id 用來對共用清單與配方
+  function legendAcquire(d, id) {
+    // 手動補充的喚回鏈走共用清單 afk-extradata.js(掉落查詢也讀同一份);只放「能動態算」以外的
+    var exa = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
+    if (exa && exa.chain) return exa.chain;
     // 惡魔王武器:讀遊戲 DEMONKING_RECIPES 動態組出炎魔之影客製製作鏈(作者改配方會自動跟著變)
     if (typeof DEMONKING_RECIPES !== 'undefined' && DEMONKING_RECIPES) {
       var r = null;
       for (var i = 0; i < DEMONKING_RECIPES.length; i++) {
-        var res = DEMONKING_RECIPES[i].result;
-        if (DB.items[res] && DB.items[res].n === d.n) { r = DEMONKING_RECIPES[i]; break; }
+        if (DEMONKING_RECIPES[i].result === id) { r = DEMONKING_RECIPES[i]; break; }
       }
       if (r) {
         var matStr = (typeof DEMONKING_MATS !== 'undefined' && DEMONKING_MATS)
@@ -1145,11 +1094,12 @@
     Object.keys(DB.items).forEach(function (id) {
       var d = DB.items[id];
       if (!d || !d.legend || !groups[d.type]) return;
-      groups[d.type].push(d);   // 成套件也列進來,只是套裝加成連去套裝頁
+      groups[d.type].push({ d: d, id: id });   // 帶 id(取得方式要對共用清單/配方);成套件也列進來,套裝加成連去套裝頁
     });
-    function card(d) {
+    function card(e) {
+      var d = e.d;
       var meta = legendReqCN(d.req) + (LEGEND_SLOT_CN[d.slot] ? '　|　' + LEGEND_SLOT_CN[d.slot] : (d.type === 'wpn' ? '　|　武器' : ''));
-      var special = legendSpecial(d), stats = legendStats(d), acq = legendAcquire(d);
+      var special = legendSpecial(d), stats = legendStats(d), acq = legendAcquire(d, e.id);
       return '<div class="m-wiki-card">' +
         '<div class="m-wiki-name"><span class="c-legend">' + esc(d.n) + '</span></div>' +
         '<div class="m-wiki-desc" style="color:#94a3b8;font-size:12px;">' + esc(meta) + '</div>' +

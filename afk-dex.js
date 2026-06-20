@@ -301,11 +301,6 @@
   // 由武器種類(getWeaponTags)推出的內建特性:有些特性不是寫在 eff,而是看武器種類(單手劍=反擊、武士刀=居合、匕首/矛=出血…)
   var IT_TAG_TRAIT = { '單手劍': '反擊', '武士刀': '居合', '匕首': '出血', '矛': '出血', '雙刀': '連擊', '鋼爪': '連擊', '雙手劍': '切割', '雙手鈍器': '重擊／粉碎' };
   function itReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return IT_REQ[x] || x; }).join('／'); }
-  // 特殊取得:靈魂之球喚回的傳說魔杖(不在 CRAFT_RECIPES、也非怪物掉落;遊戲寫死在 soulorb 處理裡,只能對照)
-  var SOULORB_RESTORE = {
-    wpn_baless: '失去魔力的巴列斯魔杖',
-    wpn_baphomet_wand: '失去魔力的巴風特魔杖',
-  };
   function itemDetailHTML(id) {
     var d = DB.items[id];
     if (!d) return '<div class="m-dex-hint">查無此物品資料。</div>';
@@ -364,8 +359,9 @@
     if (d.stunResist) traits.push(d.stunResist + '% 抵抗暈眩');
     if (d.magicDrNonEle) traits.push('受無屬性魔法傷害 −' + d.magicDrNonEle + '%');
     if (traits.length) add('特性', traits.join('、'));
-    // 取得方式:只標「可控」的特殊取得(靈魂之球喚回);潘朵拉黑市抽獎是隨機池、不可控,不列(使用者要求)。製作/掉落另在下方與搜尋鈕呈現
-    if (SOULORB_RESTORE[id]) add('取得方式', '用「靈魂之球」喚回「' + SOULORB_RESTORE[id] + '」（繼承其席琳套裝效果）');
+    // 取得方式:讀共用清單 afk-extradata.js 的手動補充(短版,小百科讀同一份);只標可控取得,潘朵拉黑市抽獎(隨機池)不列。製作/掉落另由 craftInfoHTML 與搜尋鈕呈現
+    var exAcq = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
+    if (exAcq && exAcq.short) add('取得方式', exAcq.short);
     if (d.safe != null) add('安定值', d.safe);
     if (d.p) add('賣店價', Math.floor(d.p * 0.3).toLocaleString() + ' 金幣');   // 賣給商店約得定價(p)的 3 成;祝福/屬性/遠古詞綴各再 ×10
     var icon = '';

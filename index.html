@@ -1290,7 +1290,7 @@ const DB = {
         "armguard_fighter": { n: "古代鬥士臂甲", type: "arm", slot: "shield", ac: 0, resFire: 5, resWater: 5, resEarth: 5, resWind: 5, req: "all", safe: 0, p: 100000, gachaWeight: 1, armguard: { stat: "meleeDmg", base: 1, th: [1, 2, 3] }, d: "古代鬥士的臂甲（裝於副手，可與雙手武器並用）。全屬性抗性+5、近距離傷害+1；強化達 +5/+7/+9 時近距離傷害改為 +2/+3/+4（取最高階、非累加）。每強化+1，HP+10。" },
         "wpn_old_sword": { n: "古老的劍", type: "wpn", dmgS: 35, dmgL: 20, hit: 5, dmgBonus: 0, spd: 1.0, req: "knight,elf,dark", safe: 0, p: 15000, gachaWeight: 0, noEnhance: true, finalMult: 1.5, d: "古代的單手劍。反擊、居合、最終傷害×1.5；無法強化。" },
         "wpn_old_greatsword": { n: "古老的巨劍", type: "wpn", w2h: true, dmgS: 27, dmgL: 45, hit: 3, dmgBonus: 3, spd: 0.8, req: "knight", safe: 0, p: 15000, gachaWeight: 0, eff: "cleave", noEnhance: true, finalMult: 1.5, d: "古代的雙手巨劍。切割、最終傷害×1.5；無法強化。" },
-        "wpn_old_xbow": { n: "古老的弩槍", type: "wpn", isBow: true, ranged: true, w2h: true, rapidfire: 90, dmgS: 3, dmgL: 3, hit: 5, dmgBonus: 2, spd: 0.9, req: "elf,dark", safe: 0, p: 15000, gachaWeight: 0, noEnhance: true, finalMult: 1.5, d: "古代的弩槍。連射90%、最終傷害×1.5；無法強化。" },
+        "wpn_old_xbow": { n: "古老的弩槍", type: "wpn", isBow: true, ranged: true, oneHand: true, rapidfire: 90, dmgS: 3, dmgL: 3, hit: 5, dmgBonus: 2, spd: 0.9, req: "elf,dark", safe: 6, p: 15000, gachaWeight: 0, d: "古代的單手弩槍（首把單手弓）。連射90%；可同時裝備盾牌或臂甲。" },
         "wpn_ancient_spear": { n: "古代神之槍", type: "wpn", w2h: true, legend: true, dmgS: 27, dmgL: 30, hit: 3, dmgBonus: 5, spd: 1.0, req: "knight", safe: 6, p: 465000, gachaWeight: 1, eff: "pierce", pierceChance: 90, d: "古代神祇所持的雙手神槍。穿透90%。" },
         "amr_old_plate": { n: "古老的金屬盔甲", type: "arm", slot: "armor", ac: 16, hpR: 1, req: "knight", safe: 0, p: 10000, gachaWeight: 0, noEnhance: true, d: "古代的金屬盔甲。HP自然恢復+1；無法強化。" },
         "amr_old_scale": { n: "古老的鱗甲", type: "arm", slot: "armor", ac: 14, hpR: 8, mpR: 4, req: "knight,elf,dark", safe: 0, p: 10000, gachaWeight: 0, noEnhance: true, d: "古代的鱗甲。HP自然恢復+8、MP自然恢復+4；無法強化。" },
@@ -2173,7 +2173,7 @@ const DB = {
         "sk_elf_seal": { n: "封印禁地", type: "atk", tier: 5, reqE: 50, mp: 40, dmgType: "magic", reqEleAny: true, status: { kind: "magicseal", pbase: 100, dur: 8 } },
         "sk_elf_blazewpn": { n: "烈炎武器", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1200, reqEle: "fire", d: { meleeDmg: 5, meleeHit: 5 } },
         "sk_elf_flamesoul": { n: "烈焰之魂", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1280, reqEle: "fire", noRefresh: true },   // 🔧 持續內近距離一般攻擊武器擲骰必定最大值（見 getPhysicalDmg）；noRefresh：效果結束才可再施放
-        "sk_elf_stormshot": { n: "暴風神射", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1200, reqEle: "wind", d: { rangedDmg: 4, rangedHit: 2 } },
+        "sk_elf_stormshot": { n: "暴風神射", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1200, reqEle: "wind", d: { rangedDmg: 6, rangedHit: 3 } },
         "sk_elf_steelguard": { n: "鋼鐵防護", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1200, reqEle: "earth", d: { ac: 7 } },
         "sk_elf_attrfire": { n: "屬性之火", type: "buff", tier: 5, reqE: 50, mp: 20, dur: 320, reqEle: "fire", noRefresh: true, attrFireBuff: true, msg: "屬性之火在你的攻擊中燃燒。" },   // 🔧 一般攻擊30%機率傷害×1.5（見 playerAttack，與燃燒鬥志同效）；noRefresh：效果結束才可再施放
         "sk_elf_physboost": { n: "體能激發", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 960, reqEle: "earth", noRefresh: true, loadFreeRegen: true, msg: "體能激發，負重之下仍能調息。" },   // 🔧 負重狀態仍可自然恢復HP/MP（見 regenTick / hasLoadFreeRegen）；noRefresh：效果結束才可再施放
@@ -4322,6 +4322,7 @@ function tick() {
         if(player._waterVitalCd > 0) player._waterVitalCd--;   // 🔧 水之元氣：觸發後 7 秒冷卻（每秒遞減）
         if(_buffEnded) calcStats();   // 到期重算（變身還原、技能加成移除等）
         if(canAct) autoActions();
+        else tryEmergencyDispel();   // 🔧 石化/冰凍/暈眩/麻痺/沉睡（行動不能）中：仍允許自動施放「魔法相消術／聖潔之光」自救（沉默/魔法封印中除外）
     }
 
     // === 出怪判定：以邏輯 tick (state.ticks) 為準，與主迴圈時間補跑同步 ===
@@ -6394,7 +6395,9 @@ function killMob(idx) {
     let _kbNoReward = _kbRoom && !mob.boss;                     // 除頭目外（地獄束縛犬）：不給金錢/掉落
     _sherineLootCtx = mob._sherine ? { boss: !!mob.boss, grace: !!mob._grace } : null;   // 🔮 席琳的世界：本次擊殺掉落套用 詞綴×3／套裝效果判定（恩賜怪套裝機率×5）
     if(typeof auditTrackKill === 'function') auditTrackKill(mob);   // 統計：累計經驗/擊殺
-    logCombat(`擊敗了 <span class="${getMobColor(mob.lv)}">${mob.n}</span>！`, 'player-heavy');  // 👈 新增
+    // 🔧 轉場建築（往上層的樓梯 / 遺忘之島傳送門）：擊敗即進入下一層/島，不顯示「擊敗了…」戰鬥訊息（race 建築且 noAutoTeleport，排除攻城塔/城門）
+    let _hideKillMsg = (mob.race === '建築' && mob.noAutoTeleport);
+    if(!_hideKillMsg) logCombat(`擊敗了 <span class="${getMobColor(mob.lv)}">${mob.n}</span>！`, 'player-heavy');  // 👈 新增
     player.exp += Math.floor(mob.exp * getExpGainMult(player.lv));
     checkLvUp();
     // 精神(WIS)：擊殺敵人時立即額外恢復 MP
@@ -8011,11 +8014,11 @@ function castSkill(skId) {
     if(skId === 'sk_sunlight' && KING_ROOMS[mapState.current]) { logSys('<span class="text-red-400">軍王之室中，日光術無法生效。</span>'); return false; }   // 🔧 軍王之室：日光術無效
     if(skId === 'sk_magic_shield' && (player.magicShieldCd || 0) > 0) return false;   // 魔法屏障抵擋技能後冷卻中，無法施放
     
-    if(player.statuses.silence > 0 && skId !== 'sk_cancel') {
+    if(player.statuses.silence > 0) {   // 🔧 沉默：所有魔法皆無法施放（含魔法相消術——只有沉默/魔法封印能擋下相消術）
         logSys(`沉默狀態中，無法施展魔法。`);
         return false;
     }
-    if(player.statuses.magicseal > 0 && skId !== 'sk_cancel') {
+    if(player.statuses.magicseal > 0) {   // 🔧 魔法封印（怪物技能「沉默」所施加）：同上，魔法相消術亦遭封印
         logSys(`魔法封印狀態中，無法施展技能。`);
         return false;
     }
@@ -8453,6 +8456,20 @@ function autoActions() {
             if(hpPct > th && player.mp < player.mmp * 0.9) castSkill(convId);
         }
     }
+}
+
+// 🔧 行動不能（石化/冰凍/暈眩/麻痺/沉睡）期間的自救：仍嘗試自動施放「魔法相消術／聖潔之光」解除負面狀態。
+//    沉默/魔法封印中無法施展魔法（靜默跳過、不洗版）；其餘條件（勾選/負重/MP/冷卻/有可解狀態）由 castSkill 內部把關。
+//    相消術涵蓋石化/麻痺/冰凍等，啟用時優先且足夠（與 autoActions「相消已涵蓋解毒/聖潔之光則跳過」一致）；
+//    未啟用相消術時，聖潔之光（解石化/麻痺）亦走此自救路徑。解毒術不納入：中毒不會行動不能、平時即可自動施放。
+function tryEmergencyDispel() {
+    if(!state.running || player.dead) return;
+    if((player.d.loadTier||0) >= 2) return;                                          // 負重 82%+：暫停所有技能自動施放（與 autoCastSpells/autoActions 一致）
+    if(player.statuses.silence > 0 || player.statuses.magicseal > 0) return;         // 沉默/魔法封印：無法施展魔法（靜默跳過，避免洗版）
+    let cancelChk = document.getElementById('auto-sk-sk_cancel');
+    if(cancelChk && cancelChk.checked && player.skills.includes('sk_cancel')) { castSkill('sk_cancel'); return; }   // 魔法相消術已涵蓋石化/麻痺/冰凍等
+    let holyChk = document.getElementById('auto-sk-sk_holy_light');
+    if(holyChk && holyChk.checked && player.skills.includes('sk_holy_light')) castSkill('sk_holy_light');           // 聖潔之光：解石化/麻痺；castSkill 內 _purifyOk 守衛僅在有可解狀態時施放
 }
 
 // 自動施放攻擊/治癒法術的基礎間隔：2 秒(20 tick)，並受攻速倍率(加速/勇敢藥水/精靈餅乾/變身)影響
@@ -8938,7 +8955,7 @@ function useItem(u, silent = false) {
 
 // 雙手武器判定：弓(isBow)或雙手武器(w2h)，皆不可與盾牌並存
 function isTwoHandedWpn(d) {
-    return !!(d && (d.isBow || d.w2h));
+    return !!(d && (d.isBow || d.w2h) && !d.oneHand);   // 🏝️ oneHand：單手武器（古老的弩槍＝單手弓）即使是弓也可與盾牌/臂甲並用
 }
 // 隱身狀態：施放隱身術(buff)期間，或穿著隱身斗篷(arm_88)時皆成立；卸下斗篷即失效
 function isInvisible() {
@@ -12659,8 +12676,10 @@ function build50TrialHTML(npcName) {
     }
     let have = questCountId(cfg.exMat);
     let crystals = questCountId('sherine_crystal');   // 🔮 含倉庫
-    h += `試煉已完成，魔族神殿已對你開放。<br>交付 1 個 <b class="text-red-300">${cfg.exMatNm}</b>（持有 ${have}）可重複換取：<br>`;
-    h += `<span class="text-slate-400 text-sm">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每個額外消耗 1 個<b class="c-sherine">席琳結晶</b>（持有 ${crystals}），成品必定附帶一種隨機<span class="c-sherine">席琳套裝效果</span>。</span></div>`;
+    let anySherine = cfg.rewards.some(r => sherineSetEligible(DB.items[r.id]));   // 🔮 此試煉是否有可席琳兌換的成品（瑪那水晶球等盾類不支援 → 不顯示席琳說明）
+    h += `試煉已完成，魔族神殿已對你開放。<br>交付 1 個 <b class="text-red-300">${cfg.exMatNm}</b>（持有 ${have}）可重複換取：`;
+    h += anySherine ? `<br><span class="text-slate-400 text-sm">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每個額外消耗 1 個<b class="c-sherine">席琳結晶</b>（持有 ${crystals}），成品必定附帶一種隨機<span class="c-sherine">席琳套裝效果</span>。</span>` : ``;
+    h += `</div>`;
     if (have < 1) return h + `<div class="px-4 pb-4 text-red-400 text-sm">需要 1 個 ${cfg.exMatNm} 才能兌換。</div>`;
     h += `<div class="p-4">${trialQtyBar()}<div class="grid grid-cols-1 gap-3">`;
     cfg.rewards.forEach(r => {

@@ -80,6 +80,12 @@
       sk_elf_physboost: '負重超標（進入懲罰階）時，HP／MP 仍能自然恢復（平常背太重會停掉自然恢復）；效果結束才能再施放',
       sk_elf_attrfire: '一般攻擊有 30% 機率造成 1.5 倍傷害；近戰和拿弓都吃得到，但弓的連射追加箭不適用。效果結束才能再施放',
     },
+
+    // ── 武器特性的白話對照(掉落查詢物品卡 + 小百科傳說武器共用)──
+    //   weaponTraitEff: 武器 d.eff → 特性白話
+    weaponTraitEff: { combo: '連擊', cleave: '切割', pierce: '穿透', crush: '重擊／粉碎', moonburst: '月光爆裂', mp_drain: '命中恢復 MP', dice_death: '即死', magicburst: '魔爆', magicstrike: '魔擊', haste: '自我加速' },
+    //   weaponTagTrait: 武器種類(getWeaponTags) → 內建特性(有些特性看種類、不寫在 eff)
+    weaponTagTrait: { '單手劍': '反擊', '武士刀': '居合', '匕首': '出血', '矛': '出血', '雙刀': '連擊', '鋼爪': '連擊', '雙手劍': '切割', '雙手鈍器': '重擊／粉碎' },
   };
   console.log('[AFK-extradata] loaded — AFK_EXTRA 共用資料就緒（itemAcquire / skillNote）。');
 })();

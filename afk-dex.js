@@ -297,9 +297,9 @@
   var IT_RES = { resFire: '火', resWater: '水', resWind: '風', resEarth: '地' };
   var IT_STAT = { str: '力量', dex: '敏捷', con: '體質', int: '智力', wis: '精神', cha: '魅力' };
   // 武器特性(eff)→白話名稱(對齊小百科「武器特性」分頁);消耗品的 eff(藥水/卷軸等)不會走到武器分支故不列
-  var IT_EFF = { combo: '連擊', cleave: '切割', pierce: '穿透', crush: '重擊／粉碎', moonburst: '月光爆裂', mp_drain: '命中恢復 MP', dice_death: '即死', magicburst: '魔爆', magicstrike: '魔擊', haste: '自我加速' };
-  // 由武器種類(getWeaponTags)推出的內建特性:有些特性不是寫在 eff,而是看武器種類(單手劍=反擊、武士刀=居合、匕首/矛=出血…)
-  var IT_TAG_TRAIT = { '單手劍': '反擊', '武士刀': '居合', '匕首': '出血', '矛': '出血', '雙刀': '連擊', '鋼爪': '連擊', '雙手劍': '切割', '雙手鈍器': '重擊／粉碎' };
+  var IT_EFF = (window.AFK_EXTRA && AFK_EXTRA.weaponTraitEff) || {};   // 武器 eff→特性白話,共用清單 afk-extradata.js
+  // 由武器種類(getWeaponTags)推出的內建特性(看種類、不寫在 eff);共用清單 afk-extradata.js
+  var IT_TAG_TRAIT = (window.AFK_EXTRA && AFK_EXTRA.weaponTagTrait) || {};
   function itReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return IT_REQ[x] || x; }).join('／'); }
   function itemDetailHTML(id) {
     var d = DB.items[id];

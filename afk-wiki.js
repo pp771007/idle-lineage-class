@@ -1089,6 +1089,19 @@
     }
     return '';
   }
+  // 傳說武器的「武器特性」:種類內建特性(居合/反擊/出血…)+ eff 特性,讀共用清單;proc 特殊攻擊已在描述呈現故不重列
+  function legendWeaponTraits(d, id) {
+    if (!d || d.type !== 'wpn') return '';
+    var EFF = (window.AFK_EXTRA && AFK_EXTRA.weaponTraitEff) || {};
+    var TAG = (window.AFK_EXTRA && AFK_EXTRA.weaponTagTrait) || {};
+    var wt = [];
+    if (d.eff && EFF[d.eff]) wt.push(EFF[d.eff]);
+    var tags = (typeof getWeaponTags === 'function') ? (getWeaponTags(id) || []) : [];
+    tags.forEach(function (tg) { if (TAG[tg]) wt.push(TAG[tg]); });
+    if (d.rapidfire) wt.push('連射');
+    if (d.unBonus) wt.push('對不死／狼人額外傷害');
+    return wt.filter(function (v, i) { return wt.indexOf(v) === i; }).join('、');
+  }
   function renderLegend() {
     var groups = { wpn: [], arm: [], acc: [] };
     Object.keys(DB.items).forEach(function (id) {
@@ -1099,11 +1112,12 @@
     function card(e) {
       var d = e.d;
       var meta = legendReqCN(d.req) + (LEGEND_SLOT_CN[d.slot] ? '　|　' + LEGEND_SLOT_CN[d.slot] : (d.type === 'wpn' ? '　|　武器' : ''));
-      var special = legendSpecial(d), stats = legendStats(d), acq = legendAcquire(d, e.id);
+      var special = legendSpecial(d), stats = legendStats(d), acq = legendAcquire(d, e.id), wtraits = legendWeaponTraits(d, e.id);
       return '<div class="m-wiki-card">' +
         '<div class="m-wiki-name"><span class="c-legend">' + esc(d.n) + '</span></div>' +
         '<div class="m-wiki-desc" style="color:#94a3b8;font-size:12px;">' + esc(meta) + '</div>' +
         (special ? '<div class="m-wiki-desc" style="margin-top:3px;">' + esc(special) + '</div>' : '') +
+        (wtraits ? '<div class="m-wiki-desc" style="margin-top:3px;color:#fbbf24;">武器特性：' + esc(wtraits) + '</div>' : '') +
         (stats ? '<div class="m-wiki-desc" style="margin-top:3px;color:#cbd5e1;">數值：' + esc(stats) + '</div>' : '') +
         (acq ? '<div class="m-wiki-desc" style="margin-top:3px;color:#a5b4fc;">🔑 取得：' + acq + '</div>' : '') +
       '</div>';

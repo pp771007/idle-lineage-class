@@ -250,6 +250,15 @@
         (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: npcId, req: r.req || [], yield: r.yield || 1 });
       });
     }
+    // 👑 惡魔王武器:炎魔之影客製製作(消耗 +11 以上指定惡魔武器 + 素材,不在 CRAFT_RECIPES 裡,要另外補)
+    if (typeof DEMONKING_RECIPES !== 'undefined' && DEMONKING_RECIPES) {
+      var dkMats = (typeof DEMONKING_MATS !== 'undefined' && DEMONKING_MATS) ? DEMONKING_MATS : [];
+      DEMONKING_RECIPES.forEach(function (r) {
+        if (!r || !r.result) return;
+        var req = [{ id: r.src, cnt: 1, plus11: true }].concat(dkMats);
+        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_flame_shadow', req: req, yield: 1, note: '消耗 +11 以上的指定惡魔武器，會繼承它的強化值／詞綴／席琳套裝效果' });
+      });
+    }
   }
   function buildNpcInfo() {
     _npcInfo = {};
@@ -271,11 +280,12 @@
       var where = esc(npc.name) + (npc.town ? '（' + esc(npc.town) + '）' : '');
       var mats = rec.req.map(function (m) {
         var mn = (DB.items[m.id] && DB.items[m.id].n) || m.id;
-        return esc(mn) + ' ×' + m.cnt;
+        return esc(mn) + (m.plus11 ? '（須 +11 以上）' : '') + ' ×' + m.cnt;
       }).join('、');
       var y = (rec.yield && rec.yield > 1) ? '（一次產出 ' + rec.yield + ' 個）' : '';
       return '<div class="m-dex-craft-where">在 <b>' + where + '</b> 製作' + y + '</div>' +
-        '<div class="m-dex-craft-mats">材料：' + (mats || '—') + '</div>';
+        '<div class="m-dex-craft-mats">材料：' + (mats || '—') + '</div>' +
+        (rec.note ? '<div class="m-dex-craft-mats">' + esc(rec.note) + '</div>' : '');
     }).join('');
     return '<div class="m-dex-craft"><div class="m-dex-craft-h">🔨 製作</div>' + blocks + '</div>';
   }

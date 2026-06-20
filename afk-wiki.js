@@ -1169,6 +1169,17 @@
         return '<div class="m-wiki-kv"><b>' + esc(nm) + '</b>在 ' + where + ' 製作　材料：' + esc(mats) + '</div>';
       }).join('');
     }
+    // 👑 惡魔王武器:炎魔之影客製製作(消耗 +11 以上指定惡魔武器 + 素材,不在 CRAFT_RECIPES 裡)
+    if (typeof DEMONKING_RECIPES !== 'undefined' && DEMONKING_RECIPES) {
+      var dkInfo = npcInfo['npc_flame_shadow'] || { name: '炎魔之影', town: '炎魔謁見所' };
+      var dkWhere = esc(dkInfo.name) + (dkInfo.town ? '（' + esc(dkInfo.town) + '）' : '');
+      var dkMats = (typeof DEMONKING_MATS !== 'undefined' && DEMONKING_MATS) ? DEMONKING_MATS : [];
+      html += '<div class="m-wiki-sub">👑 ' + dkWhere + '（惡魔王武器・客製）</div>';
+      html += DEMONKING_RECIPES.map(function (r) {
+        var mats = itemName(r.src) + '（須 +11 以上）×1' + (dkMats.length ? '、' + dkMats.map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') : '');
+        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + dkWhere + ' 製作　材料：' + esc(mats) + '（會繼承來源武器的強化值／詞綴／席琳套裝）</div>';
+      }).join('');
+    }
     return html;
   }
 

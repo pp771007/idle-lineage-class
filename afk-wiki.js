@@ -927,7 +927,7 @@
     var q = QUEST_BY_CLASS[cls];
     if (!q) return '<div class="m-wiki-hint">查無此職業的任務資料。</div>';
     var html = '<div class="m-wiki-note">這裡是「' + esc(q.name) + '」自己的試煉／任務。試煉只有本職業能接，材料多半要打特定怪掉落，「去哪打」欄已列出主要怪與機率。不分職業的共通任務請切上面的「全職業」。</div>';
-    html += '<div class="m-wiki-sub">' + q.icon + ' ' + esc(q.name) + '試煉</div>' + q.trials.map(questCard).join('');
+    html += '<div class="m-wiki-sub">' + q.icon + ' ' + esc(q.name) + '試煉（無等級限制）</div>' + q.trials.map(questCard).join('');
     if (TRIAL_50[cls]) html += '<div class="m-wiki-sub">🔥 50 級試煉（需等級 50）</div>' + questCard(TRIAL_50[cls]);
     if (q.attr) html += '<div class="m-wiki-sub">🌿 妖精屬性學習</div>' + questCard(q.attr);
     html += '<div class="m-wiki-sub">🏅 精通任務（50 級開放）</div>' + questCard({

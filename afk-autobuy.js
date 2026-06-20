@@ -102,8 +102,8 @@
     box.innerHTML =
       '<div class="text-sm text-amber-400 mb-2 border-b border-slate-700 pb-1 font-bold">🔌 外掛</div>' +
       '<div class="flex flex-col gap-2 text-sm">' +
-        '<label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-auto-buy-meat" class="w-4 h-4"><span class="text-rose-300">肉耗盡時自動購買</span></label>' +
-        '<label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-auto-buy-magicbarrier" class="w-4 h-4"><span class="text-cyan-300">自動購買魔法屏障卷軸</span></label>' +
+        '<label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-auto-buy-meat" class="w-4 h-4"><span class="text-rose-300">肉耗盡時自動購買（' + (MEAT_BUNDLE_AMT * MEAT_BUNDLES) + '）</span></label>' +
+        '<label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-auto-buy-magicbarrier" class="w-4 h-4"><span class="text-cyan-300">自動購買魔法屏障卷軸（' + SCROLL_REFILL + '）</span></label>' +
       '</div>';
     card.parentNode.insertBefore(box, card.nextSibling);
 

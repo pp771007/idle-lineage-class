@@ -565,7 +565,7 @@
   function injectCSS() {
     if (document.getElementById('m-dex-style')) return;
     var css = [
-      '#main-menu .m-dex-entry-row{display:flex;gap:8px;align-items:stretch;justify-content:center;width:100%;max-width:21rem;margin:0 auto;}',
+      '#main-menu .m-dex-entry-row{display:flex;gap:8px;align-items:stretch;justify-content:center;width:100%;max-width:18rem;margin:0 auto;}',   /* 整列總寬對齊原生首頁按鈕 w-72(18rem);主按鈕 flex 撐滿、扣掉 ↗ 鈕 */
       '#main-menu .m-dex-entry-row > button{width:auto !important;max-width:none !important;}',
       '#main-menu .m-dex-entry-main{flex:1 1 auto;}',
       '#main-menu .m-dex-entry-newtab{flex:0 0 auto;font-size:1.4rem;line-height:1;padding-left:16px;padding-right:16px;}',

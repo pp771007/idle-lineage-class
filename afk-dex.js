@@ -329,6 +329,14 @@
     } else if (d.ac != null && (d.type === 'arm' || d.type === 'acc')) {
       add('防禦(AC)', sgn(-d.ac));   // 比照遊戲內裝備欄:AC 越低越強，正常防具顯示負值(遊戲是 -d.ac)；負 ac 的下行向裝備則顯示 +，避免「--1」
     }
+    // 🦴 寵物裝備（之牙）:petDmg/petHit 只加成項圈夥伴(不影響玩家);每強化 +1 傷害與命中各 +1(欄位/上限見下方說明)
+    if (d.slot === 'pet' && (d.petDmg || d.petHit)) {
+      var pp = [];
+      if (d.petDmg) pp.push('傷害 ' + sgn(d.petDmg));
+      if (d.petHit) pp.push('命中 ' + sgn(d.petHit));
+      add('寵物加成', pp.join('、'));
+      add('每強化 +1', '寵物傷害 +1、命中 +1');
+    }
     Object.keys(IT_STAT).forEach(function (k) { if (d[k]) add(IT_STAT[k], sgn(d[k])); });
     if (d.mr) add('魔防', sgn(d.mr));
     if (d.mhp) add('HP 上限', sgn(d.mhp));

@@ -6,7 +6,8 @@
 //   - GitHub PAT 用 `wrangler secret put GH_PAT`(fine-grained,給該 repo 的 Actions: Read and write)
 //   - 觸發頻率在 wrangler.toml 的 [triggers] crons
 //
-// 也可用瀏覽器/curl 打 Worker 網址手動測一次(見 fetch handler)。
+// 只靠 Cron Trigger 跑、不對外開網址(wrangler.toml workers_dev=false),故無 fetch handler。
+// 要手動驗證觸發:用 `gh api ... /dispatches` 打一次;看執行紀錄:`wrangler tail sync-trigger`。
 
 async function dispatch(env) {
   const repo = env.GH_REPO;
@@ -26,28 +27,17 @@ async function dispatch(env) {
   });
 
   // 成功時 GitHub 回 204 No Content。
-  const ok = res.status === 204;
-  if (!ok) {
+  if (res.status === 204) {
+    console.log(`workflow_dispatch ok: ${repo} ${workflow}@${ref}`);
+  } else {
     const text = await res.text();
     console.error(`workflow_dispatch failed: ${res.status} ${text}`);
-  } else {
-    console.log(`workflow_dispatch ok: ${repo} ${workflow}@${ref}`);
   }
-  return { ok, status: res.status };
 }
 
 export default {
   // Cron Trigger 進入點
   async scheduled(event, env, ctx) {
     ctx.waitUntil(dispatch(env));
-  },
-
-  // 手動測試用:瀏覽器開 Worker 網址即可手動觸發一次,回 JSON 看結果。
-  async fetch(request, env, ctx) {
-    const r = await dispatch(env);
-    return new Response(JSON.stringify(r), {
-      status: r.ok ? 200 : 502,
-      headers: { "content-type": "application/json" },
-    });
   },
 };

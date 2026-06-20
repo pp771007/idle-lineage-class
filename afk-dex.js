@@ -237,6 +237,14 @@
   function fmtPct(p) { return p < 0.01 ? (p < 0.001 ? p.toFixed(4) : p.toFixed(3)) : (p < 1 ? p.toFixed(2) : (Number.isInteger(p) ? '' + p : p.toFixed(1))); }
   function st(k, v) { return '<span class="m-dex-stat"><b>' + k + '</b> ' + esc(v) + '</span>'; }
   function sgn(v) { return (v > 0 ? '+' : '') + v; }   // 帶正負號:正數加「+」、負數本身就有「-」(避免「+-10」)
+  // 潘朵拉的黑市抽獎權重 → 稀有度白話(權重越小越難抽;對照遊戲 initGachaWeights 的價格分級)
+  function gachaRarity(w) {
+    if (w <= 1) return '極稀有';
+    if (w <= 10) return '稀有';
+    if (w <= 20) return '罕見';
+    if (w <= 50) return '普通';
+    return '常見';
+  }
 
   // ----- 製作資訊:讀遊戲 CRAFT_RECIPES(物品→在哪個 NPC、要什麼材料);作者加新配方自動出現 ------
   var _craftIndex = null;   // itemId -> [{npcId, req, yield}]
@@ -301,6 +309,11 @@
   // 由武器種類(getWeaponTags)推出的內建特性:有些特性不是寫在 eff,而是看武器種類(單手劍=反擊、武士刀=居合、匕首/矛=出血…)
   var IT_TAG_TRAIT = { '單手劍': '反擊', '武士刀': '居合', '匕首': '出血', '矛': '出血', '雙刀': '連擊', '鋼爪': '連擊', '雙手劍': '切割', '雙手鈍器': '重擊／粉碎' };
   function itReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return IT_REQ[x] || x; }).join('／'); }
+  // 特殊取得:靈魂之球喚回的傳說魔杖(不在 CRAFT_RECIPES、也非怪物掉落;遊戲寫死在 soulorb 處理裡,只能對照)
+  var SOULORB_RESTORE = {
+    wpn_baless: '失去魔力的巴列斯魔杖',
+    wpn_baphomet_wand: '失去魔力的巴風特魔杖',
+  };
   function itemDetailHTML(id) {
     var d = DB.items[id];
     if (!d) return '<div class="m-dex-hint">查無此物品資料。</div>';
@@ -359,6 +372,11 @@
     if (d.stunResist) traits.push(d.stunResist + '% 抵抗暈眩');
     if (d.magicDrNonEle) traits.push('受無屬性魔法傷害 −' + d.magicDrNonEle + '%');
     if (traits.length) add('特性', traits.join('、'));
+    // 取得方式:潘朵拉的黑市抽獎(gachaWeight>0 即在抽獎池)+ 靈魂之球喚回(巴列斯/巴風特);製作/掉落另在下方與搜尋鈕呈現
+    var acq = [];
+    if (d.gachaWeight > 0) acq.push('「潘朵拉的黑市」抽獎（' + gachaRarity(d.gachaWeight) + '）');
+    if (SOULORB_RESTORE[id]) acq.push('用「靈魂之球」喚回「' + SOULORB_RESTORE[id] + '」（繼承其席琳套裝效果）');
+    if (acq.length) add('取得方式', acq.join('；'));
     if (d.safe != null) add('安定值', d.safe);
     if (d.p) add('賣店價', Math.floor(d.p * 0.3).toLocaleString() + ' 金幣');   // 賣給商店約得定價(p)的 3 成;祝福/屬性/遠古詞綴各再 ×10
     var icon = '';

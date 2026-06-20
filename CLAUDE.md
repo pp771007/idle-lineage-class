@@ -93,6 +93,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 |---|---|
 | `afk-offline.js` | 離線掛機(關瀏覽器也結算收益;24h 上限、撞死即停、存活回原狩獵圖續掛) |
 | `afk-mobile.js` | 手機版面(底部導覽列、一行式狀態列、浮動日誌面板、修正彈窗溢出) |
+| `afk-extradata.js` | **掉落查詢+小百科共用的手動補充資料**(純資料、無 DOM、最先載入,定義全域 `AFK_EXTRA`):`itemAcquire`(物品取得方式,`short` 給 dex 物品卡、`chain` 給 wiki 傳說裝備頁)、`skillNote`(法術白話,原 wiki 的 EFFECT_OVERRIDE)。**只放「不能從遊戲 DB 動態算」的手動補充**;補一件裝備取得/一個法術只改這支、dex+wiki 同時生效。dex/wiki 都 call 時即時讀、沒載到優雅降級 |
 | `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;純讀 DB.mobs/maps/MOB_DROPS/items;桌機手機共用;**支援獨立頁 `?view=dex`**,見下「獨立頁」) |
 | `afk-wiki.js` | 小百科(首頁入口;**10 分頁 + 關鍵字搜尋**:職業專精/武器特性/職業魔法/任務/套裝/強化/負重/席琳/血盟/傲慢之塔;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**支援獨立頁 `?view=wiki`**;**改前先讀下方「小百科維護準則」**) |
 | `afk-fixes.js` | 通用修正(補原作者上游坑、桌機/手機通用、與裝置判定無關;目前:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉) |
@@ -153,6 +154,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    ```html
    <script src="afk-offline.js?v=YYYYMMDDx"></script>
    <script src="afk-mobile.js?v=YYYYMMDDx"></script>
+   <script src="afk-extradata.js?v=YYYYMMDDx"></script>
    <script src="afk-dex.js?v=YYYYMMDDx"></script>
    <script src="afk-wiki.js?v=YYYYMMDDx"></script>
    <script src="afk-fixes.js?v=YYYYMMDDx"></script>

@@ -8876,7 +8876,7 @@ function useItem(u, silent = false) {
             if(!silent) logSys(`使用變形卷軸，變身為 <span class="${player.poly.c}">${player.poly.n}</span>。`);
 		} else if (d.eff === 'meat') {
             // 肉：食用後獲得「誘捕」狀態；但 8 種項圈(杜賓狗/狼/哈士奇/牧羊犬/聖伯納/暴走兔/狐狸/小獵犬)總數達到 floor(魅力/7) 時無法誘捕
-            let limit = Math.floor((player.d.cha || 0) / 7);
+            let limit = Math.min(8, Math.floor((player.d.cha || 0) / 7));   // 🔧 硬上限 8：不論魅力多高，項圈夥伴攜帶上限封頂 8
             if (totalCollarCount() >= limit) {
                 if(!silent) logSys(`你持有的項圈數量已達上限，無法再進行誘捕。`);
                 return;   // 不消耗肉
@@ -12257,7 +12257,7 @@ function petStoreWithdraw(collarId, locked) {
     let store = petStorageList();
     let st = store.find(s => s.id === collarId && !!s.lock === locked && (s.cnt || 0) > 0);
     if (!st) return;
-    let limit = Math.floor((player.d.cha || 0) / 7);   // 攜帶上限＝魅力÷7（與誘捕同規則）
+    let limit = Math.min(8, Math.floor((player.d.cha || 0) / 7));   // 攜帶上限＝min(8, 魅力÷7)：硬上限 8（與誘捕同規則）
     if (totalCollarCount() >= limit) {
         logSys(`<span class="text-red-400">包武：你的魅力不足以攜帶更多項圈（攜帶上限 ${limit}），無法提領。請先提升魅力或放走部分夥伴。</span>`);
         return;
@@ -12276,7 +12276,7 @@ function renderPetStorageNPC(div) {
     if (!Array.isArray(player.petStorage)) player.petStorage = [];
     let ids = petCollarIds();
     let stored = petStorageCount(), cap = PET_STORAGE_MAX;
-    let carryLimit = Math.floor((player.d.cha || 0) / 7), carried = totalCollarCount();
+    let carryLimit = Math.min(8, Math.floor((player.d.cha || 0) / 7)), carried = totalCollarCount();
     // 🔒 依 (id, 鎖定狀態) 分列：鎖定與未鎖定的同種項圈各自一列、各自存取，提領後維持原鎖定狀態
     let invRows = [], storeRows = [];
     ids.forEach(id => [false, true].forEach(lk => {

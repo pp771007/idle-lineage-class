@@ -7356,6 +7356,80 @@ function allyCastMagic(ally, sk) {
         try { allyCastMagic(ally, sk); } finally { ally._echoing = false; }
     }
 }
+// 🔧 傭兵施放「非傷害」攻擊技能：純異常狀態（緩速/弱化/疾病/魔法消除/封印禁地/沉睡之霧/木乃伊詛咒/毒咒/壞物/闇盲/黑闇之影/破壞盔甲…）
+//    與即死類（起死回生術=不死、釋放元素=元素）。比照玩家 castSkill 的非傷害分支，以傭兵自身魔法命中(abnormalMagicHit)判定（player=ally 換身）。
+//    回傳 true=已施放並扣 MP；false=不適用（無目標 / 目標皆已具該狀態 / 無可即死目標 / MP 不足）→ 由呼叫端退回一般攻擊。
+function allyCastNonDamage(ally, sk) {
+    if (!sk || sk.type !== 'atk' || sk.dmgDice || sk.multiDmg || sk.dmgType === 'physical') return false;   // 僅處理「無傷害骰的魔法狀態/即死技」
+    if (!sk.status && !sk.instakill) return false;
+    let d = ally.d || {};
+    let targets = (sk.target === 'all') ? mapState.mobs.filter(m => m && m.curHp > 0) : [getTarget()].filter(m => m && m.curHp > 0);
+    if (!targets.length) return false;
+    // 即死技：需有「非BOSS且具對應tag」的目標，否則退回一般攻擊（避免對無效目標空放浪費 MP，與玩家 autoCastSpells 一致）
+    if (sk.instakill) {
+        let tag = sk.instakill.tag;
+        if (!targets.some(m => !m.boss && (!tag || mobHasTag(m, tag)))) return false;
+    }
+    // 純異常狀態：所有存活目標皆已具該狀態 → 退回一般攻擊（不重複施放、不浪費 MP，與玩家 castSkill 8235 一致）
+    if (sk.status && targets.every(m => m.st && m.st[sk.status.kind] > 0)) return false;
+    let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+    if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) cost = Math.max(1, Math.ceil(cost * 0.7));   // 🏅 魔導精通（傭兵）：同屬性 MP -30%
+    if ((ally.mp || 0) < cost) return false;
+    ally.mp -= cost;
+    let _sv = player; player = ally;   // 以傭兵自身魔法命中判定（applyMobStatus/tryInstakill 內部讀 player）
+    try {
+        logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n}。`, 'magic');
+        targets.forEach(t => {
+            if (!t || t.curHp <= 0) return;
+            if (sk.status) applyMobStatus(t, sk.status, sk.n);
+            if (sk.instakill && t.curHp > 0) { let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (idx !== -1) tryInstakill(t, sk.instakill, sk.n, idx); }
+        });
+    } finally { player = _sv; }
+    renderMobs();
+    return true;
+}
+// 🔧 傭兵施放「物理」攻擊技能（騎士衝擊之暈等：以武器揮擊造成物理傷害，命中後附加暈眩/異常/即死）。
+//    比照玩家 castSkill 物理分支(8161~8227)，用 allyStrikeRoll 計傷（含硬皮減傷/脆弱/武器最終倍率）、player=ally 換身判定異常命中。
+//    回傳 true=已施放並扣 MP；false=不適用（無目標 / 武器需求不符 / MP 不足）→ 由呼叫端退回一般攻擊。
+function allyCastPhysicalSkill(ally, sk) {
+    if (!sk || sk.type !== 'atk' || sk.dmgType !== 'physical') return false;
+    let t = getTarget(); if (!t || t.curHp <= 0) return false;
+    let d = ally.d || {};
+    let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
+    if (sk.reqWpn === 'w2h'    && !(wpn && wpn.w2h))    return false;   // 需雙手武器
+    if (sk.reqWpn === 'bow'    && !(wpn && wpn.isBow))  return false;   // 需弓
+    if (sk.reqWpn === 'nonbow' && !(wpn && !wpn.isBow)) return false;   // 需「有武器且非弓」（衝擊之暈）
+    let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+    if ((ally.mp || 0) < cost) return false;
+    ally.mp -= cost;
+    let hits = sk.hits || 1, totalDmg = 0, landed = 0, logHits = [];
+    let _sv = player; player = ally;   // 異常命中(applyMobStatus/tryInstakill)以傭兵自身判定
+    try {
+        for (let h = 0; h < hits; h++) {
+            if (t.curHp <= 0) break;
+            let res = allyStrikeRoll(ally, t, {});   // 一般命中判定（可重擊/爆擊）
+            if (!res.hit) { logHits.push('Miss'); continue; }
+            landed++;
+            t.curHp -= res.dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
+            totalDmg += res.dmg;
+            let mark = (res.heavy && res.crit) ? '會心' : (res.crit ? '爆' : (res.heavy ? '重' : ''));
+            logHits.push(res.dmg + (mark ? '(' + mark + ')' : ''));
+            if (sk.stun) applyMobStatus(t, { kind: 'stun', pbase: sk.stun, dur: 6 }, sk.n);
+            if (sk.status) applyMobStatus(t, sk.status, sk.n);
+            if (t.curHp > 0 && sk.instakill) { let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (idx !== -1) tryInstakill(t, sk.instakill, sk.n, idx); }
+        }
+    } finally { player = _sv; }
+    if (landed > 0) {
+        let detail = hits > 1 ? `[${logHits.join(', ')}] 共 ${totalDmg}` : `${totalDmg}`;
+        let tag = logHits.some(x => x.includes('爆') || x.includes('會心')) ? 'player-crit' : 'player';
+        logCombat(`<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n}，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${detail} 點物理傷害。`, tag);
+    } else {
+        logCombat(`<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n} 未命中 <span class="${getMobColor(t.lv)}">${t.n}</span>。`, 'miss');
+    }
+    let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid);
+    if (t.curHp <= 0) { if (ri !== -1) killMob(ri); } else renderMobs();
+    return true;
+}
 // 法師協力的一次行動：有選攻擊魔法且 MP 足夠→施放並扣 MP；否則退回免費基礎光箭
 function allyMageAct(ally) {
     let t = getTarget(); if (!t || t.curHp <= 0) return;
@@ -7365,6 +7439,8 @@ function allyMageAct(ally) {
         let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
         if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
         if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
+    } else if (sk && sk.type === 'atk' && (sk.status || sk.instakill)) {
+        if (allyCastNonDamage(ally, sk)) return;   // 🔧 非傷害攻擊技能（緩速/弱化/疾病/即死…）；不適用則退回基礎光箭
     }
     allyAttackOnce(ally);   // 沒選攻擊魔法 / MP 不足 → 免費基礎光箭
 }
@@ -7787,6 +7863,8 @@ function allyElfAct(ally) {
         let cost = Math.max(1, Math.ceil((sk.mp||0) * (1 - (d.mpReduce||0)/100)));
         if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) cost = Math.max(1, Math.ceil(cost * 0.7));   // 🏅 魔導精通（傭兵）：同屬性魔法消耗MP -30%
         if ((ally.mp||0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
+    } else if (sk && sk.type === 'atk' && (sk.status || sk.instakill)) {
+        if (allyCastNonDamage(ally, sk)) return;   // 🔧 非傷害攻擊技能（地面障礙/魔法消除/封印禁地/釋放元素…）；不適用則退回物理攻擊+連射
     }
     // 退回一般物理攻擊 + 連射（三重矢/魔法 MP 不足、或未選攻擊技能時）
     allyAttackOnce(ally);
@@ -7807,6 +7885,26 @@ function allyDarkAct(ally) {
     } else if (ally._atkSkill === 'sk_dark_crit') {
         // 🔧 會心一擊（傭兵版）：只有 MP 滿才施放，且只消耗 MP（不扣 HP）
         if ((ally.mmp || 0) > 0 && (ally.mp || 0) >= (ally.mmp || 0)) { allyDarkCrit(ally, t); return; }
+    } else {
+        let _sk = DB.skills[ally._atkSkill];   // 🔧 其他非傷害攻擊技能（純異常狀態/即死）：通用施放；不適用則退回一般攻擊
+        if (_sk && _sk.type === 'atk' && (_sk.status || _sk.instakill) && allyCastNonDamage(ally, _sk)) return;
+    }
+    allyAttackOnce(ally);
+}
+// 騎士協力一次行動：依設定攻擊技能施放——物理技(衝擊之暈)、傷害魔法(光箭/冰箭/風刃)、或非傷害狀態/即死技；皆不適用(無目標/武器不符/MP不足)則退回一般攻擊(含看破/殺戮被動)
+function allyKnightAct(ally) {
+    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); return; }
+    let sk = DB.skills[ally._atkSkill];
+    let d = ally.d || {};
+    if (sk && sk.type === 'atk') {
+        if (sk.dmgType === 'physical') {
+            if (allyCastPhysicalSkill(ally, sk)) return;                                   // 衝擊之暈等物理技
+        } else if (sk.dmgDice || sk.multiDmg) {
+            let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));   // 騎士可學的傷害魔法（光箭/冰箭/風刃；無法師倍率，由 allyCastMagic 依職業處理）
+            if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
+        } else if (sk.status || sk.instakill) {
+            if (allyCastNonDamage(ally, sk)) return;                                       // 非傷害狀態/即死技（騎士目前學不到，保留通用分支）
+        }
     }
     allyAttackOnce(ally);
 }
@@ -7846,7 +7944,7 @@ function alliesTick() {
                 { let _aClvW = wpn && wpn.eff === 'cleave'; if (ally._cleaveTicks > 0 || (allyHasMastery(ally, 'k_cleave') && _aClvW)) _itv = Math.max(8, Math.round(_itv * (allyHasMastery(ally, 'k_cleave') ? 0.50 : 0.8))); }   // 🔧 切割：攻速+20%（🏅 切割精通 +50%・持切割武器常駐）
                 if (allyHasMastery(ally, 'e_sword') && wpn && !wpn.w2h && !wpn.isBow && !wpn.ranged) _itv = Math.max(8, Math.round(_itv * (1/1.5)));   // 🏅 劍術精通（傭兵）：持單手近戰武器攻速+50%
                 ally._atkCd = _itv;
-                if (ally.cls === 'elf') allyElfAct(ally); else if (ally.cls === 'dark') allyDarkAct(ally); else allyAttackOnce(ally);
+                if (ally.cls === 'elf') allyElfAct(ally); else if (ally.cls === 'dark') allyDarkAct(ally); else if (ally.cls === 'knight') allyKnightAct(ally); else allyAttackOnce(ally);
             }
         }
     });

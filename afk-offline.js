@@ -152,6 +152,11 @@
     return { gold: player.gold || 0, exp: player.exp || 0, lv: player.lv || 0, inv: inv };
   }
   function fmt(n) { try { return (n || 0).toLocaleString(); } catch (e) { return '' + n; } }
+  // 軍王之室:背包現有「軍王的鑰匙」總數(供離線摘要算消耗了幾把)
+  function countKingKeys() {
+    try { return (player.inv || []).reduce(function (s, i) { return s + ((i && i.id === 'item_king_key') ? (i.cnt || 1) : 0); }, 0); }
+    catch (e) { return 0; }
+  }
   // 地圖 id → 顯示名稱(查原作者的 MAP_CATEGORIES);查不到就回 id 本身
   function mapName(id) {
     try {
@@ -208,7 +213,7 @@
     if (!shown) { try { logSys('（本次攀登無明顯收益）'); } catch (e) {} }
     if (died) { try { logSys('<span class="text-red-500 font-bold">離線攀登中陣亡，已結算至死亡前並送回村莊。</span>'); } catch (e) {} }
   }
-  function summarize(before, after, doneTicks, died, huntMap) {
+  function summarize(before, after, doneTicks, died, huntMap, kingInfo) {
     var mins = Math.round(doneTicks * TICK_MS / 60000);
     var dGold = (after.gold || 0) - (before.gold || 0);
     var dExp  = expTotal(after.lv, after.exp) - expTotal(before.lv, before.exp);
@@ -241,6 +246,15 @@
     line += parts.length ? parts.join('、') : '（無明顯收益）';
     line += '。';
     try { logSys(line); } catch (e) { console.log('[AFK]', line.replace(/<[^>]+>/g, '')); }
+    // ⚔ 軍王之室:附帶「擊敗輪數 / 消耗鑰匙」;若因鑰匙用完被傳回村,多一行提示
+    if (kingInfo && kingInfo.kills > 0) {
+      var kl = `<span class="text-amber-300">⚔ 軍王之室：本次擊敗軍王 <b>${kingInfo.kills}</b> 輪，消耗 <b>${kingInfo.keysUsed}</b> 把軍王的鑰匙。</span>`;
+      try { logSys(kl); } catch (e) { console.log('[AFK]', kl.replace(/<[^>]+>/g, '')); }
+    }
+    if (kingInfo && kingInfo.depleted) {
+      try { logSys('<span class="text-amber-300 font-bold">🔑 軍王的鑰匙已用完，已自動傳回村莊。</span>'); }
+      catch (e) { console.log('[AFK] 軍王的鑰匙已用完，已自動傳回村莊。'); }
+    }
     // 平均效率(對齊遊戲「本圖效率統計」的 經驗/10分、金幣/10分):用實際補跑時間換算
     var preciseMin = doneTicks * TICK_MS / 60000;
     if (preciseMin > 0 && (dExp > 0 || dGold > 0)) {
@@ -277,6 +291,10 @@
     var sliceMs = sliceFor(totalTicks);   // 依補跑長短決定畫面更新間隔:短→順、長→快
     var isClimb = !!(prePride && prePride.climb && !prePride.ranked && typeof enterPrideFloor === 'function');   // 排名挑戰不自動續
     var isObl = !isClimb && !!(preObl && preObl.phase && typeof enterOblivionMap === 'function');   // 🏝️ 遺忘之島旅程:同攀登,還原 state.oblivion 後用 enterOblivionMap 進場(島地圖非選單地圖)
+    // ⚔ 軍王之室:選單地圖,走通用 gotoMap 即可重進;補跑時數「擊敗輪數/消耗鑰匙/是否因鑰匙用完被傳回村」供摘要顯示
+    var isKing = !isClimb && !isObl && (typeof KING_ROOMS !== 'undefined') && !!KING_ROOMS[huntMap];
+    var kingKeysBefore = isKing ? countKingKeys() : 0;
+    var kingLeftRoom = false;   // 補跑期間因鑰匙用完被原作傳回村(離開了軍王之室)
 
     // 暫停 live loop,避免結算期間與主迴圈交錯;結算後再以全新計時重啟
     try { if (typeof _gameLoopId !== 'undefined' && _gameLoopId !== null) { clearInterval(_gameLoopId); _gameLoopId = null; } } catch (e) {}
@@ -318,6 +336,7 @@
           tick();
           settleDeadMobs();
           done++;
+          if (isKing && !kingLeftRoom && mapState && mapState.current !== huntMap) kingLeftRoom = true;   // 鑰匙用完→原作已把人傳出軍王之室
           if (climbSegs) {
             var nf = state.prideFloor || 0;
             if (nf !== segFloor) {   // 樓層變了(爬上去或攀登結束)→ 結算剛剛那一層
@@ -371,8 +390,16 @@
         enterOblivionMap(mapState.current);
       }
     } else if (!died && huntMap) {
-      try { if (player.mhp) player.hp = player.mhp; if (player.mmp) player.mp = player.mmp; } catch (e) {}
-      gotoMap(huntMap);
+      // 🔧 軍王之室:鑰匙若在離線期間用完(原作已把人傳回村),落點別再強制重進「沒鑰匙的空房」,改放村莊。
+      //   一般圖/有鑰匙時照舊回原狩獵圖續掛。
+      var _kingNoKey = (typeof KING_ROOMS !== 'undefined' && KING_ROOMS[huntMap]) &&
+        !player.inv.some(function (i) { return i.id === 'item_king_key' && (i.cnt || 1) >= 1; });
+      if (_kingNoKey) {
+        gotoMap(homeTown());
+      } else {
+        try { if (player.mhp) player.hp = player.mhp; if (player.mmp) player.mp = player.mmp; } catch (e) {}
+        gotoMap(huntMap);
+      }
     } else {
       gotoMap(homeTown());
     }
@@ -384,8 +411,13 @@
     // 持久化離線收益(否則玩家在下次自動存檔前重載會丟失);saveGame 同時會蓋上新時間戳
     try { if (typeof saveGame === 'function') saveGame(); } catch (e) {}
 
+    var kingInfo = null;
+    if (isKing) {
+      var kingKeysUsed = Math.max(0, kingKeysBefore - countKingKeys());
+      kingInfo = { keysUsed: kingKeysUsed, kills: kingKeysUsed + (kingLeftRoom ? 1 : 0), depleted: kingLeftRoom };
+    }
     if (climbSegs && climbSegs.length) summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
-    else summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap);   // 遺忘之島:用實際結束地圖(途中可能已進本島)顯示地圖名
+    else summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap, kingInfo);   // 遺忘之島:用實際結束地圖顯示地圖名;軍王之室:附帶擊敗輪數/鑰匙消耗摘要
     try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
     try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
     removeOverlay();

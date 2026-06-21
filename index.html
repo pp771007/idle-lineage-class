@@ -562,7 +562,7 @@
                     <button onclick="useCandle()" id="btn-candle" class="hidden mt-4 btn w-full py-3 bg-purple-900 border-purple-700 text-purple-200 text-lg font-bold">使用回憶蠟燭</button>
                 </div>
                 <div id="tab-equip" class="p-3 overflow-y-auto h-full hidden flex-col gap-2"></div>
-                <div id="tab-skill" class="p-3 overflow-y-auto h-full hidden flex-col gap-3"></div>
+                <div id="tab-skill" class="p-3 overflow-y-auto h-full hidden flex-col"></div>
                 <div id="tab-items" class="p-3 overflow-y-auto h-full hidden flex-col gap-2"></div>
                 <div id="tab-weapons" class="p-3 overflow-y-auto h-full hidden flex-col gap-2"></div>
                 <div id="tab-armors" class="p-3 overflow-y-auto h-full hidden flex-col gap-2"></div>
@@ -897,7 +897,7 @@ const DB = {
         "shd_phantom_eye": { n: "幻象眼魔的心眼", type: "arm", slot: "shield", ac: 0, int: 1, mmp: 100, mpR: 2, immStone: true, block: 10, req: "mage", safe: 6, p: 127000, gachaWeight: 1, legend: true, d: "幻象眼魔的核心之眼。" },
         "clk_marcus": { n: "馬昆斯斗篷", legend: true, type: "arm", slot: "cloak", ac: 2, mhp: 60, hpR: 4, mr: 3, mrPerEn: 3, req: "mage,dark", safe: 6, p: 123000, gachaWeight: 1 },
         "clk_silver_light": { n: "銀光斗篷", type: "arm", slot: "cloak", ac: 2, mpR: 4, mr: 15, req: "mage,elf,dark", safe: 4, p: 63000, gachaWeight: 1 },
-        "clk_lich": { n: "巫妖斗篷", legend: true, type: "arm", slot: "armor", ac: 7, mmp: 50, mpR: 15, mdmgEnFrom4: true, req: "mage", safe: 4, p: 363000, gachaWeight: 1, d: "巫妖殘留怨念的法袍。強化 +4 時魔法傷害 +1，之後每強化 +1 魔法傷害再 +1。" },
+        "clk_lich": { n: "巫妖斗篷", legend: true, type: "arm", slot: "armor", ac: 7, mmp: 50, mpR: 15, mdmgEnFrom4: true, req: "mage", safe: 4, p: 363000, gachaWeight: 1, d: "巫妖殘留怨念的法袍。強化 +4 時魔法傷害 +1，之後每強化 +1 魔法傷害再 +1，最高 +9（魔法傷害 +6）；+10 以上不再額外增加。" },
         "hlm_demon": { n: "惡魔頭盔", legend: true, type: "arm", slot: "helm",   ac: 2, req: "all", safe: 4, p: 25000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、攻速+33%，可與加速/勇敢/餅乾疊加）。" },
         "amr_demon": { n: "惡魔盔甲", legend: true, type: "arm", slot: "armor",  ac: 6, req: "all", safe: 4, p: 33000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、攻速+33%，可與加速/勇敢/餅乾疊加）。" },
         "glv_demon": { n: "惡魔手套", legend: true, type: "arm", slot: "gloves", ac: 2, req: "all", safe: 4, p: 18000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、攻速+33%，可與加速/勇敢/餅乾疊加）。" },
@@ -3676,7 +3676,7 @@ function recomputeStats() {
 let baseMr = ed.mr || 0;
 let bonusMr = (ed.mrPerEn || 0) * capEn(e.en, ed);   // 🔧 超過上限以上限計算（防具+15/飾品+5）
 d.mr += (baseMr + bonusMr);
-        if(ed.mdmgEnFrom4) d.magicDmg += Math.max(0, capEn(e.en, ed) - 3);   // 🧙 巫妖斗篷：強化+4 魔法傷害+1，之後每強化+1 再+1（超過+15以+15計）
+        if(ed.mdmgEnFrom4) d.magicDmg += Math.min(6, Math.max(0, capEn(e.en, ed) - 3));   // 🧙 巫妖斗篷：強化+4 魔法傷害+1，之後每+1再+1，最高 +9（魔法傷害 +6）；+10 以上不再增加
         if(ed.mdmgEnFrom7Max3) d.magicDmg += Math.min(3, Math.max(0, capEn(e.en, ed) - 6));   // 🔧 巴風特魔杖：強化+7 魔法傷害+1，之後每+1再+1，最高+3
         // ed.str/dex/int/con/wis 已於 Phase 1 計入屬性
         if(ed.mhp) p.mhp += ed.mhp;
@@ -9749,45 +9749,69 @@ player.inv.forEach(i => {
 });
     
     let sDiv = document.getElementById('tab-skill'); sDiv.innerHTML = '';
-    let tiers = {};
-    let sortedSkills = [...player.skills].sort((a,b) => DB.skills[a].tier - DB.skills[b].tier);
-    sortedSkills.forEach(sid => {
-        let sk = DB.skills[sid];
-        if(!tiers[sk.tier]) tiers[sk.tier] = [];
-        tiers[sk.tier].push(sid);
-    });
-    
-    for(let t in tiers) {
-        let tDiv = document.createElement('div');
-        tDiv.className = 'flex flex-wrap gap-1 mb-2 bg-slate-800 p-1 rounded';
-        tiers[t].forEach(sid => {
-            let sk = DB.skills[sid];
-            let isAvail = true;
-            let __granted = player.grantedSkills && player.grantedSkills.includes(sid);
-            let needLv = skillReqLv(sk, sid);   // 🏅 集中化：含魔導精通特例
-            if(!__granted && (needLv === undefined || player.lv < needLv)) isAvail = false;
-            if(!__granted && sk.reqEle && player.elfEle !== sk.reqEle) isAvail = false;
-            if(!__granted && sk.reqEleAny && !player.elfEle) isAvail = false;
-            let imgUrl = getIconUrl(sk, true);
-            if(sk.type === 'manual') {
-                // 手動施放技能：顯示可點擊的施放按鈕
-                tDiv.innerHTML += `<button id="manual-btn-${sid}" data-tip-skill="${sid}" data-unavail="${isAvail?'0':'1'}" onclick="manualCast('${sid}')" ${isAvail?'':'disabled'}
-                    class="tip-host px-2 py-1 text-xs border rounded whitespace-nowrap flex items-center gap-1 transition-colors
-                    ${isAvail?'border-amber-500 text-amber-300 hover:bg-amber-900/40 cursor-pointer':'border-slate-600 text-slate-500 opacity-50 cursor-not-allowed'}">
-                    <img src="${imgUrl}" onerror="this.style.display='none';" class="w-4 h-4 object-contain pointer-events-none">
-                    <span>${sk.n}</span><span class="text-[10px] opacity-70">施放</span>
-                </button>`;
-                return;
-            }
-            let c = sk.type === 'atk' ? 'text-cyan-300' : (sk.type === 'heal' ? 'text-green-300' : 'text-purple-300');
-            if(!isAvail) c = 'text-slate-500 opacity-50';
-            tDiv.innerHTML += `<div class="tip-host px-2 py-1 text-xs border border-slate-600 rounded whitespace-nowrap flex items-center gap-1 ${c}" data-tip-skill="${sid}">
-            <img src="${imgUrl}" onerror="this.style.display='none';" class="w-4 h-4 object-contain pointer-events-none">
-            <span>${sk.n}</span>
-        </div>`;
-        });
-        sDiv.appendChild(tDiv);
+    let sortedSkills = [...player.skills].sort((a,b) => (DB.skills[a].tier||0) - (DB.skills[b].tier||0));
+
+    // 🎨 已學技能：固定大小 ICON 排版；階級文字置左、4 欄格(至少 4×2)置右
+    // 🔮 依「學習來源」分區：魔法書／技術書／精靈水晶／黑暗精靈水晶 各自獨立，即使同階也分開；裝備授予(sk_helm_*)歸「裝備授予」
+    if (!renderTabs._skillSrc) {   // 由 skillbk 物品名稱前綴建表（一次性快取）：sk → 來源組名（split('(') 避免「黑暗精靈水晶」⊃「精靈水晶」誤判）
+        renderTabs._skillSrc = {};
+        for (let k in DB.items) { let it = DB.items[k]; if (it && it.type === 'skillbk' && it.sk) renderTabs._skillSrc[it.sk] = String(it.n || '').split('(')[0]; }
     }
+    let _SKILL_SRC = renderTabs._skillSrc;
+    const _CELL = 'width:46px;height:46px;';
+
+    // 分組：來源 → 階級 → [技能id]
+    let _grp = {};
+    sortedSkills.forEach(sid => {
+        let sk = DB.skills[sid]; if (!sk) return;
+        let src = _SKILL_SRC[sid] || '裝備授予';
+        let tier = (sk.tier === undefined || sk.tier === null || sk.tier === '') ? '_' : sk.tier;
+        (_grp[src] = _grp[src] || {});
+        (_grp[src][tier] = _grp[src][tier] || []).push(sid);
+    });
+    // 來源顯示順序：固定序（不分職業）魔法書→精靈水晶→黑暗精靈水晶→技術書，裝備授予最後
+    let _srcOrder = ['魔法書', '精靈水晶', '黑暗精靈水晶', '技術書', '裝備授予'];
+
+    let _renderCell = (sid) => {
+        let sk = DB.skills[sid];
+        let isAvail = true;
+        let __granted = player.grantedSkills && player.grantedSkills.includes(sid);
+        let needLv = skillReqLv(sk, sid);   // 🏅 集中化：含魔導精通特例
+        if(!__granted && (needLv === undefined || player.lv < needLv)) isAvail = false;
+        if(!__granted && sk.reqEle && player.elfEle !== sk.reqEle) isAvail = false;
+        if(!__granted && sk.reqEleAny && !player.elfEle) isAvail = false;
+        let imgUrl = getIconUrl(sk, true);
+        let _bd = !isAvail ? 'border-slate-600 opacity-50'
+            : (sk.type === 'manual' ? 'border-amber-500'
+            : (sk.type === 'atk' ? 'border-cyan-500'
+            : (sk.type === 'heal' ? 'border-green-500' : 'border-purple-500')));
+        let _img = `<img src="${imgUrl}" onerror="this.style.display='none';" class="object-contain pointer-events-none" style="width:36px;height:36px;">`;
+        if(sk.type === 'manual') {
+            // 手動施放技能：ICON 本身可點擊施放（右下角「施」標記）；保留 id/data-unavail 供 updateSummonLock 控制(迷魅)
+            return `<button id="manual-btn-${sid}" data-tip-skill="${sid}" data-unavail="${isAvail?'0':'1'}" onclick="manualCast('${sid}')" ${isAvail?'':'disabled'} title="${sk.n}"
+                class="tip-host relative flex items-center justify-center rounded border ${_bd} bg-slate-900/40 ${isAvail?'hover:bg-amber-900/40 cursor-pointer':'cursor-not-allowed'}" style="${_CELL}">${_img}<span class="absolute right-0 -bottom-px text-[9px] leading-none font-bold text-amber-300 pointer-events-none">施</span></button>`;
+        }
+        return `<div data-tip-skill="${sid}" title="${sk.n}" class="tip-host flex items-center justify-center rounded border ${_bd} bg-slate-900/40" style="${_CELL}">${_img}</div>`;
+    };
+
+    _srcOrder.forEach(src => {
+        let byTier = _grp[src]; if (!byTier) return;
+        let _tiers = Object.keys(byTier).sort((a,b) => (a === '_' ? 999 : +a) - (b === '_' ? 999 : +b));
+        _tiers.forEach(t => {
+            let list = byTier[t];
+            let _tierLabel = (t === '_') ? '其他' : (t + ' 階');
+            let cells = list.map(_renderCell).join('');
+            // 補空白格至 4 的倍數、且至少 8 格（4×2），維持 4×2 區塊版型
+            let _pad = Math.max(8, Math.ceil(list.length / 4) * 4);
+            for(let i = list.length; i < _pad; i++) cells += `<div class="rounded border border-slate-800/40 bg-slate-900/20" style="${_CELL}"></div>`;
+            let section = document.createElement('div');
+            // 階級文字置左、4×2 ICON 置右；區塊間以細分隔線區隔（首區不畫上邊線）
+            let _sepCls = sDiv.children.length ? ' border-t border-slate-700/50' : '';
+            section.className = 'flex items-center gap-2 py-2' + _sepCls;
+            section.innerHTML = `<div class="flex flex-col justify-center shrink-0" style="width:82px;"><div class="text-sm font-bold text-slate-300 leading-tight">${_tierLabel}</div><div class="text-[11px] text-slate-500 leading-tight">${src}</div></div><div class="grid gap-1.5 shrink-0" style="grid-template-columns:repeat(4,46px);">${cells}</div>`;
+            sDiv.appendChild(section);
+        });
+    });
     // 還原各分頁捲動位置
     ['tab-items','tab-weapons','tab-armors','tab-equip','tab-skill'].forEach(id => { let el = document.getElementById(id); if(el && _scroll[id] != null) el.scrollTop = _scroll[id]; });
     updateSummonLock();

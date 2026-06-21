@@ -672,7 +672,7 @@ const DB = {
         "wpn_strwand": { n: "力量魔法杖", type: "wpn", dmgS: 9, dmgL: 9, hit: 0, dmgBonus: 3, mdmg: -2, str: 3, spd: 1.0, req: "mage", safe: 6, p: 71500, meleeHitPerEn: 1, eff: "magicstrike", gachaWeight: 10 },
         "wpn_manawand": { n: "瑪那魔杖", type: "wpn", dmgS: 3, dmgL: 3, hit: -1, spd: 1.0, req: "mage", safe: 6, p: 18000, eff: "mp_drain", gachaWeight: 10 },
         "wpn_crystalwand": { n: "水晶魔杖", type: "wpn", dmgS: 1, dmgL: 1, hit: 0, spd: 1.0, req: "mage", safe: 6, p: 36000, mpR: 10, mpROverSafe: 2, gachaWeight: 20 },
-        "wpn_powerless_baless": { n: "失去魔力的巴列斯魔杖", type: "wpn", dmgS: 1, dmgL: 1, hit: 0, dmgBonus: 0, spd: 1.0, req: "all", safe: 0, p: 0, noSell: true, gachaWeight: 0, d: "失去了魔力的古老魔杖。攜帶它並使用『靈魂之球』，或許能喚回沉睡的力量……" },   // 🔧 巴列斯任務武器
+        "wpn_powerless_baless": { n: "失去魔力的巴列斯魔杖", type: "wpn", dmgS: 1, dmgL: 1, hit: 0, dmgBonus: 0, spd: 1.0, req: "all", safe: 0, p: 0, gachaWeight: 0, d: "失去了魔力的古老魔杖。攜帶它並使用『靈魂之球』，或許能喚回沉睡的力量……（可販售，售價 0）" },   // 🔧 巴列斯任務武器
         "wpn_baless": { n: "巴列斯魔杖", type: "wpn", dmgS: 2, dmgL: 3, hit: 0, dmgBonus: 0, mdmg: 2, spd: 1.0, req: "mage", safe: 0, p: 250000, mpR: 10, mpROverSafe: 2, legend: true, gachaWeight: 1, d: "重獲魔力的傳說魔杖，蘊含共鳴之力。" },   // 🏅 傳說武器（共鳴：見 WAND_LIGHTARROW_IDS）；🔧 安定值0：+0 為 MP自然恢復10，每強化+1再+2（10/12/14…）
         "wpn_39": { n: "潘的角", type: "wpn", dmgS: 3, dmgL: 4, hit: 0, spd: 1.2, req: "all", safe: 6, p: 10, gachaWeight: 100 },
         "wpn_40": { n: "覆上米索莉的角", type: "wpn", dmgS: 4, dmgL: 4, hit: 0, spd: 1.2, req: "all", safe: 6, p: 178, unBonus: true, gachaWeight: 100 },
@@ -1191,7 +1191,7 @@ const DB = {
         "wpn_demon_dual": { n: "惡魔雙刀", type: "wpn", w2h: true, dmgS: 18, dmgL: 13, hit: 4, dmgBonus: 3, spd: 0.8, req: "dark", safe: 6, p: 50000, gachaWeight: 1, eff: "combo", equipHaste: true, d: "惡魔的雙刀。連擊、加速（與自我加速藥水/加速術無法重疊）。" },
         "wpn_demon_claw": { n: "惡魔鋼爪", type: "wpn", w2h: true, dmgS: 20, dmgL: 18, hit: 0, dmgBonus: 3, spd: 0.9, req: "dark", safe: 6, p: 50000, gachaWeight: 1, eff: "combo", equipHaste: true, d: "惡魔的鋼爪。連擊、加速（與自我加速藥水/加速術無法重疊）。" },
         "wpn_demon_xbow": { n: "惡魔十字弓", type: "wpn", isBow: true, ranged: true, rapidfire: 60, w2h: true, dmgS: 3, dmgL: 3, hit: 2, dmgBonus: 4, spd: 1.0, req: "elf", safe: 6, p: 47300, gachaWeight: 1, equipHaste: true, d: "惡魔的十字弓。連射 60%、加速（與自我加速藥水/加速術無法重疊）。" },
-        "wpn_powerless_baphomet": { n: "失去魔力的巴風特魔杖", type: "wpn", dmgS: 1, dmgL: 1, hit: 0, dmgBonus: 0, spd: 1.0, req: "all", safe: 6, p: 0, gachaWeight: 0, noSell: true, d: "失去魔力的魔杖。對靈魂之球使用可恢復為巴風特魔杖。" },
+        "wpn_powerless_baphomet": { n: "失去魔力的巴風特魔杖", type: "wpn", dmgS: 1, dmgL: 1, hit: 0, dmgBonus: 0, spd: 1.0, req: "all", safe: 6, p: 0, gachaWeight: 0, d: "失去魔力的魔杖。對靈魂之球使用可恢復為巴風特魔杖。（可販售，售價 0）" },
         "wpn_baphomet_wand": { n: "巴風特魔杖", type: "wpn", dmgS: 7, dmgL: 6, hit: 8, dmgBonus: 5, spd: 1.0, req: "mage", safe: 0, p: 210000, legend: true, gachaWeight: 1, procSkill: "sk_earthquake", procRateBase: 8, procRatePerEn: 2, mdmgEnFrom7Max3: true, d: "重獲魔力的傳說魔杖，蘊含共鳴之力。攻擊時 8% 機率發動地裂術（每強化 +1 機率 +2%）；強化 +7 起魔法傷害 +1，最高 +3。" },
         "amr_baphomet": { n: "巴風特盔甲", type: "arm", slot: "armor", ac: 8, immPoison: true, dr: 2, mrPerEn: 1, req: "knight", safe: 4, p: 225300, legend: true, gachaWeight: 1, d: "巴風特的傳說盔甲。免疫中毒、傷害減免 +2；每強化 +1 MR +1。" },
         "clk_flame_blood": { n: "炎魔的血光斗篷", type: "arm", slot: "cloak", ac: 5, stealth: true, req: "all", safe: 4, p: 150000, legend: true, gachaWeight: 1, d: "炎魔之血染成的斗篷。穿戴時等同維持隱身（卸下即失效）。" },
@@ -2866,21 +2866,13 @@ function applySherineTheme() { document.body.classList.toggle('sherine-world', s
 let _sherineLootCtx = null;   // 擊殺掉落上下文：killMob 期間設定（{boss,grace}），供 gainItem 判定詞綴×3 與套裝效果
 let _forceSherineSet = false;   // 🔮 席琳製作：成品必定附帶隨機套裝效果（doCraft 產出期間設定）
 
-// ===== 🔮 席琳套裝效果（40 種，8 組 × 5 件；組名＝前兩字）=====
+// ===== 🔮 席琳套裝效果（9 組；不再分五種詞綴，seteff 直接存「套裝名」＝組名）=====
 // 掉落判定：席琳的世界中，武器/頭盔/盔甲/手套/長靴/斗篷/腰帶 掉落時，
-// 一般怪 0.1%、頭目 5% 獨立機率獲得一個效果（再從 40 種均勻抽一 → 單一效果 0.1%/40）。
-// 效果寫在裝備資訊欄（不冠在名稱前）；名稱以鮮綠色＋淡綠光暈顯示（凌駕詞綴顏色）。
-const SHERINE_EFFECTS = [
-    '紅獅的誓言','紅獅的壯志','紅獅的復仇','紅獅的熱情','紅獅的單思',
-    '白鳥的誓言','白鳥的依戀','白鳥的夢想','白鳥的情愫','白鳥的犧牲',
-    '鐵衛的誓言','鐵衛的象徵','鐵衛的盟約','鐵衛的奮戰','鐵衛的守護',
-    '麗人的誓言','麗人的加護','麗人的期盼','麗人的依靠','麗人的單戀',
-    '疾風的誓言','疾風的灑脫','疾風的傳說','疾風的襲擊','疾風的迅捷',
-    '月光的誓言','月光的隱情','月光的幽蔽','月光的純潔','月光的消逝',
-    '學徒的誓言','學徒的好奇','學徒的研究','學徒的夢想','學徒的智慧',
-    '魔女的誓言','魔女的哀戚','魔女的束縛','魔女的瘋狂','魔女的冷冽',
-    '暗影的誓言','暗影的護衛','暗影的抉擇','暗影的瞥視','暗影的忠誠'
-];
+// 一般怪 0.1%、頭目 5% 獨立機率獲得一個套裝效果（再從 9 組均勻抽一）。
+// 觸發＝「相同套裝名、不同部位」的件數（同名不同部位即累計，5 個不同部位＝5 件效果）。
+// 套裝名冠在裝備名稱前（如「紅獅環甲」），資訊欄列出 2/3/5 件加成；名稱顏色規則同前（c-sherine 鮮綠＋光暈）。
+// ⚠️ 舊存檔的具名 seteff（如「紅獅的復仇」）仍相容：各處一律以 seteff.slice(0,2) 取組名。
+const SHERINE_EFFECTS = ['紅獅','白鳥','鐵衛','麗人','疾風','月光','學徒','魔女','暗影'];
 // 套裝加成說明（資訊欄顯示用；計數=身上「不重複效果」數，同效果兩件只算 1）
 const SHERINE_SET_TEXT = {
     '紅獅': ['2件：額外傷害+5、額外魔法點數+3', '3件：傷害減免+10', '5件：最終傷害+20%（普攻與技能皆適用）'],
@@ -3039,6 +3031,7 @@ function startGameTimers() {
     if (typeof initCombatLogLock === 'function') initCombatLogLock();   // 🔒 綁定戰鬥日誌捲動鎖定（含去重）
     if (typeof initSysLogLock === 'function') initSysLogLock();         // 🔒 綁定系統與物品日誌捲動鎖定（含去重）
     if (typeof applyCombatFilter === 'function') applyCombatFilter();   // ⚔️ 套用已儲存的戰鬥日誌來源過濾（按鈕點亮/點暗 + 隱藏對應訊息）
+    if (typeof _initTabGuard === 'function') _initTabGuard();           // 🚀 綁定分頁面板點擊保護＋重繪節流（避免狩獵時 賣出/強化 按鈕卡頓、點擊失效）
 }
 
 // 補跑（掛機/背景）所得累積：補跑期間 logSys 被靜音，先把所得累積起來，
@@ -3100,9 +3093,9 @@ const PET_DEF = {
     '牧羊犬': { collar:'new_item_238', ele:'earth', eleName:'地', diceOff:4, hitOff:1 },
     // 🐾 進化夥伴：傷害=1D(等級+diceOff)+魅力×chaMult；命中=等級+魅力×hitChaMult+hitOff−怪等級+怪AC；每擊10%觸發 proc 法術(套用玩家施法數值)
     '暴走兔': { collar:'new_collar_rabbit',    ele:'water', eleName:'水', diceOff:11, hitOff:5, chaMult:1.2, hitChaMult:1.3, proc:'sk_ice_spike' },
-    '狐狸':   { collar:'new_collar_fox',       ele:'fire',  eleName:'火', diceOff:18, hitOff:3, chaMult:1.3, hitChaMult:1.2, proc:'sk_firearrow' },
-    '小獵犬': { collar:'new_collar_beagle',    ele:'earth', eleName:'地', diceOff:15, hitOff:4, chaMult:1.3, hitChaMult:1.2, proc:'sk_hell_fang' },
-    '聖伯納': { collar:'new_collar_stbernard', ele:'wind',  eleName:'風', diceOff:10, hitOff:6, chaMult:1.2, hitChaMult:1.3, proc:'sk_windblade' }
+    '狐狸':   { collar:'new_collar_fox',       ele:'fire',  eleName:'火', diceOff:18, hitOff:3, chaMult:1.3, hitChaMult:1.2, proc:'sk_fireball' },     // 🔧 火箭→燃燒的火球
+    '小獵犬': { collar:'new_collar_beagle',    ele:'earth', eleName:'地', diceOff:15, hitOff:4, chaMult:1.3, hitChaMult:1.2, proc:'sk_rock_prison' },  // 🔧 地獄之牙→岩牢
+    '聖伯納': { collar:'new_collar_stbernard', ele:'wind',  eleName:'風', diceOff:10, hitOff:6, chaMult:1.2, hitChaMult:1.3, proc:'sk_thunder' }        // 🔧 風刃→極道落雷
 };
 // 🦴 寵物裝備加成：裝在 player.eq.pet 的「之牙」→ 夥伴額外傷害/命中（含強化：每+1 各+1，飾品上限+5）
 function petGearBonus() {
@@ -3113,14 +3106,15 @@ function petGearBonus() {
 }
 // 🐾 夥伴觸發法術傷害：比照「玩家自身施放該法術」的數值（沿用攻擊魔法公式 spCoef×mageMult、吃怪物魔抗、不計爆擊/元素固定加成）
 function petProcSpellDamage(skId, target) {
-    let sk = DB.skills[skId]; if(!sk || !sk.dmgDice) return 0;
+    let sk = DB.skills[skId]; if(!sk) return 0;
+    let _dice = sk.multiDmg || (sk.dmgDice ? [sk.dmgDice] : null); if(!_dice) return 0;   // 🐾 支援多段魔法(multiDmg，如燃燒的火球)與單段(dmgDice，如岩牢/極道落雷)
     let effMr = (target.st && target.st.mrhalf > 0) ? Math.floor((target.mr || 0) / 2) : (target.mr || 0);
     let tier = sk.tier || 1;
     let spCoef = (1 + 3 * (player.d.magicDmg || 0) / 16) * (1 + tier / 3);
-    let mageMult = (player.cls === 'mage') ? (1.5 + tier / 20) : 1.0;
-    let core = roll(sk.dmgDice[0], sk.dmgDice[1]) * spCoef;
+    // 🔧 夥伴/寵物的法術「不」套用法師職業階級加成（原 mageMult＝玩家為法師時 ×(1.5+階級/20)）：夥伴非玩家本人施法，故移除；仍吃玩家魔法傷害/技能階級係數與魔抗
+    let core = _dice.reduce((s, dc) => s + roll(dc[0], dc[1]), 0) * spCoef;   // 多段骰子加總
     let dmg = Math.max(1, Math.floor((core + (player.d.extraMp || 0)) * mrMult(effMr)) - (target.dr || 0));
-    return Math.max(1, Math.floor(dmg * mageMult));
+    return dmg;
 }
 function petCollarCount(name) {
     let cid = PET_DEF[name] && PET_DEF[name].collar; if(!cid) return 0;
@@ -3417,7 +3411,7 @@ function logCombat(msg, type="player", src=null) {
     else if (type === "evade") { colorClass = "text-teal-300"; } // ER獨立迴避 (淡青綠色)
     
     let _src = src || _combatSrc || (type === 'enemy' ? 'enemy' : 'player');   // 來源：明確指定 > 派發點情境(_combatSrc) > 依顏色type推定
-    el.innerHTML += `<div class="log-entry ${colorClass}" data-src="${_src}">${msg}</div>`;
+    el.insertAdjacentHTML('beforeend', `<div class="log-entry ${colorClass}" data-src="${_src}">${msg}</div>`);   // 🚀 只解析新訊息、不重建整個日誌(原 innerHTML+= 會 O(n) 重建全部子節點，戰鬥洗版時造成卡頓)
     // 🔒 鎖定捲動時保留更多歷史；未鎖定時維持一般上限
     let _max = _combatLogLocked ? COMBAT_LOG_MAX_LOCKED : COMBAT_LOG_MAX;
     while(el.children.length > _max && el.children.length > 1) el.removeChild(el.firstChild);
@@ -3454,7 +3448,7 @@ function initSysLogLock() {
 function logSys(msg) {
     if(state.ff) return; // 補跑期間不洗版
     const el = document.getElementById('sys-log');
-    el.innerHTML += `<div class="log-entry text-slate-100">${msg}</div>`;
+    el.insertAdjacentHTML('beforeend', `<div class="log-entry text-slate-100">${msg}</div>`);   // 🚀 同戰鬥日誌：只解析新訊息，避免 innerHTML+= 重建全部
     // 🔒 鎖定捲動時保留更多歷史（150 行）；未鎖定時維持一般上限（50 行）
     let _max = _sysLogLocked ? SYS_LOG_MAX_LOCKED : SYS_LOG_MAX;
     while(el.children.length > _max && el.children.length > 1) el.removeChild(el.firstChild);
@@ -3773,16 +3767,16 @@ d.mr += (baseMr + bonusMr);
     if(setCheck['demon'] >= 4) { d.ac -= 2; d.hpR += 5; p._setPoly = Object.assign({}, SET_POLY_FORMS.demon); }   // 🗼 惡魔套裝：AC-2、HP自然恢復+5、變身惡魔（額外傷害/命中/魔法傷害/MP/攻速由變身提供）
     if(setCheck['darkelf'] >= 3) { d.ac -= 3; d.str -= 2; d.dex += 2; d.hpR -= 2; d.mpR -= 7; p._setPoly = Object.assign({}, SET_POLY_FORMS.darkelf); }   // 🏝️ 黑暗妖精套裝：AC-3、力量-2、敏捷+2、HP自然恢復-2、MP自然恢復-7、變身高等黑暗精靈（遠距離傷害/命中+5、攻速+30%）
 
-    // ===== 🔮 席琳套裝效果：以「不重複效果」計件（同效果多件僅計 1；5/5 同時擁有 2/5、3/5 加成）=====
+    // ===== 🔮 席琳套裝效果：以「相同套裝名、不同部位」的件數計（同名不同部位即累計；不再要求五種不同詞綴）=====
     // 同步寫入傭兵快照：buildAlly 換身重算時 p=ally，旗標自然存於傭兵物件上
     let _shSets = {};
     for (let k in p.eq) {
         let e = p.eq[k];
-        if (e && e.seteff) { let g = e.seteff.slice(0, 2); (_shSets[g] = _shSets[g] || new Set()).add(e.seteff); }
+        if (e && e.seteff) { let g = e.seteff.slice(0, 2); _shSets[g] = (_shSets[g] || 0) + 1; }   // 計件＝帶該套裝名的「部位數」（每個裝備欄各算一件）
     }
-    let _shN = (g) => (_shSets[g] ? _shSets[g].size : 0);
-    p._sherineSetCnt = {};   // 🔮 各組「不重複效果」數：供狀態面板（n/5 徽章）與裝備欄底色判定使用
-    for (let g in _shSets) p._sherineSetCnt[g] = _shSets[g].size;
+    let _shN = (g) => (_shSets[g] || 0);
+    p._sherineSetCnt = {};   // 🔮 各組件數（部位數）：供狀態面板（n/5 徽章）與裝備欄底色判定使用
+    for (let g in _shSets) p._sherineSetCnt[g] = _shSets[g];
     if (_shN('紅獅') >= 2) { d.extraDmg += 5; d.extraMp += 3; }
     if (_shN('紅獅') >= 3) { d.dr += 10; }
     p._setRedLion5 = _shN('紅獅') >= 5;          // 最終傷害 +20%（普攻於 getPhysicalDmg、技能於 castSkill、各 proc 套用）
@@ -8720,7 +8714,8 @@ function getItemFullName(item) {
     if (item.bless) segs += `<span class="${blessColorClass(item.bless)}">${blessName(item.bless)} </span>`;   // 祝福的金/詛咒的紅
     let en = (item.en > 0) ? (`+${capEn(item.en, d)} `) : "";   // 🔧 一律顯示 +N（夾擠至上限：武器+20/防具+15/飾品+5；過往超過上限的資料以上限顯示）
     let cnt = item.cnt > 1 ? ` (${item.cnt})` : "";
-    return `${segs}<span class="${getItemColor(item)}">${en}${d.n}${cnt}</span>`;
+    let setPrefix = item.seteff ? item.seteff.slice(0, 2) : "";   // 🔮 席琳套裝：套裝名冠在裝備名稱前（如「紅獅環甲」）；顏色沿用 getItemColor（規則同前）
+    return `${segs}<span class="${getItemColor(item)}">${en}${setPrefix}${d.n}${cnt}</span>`;
 }
 
 function useItem(u, silent = false) {
@@ -9587,8 +9582,26 @@ function renderMobs() {
     document.getElementById('mob-list').innerHTML = html;
 }
 
+// 🚀 效能：分頁面板重繪保護＋節流。狩獵時扣箭/耗肉/掉寶會每 tick 觸發 renderTabs 重建整個面板，
+//    重建會洗掉按鈕→在 mousedown↔mouseup 間重建使「賣出/強化」點擊失效並造成卡頓。
+let _tabPointerDown = false, _tabRebuildPending = false, _tabThrottleTimer = null;
+const TAB_REBUILD_THROTTLE_MS = 250;
+function _initTabGuard() {
+    let panel = document.getElementById('tab-content-panel');
+    if (!panel || panel._tabGuardInit) return;
+    panel._tabGuardInit = true;
+    panel.addEventListener('pointerdown', function(){ _tabPointerDown = true; });
+    let _release = function(){ if (!_tabPointerDown) return; _tabPointerDown = false; if (_tabRebuildPending) { _tabRebuildPending = false; setTimeout(function(){ renderTabs(); }, 0); } };   // 放開後(讓 click 先觸發)再補一次重建
+    document.addEventListener('pointerup', _release);
+    document.addEventListener('pointercancel', _release);
+}
 function renderTabs(force) {
     if(state.ff) return; // 補跑期間不刷新畫面
+    // 🚀 使用者正按住分頁面板(點擊中)：延後非強制重建到放開後，避免按鈕被重繪掉而點擊失效
+    if(!force && _tabPointerDown) { _tabRebuildPending = true; return; }
+    // 🚀 戰鬥 tick 內的高頻變動(扣箭/耗肉)：合併成一次重建(節流 250ms)，降低狩獵卡頓；使用者操作(非 tick)維持即時回饋
+    if(!force && state.inTick) { if(!_tabThrottleTimer) _tabThrottleTimer = setTimeout(function(){ _tabThrottleTimer = null; renderTabs(); }, TAB_REBUILD_THROTTLE_MS); return; }
+    if(_tabThrottleTimer) { clearTimeout(_tabThrottleTimer); _tabThrottleTimer = null; }
     // ===== 內容簽章：背包/裝備/技能等實際內容沒變時直接跳過重建 =====
     // 避免戰鬥中(掉寶、射箭扣箭、夥伴耗肉等)頻繁重繪，導致游標所在欄位閃動、捲動跳回頂端、以及 mousedown/mouseup 落在不同元素造成點擊失效。
     let _sig = (function(){
@@ -9927,8 +9940,7 @@ function buildItemDescHTML(item) {
     if (item.seteff) {
         let _g = item.seteff.slice(0, 2);
         let _lines = (SHERINE_SET_TEXT[_g] || []).map(t => `<span class="text-green-200">・${t}</span>`).join('<br>');
-        desc = `<span class="c-sherine font-bold">✦ 席琳套裝效果：${item.seteff}</span><br>`
-             + `<span class="text-green-300 text-xs">【${_g}套裝】</span><br>${_lines}`
+        desc = `<span class="c-sherine font-bold">✦ 席琳套裝效果：${_g}</span><br>${_lines}`
              + (desc ? `<br>${desc}` : '');
     }
     if(d.type === 'wpn') {

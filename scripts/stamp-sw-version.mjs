@@ -18,6 +18,16 @@ import { fileURLToPath } from 'node:url';
 
 const SW_FILE = 'sw.js';
 
+// 台灣時間 MMDD-HHMM(畫面辨識版本用)
+function nowTaipei() {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const o = {};
+  p.forEach((x) => { o[x.type] = x.value; });
+  return `${o.month}${o.day}-${o.hour}${o.minute}`;
+}
+
 export function stampSwVersion() {
   if (!existsSync(SW_FILE)) { console.warn('[stamp] 找不到 sw.js，略過'); return null; }
   const parts = [];
@@ -27,9 +37,18 @@ export function stampSwVersion() {
   const version = 'code-' + hash;
 
   const sw = readFileSync(SW_FILE, 'utf8');
-  const m = sw.match(/const CODE_VERSION = '[^']*';/);
+  const m = sw.match(/const CODE_VERSION = '([^']*)';/);
   if (!m) { console.warn('[stamp] sw.js 找不到 CODE_VERSION 宣告，未能覆寫'); return null; }
-  const next = sw.replace(m[0], `const CODE_VERSION = '${version}';`);
+  const codeChanged = m[1] !== version;
+
+  let next = sw.replace(m[0], `const CODE_VERSION = '${version}';`);
+  // BUILD_ID 只在「程式真的變了」時才更新成現在時間,避免自動同步每小時都改 sw.js(內容沒變卻被當改版)。
+  if (codeChanged) {
+    const build = nowTaipei();
+    next = next.replace(/const BUILD_ID\s*=\s*'[^']*';/, `const BUILD_ID     = '${build}';`);
+    console.log('[stamp] BUILD_ID →', build);
+  }
+
   if (next !== sw) { writeFileSync(SW_FILE, next); console.log('[stamp] CODE_VERSION →', version); }
   else console.log('[stamp] CODE_VERSION 不變（內容相同）:', version);
   return version;

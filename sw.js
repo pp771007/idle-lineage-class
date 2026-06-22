@@ -14,7 +14,8 @@
  *
  * 背景預抓：頁面送 {type:'precache-images', urls:[...]} → 此處分批抓進圖桶並回報進度,讓安裝後可完全離線。
  * ========================================================================== */
-const CODE_VERSION = 'code-91bd8215da7f';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const CODE_VERSION = 'code-a6673c0e9f15';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0622-0950'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 既有圖被換才 +1(承接舊 bg-v3)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;
@@ -37,6 +38,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('message', (e) => {
   const d = e.data || {};
   if (d === 'skip-waiting' || d.type === 'skip-waiting') { self.skipWaiting(); return; }
+  if (d.type === 'get-version') { if (e.source) e.source.postMessage({ type: 'version', code: CODE_VERSION, build: BUILD_ID }); return; }
   if (d.type === 'precache-images' && Array.isArray(d.urls)) {
     e.waitUntil(precacheImages(d.urls, e.source));
   }

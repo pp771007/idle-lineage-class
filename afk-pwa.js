@@ -29,8 +29,10 @@
   var reg = null;            // ServiceWorkerRegistration
   var waitingSW = null;      // 等待接管的新版 SW
   var refreshing = false;    // 防止 controllerchange 無限重整
+  var updateApplied = false;  // 是否「我們主動套用更新」(只有這種 controllerchange 才重整)
   var precaching = false, precacheDone = 0, precacheTotal = 0, precacheFinished = false;
   var deferredPrompt = null; // 攔下來的 beforeinstallprompt，供安裝連結點擊時用
+  var buildId = '';          // 目前這版的 build 時間(向控制中的 SW 問,僅供畫面辨識)
 
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
@@ -73,7 +75,8 @@
       '#afk-pwa-bar .afk-pwa-chk input{width:15px;height:15px;cursor:pointer;}' +
       '#afk-pwa-bar .afk-pwa-update{color:#fbbf24;font-weight:bold;}' +
       '#afk-pwa-bar .afk-pwa-prog{color:#34d399;}' +
-      '#afk-pwa-bar .afk-pwa-done{color:#34d399;}';
+      '#afk-pwa-bar .afk-pwa-done{color:#34d399;}' +
+      '#afk-pwa-bar .afk-pwa-ver{color:#64748b;font-size:11px;margin-top:2px;letter-spacing:.3px;}';
     document.head.appendChild(s);
   }
 
@@ -112,6 +115,7 @@
         html += '<div class="afk-pwa-done">✅ 已可完全離線遊玩</div>';
       }
     }
+    if (buildId) html += '<div class="afk-pwa-ver">版本 ' + buildId + '</div>';
     b.innerHTML = html;
 
     var inst = document.getElementById('afk-pwa-install');
@@ -168,7 +172,7 @@
     else renderBar();                    // 手動：顯示「更新至最新版」
   }
   function applyUpdate() {
-    if (waitingSW) waitingSW.postMessage({ type: 'skip-waiting' });
+    if (waitingSW) { updateApplied = true; waitingSW.postMessage({ type: 'skip-waiting' }); }
   }
 
   function watchUpdates() {
@@ -187,7 +191,8 @@
     }).catch(function () {});
 
     navigator.serviceWorker.addEventListener('controllerchange', function () {
-      if (refreshing) return;
+      // 只有「我們主動套用更新(skip-waiting)」才重整;首次安裝 SW 透過 clients.claim 接管不重整(避免初訪白白 reload 一次)。
+      if (refreshing || !updateApplied) return;
       refreshing = true;
       location.reload();
     });
@@ -196,7 +201,17 @@
       var d = e.data || {};
       if (d.type === 'precache-progress') { precacheDone = d.done; precacheTotal = d.total; renderBar(); }
       else if (d.type === 'precache-done') { precaching = false; precacheFinished = true; localStorage.setItem(PRECACHE_DONE, '1'); renderBar(); }
+      else if (d.type === 'version') { if (d.build && d.build !== '0000-0000') { buildId = d.build; renderBar(); } }
     });
+
+    askVersion();
+    navigator.serviceWorker.addEventListener('controllerchange', askVersion);
+  }
+
+  // 向「控制這個分頁的 SW」問現在這版的 build 時間(僅供畫面辨識)
+  function askVersion() {
+    var ctrl = navigator.serviceWorker.controller;
+    if (ctrl) ctrl.postMessage({ type: 'get-version' });
   }
 
   // ----- 背景預抓（安裝後把整包圖抓進圖桶，抓滿即可完全離線）---------------

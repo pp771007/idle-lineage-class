@@ -168,7 +168,7 @@
    *
    * 問題:原版 <head> 沒宣告任何 icon,瀏覽器載入時自動探測網域根的 /favicon.ico,要不到
    *   就在 console 留一條 404(原作者官方站台也有,無害但礙眼),分頁標籤也沒圖示。
-   * 解法:注入一個 <link rel="icon"> 指到我們自己的怪物圖(死亡騎士),分頁就有圖示。
+   * 解法:注入一個 <link rel="icon"> 指到我們自己的圖示(骷髏),分頁就有圖示。
    *   href 用「相對路徑」——本機(server 根=repo 根)與線上(GitHub Pages 子路徑)都指得對;
    *   用 /assets 絕對路徑線上會打到網域根而指錯。
    * 注意:外掛跑在 </body> 前、晚於瀏覽器的 favicon 探測,能否擋掉那條 404 視瀏覽器時序而定;
@@ -181,9 +181,9 @@
       var link = document.createElement('link');
       link.rel = 'icon';
       link.type = 'image/png';
-      link.href = 'assets/icons/monsters/死亡騎士.png';
+      link.href = 'favicon.png';
       (document.head || document.documentElement).appendChild(link);
-      console.log('[AFK-fixes] favicon 已注入(死亡騎士)');
+      console.log('[AFK-fixes] favicon 已注入(骷髏)');
     } catch (e) { console.warn('[AFK-fixes] favicon 注入失敗,已略過:', e); }
   })();
 

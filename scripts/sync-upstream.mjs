@@ -10,9 +10,10 @@
  *
  * 不在這裡 commit/push;那由 workflow 在「冒煙測試通過」後才做。
  * ========================================================================== */
-import { writeFileSync, readFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, mkdirSync, appendFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
+import { stampSwVersion } from './stamp-sw-version.mjs';
 
 const BG_PREFIX = 'assets/background/';   // 場景大圖目錄(由 sw.js 做 cache-first 快取)
 const SW_FILE = 'sw.js';
@@ -42,6 +43,7 @@ const PLUGINS = [
   { file: 'afk-syncinfo.js', comment: '首頁顯示原版最後同步時間(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-ui.js',       comment: '統一自製彈窗:全域接管 window.alert(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-autobuy.js',  comment: '外掛自動購買:肉 / 魔法屏障卷軸(可獨立維護;原作者更新後重新加回此行即可)' },
+  { file: 'afk-pwa.js',      comment: 'PWA:安裝成免網路遊玩 + 自動/手動更新 + 背景預抓離線資源(可獨立維護;原作者更新後重新加回此行即可)' },
 ];
 
 function setOutput(k, v) {
@@ -121,6 +123,26 @@ if (bgChanged.length && existsSync(SW_FILE)) {
   }
 }
 
+// 4c. 重產 assets-manifest.json(PWA 背景預抓清單):走訪本地 assets/,列出全部圖檔路徑。
+//     內容一樣時 git 不會視為改動;assets 有增減才會進 commit。
+function walkAssets(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    if (name === 'desktop.ini') continue;
+    const p = dir + '/' + name;
+    if (statSync(p).isDirectory()) out.push(...walkAssets(p));
+    else out.push(p);
+  }
+  return out;
+}
+if (existsSync('assets')) {
+  writeFileSync('assets-manifest.json', JSON.stringify(walkAssets('assets').sort()) + '\n');
+}
+
+// 4d. stamp sw.js 的 CODE_VERSION(程式桶版本):依 index.html＋全部外掛 js 內容算 hash。
+//     index.html 一變(原版同步)hash 就變 → 玩家端偵測到新 sw.js → 觸發 PWA 更新流程。
+const codeVersion = stampSwVersion() || '';
+
 const changed = htmlChanged || assetsAdded.length > 0 || assetsChanged.length > 0;
 // 記錄本次同步時間,供玩家端首頁(afk-syncinfo)顯示「原版最後同步」。
 // 無條件寫;但 workflow 只在 changed 時才 commit 這檔,故倉庫裡的時間=最後一次真的有合併更新的時間。
@@ -133,7 +155,8 @@ setOutput('html_changed', htmlChanged ? 'true' : 'false');
 setOutput('assets_added', String(assetsAdded.length));
 setOutput('assets_changed', String(assetsChanged.length));   // 既有 asset 被換過(全部,含非背景)
 setOutput('bg_changed', String(bgChanged.length));           // 其中屬於背景大圖的張數(驅動 commit/release 警示)
-setOutput('sw_version', swVersion);                          // bump 後的新版本(沒 bump 則為空字串)
+setOutput('sw_version', swVersion);                          // 圖桶 bump 後的新版本(沒 bump 則為空字串)
+setOutput('code_version', codeVersion);                      // 程式桶版本(依 index.html＋外掛內容 hash)
 setOutput('game_title', gameTitle);
 console.log(`index.html 變更: ${htmlChanged} | 新增圖檔: ${assetsAdded.length} | 更新既有圖: ${assetsChanged.length}`);
 if (assetsAdded.length) console.log('新增:\n' + assetsAdded.join('\n'));

@@ -100,13 +100,20 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 | `afk-sw.js` | 背景大圖快取 Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
 | `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |
 | `afk-syncinfo.js` | 首頁顯示「原作者:秋玥 · 原版最後同步時間」(顯示在 `#main-menu` 最下方;作者為固定文字、時間讀根目錄 `last-sync.json` 換算台灣時間;時間讀不到只藏時間段、作者照顯示) |
+| `afk-pwa.js` | PWA「安裝成免網路遊玩」+ 自動/手動更新 + 背景預抓離線資源(首頁 `#main-menu`:未安裝顯示文字連結「安裝成免網路遊玩」、iOS 點了跳文字引導;**已安裝(standalone)** 顯示 checkbox「自動更新至最新版本」**預設打勾**,沒勾且有新版才顯示「更新至最新版」連結+確認視窗;安裝後背景把 `assets/` 全抓進圖桶顯示進度。`<head>` 的 manifest/圖示/theme-color 用 JS 注入(同步會洗掉寫死的)。SW 註冊沿用 afk-sw.js,本檔只管觀察更新/UI/預抓) |
 
 > **小百科 / 掉落查詢的「獨立頁」(`?view=`)**:`index.html?view=wiki`、`index.html?view=dex` 會讓對應外掛把面板鋪滿整頁(藏掉創角/遊戲畫面、改 `document.title`、隱藏關閉鈕、背景點擊不關),並在最上方加一條**頁首導覽**(`#m-standalone-nav`:🏠首頁 / 📚小百科 / 📖掉落查詢,active 標亮)可互切與回首頁。看起來像獨立網頁。首頁兩顆入口旁各有一顆 `↗` 小鈕用 `window.open` 開新分頁到這網址;原本點主鈕開 modal 的行為保留。(頁首 `buildStandaloneNav` 在兩支外掛各有一份相同實作,只有 active 那支會跑、用 id 去重。)**資料仍來自 index.html 的 `DB`/`MOB_DROPS`/… 全域**(無法真的抽成獨立檔——那些 const 夾在原作者主程式裡、且每小時自動同步會整支覆蓋),所以獨立頁就是「重用 index.html 當資料源、只顯示該面板」。全寫在外掛內、不動原作者碼,自動同步不會洗掉。
 
 > 前五支互相低耦合;手機版的離線摘要會自動打開日誌。afk-dex 純讀資料、桌機手機都掛。
-> `afk-sw.js` + 根目錄 `sw.js`:只對 `/assets/background/` 的場景大圖做 cache-first(回訪/重整/改版都秒出、
-> 不受 GitHub Pages 10 分鐘快取與每次部署換 ETag 影響);**絕不快取 index.html / 任何 *.js**,所以遊戲碼與外掛永遠拿最新。
-> 原作者換掉「既有同名」背景圖時,**自動同步會偵測(比對 blob SHA)、重抓並自動 bump `sw.js` 的 `CACHE_VERSION`**,且在該次 commit message／Release 說明註明,不必手動處理(新檔名的新圖不需 bump)。afk-sw 無 DOM 掛點,故不列入 smoke 冒煙檢查。
+> `afk-sw.js` 註冊 `sw.js`;`sw.js` 自 PWA 改版後是**雙桶分離快取**(cache-first):
+> - **程式桶 `CODE_CACHE`**(版本 `CODE_VERSION`):index.html + 全部外掛 js + manifest + PWA 圖示 + 外部 CDN(Tailwind/placehold,離線也要能用)。
+>   `CODE_VERSION` 由 `scripts/stamp-sw-version.mjs` 依「index.html＋全部外掛 js 內容 hash」自動覆寫 → **程式一改 hash 就變 → 瀏覽器偵測到新 sw.js → 觸發 PWA 更新流程**。
+>   **改任何外掛 / index.html 後,push 前要跑 `node scripts/stamp-sw-version.mjs` 重算**(自動同步流程已自動跑;手動改外掛時別忘)。
+> - **圖桶 `IMG_VERSION`**(承接舊 `bg-v3`):`assets/` 全部圖,on-demand 快取 + 可由 afk-pwa 背景全預抓。
+>   **只在「既有同名圖被作者換內容」時才 bump**(自動同步比對 blob SHA 後自動 +1),所以**程式更新完全不動圖桶 → 不會害人重載 30MB 圖**。
+> - 更新接管由頁面(afk-pwa)決定:install 不自動 skipWaiting,首次安裝自動啟用、之後更新停 waiting,等頁面送 `skip-waiting` 訊息(自動更新偏好開→自動送;關→使用者按更新鈕才送)。
+> - 背景預抓清單 `assets-manifest.json`(自動同步重產);afk-pwa 安裝後才抓那 30MB,純線上逛的人不抓。
+> - afk-sw 無 DOM 掛點不列入 smoke;**afk-pwa 有 UI 掛點,已列入 smoke 的 `[AFK-pwa]` 檢查**。
 > `afk-fixes.js` 收「不綁手機/離線/查詢」的通用補坑碼:會主動執行(包核心函式/長駐監聽)的補坑放這,
 > 不是放手機/離線檔裡(放錯檔名實不符);純 CSS 覆寫那種「過時自動失效」的不歸這、留在 `afk-mobile.js`。
 > (存檔匯入/匯出原本有 `afk-savedata.js`,原作者已內建匯出入功能後移除。)
@@ -162,6 +169,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    <script src="afk-sw.js?v=YYYYMMDDx"></script>
    <script src="afk-toast.js?v=YYYYMMDDx"></script>
    <script src="afk-syncinfo.js?v=YYYYMMDDx"></script>
+   <script src="afk-pwa.js?v=YYYYMMDDx"></script>
    ```
    - 新增外掛時,**務必同時**加上對應的 `<script>` 行(並同步加進 `scripts/sync-upstream.mjs` 的 `PLUGINS`;**有 DOM 掛點的**再加進 `scripts/smoke-hooks.mjs` 的 `need`——像 `afk-sw.js` 這種純註冊、無 DOM 掛點的就不必),否則功能不會生效、或下次自動同步會被原版覆蓋掉。
    - 原作者更新覆蓋 `index.html` 後,**第一件事就是把上面這幾行補回去**。
@@ -169,6 +177,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS。
    Brave 尤其黏)。版本號規則:日期 + 當天流水字母(如 `20260613a` → `20260613b`)。
    **沒 bump 的話使用者載到的還是舊外掛,debug 會鬼打牆**(踩過一整輪才發現)。
+   - **改完外掛 / index.html 後,push 前再跑一次 `node scripts/stamp-sw-version.mjs`**(從 repo 根目錄)——重算 `sw.js` 的 `CODE_VERSION`,PWA 才偵測得到更新。漏跑的話「已安裝的 app」不會跳更新。
 3. 確認沒有把 `.scratch/`、`node_modules/` 等暫存物混進 commit(見下)。
 4. 載入遊戲後開 console,確認看到各外掛的 `[AFK*] hooks OK`,沒有缺掛點的警告。
 

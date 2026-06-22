@@ -1,50 +1,110 @@
 /* ============================================================================
- * sw.js — 只快取「背景 / 場景大圖」的 Service Worker(cache-first)
+ * sw.js — PWA Service Worker：程式桶 / 圖桶「分離快取」
  *
- * 為什麼要它:背景那幾張 3~4MB 的大圖,GitHub Pages 只給 max-age=600(10 分鐘)、
- *   而且每次我們 push 改版、Pages 重新部署就會換掉 ETag → 玩家下次開又重抓整張。
- *   把這些圖交給 SW 做 cache-first:第一次載過後吃本機快取,之後重整 / 回訪 / 我們改版
- *   通通秒出、不再重抓,也不受 Pages 那兩個限制影響。
+ * 兩個快取桶,刻意分開,這樣「改程式不會害人重載 30MB 圖」：
+ *   ● 程式桶 CODE_CACHE：index.html + 所有外掛 js + manifest + PWA 圖示 + 外部 CDN(Tailwind/placehold)。
+ *       cache-first；版本 CODE_VERSION 由 scripts/stamp-sw-version.mjs 依「index.html＋全部外掛 js 的內容 hash」
+ *       自動覆寫 → 程式一變就換新桶 → 瀏覽器偵測到 sw.js 變了 → 觸發更新流程(由頁面 afk-pwa.js 決定何時接管)。
+ *   ● 圖桶 IMG_CACHE：assets/ 全部圖。cache-first＋連網補抓(on-demand)＋可由頁面驅動「背景全預抓」。
+ *       版本 IMG_VERSION 只在「既有圖被作者換掉內容」時才 bump(承接舊 bg 快取機制) → 程式更新完全不動圖桶。
  *
- * 安全範圍(這段是「不會害玩家卡舊版」的關鍵):
- *   - 只攔截「同源 + GET + 路徑含 /assets/background/」的請求 → cache-first。
- *   - index.html、所有 *.js(遊戲本體與全部外掛)、其它資源一律「不攔截」,直接走網路、永遠最新。
- *     → 所以改了遊戲碼 / 外掛照樣即時生效,SW 只碰那幾張裝飾用的大圖。
+ * 更新控制(配合 afk-pwa.js 的自動更新 checkbox)：
+ *   - install 不自動 skipWaiting。首次安裝(沒有舊 SW 控制)會自動啟用；之後的更新會停在 waiting,
+ *     由頁面送 'skip-waiting' 訊息才接管 → 達成「自動更新 / 手動更新」由使用者偏好決定。
  *
- * 何時要 bump CACHE_VERSION:
- *   - 只有「原作者換掉某張『既有同名』背景圖的內容」時才需要(很少見)。bump 後舊快取會在新 SW
- *     啟用時清掉、重新抓最新。
- *   - 日常新增背景圖(新檔名)不需要 bump:URL 不一樣,本來就會去抓新的。
+ * 背景預抓：頁面送 {type:'precache-images', urls:[...]} → 此處分批抓進圖桶並回報進度,讓安裝後可完全離線。
  * ========================================================================== */
-const CACHE_VERSION = 'bg-v3';
-const SCENE_PATH = '/assets/background/';
+const CODE_VERSION = 'code-91bd8215da7f';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const IMG_VERSION  = 'img-v3';    // 既有圖被換才 +1(承接舊 bg-v3)
+const CODE_CACHE = CODE_VERSION;
+const IMG_CACHE  = IMG_VERSION;
+
+// 外部 CDN：離線也要能用(Tailwind 沒了整個版面會爆),用 cache-first 收進程式桶(opaque 也存)。
+const EXTERNAL_HOSTS = ['cdn.tailwindcss.com', 'placehold.co'];
 
 self.addEventListener('install', () => {
-  self.skipWaiting();   // 新版 SW 裝好立刻接管,不等舊分頁全關
+  // 不 skipWaiting：首次安裝會自動啟用;更新則停 waiting,等頁面決定何時接管(自動/手動更新)。
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)));   // 清掉舊版快取
-    await self.clients.claim();   // 立刻接管現有分頁
+    await Promise.all(keys.filter((k) => k !== CODE_CACHE && k !== IMG_CACHE).map((k) => caches.delete(k)));
+    await self.clients.claim();
   })());
 });
+
+self.addEventListener('message', (e) => {
+  const d = e.data || {};
+  if (d === 'skip-waiting' || d.type === 'skip-waiting') { self.skipWaiting(); return; }
+  if (d.type === 'precache-images' && Array.isArray(d.urls)) {
+    e.waitUntil(precacheImages(d.urls, e.source));
+  }
+});
+
+// 背景把圖桶抓滿:分批、跳過已快取的,逐批回報進度給發起的分頁。
+async function precacheImages(urls, client) {
+  const cache = await caches.open(IMG_CACHE);
+  const total = urls.length;
+  let done = 0;
+  const BATCH = 8;
+  for (let i = 0; i < total; i += BATCH) {
+    const batch = urls.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (u) => {
+      try {
+        if (!(await cache.match(u))) {
+          const res = await fetch(u, { cache: 'no-cache' });
+          if (res && (res.ok || res.type === 'opaque')) await cache.put(u, res.clone());
+        }
+      } catch (err) { /* 單張失敗不中斷整批 */ }
+      done++;
+    }));
+    if (client) client.postMessage({ type: 'precache-progress', done, total });
+  }
+  if (client) client.postMessage({ type: 'precache-done', total });
+}
+
+// cache-first + 連網補存。ok(200)或 opaque(跨網域)都存。
+async function cacheFirst(req, cacheName) {
+  const cache = await caches.open(cacheName);
+  const hit = await cache.match(req);
+  if (hit) return hit;
+  try {
+    const res = await fetch(req);
+    if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+    return res;
+  } catch (err) {
+    const fallback = await cache.match(req);
+    if (fallback) return fallback;
+    throw err;
+  }
+}
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   let url;
   try { url = new URL(req.url); } catch (err) { return; }
-  if (url.origin !== self.location.origin) return;       // 只管自家網域(CDN / 字型等放行)
-  if (url.pathname.indexOf(SCENE_PATH) === -1) return;   // 只管背景 / 場景大圖;其餘(含 index.html / 外掛 JS)一律放行
 
-  e.respondWith((async () => {
-    const cache = await caches.open(CACHE_VERSION);
-    const hit = await cache.match(req);
-    if (hit) return hit;                                  // cache-first:本機有就直接給,不連網
-    const res = await fetch(req);
-    if (res && res.ok) cache.put(req, res.clone());       // 第一次抓到(200)才存起來
-    return res;
-  })());
+  const sameOrigin = url.origin === self.location.origin;
+
+  // 圖桶:同源 assets 圖
+  if (sameOrigin && url.pathname.includes('/assets/')) {
+    e.respondWith(cacheFirst(req, IMG_CACHE));
+    return;
+  }
+
+  // 程式桶:同源的 導覽/js/html/manifest/PWA 圖示,以及外部 CDN
+  const isCodePath = sameOrigin && (
+    req.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    /\.(?:js|html|webmanifest)$/.test(url.pathname) ||
+    /pwa-icon[^/]*\.png$/.test(url.pathname)
+  );
+  if (isCodePath || EXTERNAL_HOSTS.includes(url.hostname)) {
+    e.respondWith(cacheFirst(req, CODE_CACHE));
+    return;
+  }
+
+  // 其餘(last-sync.json / assets-manifest.json / 其它)→ 不攔截,直接走網路、永遠最新。
 });

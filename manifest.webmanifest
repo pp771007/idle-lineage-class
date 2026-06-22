@@ -1,0 +1,17 @@
+{
+  "name": "放置天堂-遺忘之島",
+  "short_name": "放置天堂",
+  "description": "放置天堂-遺忘之島（加掛版：離線掛機 / 手機版面 / 掉落查詢 / 小百科）",
+  "lang": "zh-TW",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f141d",
+  "theme_color": "#0f141d",
+  "icons": [
+    { "src": "pwa-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "pwa-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "pwa-icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

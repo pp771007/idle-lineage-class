@@ -217,6 +217,10 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 - **階段自動推進交給原作**:如遺忘之島「途中擊敗傳送門→進本島」是原作 `settleDeadMobs()` 內 `state._oblivionAdvance` 流程處理的,補跑時照呼叫 `settleDeadMobs()` 即可,不要自己重寫推進邏輯。
 - 新增這類地圖時,記得 `mapName()` 也補上它的中文名(這些 id 不在 `MAP_CATEGORIES`,否則摘要會印出原始 id)。
 
+### 例外:「時間排名挑戰」類的特殊 run → 離線一律「不續、不結算」(不是續掛)
+
+非選單地圖不全都要續掛。**排名/計時挑戰**(原作 `state.riftRun` 的「時空裂痕」`rift_battle`、攀登的「排名挑戰」`prideRanked`)的設計是「停留越久排名/獎勵越高、撐到被打死」,**離線自動續＝刷排名/刷獎勵 exploit**;且原作這類 state 不存檔(transient `state` 物件)、重載一律回村(等同「中途離開＝該次作廢」)。所以離線外掛對這類**明確早退、完全不模擬**(`afk-offline.js` `maybeCatchup` 裡:排名攀登看 `prePride.ranked`、時空裂痕看 `savedMap === 'rift_battle'`)。判準:**這張圖的收益/排名是不是「靠線上停留時間累積」?是 → 離線不能幫他跑**(不然就是掛機刷榜)。一般狩獵圖(含底比斯、魔族/暗影神殿等選單地圖)才照「在線掛機照跑」續結算。
+
 ## 🐌 離線結算效能:實測結論(別再往「優化掃描」方向想)
 
 有人問過「24h 離線結算很慢、能不能優化」。用真實存檔(Lv63 法師/zone_14)實測過,結論是**沒有可省的掃描,維持現狀**。動手「優化」前先看這節,別重蹈覆轍:

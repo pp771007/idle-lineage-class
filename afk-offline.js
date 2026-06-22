@@ -164,6 +164,7 @@
       if (pm) return '傲慢之塔 ' + pm[1] + ' 樓';
       if (id === 'oblivion_island') return '遺忘之島';   // 遺忘之島地圖不在 MAP_CATEGORIES,自己組名
       if (id === 'oblivion_travel') return '遺忘之島途中';
+      if (id === 'rift_battle') return '時空裂痕';        // 時空裂痕戰場不在 MAP_CATEGORIES(離線一律跳過,理論上不會用到,保險補名)
       if (id && typeof MAP_CATEGORIES !== 'undefined') {
         for (var c in MAP_CATEGORIES) {
           for (var i = 0; i < MAP_CATEGORIES[c].length; i++) if (MAP_CATEGORIES[c][i].v === id) return MAP_CATEGORIES[c][i].t;
@@ -450,6 +451,15 @@
     if (prePride && prePride.climb && prePride.ranked) {
       // 排名挑戰:依原作設計「重載＝回城放棄該次排名」,不自動續(stamp 已把 game-screen 開啟後的非攀登狀態清掉攀登旗標)
       console.info('[AFK] 上次在傲慢之塔排名挑戰中：依設計不自動續(重載＝回城、該次排名作廢)。');
+      return;
+    }
+    if (savedMap === 'rift_battle') {
+      // 🌀 時空裂痕:時間排名挑戰(停留越久排名/獎勵越高、每 5 分鐘強制頭目逐漸把你打死)。
+      //   非選單地圖(enterRiftMap 進場、不走 changeMap)、state.riftRun 在暫態 state 上不存檔 → reload 一律已回村。
+      //   離線自動續＝刷排名/刷獎勵 exploit;比照排名攀登,離線不續、不結算(等同原作「中途離開＝該次作廢」)。
+      //   若不擋:savedMap='rift_battle' 非 town_/非攻城 → 會被當一般圖跑 gotoMap('rift_battle'),
+      //   但它不是選單地圖 → setMapSelectors 設不上 → mapState.current 變空 → 空轉、收益歸零(同遺忘之島舊雷)。
+      console.info('[AFK] 上次在時空裂痕(時間排名挑戰)中：依設計不自動續、不結算離線收益。');
       return;
     }
     if (!last) {

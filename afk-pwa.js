@@ -47,6 +47,13 @@
   function isIOS() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent || '') && !window.MSStream;
   }
+  // 真的能跑 PWA/SW 的環境:有 serviceWorker、是安全環境、且 protocol 是 http/https。
+  //   用「正面表列 http(s)」而不是排除 file://:SW 本來就只在 http(s) 跑,這樣連 data:/blob: 等
+  //   origin 為 null 的環境一併擋掉,且不必去猜各家瀏覽器怎麼回報 origin
+  //   (file:// 的 location.origin:Chromium 回 'file://'、Firefox 回 'null',但 protocol 兩家都是 'file:')。
+  function pwaCapable() {
+    return ('serviceWorker' in navigator) && window.isSecureContext && /^https?:$/.test(location.protocol);
+  }
 
   // ----- <head> 注入：manifest / 圖示 / theme-color（同步會洗掉寫死的，故用 JS 補）-------
   function injectHead() {
@@ -96,6 +103,7 @@
   function renderBar() {
     var b = bar();
     if (!b) return;
+    if (!pwaCapable() && !isStandalone()) { b.innerHTML = ''; return; }   // file:// 等非 PWA 環境:不顯示任何 PWA UI(裝不了,顯示只會誤導)
     var html = '';
     if (!isStandalone()) {
       // 還沒安裝：純文字連結（非大按鈕）
@@ -258,7 +266,7 @@
     injectCSS();
     renderBar();
     bindInstallEvents();
-    if (window.isSecureContext && 'serviceWorker' in navigator) {
+    if (pwaCapable()) {
       watchUpdates();
     }
     console.log('[AFK-pwa] hooks OK — PWA 安裝/離線/更新已就緒。');

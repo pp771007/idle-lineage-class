@@ -421,9 +421,19 @@
       window.__afkLoggingOut = true;   // 告知 afk-fixes 的關閉前存檔別重存:本流程已存過,reload 觸發的 beforeunload/pagehide 不必再存(否則手機 toast 會跳兩次)
       try { if (typeof window.saveGame === 'function') window.saveGame(); } catch (e) {}   // 先存當前進度,避免漏掉上次自動存檔後的收益
       try { if (window.__afk && window.__afk.stamp) window.__afk.stamp(); } catch (e) {}   // 存完再蓋錨點 → 存檔時間=離線起算時間,離線結算不會漏算/重算
-      try { location.reload(); } catch (e) {}
+      showLogoutOverlay();   // 立刻蓋全螢幕遮罩:reload 是整頁重開機(手機要幾秒),期間舊頁仍在跑戰鬥,不蓋住會看起來像「還在打怪」
+      // double rAF:確保遮罩先畫出來(rAF 在繪製前觸發,巢狀第二個在首次繪製後),再開始 reload
+      requestAnimationFrame(function () { requestAnimationFrame(function () { try { location.reload(); } catch (e) {} }); });
     });
     return m;
+  }
+  // 登出遮罩:蓋在最上層(z-index 高過登出視窗/toast),純視覺,讓重開機那幾秒看到「回首頁中」而非殘留的戰鬥畫面。
+  function showLogoutOverlay() {
+    if (document.getElementById('m-logout-overlay')) return;
+    var o = document.createElement('div');
+    o.id = 'm-logout-overlay';
+    o.innerHTML = '<div id="m-logout-overlay-spin"></div><div id="m-logout-overlay-txt">已自動存檔，正在回首頁…</div>';
+    document.body.appendChild(o);
   }
 
   // --- 手機戰鬥畫面:怪物下方的「手動喝水列」 -------------------------------
@@ -729,6 +739,12 @@
       '#m-logout-cancel:active{background:#334155;}',
       '#m-logout-ok{background:#b45309;color:#fff;border-color:#d97706;}',
       '#m-logout-ok:active{background:#92400e;}',
+
+      /* 登出遮罩:按確定後立刻蓋住,撐過 reload 重開機的幾秒(否則舊頁戰鬥畫面還在跑) */
+      '#m-logout-overlay{position:fixed;inset:0;z-index:100000;background:#020617;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}',
+      '#m-logout-overlay-spin{width:38px;height:38px;border:3px solid #334155;border-top-color:#f59e0b;border-radius:50%;animation:m-logout-spin 0.8s linear infinite;}',
+      '#m-logout-overlay-txt{color:#e2e8f0;font-size:15px;letter-spacing:0.5px;}',
+      '@keyframes m-logout-spin{to{transform:rotate(360deg);}}',
 
       /* 角色資訊彈窗:點暱稱叫出桌面版 #status-panel(手機平時隱藏);✕/點背景關閉 */
       '#m-stat-modal{display:none;}',

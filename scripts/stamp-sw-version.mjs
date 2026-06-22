@@ -32,6 +32,7 @@ export function stampSwVersion() {
   if (!existsSync(SW_FILE)) { console.warn('[stamp] 找不到 sw.js，略過'); return null; }
   const parts = [];
   if (existsSync('index.html')) parts.push(readFileSync('index.html'));
+  if (existsSync('manifest.webmanifest')) parts.push(readFileSync('manifest.webmanifest'));
   for (const f of readdirSync('.').filter((n) => /^afk-.*\.js$/.test(n)).sort()) parts.push(readFileSync(f));
   const hash = createHash('sha1').update(Buffer.concat(parts)).digest('hex').slice(0, 12);
   const version = 'code-' + hash;

@@ -107,19 +107,19 @@ try {
   console.warn('[warn] 補圖階段出錯(不致命,繼續):', e.message);
 }
 
-// 4b. 既有「背景大圖」被換 → bump sw.js 的 CACHE_VERSION,讓玩家端 Service Worker 自動清舊快取、重抓新圖
+// 4b. 既有「背景大圖」被換 → bump sw.js 的 IMG_VERSION,讓玩家端 Service Worker 自動清舊快取、重抓新圖
 //     (新增背景圖不必 bump:新檔名新 URL,cache-first 本來就會抓。只有同名換內容才需要。)
 const bgChanged = assetsChanged.filter((p) => p.startsWith(BG_PREFIX));
 let swVersion = '';
 if (bgChanged.length && existsSync(SW_FILE)) {
   const sw = readFileSync(SW_FILE, 'utf8');
-  const m = sw.match(/const CACHE_VERSION = 'bg-v(\d+)';/);
+  const m = sw.match(/const IMG_VERSION(\s*=\s*)'img-v(\d+)';/);
   if (m) {
-    swVersion = 'bg-v' + (parseInt(m[1], 10) + 1);
-    writeFileSync(SW_FILE, sw.replace(m[0], `const CACHE_VERSION = '${swVersion}';`));
-    console.log(`[sw] 既有背景圖更新 ${bgChanged.length} 張 → bump CACHE_VERSION 至 ${swVersion}`);
+    swVersion = 'img-v' + (parseInt(m[2], 10) + 1);
+    writeFileSync(SW_FILE, sw.replace(m[0], `const IMG_VERSION${m[1]}'${swVersion}';`));
+    console.log(`[sw] 既有背景圖更新 ${bgChanged.length} 張 → bump IMG_VERSION 至 ${swVersion}`);
   } else {
-    console.warn('[warn] 找不到 sw.js 的 CACHE_VERSION,未能自動 bump,請手動處理。');
+    console.warn('[warn] 找不到 sw.js 的 IMG_VERSION,未能自動 bump,請手動處理。');
   }
 }
 

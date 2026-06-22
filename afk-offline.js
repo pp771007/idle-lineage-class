@@ -518,6 +518,34 @@
     };
   }
 
+  // ----- 入口提示:時空裂痕 / 傲慢之塔排名模式 不支援離線掛機 ----------------
+  // 這兩個是「時間排名挑戰」,離線一律跳過(見 maybeCatchup 的 ranked/rift 早退);玩家容易誤以為能掛機,
+  //   故在各自入口面板補一行醒目提示。包住原作全域 renderRiftEntrance/renderPrideEntrance:
+  //   原函式把 box appendChild 進 container 後(box=container 最後一個子元素),往該 box 補一行提示(不改 index.html)。
+  function injectEntranceHint(fnName, html) {
+    if (typeof window[fnName] !== 'function' || window[fnName].__afkHint) return;
+    var orig = window[fnName];
+    window[fnName] = function (container) {
+      var r = orig.apply(this, arguments);
+      try {
+        var box = container && container.lastElementChild;
+        if (box && !box.querySelector('.afk-norank-note')) {
+          var note = document.createElement('div');
+          note.className = 'afk-norank-note';
+          note.setAttribute('style', 'margin-top:2px;padding:8px 10px;border:1px solid #b45309;background:rgba(180,83,9,0.14);border-radius:8px;color:#fcd34d;font-size:12px;line-height:1.55;');
+          note.innerHTML = html;
+          box.appendChild(note);
+        }
+      } catch (e) {}
+      return r;
+    };
+    window[fnName].__afkHint = true;
+  }
+  injectEntranceHint('renderRiftEntrance',
+    '⚠ <b>不支援離線掛機</b>：關閉或重新整理頁面會中斷挑戰，<b>不結算、不記排名</b>（龜裂之核照樣消耗）。要記錄成績與獎勵，請以戰死或主動撤離結束。');
+  injectEntranceHint('renderPrideEntrance',
+    '⚠ <b>排名模式不支援離線掛機</b>：排名挑戰中關閉或重新整理頁面會直接回城、<b>放棄該次排名</b>。（一般攀登可正常離線續爬，不受影響。）');
+
   // ----- 心跳 + 關閉前蓋章 -------------------------------------------------
   setInterval(function () {
     if (validSlot() && state && state.running) stamp();

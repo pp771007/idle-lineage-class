@@ -60,7 +60,7 @@
   }
 
   // ----- 小工具 -----------------------------------------------------------
-  function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1 && n <= 4; }  // 原作存檔位 1~4(upstream: let currentSlot 1~4);原作加格時這裡上限要跟著調
+  function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1 && n <= 6; }  // 原作存檔位 1~6(upstream: showSlotSelect 的 for n=1..6);原作加格時這裡上限要跟著調
   function tsKey()      { return TS_PREFIX + currentSlot; }
   function mapKey()     { return 'afk_map_' + currentSlot; }
   function prideKey()   { return 'afk_pride_' + currentSlot; }

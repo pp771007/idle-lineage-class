@@ -86,7 +86,8 @@
 
   // ----- 名稱查詢 ---------------------------------------------------------
   // CASTLE_EXTRA 類地圖(如風木地監)只有 getCastleAreas() 動態才有中文名、靜態表查不到,在這補上
-  var EXTRA_MAP_NAMES = { windwood_dungeon: '風木地監' };
+  // 遺忘之島地圖(oblivion_*)是搭船前往的特殊離島,不在 MAP_CATEGORIES/DB.maps 靜態表,自己補名
+  var EXTRA_MAP_NAMES = { windwood_dungeon: '風木地監', oblivion_island: '遺忘之島', oblivion_travel: '遺忘之島途中' };
   function mapNameOf(id) {
     try {
       if (EXTRA_MAP_NAMES[id]) return EXTRA_MAP_NAMES[id];

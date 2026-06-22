@@ -158,7 +158,33 @@
     m.querySelector('#afk-pwa-ok').addEventListener('click', function () { close(); onOk(); });
   }
 
+  // 點「安裝」先彈一張說明卡：提醒「日後移除安裝」各瀏覽器對存檔的處理不一定一樣，
+  //   保險起見先匯出存檔再移除。用籠統寫法（不同瀏覽器/系統行為確實不一致，講死反而會誤導）。
   function onInstallClick() {
+    installNoticeBox(doInstall);
+  }
+  function installNoticeBox(onOk) {
+    var m = document.createElement('div');
+    m.setAttribute('style', 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:24px;');
+    m.innerHTML =
+      '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;max-width:380px;width:100%;padding:20px;color:#e2e8f0;text-align:left;">' +
+      '<div style="font-weight:bold;font-size:15px;margin-bottom:12px;text-align:center;">📥 安裝成免網路遊玩</div>' +
+      '<div style="line-height:1.8;font-size:13px;color:#cbd5e1;margin-bottom:16px;">' +
+      '安裝後可以離線開啟，存檔會保存在這個瀏覽器／裝置上。<br><br>' +
+      '<b style="color:#fbbf24;">提醒：</b>日後若要「移除安裝」，<b>部分瀏覽器或系統會連同存檔一起清掉，部分則會保留</b>——各家行為不一定相同。為了保險，移除前建議先到遊戲內<b>匯出存檔</b>備份，日後重裝或換裝置都能再匯入回來。' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;">' +
+      '<button type="button" id="afk-pwa-ni-cancel" style="flex:1;padding:10px;border-radius:8px;border:1px solid #475569;background:#334155;color:#e2e8f0;cursor:pointer;">取消</button>' +
+      '<button type="button" id="afk-pwa-ni-ok" style="flex:1;padding:10px;border-radius:8px;border:1px solid #16a34a;background:#15803d;color:#fff;cursor:pointer;">知道了，開始安裝</button>' +
+      '</div></div>';
+    document.body.appendChild(m);
+    function close() { if (m.parentNode) m.parentNode.removeChild(m); }
+    m.addEventListener('click', function (e) { if (e.target === m) close(); });
+    m.querySelector('#afk-pwa-ni-cancel').addEventListener('click', close);
+    m.querySelector('#afk-pwa-ni-ok').addEventListener('click', function () { close(); onOk(); });
+  }
+
+  function doInstall() {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       var dp = deferredPrompt;

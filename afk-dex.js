@@ -632,15 +632,6 @@
   function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); } }
   function closeModal() { var m = document.getElementById('m-dex-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
 
-  // 對外:讓小百科(afk-wiki)在「模態模式」直接開掉落查詢模態並帶搜尋字(同頁、不開新分頁、不切換頁面模式)
-  window.AFK_openDex = function (q) {
-    buildModal();   // 確保模態已建立(已存在則 no-op)
-    var i = document.getElementById('m-dex-input');
-    if (i) i.value = q || '';
-    doSearch();
-    openModal();
-  };
-
   // ----- CSS --------------------------------------------------------------
   function injectCSS() {
     if (document.getElementById('m-dex-style')) return;

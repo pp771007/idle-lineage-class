@@ -861,22 +861,6 @@
         render();
         return;
       }
-      // 地圖一覽「🔍 看這裡的怪」：跟著「目前所在模式」走,絕不開新分頁、也不混到另一種模式——
-      //   模態(遊戲內彈出)→ 開掉落查詢模態(同頁覆蓋);獨立頁(?view=wiki)→ 同分頁直接轉跳到掉落查詢獨立頁。
-      var ml = e.target.closest ? e.target.closest('[data-mapq]') : null;
-      if (ml) {
-        var mq = ml.getAttribute('data-mapq');
-        var wm = document.getElementById('m-wiki-modal');
-        if (wm && wm.getAttribute('data-standalone')) {
-          location.href = location.href.split('?')[0].split('#')[0] + '?view=dex&q=' + encodeURIComponent(mq);
-        } else if (typeof window.AFK_openDex === 'function') {
-          closeModal();
-          window.AFK_openDex(mq);
-        } else {
-          location.href = location.href.split('?')[0].split('#')[0] + '?view=dex&q=' + encodeURIComponent(mq);
-        }
-        return;
-      }
       var b = e.target.closest ? e.target.closest('[data-magiccls]') : null;
       if (!b) return;
       state.magicCls = b.getAttribute('data-magiccls');
@@ -966,6 +950,11 @@
     village: '🏘️ 村莊 / 安全區', wild: '🌳 野外', dungeon: '🏚️ 地監',
     special: '✨ 特殊', tower: '🗼 傲慢之塔', rift: '🌀 時空裂痕'
   };
+  // 進入路徑用的分類純名(無 emoji);遊戲移動方式=地圖選單選分類再選圖直接傳送,故路徑即「在哪個分類」
+  var MAP_CAT_PATH = {
+    village: '村莊／安全區', wild: '野外', dungeon: '地監',
+    special: '特殊', tower: '傲慢之塔', rift: '時空裂痕'
+  };
   // 地圖等級範圍:讀該圖的怪(DB.maps[v]=怪 id 清單)取最低～最高等級;無怪(安全區/未列)回 null
   function mapLvRange(v) {
     try {
@@ -992,17 +981,16 @@
   }
   function renderMap() {
     if (typeof MAP_CATEGORIES === 'undefined') return '<div class="m-wiki-note">讀不到地圖資料。</div>';
-    var h = '<div class="m-wiki-note">遊戲裡的地圖照「分類」列在這，每張標出<b>等級範圍</b>（看該圖怪物等級）與<b>進入條件</b>；有怪的圖可點「🔍 看這裡的怪」開掉落查詢。找不到某張圖時，先看它在哪個分類——例如<b>底比斯沙漠</b>在「時空裂痕」分類底下。</div>';
+    var h = '<div class="m-wiki-note">遊戲移動方式：打開<b>地圖選單</b>→ 選分類 → 選地圖直接傳送（受進入條件擋）。下面每張地圖都標出<b>📍進入路徑（在哪個分類）</b>、<b>等級範圍</b>（看該圖怪物等級）與<b>進入條件</b>。所以即使用搜尋（例 <b>底比斯</b>）也看得到它在「時空裂痕」分類底下。</div>';
     MAP_CAT_ORDER.forEach(function (cat) {
       var list = MAP_CATEGORIES[cat]; if (!list || !list.length) return;
       h += '<div class="m-wiki-sub">' + MAP_CAT_NAME[cat] + '</div>';
       list.forEach(function (e) {
         var lv = mapLvRange(e.v), unlock = mapUnlock(e), bits = [];
-        if (lv) bits.push('<b style="color:#86efac;margin:0;">' + lv + '</b>');
+        bits.push('<span class="c-mappath">📍 地圖選單「' + MAP_CAT_PATH[cat] + '」分類</span>');
+        bits.push(lv ? ('<b style="color:#86efac;margin:0;">' + lv + '</b>') : '安全區（無怪物）');
         if (unlock) bits.push('<span class="c-mapunlock">' + unlock + '</span>');
-        // 跳掉落查詢用地圖名比對;傲慢之塔樓層在掉落查詢的名稱格式不同(帶「直接挑戰」),比對不到故不放跳轉(塔另有專屬分頁)
-        if (lv && cat !== 'tower') bits.push('<span class="m-wiki-maplink" data-mapq="' + esc(e.t) + '">🔍 看這裡的怪</span>');
-        h += '<div class="m-wiki-kv"><b>' + esc(e.t) + '</b>' + (bits.length ? bits.join('　') : '安全區（無怪物）') + '</div>';
+        h += '<div class="m-wiki-kv"><b>' + esc(e.t) + '</b>' + bits.join('　') + '</div>';
       });
     });
     return h;
@@ -1590,8 +1578,7 @@
       '.m-wiki-kv{font-size:13px;color:#cbd5e1;line-height:1.6;padding:5px 0;border-bottom:1px solid #16233a;}',
       '.m-wiki-kv b{color:#e2e8f0;margin-right:8px;}',
       '.c-mapunlock{color:#fca5a5;}',
-      '.m-wiki-maplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;white-space:nowrap;}',
-      '.m-wiki-maplink:active{color:#38bdf8;}',
+      '.c-mappath{color:#7dd3fc;}',
       '.m-wiki-lv{font-size:13px;font-weight:bold;color:#a5b4fc;background:#1e293b;border-radius:6px;padding:4px 10px;margin-top:4px;}',
       '.m-wiki-spell{background:#111c30;border:1px solid #243049;border-radius:8px;padding:8px 11px;}',
       '.m-wiki-spell-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}',

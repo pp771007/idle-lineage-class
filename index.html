@@ -365,7 +365,7 @@
                 <label class="flex items-center gap-2 mt-3 px-1 cursor-pointer select-none" title="開啟後此角色永久套用經典（硬核）規則，無法事後關閉">
                     <input type="checkbox" id="create-classic-toggle" onchange="onToggleClassic(this)" class="w-5 h-5 accent-amber-600 shrink-0">
                     <span class="text-amber-300 font-bold shrink-0">經典模式</span>
-                    <span class="text-slate-400 text-xs">砍半的經驗、極低的金錢、掉寶率僅 1/10，死掉還噴經驗——感受更「經典」的天堂回憶（永久・預設關閉）</span>
+                    <span class="text-slate-400 text-xs">砍半的經驗與金錢、掉寶率僅 1/10，死掉還噴經驗——感受更「經典」的天堂回憶（永久・預設關閉）</span>
                 </label>
                 <div class="flex gap-4 shrink-0 mt-2">
                     <button onclick="backToMenu()" class="btn w-1/4 py-3 text-base">返回</button>
@@ -391,7 +391,7 @@
         <div id="col-left" class="w-[340px] flex flex-col gap-4">
             <!-- 新增了 id="status-panel"，並加入去底色與加深背景的樣式確保文字可讀 -->
             <div id="status-panel" class="panel bg-cover bg-top bg-no-repeat" style="background-blend-mode: multiply; background-color: rgba(30, 41, 59, 0.85);">
-                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：物品掉落 ×1/10、經驗減半、金幣剩 10%、賣價剩定價 3%、死亡損失該等級 10% 最大經驗（不降等）">⚔經典</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
+                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：物品掉落 ×1/10、經驗減半、金幣剩一般模式的 1/2、死亡損失該等級 10% 最大經驗（不降等）">⚔經典</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
                 <div class="p-4 space-y-3 text-base">
                     <div class="flex justify-between text-slate-400 border-b border-slate-700 pb-2"><span>等級</span> <span class="text-white font-bold text-xl" id="st-lv">1</span></div>
                     <div class="flex justify-between text-slate-400"><span>防禦 (AC)</span> <span class="text-white font-bold" id="st-ac">10</span></div>
@@ -1246,7 +1246,7 @@ const DB = {
         "clk_illu": { n: "幻術士斗篷", type: "arm", slot: "cloak", ac: 1, mmp: 20, mpR: 4, req: "illusion", safe: 6, p: 6000, gachaWeight: 10, d: "幻術士專屬斗篷。MP+20、MP自然恢復量+4。" },
         // ===== 🐉 龍騎士武器 / 防具 =====
         "wpn_dragon_2h": { n: "龍騎士雙手劍", type: "wpn", w2h: true, dmgS: 19, dmgL: 17, hit: 4, dmgBonus: 2, spd: 0.9, eff: "cleave", req: "dragon", safe: 6, p: 32000, gachaWeight: 30, d: "龍騎士的雙手巨劍。切割；近距離傷害+2、近距離命中+4。" },
-        "wpn_chain_annihilator": { n: "消滅者鎖鏈劍", type: "wpn", w2h: true, chainsword: true, weakExpose: true, unBonus: true, dmgS: 17, dmgL: 13, hit: 5, dmgBonus: 3, spd: 0.9, req: "dragon", safe: 6, p: 28000, gachaWeight: 50, d: "龍騎士專屬·鎖鏈劍（雙手・近距離）。對不死 / 狼人加成；弱點曝光（一般攻擊命中 30% 附加，最多 3 層，配合屠宰者爆發）。近距離傷害+3、近距離命中+5。" },
+        "wpn_chain_annihilator": { n: "消滅者鎖鏈劍", type: "wpn", w2h: true, chainsword: true, weakExpose: true, unBonus: true, dmgS: 17, dmgL: 13, hit: 5, dmgBonus: 3, spd: 0.9, req: "dragon", safe: 6, p: 28000, gachaWeight: 50, d: "龍騎士專屬·鎖鏈劍（雙手・近距離）。對不死 / 狼人加成；弱點曝光（一般攻擊命中 12% 附加，最多 3 層，配合屠宰者爆發）。近距離傷害+3、近距離命中+5。" },
         "wpn_chain_destroyer": { n: "破滅者鎖鏈劍", type: "wpn", w2h: true, chainsword: true, weakExpose: true, str: 1, dmgS: 21, dmgL: 17, hit: 5, dmgBonus: 3, spd: 0.9, req: "dragon", safe: 6, p: 88000, gachaWeight: 30, d: "龍騎士專屬·鎖鏈劍（雙手・近距離）。力量+1；弱點曝光。近距離傷害+3、近距離命中+5。" },
         "wpn_chain_bloodthirst": { n: "嗜血者鎖鏈劍", type: "wpn", w2h: true, chainsword: true, weakExpose: true, vampPct: 0.05, dmgS: 21, dmgL: 20, hit: 5, dmgBonus: 3, spd: 0.9, req: "dragon", safe: 6, p: 138000, gachaWeight: 1, d: "龍騎士專屬·鎖鏈劍（雙手・近距離）。吸取HP（恢復一般攻擊造成傷害的 5% HP）；弱點曝光。近距離傷害+3、近距離命中+5。" },
         "wpn_chain_resonance": { n: "共鳴鎖鏈劍", type: "wpn", w2h: true, chainsword: true, weakExpose: true, str: 1, wis: 2, dmgS: 21, dmgL: 20, hit: 6, dmgBonus: 3, spd: 0.9, req: "dragon", safe: 6, p: 164000, gachaWeight: 1, spellProc: { skn: "共鳴衝擊", dice: [4, 8], ele: "water" }, procRateBase: 1, procRatePerEn: 1, d: "龍騎士專屬·鎖鏈劍（雙手・近距離）。力量+1、精神+2；弱點曝光；1% 機率施放共鳴衝擊（每強化+1機率+1%），造成 4D8 單體水屬性魔法傷害（受魔法傷害影響）。近距離傷害+3、近距離命中+6。" },
@@ -3216,8 +3216,9 @@ const TRIAL_ITEM_CLASS = {
     'item_fallen_key': 'dark', 'item_death_oath': 'dark', 'item_orc_elder_head': 'dark', 'item_yeti_head': 'dark',
     // === 🎭 幻術士試煉（希蓮恩 + 50 級試煉翼龍之血）===
     'item_ant_fruit': 'illusion', 'item_ant_branch': 'illusion', 'item_ant_bark': 'illusion',
-    'item_elmore_heart': 'illusion', 'item_time_orb': 'illusion', 'item_wyvern_blood': 'illusion'
-    // 🐉 龍騎士試煉道具（妖魔搜索文件/間諜書/雪怪之心/灰燼）走 DRAGON_DROPS 表本身已限定 dragon，不列於此。
+    'item_elmore_heart': 'illusion', 'item_time_orb': 'illusion', 'item_wyvern_blood': 'illusion',
+    // === 🐉 龍騎士試煉道具（普洛凱爾兌換）===　DRAGON_DROPS 表 2026-06 改為「全職可掉」(書板/鎖鏈劍·就算不能裝備也掉)，故這 4 個試煉道具改列此表、靠 trialDropBlocked 維持「僅 dragon 才掉/看到」
+    'item_demon_search': 'dragon', 'item_demon_spy': 'dragon', 'item_yeti_heart': 'dragon', 'item_soulfire_ash': 'dragon'
 };
 // 值可為「單一職業字串」或「職業陣列」（古代鑰匙＝騎士+妖精共用）。非允許職業擊殺則略過掉落、也不顯示於掉落表。
 function trialDropBlocked(id) {
@@ -4588,6 +4589,7 @@ function gameLoop() {
         flushAwaySummary(); // 回到即時：若先前累積了補跑所得，於此統一輸出一次
         state.inTick = true;   // 🔧 架構#2：tick 期間的擊殺只標記，結束後統一清算
         try { tick(); } finally { state.inTick = false; settleDeadMobs(); }
+        flushTickRender();   // 🚀 重繪合併：把本 tick 內累積的 updateUI/renderMobs 統一重繪一次
         return;
     }
 
@@ -4630,6 +4632,12 @@ function gameLoop() {
 
 // 🛡️ 絕對屏障：與世界隔絕——無法攻擊/施法/用道具、不自然恢復、不受任何傷害（持續期間 player.buffs.sk_abs_barrier>0）
 function inAbsBarrier() { return !!(player.buffs && player.buffs.sk_abs_barrier > 0); }
+// 🚀 重繪合併：tick 進行中(state.inTick)時 updateUI/renderMobs 只標記 dirty，於 tick 結尾 flushTickRender() 統一重繪一次，
+//   避免單一 tick 內(玩家＋多傭兵＋持續傷害＋特效＋擊殺)重複重繪十數次；tick 外(點擊/裝備/用道具/開面板)維持立即重繪、體感不變。
+let _uiDirty = false, _mobsDirty = false;
+function updateUI() { if (state.inTick) { _uiDirty = true; return; } _uiDirty = false; _updateUIImpl(); }
+function renderMobs() { if (state.inTick) { _mobsDirty = true; return; } _mobsDirty = false; _renderMobsImpl(); }
+function flushTickRender() { if (_uiDirty) { _uiDirty = false; _updateUIImpl(); } if (_mobsDirty) { _mobsDirty = false; _renderMobsImpl(); } }
 function tick() {
     if(!state.running || player.dead) return;
     state.ticks++;
@@ -5609,8 +5617,8 @@ function playerCanWeakExpose() {
 function applyPlayerWeakExpose(target) {
     if (!target || target.curHp <= 0) return;
     if (!playerCanWeakExpose()) return;
-    let always = hasMastery('k_chainblade') || hasMastery('k_weakness');   // 鎖刃／弱點精通：必定附加；否則 30%
-    if (!always && Math.random() >= 0.30) return;
+    let always = hasMastery('k_chainblade') || hasMastery('k_weakness');   // 鎖刃／弱點精通：必定附加；否則 12%
+    if (!always && Math.random() >= 0.12) return;
     let before = target.weakExpose || 0;
     target.weakExpose = Math.min(weakExposeMaxLayers(), before + 1);
 }
@@ -6968,7 +6976,7 @@ function _auditMobDrops(mobName) {
     if (typeof MOB_DROPS !== 'undefined') push(MOB_DROPS);
     if (typeof DARK_WEAPON_DROPS !== 'undefined') push(DARK_WEAPON_DROPS);
     if (typeof DARK_CRYSTAL_DROPS !== 'undefined') push(DARK_CRYSTAL_DROPS);
-    if (typeof DRAGON_DROPS !== 'undefined' && typeof player !== 'undefined' && player.cls === 'dragon') push(DRAGON_DROPS);   // 🐉 龍騎士掉落表（妖魔搜索文件等任務道具/書板/鎖鏈劍）：僅龍騎士擊殺才會掉，故僅龍騎士檢視時併入本圖掉落物品表
+    if (typeof DRAGON_DROPS !== 'undefined') push(DRAGON_DROPS);   // 🐉 龍騎士掉落表全職可掉（書板/鎖鏈劍）；妖魔搜索文件等試煉道具由 push 內 trialDropBlocked 對非龍騎士隱藏
     return ids;
 }
 function renderAuditDrops(el) {
@@ -7028,7 +7036,7 @@ function killMob(idx) {
         let gMin = mob.goldMin || (mob.lv * 5);
         let gMax = mob.goldMax || (mob.lv * 10);
         let g = gMin + Math.floor(Math.random() * (gMax - gMin + 1));
-        if (player.classicMode) g = Math.floor(g * 0.1);   // 🎮 經典模式：怪物金幣僅剩 10%
+        if (player.classicMode) g = Math.floor(g / 2);   // 🎮 經典模式：怪物金幣僅剩一般模式的 1/2（歷次：×1/10 → ×1/3 → ×1/2）
         player.gold += g;
         // 🔧 金幣不再逐殺輸出於系統日誌；改由 gameLoop 累積、flushAwaySummary 以「掛機期間獲得總金幣」統一顯示。
 
@@ -7151,8 +7159,8 @@ function killMob(idx) {
     { let _dcd = (typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[mob.n] : null;
       if (_dcd) _dcd.forEach(e => { if (DB.items[e[0]] && Math.random() < (e[1] * _dropMult) / 100) gainItem(e[0], 1); }); }
     // === 🐉 龍騎士掉落（任務道具／書板／鎖鏈劍）：僅龍騎士主玩家擊殺時判定 ===
-    { let _drd = (player.cls === 'dragon' && typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null;
-      if (_drd) _drd.forEach(e => { if (DB.items[e[0]] && Math.random() < (e[1] * _dropMult) / 100) gainItem(e[0], 1); }); }
+    { let _drd = (typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null;   // 🐉 龍騎士掉落表改為全職可掉（書板/鎖鏈劍·就算不能裝備也掉）；妖魔搜索文件等試煉道具由 trialDropBlocked 限定 dragon
+      if (_drd) _drd.forEach(e => { if (DB.items[e[0]] && !trialDropBlocked(e[0]) && Math.random() < (e[1] * _dropMult) / 100) gainItem(e[0], 1); }); }
 
     // === 40等以上 BOSS（夢幻之島 + 攻城區/siegeEnemy 除外）：賦予祝福卷軸稀有掉落，各自獨立判定 ===
     if (mob.boss && mob.lv >= 40 && mapState.current !== 'dream_island' && !isSiegeArea(mapState.current) && !mob.siegeEnemy) {
@@ -8010,6 +8018,7 @@ function allyQiguAttack(ally, t, wpn) {
     t.curHp -= dmg; t.justHit = (ele !== 'none') ? ele : 'magic';
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     mobWake(t);
+    if (ally._setWhiteBird5 && t.curHp > 0 && !t._dead) { if (!t.st) t.st = newMobStatus(); t.st.fragile = 30; }   // 🔮 白鳥 5/5（傭兵奇古獸）：命中附加脆弱（魔法路徑不經 allyOnHitEffects，故此處補上）
     logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>奇古獸對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點魔法傷害。`, 'magic');
     // 奇古獸特效（幻影衝擊/心靈破壞，用傭兵最大MP）
     if (wpn.qiguProc) {
@@ -8046,6 +8055,7 @@ function allyAttackOnce(ally) {
         t.curHp -= dmg; t.justHit = 'magic'; mobWake(t);
         logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>魔法攻擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 <span class="${isCrit?'text-yellow-500 font-bold':'text-emerald-200'}">${dmg}</span> 點傷害。`, 'magic');
         allyWeaponProcs(ally, t, { hit: true, dmg: dmg });   // 🔧 法師普攻（光箭）也觸發武器特效：共鳴/魔擊/瑪那回魔
+        if (ally._setWhiteBird5 && t.curHp > 0 && !t._dead) { if (!t.st) t.st = newMobStatus(); t.st.fragile = 30; }   // 🔮 白鳥 5/5（傭兵法師光箭）：一般攻擊命中附加脆弱（物理分支於 allyOnHitEffects 套用、魔法分支不經該函式，故此處補上）
     } else {
         let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
         let isLarge = t.s === 'L';
@@ -8106,7 +8116,7 @@ function allyAttackOnce(ally) {
         if (wpn && wpn.vampPct && dmg > 0 && ally.hp != null) ally.hp = Math.min(ally.mhp || ally.hp, (ally.hp || 0) + Math.floor(dmg * wpn.vampPct));   // 🐉 嗜血者鎖鏈劍（傭兵）
         if (t.curHp > 0 && !isRanged && wpn && (wpn.weakExpose || allyHasMastery(ally, 'k_weakness'))) {   // 🐉 弱點曝光（傭兵）：鎖鏈劍/弱點精通
             let _always = allyHasMastery(ally, 'k_chainblade') || allyHasMastery(ally, 'k_weakness');
-            if (_always || Math.random() < 0.30) { let _max = allyHasMastery(ally, 'k_chainblade') ? 5 : 3; t.weakExpose = Math.min(_max, (t.weakExpose || 0) + 1); }
+            if (_always || Math.random() < 0.12) { let _max = allyHasMastery(ally, 'k_chainblade') ? 5 : 3; t.weakExpose = Math.min(_max, (t.weakExpose || 0) + 1); }
         }
         allyWeaponProcs(ally, t, { hit: true, dmg: dmg });            // 🔧 普攻判定特效：瑪那回魔/共鳴/魔擊/月光爆裂
         if (wpn && wpn.eff === 'combo') allyComboAttack(ally, t);     // 連擊：命中後追加一次額外攻擊
@@ -8161,6 +8171,7 @@ function allyCastMagic(ally, sk) {
         t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic';
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
         mobWake(t);
+        if (ally._setWhiteBird5 && t.curHp > 0 && !t._dead) { if (!t.st) t.st = newMobStatus(); t.st.fragile = 30; }   // 🔮 白鳥 5/5（傭兵）：傷害魔法命中亦附加脆弱（傭兵以魔法為主要攻擊，補回脆弱效果）
         texts.push(`<span class="${getMobColor(t.lv)}">${t.n}</span> ${totalDmg}${isCrit?'(爆)':''}`);
     });
     if (sk.status) { let _svS = player; player = ally; try { targets.forEach(t => { if (t && t.curHp > 0) applyMobStatus(t, sk.status, sk.n); }); } finally { player = _svS; } }   // 🔧 傷害魔法附帶異常狀態（🐉 奪命之雷暈 / 🔮 混亂 / 幻想沉睡）：以傭兵自身魔法命中判定（與玩家魔法分支 9367 一致）
@@ -9721,6 +9732,7 @@ function autoActions() {
             if(sid === 'sk_sunlight' && KING_ROOMS[mapState.current]) return;   // 🔧 軍王之室／底比斯祭壇：日光術無效，跳過自動施放（否則每 tick 被擋下並狂洗系統日誌）
             if(sk.darkStealth && player._darkStealthCd > state.ticks) return;   // 🔧 暗隱術：冷卻中不自動施放（須身上無暗隱術且冷卻結束才再施放）
             if(sk.awaken && player.mastery !== 'k_awaken' && ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].some(a => (player.buffs[a]||0) > 0)) return;   // 🐉 覺醒互斥：已有一種覺醒生效時不自動施放其他覺醒（避免互相清除而反覆耗HP/MP）；覺醒精通可同時三種
+            if(sk.cube && mapState.current.startsWith('town_')) return;   // 🔮 立方：安全區(村莊)不自動施放，進入狩獵區(非 town_)才展開
             let chk = document.getElementById(`auto-sk-${sid}`);
             if(chk && chk.checked && (!player.buffs[sid] || player.buffs[sid] <= 0)) {
                 castSkill(sid);
@@ -10764,7 +10776,7 @@ function renderStatusEffects() {
     el.innerHTML = html;
 }
 
-function updateUI() {
+function _updateUIImpl() {
     if(state.ff) return; // 補跑期間不刷新畫面
     updatePrideFloorIndicator();   // 🗼 攀登中右上角顯示目前樓層（背景補跑後回到前景時同步）
     try { renderPandoraBanner(); } catch (e) {}   // 🔧 潘朵拉黑市稀有商品公告橫幅
@@ -10902,7 +10914,7 @@ function updateUI() {
     updateSummonLock();   // 同步召喚類技能互斥鎖定（含迷魅生效時鎖定召喚增益）
 }
 
-function renderMobs() {
+function _renderMobsImpl() {
     if(state.ff) return; // 補跑期間不刷新畫面
     let html = '';
     let isPureBossMap = PURE_BOSS_MAPS.includes(mapState.current) && !KING_ROOMS[mapState.current];   // 🔧 軍王之室仍屬純BOSS房(免自動瞬移/追蹤)，但版面用三格
@@ -11237,6 +11249,16 @@ function onSummonToggle(sid) {
     }
     updateSummonLock();
 }
+// 🐉 覺醒互斥（無覺醒精通）：勾選一種覺醒 → 自動取消另外兩種，並重繪（重繪會把未勾選的兩種設為 disabled 鎖定）；有覺醒精通(k_awaken)則三種可並存、不鎖
+function onAwakenToggle(sid) {
+    let c = document.getElementById('auto-sk-' + sid);
+    if (c && c.checked && player.mastery !== 'k_awaken') {
+        ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].forEach(id => {
+            if (id !== sid) { let o = document.getElementById('auto-sk-' + id); if (o) o.checked = false; }
+        });
+    }
+    renderSkillSelects();
+}
 
 function renderSkillSelects() {
     // 先記住目前選擇，重建後還原（避免穿脫裝備/學技能等呼叫時被重設為「無」）
@@ -11267,10 +11289,14 @@ function renderSkillSelects() {
             // 魔法相消術涵蓋解毒術與聖潔之光：勾選相消時鎖定這兩者
             let __cancelOn = player.skills.includes('sk_cancel') && document.getElementById('auto-sk-sk_cancel')?.checked;
             let __locked = (sid === 'sk_antidote' || sid === 'sk_holy_light') && __cancelOn;
-            let __dis = (!isAvail || __locked) ? 'disabled' : '';
+            // 🐉 覺醒互斥（無覺醒精通）：已勾選一種覺醒時，鎖定另外兩種「未勾選」的覺醒；已勾選那一個維持可點以便取消
+            let __awakenLocked = sk.awaken && player.mastery !== 'k_awaken' && !document.getElementById('auto-sk-'+sid)?.checked && ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].some(a => document.getElementById('auto-sk-'+a)?.checked);
+            let __awakenAttr = sk.awaken ? ` onchange="onAwakenToggle('${sid}')"` : '';
+            let __dis = (!isAvail || __locked || __awakenLocked) ? 'disabled' : '';
             let __purAttr = (sid === 'sk_cancel') ? ` onchange="renderSkillSelects()"` : '';
             let __span = __isPurify ? 'text-teal-300' : 'text-purple-300';
-            buffHtml += `<label class="cursor-pointer flex items-center gap-2 ${(isAvail && !__locked)?'':'opacity-50'}"${__locked?' title="魔法相消術已涵蓋此效果"':''}><input type="checkbox" id="auto-sk-${sid}" ${checked} ${__dis}${sumAttr}${__purAttr}> <span class="${__span}">${sk.n}</span></label>`;
+            let __ttl = __locked ? ' title="魔法相消術已涵蓋此效果"' : (__awakenLocked ? ' title="同時只能使用一種覺醒（需「覺醒精通」才能三種並用）"' : '');
+            buffHtml += `<label class="cursor-pointer flex items-center gap-2 ${(isAvail && !__locked && !__awakenLocked)?'':'opacity-50'}"${__ttl}><input type="checkbox" id="auto-sk-${sid}" ${checked} ${__dis}${sumAttr}${__awakenAttr}${__purAttr}> <span class="${__span}">${sk.n}</span></label>`;
         }
         if(sk.type === 'convert') {
             if (needLv !== undefined) cHtml += `<option value="${sid}" ${dis}>${sk.n}</option>`;   // 🔧 該職業無法學習的轉換技直接不顯示（如法師的心靈轉換/魂體轉換）；等級未達者仍顯示為灰字
@@ -11430,7 +11456,7 @@ function buildItemDescHTML(item) {
         if (d.eff === 'crush')      _eff.push('重擊');
         if (d.eff === 'cleave')     _eff.push('切割');
         if (d.eff === 'combo')      _eff.push('連擊');   // 🔧 鋼爪/雙刀：連擊特效
-        if (d.weakExpose)           _eff.push('弱點曝光');   // 🐉 鎖鏈劍：一般攻擊命中30%附加（最多3層）
+        if (d.weakExpose)           _eff.push('弱點曝光');   // 🐉 鎖鏈劍：一般攻擊命中12%附加（最多3層）
         if (d.vampPct)              _eff.push('吸取HP ' + Math.round(d.vampPct * 100) + '%');   // 🐉 嗜血者鎖鏈劍
         if (d.ignHardSkin)          _eff.push('貫穿');   // 🗡️ 暗黑十字弓：攻擊無視硬皮額外減傷
         if (d.rapidfire)            _eff.push('連射 ' + d.rapidfire + '%');
@@ -11985,7 +12011,7 @@ function runQuickEnhance(type) {
 function getSellPrice(item) {
     let d = DB.items[item.id];
     if (!d) return 0;
-    let price = Math.floor((d.p || 0) * (player.classicMode ? 0.03 : 0.3));   // 🎮 經典模式：賣價只剩定價的 3%（其餘職業 30%）
+    let price = Math.floor((d.p || 0) * 0.3);   // 賣價為定價的 30%（經典模式與一般模式相同）
     let mult = 1;
     if (getAttrAffix(item.attr)) mult *= 10;
     if (item.bless === true) mult *= 10;   // 🔧 僅「祝福的」享 10 倍賣價；'cursed'（詛咒的）為負面詞綴不加價
@@ -13875,9 +13901,12 @@ function leavePledge(faction) {
 // 按鈕版面：原本的全寬兌換鈕改為左右各半（左＝一般兌換、右＝席琳兌換）。
 // 僅提供給「成品部位可附加套裝效果」的兌換（武器/頭盔/盔甲/手套/長靴/斗篷/腰帶）。
 function sherineExBtns(label, normalCall, sherineCall) {
+    let _shBtn = player.classicMode   // 🎮 經典模式：隱藏席琳兌換選項（一般兌換鈕 flex-1 自動撐滿整列）
+        ? ''
+        : `<button class="btn flex-1 bg-green-900 hover:bg-green-800 border-green-600 py-3 text-base font-bold" onclick="${sherineCall}" title="額外消耗 1 個席琳結晶：成品必定附帶一種席琳套裝效果"><span class="c-sherine">席琳兌換</span>：${label}</button>`;
     return `<div class="flex gap-2 w-full">
         <button class="btn flex-1 bg-blue-800 py-3 text-base font-bold" onclick="${normalCall}">兌換：${label}</button>
-        <button class="btn flex-1 bg-green-900 hover:bg-green-800 border-green-600 py-3 text-base font-bold" onclick="${sherineCall}" title="額外消耗 1 個席琳結晶：成品必定附帶一種席琳套裝效果"><span class="c-sherine">席琳兌換</span>：${label}</button>
+        ${_shBtn}
     </div>`;
 }
 // 席琳兌換前置檢查（於原材料檢查通過後、扣除材料前呼叫）：沒有結晶 → 提示並中止
@@ -14138,7 +14167,7 @@ function build50TrialHTML(npcName) {
     }
     let have = questCountId(cfg.exMat);
     let crystals = questCountId('sherine_crystal');   // 🔮 含倉庫
-    let anySherine = cfg.rewards.some(r => sherineSetEligible(DB.items[r.id]));   // 🔮 此試煉是否有可席琳兌換的成品（瑪那水晶球等盾類不支援 → 不顯示席琳說明）
+    let anySherine = !player.classicMode && cfg.rewards.some(r => sherineSetEligible(DB.items[r.id]));   // 🔮 此試煉是否有可席琳兌換的成品（瑪那水晶球等盾類不支援）；🎮 經典模式隱藏席琳說明（兌換鈕已由 sherineExBtns 隱藏）
     h += `試煉已完成，魔族神殿已對你開放。<br>交付 1 個 <b class="text-red-300">${cfg.exMatNm}</b>（持有 ${have}）可重複換取：`;
     h += anySherine ? `<br><span class="text-slate-400 text-sm">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每個額外消耗 1 個<b class="c-sherine">席琳結晶</b>（持有 ${crystals}），成品必定附帶一種隨機<span class="c-sherine">席琳套裝效果</span>。</span>` : ``;
     h += `</div>`;
@@ -14681,9 +14710,16 @@ const SHOP_LISTS = {
 };
 // 🔧 商店販售清單（單一來源）：getShopItemsForNpc 與潘朵拉權重覆寫共用此表
 function getShopItemsForNpc(npcId) {
-    const clsOk = d => reqAllowsClass(d, player.cls);
     let list = SHOP_LISTS[npcId] || SHOP_LISTS.default;
-    return list.filter(id => DB.items[id] && (clsOk(DB.items[id]) || loadUpAllows(id)));
+    return list.filter(id => {
+        let d = DB.items[id];
+        if (!d) return false;
+        // 🔧 裝備類（武器/防具/飾品）：以「實際可裝備」判定，涵蓋黑暗妖精/幻術士/龍騎士白名單與妖精劍術精通；
+        //    否則新職業靠白名單才能用的武器（如龍騎士的雙手劍/巨斧、幻術士的魔法杖）會被商店漏顯示。
+        if (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') return checkCanEquip({ id });
+        // 其餘（消耗品/技能書/材料等）：沿用職業白名單
+        return reqAllowsClass(d, player.cls) || loadUpAllows(id);
+    });
 }
 
 function renderTownShop(containerElement, npcId = '') {
@@ -14993,7 +15029,7 @@ function updateCreateUI() {
 
 function onToggleClassic(el) {
     if (!el.checked) return;   // 取消勾選不需確認
-    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 物品掉落機率 → 原本的 1/10\n‧ 經驗值取得 → 減半\n‧ 怪物金幣 → 僅剩 10%\n‧ 物品賣價 → 僅剩定價的 3%\n‧ 死亡 → 損失該等級 10% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n確定要以「經典模式」創建此角色嗎？');
+    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 物品掉落機率 → 原本的 1/10\n‧ 經驗值取得 → 減半\n‧ 怪物金幣 → 僅剩一般模式的 1/2\n‧ 死亡 → 損失該等級 10% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n確定要以「經典模式」創建此角色嗎？');
     if (!ok) el.checked = false;   // 取消 → 還原為未勾選
 }
 function startGame() {
@@ -15769,7 +15805,7 @@ function craftActionHtml(npcId, idx) {
     //（消耗相同材料＋每件 1 個席琳結晶，成品必定附帶隨機席琳套裝效果；其餘詞綴機率照舊）
     let _r = CRAFT_RECIPES[npcId] && CRAFT_RECIPES[npcId][idx];
     let _rd = _r && DB.items[_r.result];
-    let _shOk = _rd && ((_rd.type === 'wpn' && !_rd.isArrow)
+    let _shOk = _rd && !player.classicMode && ((_rd.type === 'wpn' && !_rd.isArrow)
         || (_rd.type === 'arm' && ['helm','armor','gloves','boots','cloak'].includes(_rd.slot))
         || ((_rd.type === 'acc' || _rd.type === 'arm') && _rd.slot === 'belt'));   // 🔮 項鍊已改為腰帶
     let _shBtn = _shOk ? `<button class="btn bg-green-900 hover:bg-green-800 border-green-600 py-2 px-3 font-bold shadow" onclick="doCraft('${npcId}', ${idx}, true)" title="消耗相同材料＋每件 1 個席琳結晶：成品必定附帶一種席琳套裝效果"><span class="c-sherine">席琳製作</span></button>` : '';

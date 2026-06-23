@@ -503,8 +503,7 @@
       '<b>怪物卡上顯示的是「一般」掉落機率</b>，下列狀態會整體放大／縮小：',
       '<b>席琳的世界</b>：被席琳化的怪掉落機率 <b>×3</b>；其中「恩賜怪」更高，<b>×10</b>',
       '<b>經典模式</b>：所有物品掉落機率 <b>×1/10</b>',
-      '<b>會被上述倍率影響</b>：各怪本身的掉落（每隻怪卡片上列的那些）、黑暗妖精武器、黑精靈水晶、龍騎士掉落、等級 40+ 頭目的賦予祝福卷軸、區域額外掉落',
-      '<b>固定、不受倍率影響</b>：席琳結晶、萬能藥（屬性藥）、黑魔石、銀礦石、進化果實（各條另有標註）',
+      '<b>固定、不受倍率影響的例外</b>：席琳結晶、萬能藥（屬性藥）、黑魔石、銀礦石、進化果實（各條另有標註）；其餘怪卡掉落都會被倍率放大／縮小',
       '上方的「<b>掉落率模式</b>」下拉可把席琳／經典倍率直接套到怪卡的掉落數字'
     ] },
     { id: 'panacea', title: '🧪 萬能藥（屬性藥）', keys: ['萬能藥', '屬性藥'], lines: [
@@ -632,6 +631,15 @@
   }
   function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); } }
   function closeModal() { var m = document.getElementById('m-dex-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
+
+  // 對外:讓小百科(afk-wiki)在「模態模式」直接開掉落查詢模態並帶搜尋字(同頁、不開新分頁、不切換頁面模式)
+  window.AFK_openDex = function (q) {
+    buildModal();   // 確保模態已建立(已存在則 no-op)
+    var i = document.getElementById('m-dex-input');
+    if (i) i.value = q || '';
+    doSearch();
+    openModal();
+  };
 
   // ----- CSS --------------------------------------------------------------
   function injectCSS() {

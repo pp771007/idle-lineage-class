@@ -4241,8 +4241,8 @@ d.mr += (baseMr + bonusMr);
         }
     }
     
-    // 騎士：背包中持有的魔法頭盔也授予技能（擁有即可、不需裝備；背包與裝備都沒有對應頭盔時技能才會消失）
-    if (p.cls === 'knight') {
+    // 騎士／王族／戰士：背包中持有的魔法頭盔也授予技能（擁有即可、不需裝備；背包與裝備都沒有對應頭盔時技能才會消失）
+    if (p.cls === 'knight' || p.cls === 'royal' || p.cls === 'warrior') {
         (p.inv || []).forEach(it => {
             let _gd = DB.items[it.id];
             if (_gd && _gd.grantSkills) {

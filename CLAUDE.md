@@ -103,8 +103,8 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 | `afk-offline.js` | 離線掛機(關瀏覽器也結算收益;24h 上限、撞死即停、存活回原狩獵圖續掛) |
 | `afk-mobile.js` | 手機版面(底部導覽列、一行式狀態列、浮動日誌面板、修正彈窗溢出) |
 | `afk-extradata.js` | **掉落查詢+小百科共用的手動補充資料**(純資料、無 DOM、在 dex/wiki 之前載入,定義全域 `AFK_EXTRA`):`itemAcquire`(物品取得方式,`short` 給 dex 物品卡、`chain` 給 wiki 傳說裝備頁)、`skillNote`(法術白話,原 wiki 的 EFFECT_OVERRIDE)、`weaponTraitEff`/`weaponTagTrait`(武器特性白話對照,dex 物品卡與 wiki 傳說武器共用)。**只放「不能從遊戲 DB 動態算」的手動補充**;補一件裝備取得/一個法術只改這支、dex+wiki 同時生效。dex/wiki 都 call 時即時讀、沒載到優雅降級 |
-| `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;純讀 DB.mobs/maps/MOB_DROPS/items;桌機手機共用;**支援獨立頁 `?view=dex`**,見下「獨立頁」) |
-| `afk-wiki.js` | 小百科(首頁入口;**11 分頁 + 關鍵字搜尋**:職業專精/武器特性/職業魔法/任務/套裝/強化/負重/席琳/血盟/傲慢之塔/遺忘之島;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**支援獨立頁 `?view=wiki`**;**改前先讀下方「小百科維護準則」**) |
+| `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;純讀 DB.mobs/maps/MOB_DROPS/items;桌機手機共用;**支援獨立頁 `?view=dex`**,見下「獨立頁」;頂部「掉落率模式」下拉=一般/席琳×3/經典×1/10 重算怪卡掉落率;**對外露出 `window.AFK_openDex(q)`** 讓 wiki 在模態下直接開掉落查詢模態並帶搜尋字) |
+| `afk-wiki.js` | 小百科(首頁入口;**多分頁 + 關鍵字搜尋**:職業專精/武器特性/戰鬥機制/地圖/能力值/職業魔法/帶寵物/任務/套裝/傳說裝備/強化/製作/負重/席琳/血盟/傲慢之塔/遺忘之島/軍王之室;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**支援獨立頁 `?view=wiki`**;**改前先讀下方「小百科維護準則」**)。**「地圖」分頁**讀 `MAP_CATEGORIES`+`DB.maps/DB.mobs` 動態列出(分類/等級範圍/進入條件,自動同步);「🔍看這裡的怪」跳轉**跟著當前模式**:模態→`window.AFK_openDex()`、獨立頁→`location.href` 同分頁轉跳,皆不開新分頁、不混模式(傲慢之塔樓層因掉落查詢名稱格式不同不放跳轉) |
 | `afk-fixes.js` | 通用修正(補原作者上游坑、桌機/手機通用、與裝置判定無關;目前:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉) |
 | `afk-sw.js` | 背景大圖快取 Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
 | `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |

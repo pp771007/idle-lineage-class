@@ -365,7 +365,7 @@
                 <label class="flex items-center gap-2 mt-3 px-1 cursor-pointer select-none" title="開啟後此角色永久套用經典（硬核）規則，無法事後關閉">
                     <input type="checkbox" id="create-classic-toggle" onchange="onToggleClassic(this)" class="w-5 h-5 accent-amber-600 shrink-0">
                     <span class="text-amber-300 font-bold shrink-0">經典模式</span>
-                    <span class="text-slate-400 text-xs">砍半的經驗、極低的金錢、掉寶率僅 1/10，死掉還噴經驗——感受更「經典」的天堂回憶（永久・預設關閉）</span>
+                    <span class="text-slate-400 text-xs">砍半的經驗與金錢、掉寶率僅 1/10，死掉還噴經驗——感受更「經典」的天堂回憶（永久・預設關閉）</span>
                 </label>
                 <div class="flex gap-4 shrink-0 mt-2">
                     <button onclick="backToMenu()" class="btn w-1/4 py-3 text-base">返回</button>
@@ -391,7 +391,7 @@
         <div id="col-left" class="w-[340px] flex flex-col gap-4">
             <!-- 新增了 id="status-panel"，並加入去底色與加深背景的樣式確保文字可讀 -->
             <div id="status-panel" class="panel bg-cover bg-top bg-no-repeat" style="background-blend-mode: multiply; background-color: rgba(30, 41, 59, 0.85);">
-                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：物品掉落 ×1/10、經驗減半、金幣剩 10%、賣價剩定價 3%、死亡損失該等級 10% 最大經驗（不降等）">⚔經典</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
+                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：物品掉落 ×1/10、經驗減半、金幣剩一般模式的 1/2、死亡損失該等級 10% 最大經驗（不降等）">⚔經典</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
                 <div class="p-4 space-y-3 text-base">
                     <div class="flex justify-between text-slate-400 border-b border-slate-700 pb-2"><span>等級</span> <span class="text-white font-bold text-xl" id="st-lv">1</span></div>
                     <div class="flex justify-between text-slate-400"><span>防禦 (AC)</span> <span class="text-white font-bold" id="st-ac">10</span></div>
@@ -7036,7 +7036,7 @@ function killMob(idx) {
         let gMin = mob.goldMin || (mob.lv * 5);
         let gMax = mob.goldMax || (mob.lv * 10);
         let g = gMin + Math.floor(Math.random() * (gMax - gMin + 1));
-        if (player.classicMode) g = Math.floor(g / 3);   // 🎮 經典模式：怪物金幣僅剩 1/3（原版 ×1/10 → 改 ×1/3）
+        if (player.classicMode) g = Math.floor(g / 2);   // 🎮 經典模式：怪物金幣僅剩一般模式的 1/2（歷次：×1/10 → ×1/3 → ×1/2）
         player.gold += g;
         // 🔧 金幣不再逐殺輸出於系統日誌；改由 gameLoop 累積、flushAwaySummary 以「掛機期間獲得總金幣」統一顯示。
 
@@ -12011,7 +12011,7 @@ function runQuickEnhance(type) {
 function getSellPrice(item) {
     let d = DB.items[item.id];
     if (!d) return 0;
-    let price = Math.floor((d.p || 0) * (player.classicMode ? 0.10 : 0.3));   // 🎮 經典模式：賣價為定價的 10%（原版 30% 的 1/3；非經典 30%）
+    let price = Math.floor((d.p || 0) * 0.3);   // 賣價為定價的 30%（經典模式與一般模式相同）
     let mult = 1;
     if (getAttrAffix(item.attr)) mult *= 10;
     if (item.bless === true) mult *= 10;   // 🔧 僅「祝福的」享 10 倍賣價；'cursed'（詛咒的）為負面詞綴不加價
@@ -14710,9 +14710,16 @@ const SHOP_LISTS = {
 };
 // 🔧 商店販售清單（單一來源）：getShopItemsForNpc 與潘朵拉權重覆寫共用此表
 function getShopItemsForNpc(npcId) {
-    const clsOk = d => reqAllowsClass(d, player.cls);
     let list = SHOP_LISTS[npcId] || SHOP_LISTS.default;
-    return list.filter(id => DB.items[id] && (clsOk(DB.items[id]) || loadUpAllows(id)));
+    return list.filter(id => {
+        let d = DB.items[id];
+        if (!d) return false;
+        // 🔧 裝備類（武器/防具/飾品）：以「實際可裝備」判定，涵蓋黑暗妖精/幻術士/龍騎士白名單與妖精劍術精通；
+        //    否則新職業靠白名單才能用的武器（如龍騎士的雙手劍/巨斧、幻術士的魔法杖）會被商店漏顯示。
+        if (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') return checkCanEquip({ id });
+        // 其餘（消耗品/技能書/材料等）：沿用職業白名單
+        return reqAllowsClass(d, player.cls) || loadUpAllows(id);
+    });
 }
 
 function renderTownShop(containerElement, npcId = '') {
@@ -15022,7 +15029,7 @@ function updateCreateUI() {
 
 function onToggleClassic(el) {
     if (!el.checked) return;   // 取消勾選不需確認
-    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 物品掉落機率 → 原本的 1/10\n‧ 經驗值取得 → 減半\n‧ 怪物金幣 → 僅剩 10%\n‧ 物品賣價 → 僅剩定價的 3%\n‧ 死亡 → 損失該等級 10% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n確定要以「經典模式」創建此角色嗎？');
+    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 物品掉落機率 → 原本的 1/10\n‧ 經驗值取得 → 減半\n‧ 怪物金幣 → 僅剩一般模式的 1/2\n‧ 死亡 → 損失該等級 10% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n確定要以「經典模式」創建此角色嗎？');
     if (!ok) el.checked = false;   // 取消 → 還原為未勾選
 }
 function startGame() {

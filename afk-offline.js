@@ -559,6 +559,7 @@
     capHours: CAP_HOURS,
     stamp: stamp,
     readTs: readTs,
+    mapName: mapName,   // 對外:地圖 id→中文名(供 afk-mobile 在匯入頁顯示「掛在哪張地圖」)
     forceCatchup: function (mins) { runCatchup(Math.floor((mins || 60) * 60000 / TICK_MS), true); }
   };
 

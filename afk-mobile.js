@@ -591,6 +591,15 @@
         var l1 = document.createElement('span'); l1.className = 'm-slot-l1'; l1.textContent = '存檔 ' + (i + 1) + '　' + sum.cls;
         var l2 = document.createElement('span'); l2.className = 'm-slot-l2'; l2.textContent = 'Lv.' + sum.lv + '　' + sum.name;
         btn.appendChild(l1); btn.appendChild(l2);
+        // 📍 目前掛在哪張地圖:讀 afk-offline 的即時地圖記錄 afk_map_<slot>(較準);沒有就退回存檔 blob 的 ms.current
+        var _mapId = '';
+        try { _mapId = localStorage.getItem('afk_map_' + (i + 1)) || ''; } catch (e) {}
+        if (!_mapId) { try { var _rs = JSON.parse(localStorage.getItem('lineage_idle_save_' + (i + 1))); _mapId = (_rs && _rs.ms && _rs.ms.current) || ''; } catch (e) {} }
+        if (_mapId) {
+          var _mn = (window.__afk && typeof window.__afk.mapName === 'function') ? window.__afk.mapName(_mapId) : _mapId;
+          var l3m = document.createElement('span'); l3m.className = 'm-slot-l3'; l3m.textContent = '📍 ' + _mn;
+          btn.appendChild(l3m);
+        }
         // ⏱ 進匯入頁時讀一次「已掛機多久」(離線時間)＝now − afk-offline 的最後活躍心跳(afk_ts_<slot>);讀一次不更新
         var _ts = 0; try { _ts = +localStorage.getItem('afk_ts_' + (i + 1)) || 0; } catch (e) {}
         if (_ts > 0) {

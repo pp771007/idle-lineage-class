@@ -556,6 +556,18 @@
   //   包住 openSlotSelect:原函式渲染後,在手機用 slotSummary(n) 的原始資料把每個存檔鈕重排成
   //   兩行(第一行 編號+職業、第二行 等級+暱稱)。用 textContent 寫入,暱稱不會被當 HTML(防 XSS)。
   //   桌機(mql 不命中)維持原樣不動;原作改掉 openSlotSelect / slotSummary 即自動失效(優雅降級,不弄壞畫面)。
+  // 把離線毫秒數格式化成「X 天 Y 小時 / X 小時 Y 分 / X 分鐘 / 剛剛」
+  function _fmtIdle(ms) {
+    if (ms < 0) ms = 0;
+    var s = Math.floor(ms / 1000);
+    if (s < 60) return '剛剛';
+    var m = Math.floor(s / 60);
+    if (m < 60) return m + ' 分鐘';
+    var h = Math.floor(m / 60), rm = m % 60;
+    if (h < 24) return rm ? (h + ' 小時 ' + rm + ' 分') : (h + ' 小時');
+    var d = Math.floor(h / 24), rh = h % 24;
+    return rh ? (d + ' 天 ' + rh + ' 小時') : (d + ' 天');
+  }
   function wrapSlotSelect(mql) {
     if (typeof window.openSlotSelect !== 'function' || window.openSlotSelect.__afkmWrapped) return;
     var orig = window.openSlotSelect;
@@ -579,6 +591,13 @@
         var l1 = document.createElement('span'); l1.className = 'm-slot-l1'; l1.textContent = '存檔 ' + (i + 1) + '　' + sum.cls;
         var l2 = document.createElement('span'); l2.className = 'm-slot-l2'; l2.textContent = 'Lv.' + sum.lv + '　' + sum.name;
         btn.appendChild(l1); btn.appendChild(l2);
+        // ⏱ 進匯入頁時讀一次「已掛機多久」(離線時間)＝now − afk-offline 的最後活躍心跳(afk_ts_<slot>);讀一次不更新
+        var _ts = 0; try { _ts = +localStorage.getItem('afk_ts_' + (i + 1)) || 0; } catch (e) {}
+        if (_ts > 0) {
+          var l3 = document.createElement('span'); l3.className = 'm-slot-l3';
+          l3.textContent = '⏱ 已掛機 ' + _fmtIdle(Date.now() - _ts);
+          btn.appendChild(l3);
+        }
       }
     }
     var wrapped = function () { orig.apply(this, arguments); if (mql.matches) reformat(); };
@@ -853,6 +872,7 @@
       'body.m-mobile #slot-list .m-slot-av{width:40px;height:40px;border-radius:6px;object-fit:cover;object-position:top;border:1px solid rgba(148,163,184,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 2px rgba(0,0,0,.5);}',   /* 👤 存檔大頭貼:置中直欄最上方 */
       'body.m-mobile #slot-list .m-slot-l1{font-size:1rem;}',   /* 第一行:存檔編號 + 職業 */
       'body.m-mobile #slot-list .m-slot-l2{font-size:.9rem;font-weight:bold;color:#cbd5e1;}',   /* 第二行:等級 + 暱稱 */
+      'body.m-mobile #slot-list .m-slot-l3{font-size:.78rem;color:#94a3b8;}',   /* ⏱ 第三行:已掛機多久 */
       'body.m-mobile #slot-list > div > div{width:auto !important;flex:1 1 0 !important;min-width:0 !important;flex-direction:column !important;}',   /* 動作區:右 1/3,蓋掉固定 w-56,匯入/復原改上下堆疊 */
       'body.m-mobile #slot-list > div > div > button{flex:1 1 0 !important;padding:.5rem .25rem !important;font-size:.8rem !important;}'   /* 匯入/復原:各佔右側一半高 */
     ].join('\n');

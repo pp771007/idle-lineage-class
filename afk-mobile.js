@@ -595,7 +595,11 @@
         var _ts = 0; try { _ts = +localStorage.getItem('afk_ts_' + (i + 1)) || 0; } catch (e) {}
         if (_ts > 0) {
           var l3 = document.createElement('span'); l3.className = 'm-slot-l3';
-          l3.textContent = '⏱ 已掛機 ' + _fmtIdle(Date.now() - _ts);
+          var _idleMs = Date.now() - _ts;
+          var _capH = (window.__afk && window.__afk.capHours) || 24;   // 離線收益上限(小時),讀 afk-offline
+          var _txt = '⏱ 已掛機 ' + _fmtIdle(_idleMs);
+          if (_idleMs >= _capH * 3600000) _txt += '（收益上限 ' + _capH + ' 小時）';   // 顯示真實時間,但超過上限時提醒收益封頂
+          l3.textContent = _txt;
           btn.appendChild(l3);
         }
       }

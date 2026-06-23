@@ -63,6 +63,8 @@
     console.log('[AFK-syncinfo] hooks OK — 首頁顯示原作者與原版最後同步時間。');
 
     var timeEl = foot.querySelector('.afk-si-time'), sepEl = foot.querySelector('.afk-si-sep');
+    // file:// 無法 fetch(CORS,origin null)→ 直接降級藏時間,避免 console 噴紅字;http(s) 才去抓同步時間
+    if (!/^https?:$/.test(location.protocol)) { timeEl.style.display = 'none'; sepEl.style.display = 'none'; return; }
     fetch('last-sync.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {

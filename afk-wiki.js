@@ -13,7 +13,9 @@
   'use strict';
 
   var CLASSES = [
+    { k: 'royal', n: '王族' },
     { k: 'knight', n: '騎士' },
+    { k: 'warrior', n: '戰士' },
     { k: 'mage', n: '法師' },
     { k: 'elf', n: '妖精' },
     { k: 'dark', n: '黑暗妖精' },
@@ -204,6 +206,7 @@
       var body = parts.join('、') || '提供增益效果';
       return body + durTxt(sk.dur);
     }
+    if (sk.desc) return sk.desc;   // ⚔️👑 被動技(戰士印記/王者加護等)直接用遊戲內 desc(精確、隨改版同步)
     return sk.msg || '特殊效果';
   }
 
@@ -216,6 +219,8 @@
     if (sk.reqK !== undefined) return 'knight';
     if (sk.reqI !== undefined) return 'illusion';     // 🔮 幻術士:記憶水晶法術
     if (sk.reqDk !== undefined) return 'dragon';       // 🐉 龍騎士:龍魔法書板
+    if (sk.reqW !== undefined) return 'warrior';       // ⚔️ 戰士:技能印記(熱血/憤怒/忍耐)
+    if (sk.reqRoy !== undefined) return 'royal';       // 👑 王族:王族魔法
     return null;
   }
   // 某職業到幾級可學此技能(規則同遊戲 skillReqLv);學不到回 undefined
@@ -227,6 +232,17 @@
     }
     if (cls === 'illusion') return sk.reqI;            // 🔮 幻術士:只學帶 reqI 的法術(記憶水晶＋日光術)
     if (cls === 'dragon') return sk.reqDk;             // 🐉 龍騎士:只學帶 reqDk 的龍魔法(含日光術)
+    if (cls === 'warrior') {                            // ⚔️ 戰士:reqW 技能印記;另 Lv15 可學一階法師魔法
+      if (sk.reqW !== undefined) return sk.reqW;
+      if (sk.reqM !== undefined && sk.tier === 1) return 15;
+      return undefined;
+    }
+    if (cls === 'royal') {                              // 👑 王族:reqRoy 王族魔法;另 Lv10/20 學一/二階法師魔法(魔法精通可再學三~五階)
+      if (sk.reqRoy !== undefined) return sk.reqRoy;
+      if (sk.reqM !== undefined && sk.tier === 1) return 10;
+      if (sk.reqM !== undefined && sk.tier === 2) return 20;
+      return undefined;   // 三~五階需魔法精通,於「可學」行另標
+    }
     var lv = cls === 'mage' ? sk.reqM : (cls === 'knight' ? sk.reqK : sk.reqE);
     if (lv === undefined && cls === 'elf' && typeof MAGIC_MASTERY_SKILLS !== 'undefined' && MAGIC_MASTERY_SKILLS.indexOf(id) >= 0) return sk.reqM;
     return lv;
@@ -240,6 +256,9 @@
     if (sk.reqD !== undefined) p.push('黑暗妖精 ' + sk.reqD);
     else if (sk.tier === 1) p.push('黑暗妖精 12');
     else if (sk.tier === 2) p.push('黑暗妖精 24');
+    if (sk.tier === 1) { p.push('戰士 15'); p.push('王族 10'); }   // ⚔️👑 可學一階法師魔法
+    else if (sk.tier === 2) p.push('王族 20');                      // 👑 二階
+    else if (sk.tier >= 3 && sk.tier <= 5) p.push('王族 ' + sk.reqM + '（需魔法精通）');
     return p.join('、');
   }
 
@@ -1575,7 +1594,7 @@
       (lvLabel ? '<div class="m-wiki-spell-lv">' + esc(lvLabel) + '</div>' : '') +
     '</div>';
   }
-  var MAGIC_FILTERS = [['all', '全部'], ['mage', '法師'], ['elf', '妖精'], ['knight', '騎士'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士']];
+  var MAGIC_FILTERS = [['all', '全部'], ['royal', '王族'], ['mage', '法師'], ['elf', '妖精'], ['knight', '騎士'], ['warrior', '戰士'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士']];
   function magicFilterRow(sel) {
     return '<div class="m-wiki-mfilter">' + MAGIC_FILTERS.map(function (f) {
       return '<button type="button" class="m-wiki-mfbtn' + (f[0] === sel ? ' on' : '') + '" data-magiccls="' + f[0] + '">' + f[1] + '</button>';
@@ -1607,7 +1626,7 @@
       if (magicCls === 'knight') html += '<div class="m-wiki-note">騎士裝備「治癒／敏捷／力量魔法頭盔」時，額外獲得頭盔自帶的魔法（持有即可用、卸下就消失），不受等級限制。</div>';
       return html;
     }
-    var cats = { mage: [], elf: [], dark: [], knight: [], illusion: [], dragon: [] };
+    var cats = { mage: [], elf: [], dark: [], knight: [], illusion: [], dragon: [], warrior: [], royal: [] };
     for (var id2 in DB.skills) {
       var sk2 = DB.skills[id2]; if (!sk2 || !sk2.n) continue;
       var c = magicCat(id2, sk2); if (c) cats[c].push({ id: id2, sk: sk2 });
@@ -1631,6 +1650,8 @@
     exclusive(cats.knight, '⚔️ 騎士專屬魔法', 'reqK', '騎士');
     exclusive(cats.illusion, '🔮 幻術士專屬魔法（記憶水晶）', 'reqI', '幻術士');
     exclusive(cats.dragon, '🐉 龍騎士專屬魔法（書板）', 'reqDk', '龍騎士');
+    exclusive(cats.warrior, '⚔️ 戰士技能印記', 'reqW', '戰士');
+    exclusive(cats.royal, '👑 王族專屬魔法', 'reqRoy', '王族');
     html += '<div class="m-wiki-note">騎士裝備「治癒／敏捷／力量魔法頭盔」時，會額外獲得頭盔自帶的魔法（持有即可用、卸下就消失），不受等級限制。</div>';
     return html;
   }

@@ -1641,6 +1641,13 @@
       return '<button type="button" class="m-wiki-mfbtn' + (f[0] === sel ? ' on' : '') + '" data-magiccls="' + f[0] + '">' + f[1] + '</button>';
     }).join('') + '</div>';
   }
+  // 特殊技能職業的「技能書怎麼取得」說明(本檔維護;來源以 code 為準:WARRIOR_EX/甘特/拉比安尼兌換、SHOP_LISTS、各掉落表、gachaWeight)
+  var SKILL_SOURCE_NOTE = {
+    warrior: '⚔️ <b>技能印記怎麼拿</b>：「迅猛雙斧」「咆哮」可在<b>海音的多文</b>試煉兌換（材料見「任務」分頁）；其餘印記（粉碎／護甲身軀／狂暴／泰坦系列／戰斧投擲／體能強化／亡命之徒）目前<b>只能在潘朵拉黑市抽到</b>。',
+    royal: '👑 <b>王族魔法書怎麼拿</b>：「精準目標」「呼喚盟友」在<b>說話之島的甘特</b>試煉兌換；「灼熱武器／勇猛意志／閃亮之盾／王者加護」在<b>說話之島的拉比安尼</b>用 龍之心＋高崙之心＋冰之女王之心＋鳳凰之心 製作（潘朵拉黑市也抽得到）。',
+    illusion: '🔮 <b>記憶水晶怎麼拿</b>：部分商店有賣，部分由<b>希蓮恩</b>試煉兌換（見「任務」分頁）；想找某個就把書名丟「掉落查詢」看來源。',
+    dragon: '🐉 <b>書板怎麼拿</b>：覺醒／岩漿系書板多由特定怪掉落、部分商店有賣；龍之護鎧／血之渴望等走<b>普洛凱爾</b>兌換。把書名丟「掉落查詢」就能看是哪隻怪掉或怎麼換。'
+  };
   // magicCls='all':依真正分類呈現(法師魔法只列一次標各職業可學+各專屬);
   //   ='mage/elf/knight/dark':只列「該職業學得到的魔法」,依可學等級排序。
   function renderMagic(magicCls) {
@@ -1658,6 +1665,7 @@
       rows.sort(function (a, b) { return (a.lv - b.lv) || ((a.sk.tier || 0) - (b.sk.tier || 0)) || a.sk.n.localeCompare(b.sk.n); });
       var clsName = (CLASSES.filter(function (c) { return c.k === magicCls; })[0] || {}).n || '';
       html += '<div class="m-wiki-note">' + esc(clsName) + '學得到的魔法，依可學等級排序（含可學的法師魔法）。</div>';
+      if (SKILL_SOURCE_NOTE[magicCls]) html += '<div class="m-wiki-note">' + SKILL_SOURCE_NOTE[magicCls] + '</div>';   // ⚔️👑🔮🐉 技能書取得方式
       if (!rows.length) html += '<div class="m-wiki-hint">這個職業沒有可學的魔法。</div>';
       var curLv = null;
       rows.forEach(function (r) {

@@ -434,88 +434,33 @@
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
-  var IT_REQ = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', all: '全職業' };
   var IT_SLOT = { helm: '頭盔', armor: '盔甲', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊' };
-  var IT_RES = { resFire: '火', resWater: '水', resWind: '風', resEarth: '地' };
-  var IT_STAT = { str: '力量', dex: '敏捷', con: '體質', int: '智力', wis: '精神', cha: '魅力' };
-  // 武器特性(eff)→白話名稱(對齊小百科「武器特性」分頁);消耗品的 eff(藥水/卷軸等)不會走到武器分支故不列
-  var IT_EFF = (window.AFK_EXTRA && AFK_EXTRA.weaponTraitEff) || {};   // 武器 eff→特性白話,共用清單 afk-extradata.js
-  // 由武器種類(getWeaponTags)推出的內建特性(看種類、不寫在 eff);共用清單 afk-extradata.js
-  var IT_TAG_TRAIT = (window.AFK_EXTRA && AFK_EXTRA.weaponTagTrait) || {};
-  function itReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return IT_REQ[x] || x; }).join('／'); }
+  function _baseInst(id) { return { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false }; }
   function itemDetailHTML(id) {
     var d = DB.items[id];
     if (!d) return '<div class="m-dex-hint">查無此物品資料。</div>';
-    var rows = [];
-    function add(k, v) { if (v !== undefined && v !== null && v !== '') rows.push('<tr><td class="m-dex-ik">' + esc(k) + '</td><td>' + esc(String(v)) + '</td></tr>'); }
-    add('類型', IT_TYPE[d.type] || d.type || '道具');
-    if (d.req) add('需求職業', itReqCN(d.req));
-    if (d.slot) add('部位', IT_SLOT[d.slot] || d.slot);
-    if (d.type === 'wpn') {
-      if (d.dmgS != null) add('攻擊力', '對小型 ' + d.dmgS + '／對大型 ' + d.dmgL);
-      add('額外傷害', d.dmgBonus);
-      add('命中', d.hit);
-      add('魔法傷害', d.mdmg);
-      add('攻擊速度', d.spd);
-      if (d.w2h || d.twohanded) add('持用', '雙手武器');
-      if (d.isBow || d.ranged) add('射程', '遠距離');
-      var tags = (typeof getWeaponTags === 'function') ? (getWeaponTags(id) || []) : [];
-      if (tags.length) add('種類', tags.join('／'));
-      var wt = [];
-      if (d.eff && IT_EFF[d.eff]) wt.push(IT_EFF[d.eff]);
-      tags.forEach(function (tg) { if (IT_TAG_TRAIT[tg]) wt.push(IT_TAG_TRAIT[tg]); });   // 武士刀=居合、單手劍=反擊、匕首/矛=出血…
-      if (d.rapidfire) wt.push('連射');
-      if (d.unBonus) wt.push('對不死／狼人額外傷害');
-      wt = wt.filter(function (v, i) { return wt.indexOf(v) === i; });   // 去重(eff 與種類可能指到同一特性)
-      if (wt.length) add('武器特性', wt.join('、'));
-    } else if (d.ac != null && (d.type === 'arm' || d.type === 'acc')) {
-      add('防禦(AC)', sgn(-d.ac));   // 比照遊戲內裝備欄:AC 越低越強，正常防具顯示負值(遊戲是 -d.ac)；負 ac 的下行向裝備則顯示 +，避免「--1」
-    }
-    // 🦴 寵物裝備（之牙）:petDmg/petHit 只加成項圈夥伴(不影響玩家);每強化 +1 傷害與命中各 +1(欄位/上限見下方說明)
-    if (d.slot === 'pet' && (d.petDmg || d.petHit)) {
-      var pp = [];
-      if (d.petDmg) pp.push('傷害 ' + sgn(d.petDmg));
-      if (d.petHit) pp.push('命中 ' + sgn(d.petHit));
-      add('寵物加成', pp.join('、'));
-      add('每強化 +1', '寵物傷害 +1、命中 +1');
-    }
-    Object.keys(IT_STAT).forEach(function (k) { if (d[k]) add(IT_STAT[k], sgn(d[k])); });
-    if (d.mr) add('魔防', sgn(d.mr));
-    if (d.mhp) add('HP 上限', sgn(d.mhp));
-    if (d.hpR) add('HP 自然恢復', sgn(d.hpR));
-    if (d.mmp) add('MP 上限', sgn(d.mmp));
-    if (d.mpR) add('MP 自然恢復', sgn(d.mpR));
-    Object.keys(IT_RES).forEach(function (k) { if (d[k]) add(IT_RES[k] + '屬性抗性', sgn(d[k])); });
-    if (d.block) add('格擋', d.block);
-    if (d.weightCap) add('負重上限', sgn(d.weightCap));
-    // 每強化 +1 的額外加成(部分裝備有)
-    var enBon = [];
-    if (d.mrPerEn) enBon.push('魔防 +' + d.mrPerEn);
-    if (d.extraMpPerEn) enBon.push('額外 MP +' + d.extraMpPerEn);
-    if (d.meleeHitPerEn) enBon.push('近距命中 +' + d.meleeHitPerEn);
-    if (d.rangedHit) enBon.push('遠距命中 +' + d.rangedHit);
-    if (enBon.length) add('每強化 +1', enBon.join('、'));
-    var traits = [];
-    if (d.immStone) traits.push('免疫石化');
-    if (d.immPoison) traits.push('免疫中毒');
-    if (d.stunResist) traits.push(d.stunResist + '% 抵抗暈眩');
-    if (d.magicDrNonEle) traits.push('受無屬性魔法傷害 −' + d.magicDrNonEle + '%');
-    if (traits.length) add('特性', traits.join('、'));
-    // 取得方式:讀共用清單 afk-extradata.js 的手動補充(短版,小百科讀同一份);只標可控取得,潘朵拉黑市抽獎(隨機池)不列。製作/掉落另由 craftInfoHTML 與搜尋鈕呈現
-    var exAcq = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
-    if (exAcq && exAcq.short) add('取得方式', exAcq.short);
-    // 在潘朵拉抽獎池、卻查無任何固定來源(怪掉/商店/製作/兌換)→ 自動補中性句(依規則不提潘朵拉);算出來的、不必逐物品手動維護
-    else if (d.gachaWeight > 0 && !hasFixedSource(id)) add('取得方式', '目前沒有固定取得途徑');
-    if (d.safe != null) add('安定值', d.safe);
-    if (d.p) add('賣店價', Math.floor(d.p * 0.3).toLocaleString() + ' 金幣');   // 賣給商店約得定價(p)的 3 成;祝福/屬性/遠古詞綴各再 ×10
     var icon = '';
     try { icon = (typeof getIconUrl === 'function') ? getIconUrl(d) : ''; } catch (e) {}
     var img = icon ? '<img class="m-dex-iimg" src="' + esc(icon) + '" alt="" onerror="this.style.display=\'none\'">' : '';
     var nameCls = d.legend ? ' c-legend' : '';
-    var desc = d.d ? '<div class="m-dex-idesc">' + d.d + '</div>' : '';   // d 為遊戲內建文字(可含 <br>),原樣顯示
+    var head = '<div class="m-dex-ihead">' + img + '<div class="m-dex-iname-big' + nameCls + '">' + esc(d.n) + '</div></div>';
+    var typeLine = '<div style="color:#94a3b8;font-size:12px;margin:2px 0 4px;">' + esc(IT_TYPE[d.type] || d.type || '道具') + (d.slot ? '・' + esc(IT_SLOT[d.slot] || d.slot) : '') + '</div>';
+    // 數值/說明:用遊戲自己的 buildItemDescHTML(全物品共用、與遊戲內顯示一致、作者新增裝備/特效自動跟上),
+    //   base 實例(en:0、無詞綴)。失敗或空(如無描述材料)則退回顯示物品說明文字。適用職業 logo 由它產生,點擊有 tip(afk-fixes#7)。
+    var gameHTML = '';
+    try { if (typeof buildItemDescHTML === 'function') gameHTML = buildItemDescHTML(_baseInst(id)); } catch (e) {}
+    if (!gameHTML) gameHTML = d.d || '';
+    var body = gameHTML ? '<div style="line-height:1.8;margin:4px 0;">' + gameHTML + '</div>' : '';
+    var priceLine = d.p ? '<div class="m-dex-craft-mats" style="color:#cbd5e1;">賣店價：' + Math.floor(d.p * 0.3).toLocaleString() + ' 金幣</div>' : '';
+    // 取得方式:手動補(itemAcquire)/ 歐西里斯寶箱 / 中性句;製作、商店、查掉落鈕沿用
+    var acq = '';
+    var exAcq = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
+    var tiers = boxTiersOf(id);
+    if (exAcq && exAcq.short) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🔑 取得方式</div><div class="m-dex-craft-mats">' + esc(exAcq.short) + '</div></div>';
+    if (tiers && tiers.length) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎁 寶箱開出</div><div class="m-dex-craft-mats">開「上鎖的歐西里斯寶箱（' + tiers.join('／') + '）」隨機獲得（每開消耗 1 顆 龜裂之核）</div></div>';
+    if (!(exAcq && exAcq.short) && !(tiers && tiers.length) && d.gachaWeight > 0 && !hasFixedSource(id)) acq += '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">取得方式：目前沒有固定取得途徑</div></div>';
     var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
-    return '<div class="m-dex-ihead">' + img + '<div class="m-dex-iname-big' + nameCls + '">' + esc(d.n) + '</div></div>' +
-      (rows.length ? '<table class="m-dex-itable"><tbody>' + rows.join('') + '</tbody></table>' : '') + desc + craftInfoHTML(id) + shopInfoHTML(id) + searchBtn;
+    return head + typeLine + body + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + searchBtn;
   }
   function openItemPop(id) {
     var pop = document.getElementById('m-dex-itempop'); if (!pop) return;

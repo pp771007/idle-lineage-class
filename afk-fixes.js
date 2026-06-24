@@ -268,5 +268,46 @@
     } catch (e) { console.warn('[AFK-fixes] 匯出下載修正 安裝失敗,已略過:', e); }
   })();
 
+  /* --------------------------------------------------------------------------
+   * 修正#7:適用職業 logo 點擊浮現職業名 tip(桌機 / 手機皆然)
+   *
+   * 問題:物品顯示的「適用職業」是一排職業 logo 圖示(原作者 buildItemDescHTML 產生,帶 title/alt
+   *   ＝職業中文名)。桌機滑鼠 hover 看得到 title,但<b>手機沒有 hover</b> → 點了沒反應,玩家
+   *   不知道那個圖是哪個職業。小百科「裝備」分頁重用同一段顯示,同樣問題。
+   * 解法:全域(capture)監聽點擊 `img.class-eq-icon`,讀它的 title/alt,浮現一個小 tip 顯示
+   *   「可裝備：<職業>」,1.6 秒後淡出。因為遊戲內物品卡與小百科裝備頁用的是<b>同一個
+   *   class-eq-icon</b>,一個全域 handler 兩邊一起補,且不動原作者碼。
+   * 何時可移除:原作者自己讓職業 logo 點擊/長按顯示職業名時,本段即多餘,可整段刪。
+   * ------------------------------------------------------------------------ */
+  (function () {
+    var tip = null, hideT = null;
+    function ensureTip() {
+      if (tip) return tip;
+      tip = document.createElement('div');
+      tip.id = 'afk-eqicon-tip';
+      tip.setAttribute('style', 'position:fixed;z-index:100000;pointer-events:none;background:#0f172a;border:1px solid #475569;color:#e2e8f0;font-size:13px;font-weight:bold;padding:4px 10px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.5);opacity:0;transition:opacity .12s;white-space:nowrap;');
+      document.body.appendChild(tip);
+      return tip;
+    }
+    function showTip(icon, name) {
+      var t = ensureTip();
+      t.textContent = '可裝備：' + name;
+      t.style.opacity = '1';   // 先顯示才量得到尺寸
+      var r = icon.getBoundingClientRect(), tw = t.offsetWidth, th = t.offsetHeight;
+      var left = Math.min(window.innerWidth - tw - 6, Math.max(6, r.left + r.width / 2 - tw / 2));
+      var top = r.top - th - 6; if (top < 6) top = r.bottom + 6;
+      t.style.left = left + 'px'; t.style.top = top + 'px';
+      if (hideT) clearTimeout(hideT);
+      hideT = setTimeout(function () { if (tip) tip.style.opacity = '0'; }, 1600);
+    }
+    document.addEventListener('click', function (e) {
+      var ic = (e.target && e.target.closest) ? e.target.closest('img.class-eq-icon') : null;
+      if (!ic) return;
+      var name = ic.getAttribute('title') || ic.getAttribute('alt');
+      if (name) { e.preventDefault(); showTip(ic, name); }
+    }, true);
+    console.log('[AFK-fixes] 適用職業 logo 點擊 tip 已掛上');
+  })();
+
   console.log('[AFK-fixes] hooks OK — 通用修正外掛已啟用。');
 })();

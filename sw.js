@@ -17,8 +17,9 @@
  *
  * 更新控制：
  *   - 導覽走 network-first → 線上開頁本來就是最新程式碼,SW 何時換版不影響使用者看到的畫面。
- *   - install 不自動 skipWaiting;首次安裝(沒有舊 SW 控制)會自動啟用,之後的新版停在 waiting,
- *     等瀏覽器標準流程(所有分頁關閉)自然接管。頁面端不再主導 skip-waiting / 強制 reload(免遊戲中途被打斷)。
+ *   - install 即 skipWaiting + activate 時 clients.claim → 新版 sw.js 一裝好就立刻接管。
+ *     導覽已 network-first、頁面端也沒有 controllerchange→reload,所以「立刻接管」不會強制 reload、不打斷遊玩;
+ *     好處是卡在舊 cache-first SW 的人載到新 sw.js 就即時換成 network-first,不必等「所有分頁徹底關閉」(iOS 上極不可靠)。
  *
  * 背景預抓：頁面送 {type:'precache-images', manifest:[[path,sha],...]} → 此處分批抓進圖桶並回報進度,讓安裝後可完全離線。
  * ========================================================================== */
@@ -39,7 +40,12 @@ const EXTERNAL_HOSTS = ['cdn.tailwindcss.com', 'placehold.co'];
 const NAV_TIMEOUT_MS = 4000;
 
 self.addEventListener('install', () => {
-  // 不 skipWaiting：首次安裝會自動啟用;更新則停 waiting,等頁面決定何時接管(自動/手動更新)。
+  // 立刻接管(skipWaiting):導覽已 network-first、頁面端也沒有 controllerchange→reload,
+  //   所以 skipWaiting 不會強制 reload、不打斷遊玩,只是讓「新版 SW 馬上取代舊版」。
+  //   ★ 關鍵:卡在舊 cache-first SW 的人,一旦載到這支新 sw.js → 它即刻啟用+clients.claim 接管,
+  //     plain 網址的導覽就改走 network-first 拿最新;不必再靠「所有分頁/App 徹底關閉」(iOS 上極不可靠)。
+  //   不這樣的話新 SW 會停在 waiting 永不上場 → 用 ?new 看到最新、一刪掉 ?new 又被舊 SW 餵回舊版(踩過)。
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

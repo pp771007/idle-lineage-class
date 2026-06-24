@@ -246,15 +246,15 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 每次 push 到此 repo 後,**不要 push 完就回報「上線了」**——GitHub Pages 要重建(通常 push 後約 40 秒~1 分鐘)才會真的生效。流程:
 
-1. push 完後**輪詢** Pages 建置狀態,直到 `status=built` 且 `commit` = 剛 push 的 HEAD:
+1. **🚨 輪詢一律丟「背景任務」跑(`run_in_background`),不要在主回合同步 `sleep` 等**——同步等會讓那 1~2 分鐘完全不能回使用者訊息(使用者明確抱怨過)。push 完就把下面這支輪詢丟背景、自己繼續待命/接話,背景跑完會通知,再回報「上線了」。
+2. **判準以「curl 抓線上實際版本號」為權威,不要只信 `gh api pages/builds/latest`**——build API 在連續多次 push 時會回報延遲的 commit(踩過:API 還停在前一個 commit,但 curl 線上版本其實已是最新)。背景輪詢直接比對線上外掛 `?v=`:
    ```bash
-   gh api repos/pp771007/idle-lineage-class/pages/builds/latest --jq '{status, commit, updated_at}'
-   git rev-parse HEAD   # 比對 commit 是否一致
+   # 背景輪詢:直到線上 index.html 的外掛版本 = 剛 bump 的版本(或直接 grep 你改的那支)
+   for i in $(seq 1 14); do
+     v=$(curl -s --ssl-no-revoke "https://pp771007.github.io/idle-lineage-class/index.html?cb=$(date +%s)" | grep -oE 'afk-wiki\.js\?v=[0-9a-z]+')
+     echo "[$i] $v"; [ "$v" = "afk-wiki.js?v=<剛 bump 的版本>" ] && { echo BUILT; break; }; sleep 15
+   done
    ```
-2. (可選但更穩)再抓線上 index.html 確認外掛 `?v=` 版本號已是最新:
-   ```bash
-   curl -s --ssl-no-revoke "https://pp771007.github.io/idle-lineage-class/index.html?cb=$(date +%s)" | grep -oE 'afk-[a-z]+\.js\?v=[0-9a-z]+'
-   ```
-3. 確認重建完成後**才**通知使用者「已上線、可重整看到新版」(訊息從 Telegram 來就用 `reply`)。
-4. 輪詢時用背景指令或短間隔重試即可,別讓使用者空等卻不知進度。
+   (`gh api repos/pp771007/idle-lineage-class/pages/builds/latest --jq '{status,commit}'` 可當輔助參考,但不要當唯一判準。)
+3. 背景輪詢回報「BUILT」後**才**通知使用者「已上線、可重整看到新版」(訊息從 Telegram 來就用 `reply`)。
 - GitHub Pages 站台:`https://pp771007.github.io/idle-lineage-class/`(本 fork,非原作者 shines871)。

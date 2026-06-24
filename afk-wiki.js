@@ -1671,13 +1671,12 @@
       + '<tr><td>82～99%</td><td><b style="color:#f87171;">−100%（慢一半）</b></td><td>停止</td><td><b style="color:#f87171;">全部停掉</b></td></tr>'
       + '<tr><td>100%↑</td><td><b style="color:#f87171;">−200%（更慢）</b></td><td>停止</td><td>全部停掉</td></tr>'
       + '</tbody></table></div></div>';
-    // 上限公式 + 戰士說明 + 試算表(同一張 card)
+    // 上限公式 + 試算表(同一張 card)
     var BP = [20, 40, 60, 80];
     var capHead = '<tr><th>力量＼體質</th>' + BP.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr>';
     var capBody = BP.map(function (s) { return '<tr><td><b>' + s + '</b></td>' + BP.map(function (c) { return '<td>' + loadCapBase(s, c) + '</td>'; }).join('') + '</tr>'; }).join('');
-    var formula = '<div class="m-wiki-card"><div class="m-wiki-name">負重上限怎麼算（全職業同公式，含戰士）</div>'
-      + '<div class="m-wiki-desc">・<b>自然上限 ＝（⌊(力量×3 ＋ 體質×2) ÷ 5⌋ ＋ 1）× 50</b>，再加裝備／增益的額外上限。</div>'
-      + '<div class="m-wiki-desc">・<b>戰士的公式跟所有職業一模一樣</b>，只是戰士的<b>力量／體質成長最高</b>→自然上限最高，又能穿<b>最重的裝備</b>（所有鈍器＋重甲），所以「揹得最多」，並不是演算法不同。</div>'
+    var formula = '<div class="m-wiki-card"><div class="m-wiki-name">負重上限怎麼算</div>'
+      + '<div class="m-wiki-desc">・<b>自然上限 ＝（⌊(力量×3 ＋ 體質×2) ÷ 5⌋ ＋ 1）× 50</b>，再加裝備／增益的額外上限。所有職業同一公式。</div>'
       + '<div class="m-wiki-desc" style="color:#94a3b8;margin-top:4px;">自然上限試算（不含裝備加成）：</div><div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl"><thead>' + capHead + '</thead><tbody>' + capBody + '</tbody></table></div></div>';
     // 額外上限來源(腰帶 weightCap 直接讀 DB,作者新增自動出現)
     var belts = [];

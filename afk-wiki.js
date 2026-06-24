@@ -604,25 +604,14 @@
 
   // ===== 負重(本檔維護) ====================================================
   var LOAD_SECTIONS = [
-    { t: '負重是什麼、超重會怎樣', lines: [
-      '身上「裝備的總重量」就是負重，佔上限的百分比越高、懲罰越重，分四段：',
-      '<b>49% 以下</b>：正常，沒有懲罰。',
-      '<b>50%～81%</b>：HP／MP <b>不會再自然恢復</b>（要靠喝水／治癒技能補）。',
-      '<b>82%～99%</b>：HP/MP 不恢復照舊，<b>而且所有「自動施法」全部停掉</b>（加速、勇敢、力量／敏捷／治癒頭盔的 buff…都不會自動放）、<b>攻擊速度變慢一半</b>。',
-      '<b>100% 以上</b>：HP/MP 不恢復、自動施法停，<b>攻擊速度大幅變慢</b>（比上一段更慢）。'
-    ]},
     { t: '常見誤會：「自動施法／魔法頭盔壞了」多半是超重', lines: [
-      '負重一過 <b>82%</b> 就會自動關掉所有自動施法——這常被誤認成「力量魔法頭盔壞了／技能壞了」。<b>換裝備、賣掉重買都沒用</b>，因為問題不在那件裝備，在身上的<b>總重量</b>。',
+      '負重一過 <b>82%</b> 就會自動關掉所有自動施法——常被誤認成「力量魔法頭盔壞了／技能壞了」。<b>換裝備、賣掉重買都沒用</b>，因為問題不在那件裝備，在身上的<b>總重量</b>。',
       '怎麼確認：看狀態列的「負重 X%」（50% 以上會變色）。只要 <b>≥82%</b> 就是它把自動施法停了。'
     ]},
-    { t: '負重上限怎麼算、怎麼提高', lines: [
-      '上限主要看<b>力量與體質</b>：基礎上限約為 (⌊(力量×3＋體質×2)÷5⌋＋1)×50，再加上部分裝備提供的「負重上限」加成。',
-      '提高上限：<b>練力量／體質</b>（配點或靠裝備加屬性），或穿有負重上限加成的裝備。',
-      '降低負重：換<b>更輕的武器／防具</b>（重甲、巨型武器特別重，動輒 250～450），或拔掉用不到的飾品。'
-    ]},
-    { t: '想恢復到什麼程度、要壓到哪', lines: [
-      '只想<b>救回自動施法＋正常攻速</b> → 把負重壓到 <b>81% 以下</b>即可。',
-      '想連 <b>HP／MP 自然恢復</b>也一起救回 → 壓到 <b>49% 以下</b>。'
+    { t: '要把負重壓到哪、怎麼降', lines: [
+      '只想<b>救回自動施法＋正常攻速</b> → 壓到 <b>81% 以下</b>。想連 <b>HP／MP 自然恢復</b>也救回 → 壓到 <b>49% 以下</b>。',
+      '降負重：換<b>更輕的武器／防具</b>（重甲、巨型武器特別重，動輒 250～450），或拔掉用不到的飾品；或提高上限（見上表）。',
+      '例外：妖精的<b>體能激發／能量激發</b>生效期間，負重狀態下仍可自然恢復 HP／MP。'
     ]}
   ];
 
@@ -1672,13 +1661,40 @@
     return note + secs;
   }
 
+  function loadCapBase(str, con) { return (Math.floor((3 * str + 2 * con) / 5) + 1) * 50; }   // 鏡像 index.html recomputeStats 的負重上限公式(全職業同)
   function renderLoad() {
-    var note = '<div class="m-wiki-note">裝備太重會被「負重」懲罰，最容易中招的是<b>自動施法突然失效</b>（很多人誤以為是裝備壞了）。以下講清楚門檻與解法。</div>';
+    var note = '<div class="m-wiki-note">裝備太重會被「負重」懲罰，最常中招的是<b>自動施法突然失效</b>（常被誤認成裝備壞了）。負重% ＝ 目前裝備總重 ÷ 負重上限。</div>';
+    // 懲罰階表(包進 m-wiki-card;body 是 flex,表格 wrap 直接當 flex 子元素會被壓成 0 高)
+    var pen = '<div class="m-wiki-card"><div class="m-wiki-name">負重懲罰（依百分比）</div><div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl"><thead><tr><th>負重</th><th>攻擊速度</th><th>HP/MP 自然恢復</th><th>自動施法</th></tr></thead><tbody>'
+      + '<tr><td>0～49%</td><td>正常</td><td>正常</td><td>正常</td></tr>'
+      + '<tr><td>50～81%</td><td>正常</td><td><b style="color:#f87171;">停止</b></td><td>正常</td></tr>'
+      + '<tr><td>82～99%</td><td><b style="color:#f87171;">−100%（慢一半）</b></td><td>停止</td><td><b style="color:#f87171;">全部停掉</b></td></tr>'
+      + '<tr><td>100%↑</td><td><b style="color:#f87171;">−200%（更慢）</b></td><td>停止</td><td>全部停掉</td></tr>'
+      + '</tbody></table></div></div>';
+    // 上限公式 + 戰士說明 + 試算表(同一張 card)
+    var BP = [20, 40, 60, 80];
+    var capHead = '<tr><th>力量＼體質</th>' + BP.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr>';
+    var capBody = BP.map(function (s) { return '<tr><td><b>' + s + '</b></td>' + BP.map(function (c) { return '<td>' + loadCapBase(s, c) + '</td>'; }).join('') + '</tr>'; }).join('');
+    var formula = '<div class="m-wiki-card"><div class="m-wiki-name">負重上限怎麼算（全職業同公式，含戰士）</div>'
+      + '<div class="m-wiki-desc">・<b>自然上限 ＝（⌊(力量×3 ＋ 體質×2) ÷ 5⌋ ＋ 1）× 50</b>，再加裝備／增益的額外上限。</div>'
+      + '<div class="m-wiki-desc">・<b>戰士的公式跟所有職業一模一樣</b>，只是戰士的<b>力量／體質成長最高</b>→自然上限最高，又能穿<b>最重的裝備</b>（所有鈍器＋重甲），所以「揹得最多」，並不是演算法不同。</div>'
+      + '<div class="m-wiki-desc" style="color:#94a3b8;margin-top:4px;">自然上限試算（不含裝備加成）：</div><div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl"><thead>' + capHead + '</thead><tbody>' + capBody + '</tbody></table></div></div>';
+    // 額外上限來源(腰帶 weightCap 直接讀 DB,作者新增自動出現)
+    var belts = [];
+    try { for (var id in DB.items) { var d = DB.items[id]; if (d && d.slot === 'belt' && d.weightCap) belts.push({ n: d.n, w: d.weightCap }); } } catch (e) {}
+    belts.sort(function (a, b) { return b.w - a.w; });
+    var extra = '<div class="m-wiki-card"><div class="m-wiki-name">提高上限的額外來源</div><div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl"><thead><tr><th>來源</th><th>負重上限</th></tr></thead><tbody>'
+      + '<tr><td>練<b>力量／體質</b>（配點或裝備加屬性）</td><td>↑（依上面公式）</td></tr>'
+      + '<tr><td>腰帶<b>強化</b>（每 +1）</td><td>+20（最多 +5＝+100）</td></tr>'
+      + '<tr><td><b>負重強化</b>（增益 sk_load_up）</td><td>+50（持續 1800 秒）</td></tr>'
+      + belts.map(function (b) { return '<tr><td>腰帶「' + esc(b.n) + '」</td><td>+' + b.w + '</td></tr>'; }).join('')
+      + '</tbody></table></div></div>';
+    var capTbl = '';   // 已併入 formula card
     var secs = LOAD_SECTIONS.map(function (s) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }).join('');
-    return note + secs;
+    return note + pen + formula + capTbl + extra + secs;
   }
 
   function renderPledge() {

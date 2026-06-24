@@ -381,7 +381,8 @@
     if (_shopIndex[id]) return true;                                          // 商店販售
     var acq = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
     if (acq && acq.short) return true;                                        // 手動補的取得方式(兌換/試煉/喚回…)
-    var bt = boxTiersOf(id); return !!(bt && bt.length);                      // 歐西里斯寶箱開出(底比斯武器)
+    var bt = boxTiersOf(id); if (bt && bt.length) return true;                // 歐西里斯寶箱開出(底比斯武器)
+    return !!trialSourceOf(id);                                               // 各職業試煉/兌換結構成品(50級試煉/希蓮恩/多文/普洛凱爾/尤麗婭/黑暗試煉)
   }
 
   // ===== 對外 API:給小百科「裝備」分頁重用「取得方式」呈現(手動/製作/商店/怪物掉落) =====
@@ -406,6 +407,20 @@
     try { add(OSIRIS_BOX_HIGH, '高級'); } catch (e) {}
   }
   function boxTiersOf(id) { if (_boxBy === null) buildBoxBy(); return _boxBy[id] ? Object.keys(_boxBy[id]) : null; }
+  // 各種「試煉／兌換設定結構」的成品(讀遊戲全域設定,作者改設定自動跟上)。這些不在 MOB_DROPS/商店/製作,
+  //   否則會誤標「沒有固定取得途徑」(瑪那水晶球等踩過)。回傳一句白話來源,沒有則 null。
+  var _trialBy = null;   // itemId -> 來源說明
+  function buildTrialBy() {
+    _trialBy = {};
+    var put = function (id, label) { if (id && !_trialBy[id]) _trialBy[id] = label; };
+    try { for (var c in TRIAL_50_CFG) { var t = TRIAL_50_CFG[c]; (t.rewards || []).forEach(function (r) { put(r.id || r, (t.npc || '') + ' 的 50 級試煉：以「' + (t.exMatNm || '指定材料') + '」兌換'); }); } } catch (e) {}
+    try { for (var k in DARK_TRIAL_CFG) { var c2 = DARK_TRIAL_CFG[k]; put(c2.reward, (c2.npc || '') + '（沉默洞窟）：以「' + (c2.reqName || '指定道具') + '」兌換'); } } catch (e) {}
+    try { for (var k2 in SHENIEN_EX) (SHENIEN_EX[k2].rewards || []).forEach(function (id) { put(id, '希蓮恩（希培利亞村莊）試煉兌換'); }); } catch (e) {}
+    try { for (var k3 in WARRIOR_EX) (WARRIOR_EX[k3].rewards || []).forEach(function (id) { put(id, '多文（海音）戰士試煉兌換'); }); } catch (e) {}
+    try { for (var k4 in PROCEL_EX) (PROCEL_EX[k4].rewards || []).forEach(function (id) { put(id, '普洛凱爾（貝希摩斯）龍騎士兌換'); }); } catch (e) {}
+    try { YURIA_REWARDS.forEach(function (r) { put(r.id, '尤麗婭（說話之島）：以「歐林的日記本」兌換（三選一）'); }); } catch (e) {}
+  }
+  function trialSourceOf(id) { if (_trialBy === null) buildTrialBy(); return _trialBy[id] || null; }
   function acquireHTML(id) {
     if (!INDEX.length) buildIndexes();
     if (_dropBy === null) buildDropBy();
@@ -425,6 +440,8 @@
     if (tiers && tiers.length) {
       parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎁 寶箱開出</div><div class="m-dex-craft-mats">開「上鎖的歐西里斯寶箱（' + tiers.join('／') + '）」隨機獲得，每開消耗 1 顆 龜裂之核（寶箱由碎片合成；碎片／高級寶箱由底比斯怪掉落）</div></div>');
     }
+    var ts = (exa && exa.short) ? null : trialSourceOf(id);   // 已有手動 note 就不重複;否則補試煉/兌換來源
+    if (ts) parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts) + '</div></div>');
     var body = parts.filter(Boolean).join('');
     if (body) return body;
     return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">' +
@@ -458,7 +475,9 @@
     var tiers = boxTiersOf(id);
     if (exAcq && exAcq.short) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🔑 取得方式</div><div class="m-dex-craft-mats">' + esc(exAcq.short) + '</div></div>';
     if (tiers && tiers.length) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎁 寶箱開出</div><div class="m-dex-craft-mats">開「上鎖的歐西里斯寶箱（' + tiers.join('／') + '）」隨機獲得（每開消耗 1 顆 龜裂之核）</div></div>';
-    if (!(exAcq && exAcq.short) && !(tiers && tiers.length) && d.gachaWeight > 0 && !hasFixedSource(id)) acq += '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">取得方式：目前沒有固定取得途徑</div></div>';
+    var ts2 = (exAcq && exAcq.short) ? null : trialSourceOf(id);
+    if (ts2) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts2) + '</div></div>';
+    if (!(exAcq && exAcq.short) && !(tiers && tiers.length) && !ts2 && d.gachaWeight > 0 && !hasFixedSource(id)) acq += '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">取得方式：目前沒有固定取得途徑</div></div>';
     var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
     return head + typeLine + body + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + searchBtn;
   }

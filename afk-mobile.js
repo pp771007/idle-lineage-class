@@ -717,7 +717,7 @@
          怪物卡 height:100%。手機窄寬下這條只剩 ~120px,我們的 252px 怪物卡被裁掉下半(怪物圖/血條看不到)。
          手機改：解除短比例與裁切,讓戰鬥框高度隨怪物卡自然長高(背景圖仍 cover 鋪滿、只是變高);怪物卡維持上面的 252px。
          原作哪天不再用 area-fit(或改成不鎖死高度)時,本段即自動失效、無害。 */
-      'body.m-mobile #battle-view.area-fit{aspect-ratio:auto !important;overflow:visible !important;}',
+      'body.m-mobile #battle-view.area-fit{aspect-ratio:auto !important;overflow:hidden !important;background-size:cover !important;background-position:center !important;}',   /* 🔧 框高隨怪物卡(aspect-ratio:auto);背景改 cover 鋪滿(原作 JS inline 設 contain→只填上面一條、下面露深色底色變黑塊,用 !important 蓋過);overflow:hidden 把 cover 溢出的圖裁掉,框=252≈怪物卡高、卡不會被裁 */
       'body.m-mobile #battle-view.area-fit #mob-list{height:auto !important;}',
       'body.m-mobile #battle-view.area-fit .mob-target{height:252px !important;min-height:252px !important;}',
 

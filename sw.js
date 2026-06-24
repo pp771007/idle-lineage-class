@@ -3,8 +3,11 @@
  *
  * 兩個快取桶,刻意分開,這樣「改程式不會害人重載 30MB 圖」：
  *   ● 程式桶 CODE_CACHE：index.html + 所有外掛 js + manifest + PWA 圖示 + 外部 CDN(Tailwind/placehold)。
- *       cache-first；版本 CODE_VERSION 由 scripts/stamp-sw-version.mjs 依「index.html＋全部外掛 js 的內容 hash」
+ *       版本 CODE_VERSION 由 scripts/stamp-sw-version.mjs 依「index.html＋全部外掛 js 的內容 hash」
  *       自動覆寫 → 程式一變就換新桶 → 瀏覽器偵測到 sw.js 變了 → 觸發更新流程(由頁面 afk-pwa.js 決定何時接管)。
+ *       ▸ 「導覽文件」(index.html / 目錄 '/')走 network-first：線上一律抓最新「殼」,根除 cache-first 把舊版釘死、
+ *         又得靠 SW 換版才更新得了的老問題(iOS 換版尤其不穩);離線/網路慢退快取,離線遊玩照常(見 navFirst)。
+ *       ▸ js / manifest / 圖示走 cache-first：它們帶 ?v= 版本號,換版即換 URL,撲空就抓新、不會被釘舊版,故維持 cache-first(秒開、省流量)。
  *   ● 圖桶 IMG_CACHE：assets/ 全部圖。cache-first＋連網補抓(on-demand)＋可由頁面驅動「背景全預抓」。
  *       桶名 IMG_VERSION 是「固定不變」的快取名(不再隨改版 bump、不整桶倒掉)。
  *       失效改走「逐張對帳」：assets-manifest.json 每張圖帶一個 git blob sha,SW 記下「自己快取的是哪個 sha」;
@@ -29,6 +32,10 @@ const IMG_HASH_KEY = '/__afk-img-hashes__';
 
 // 外部 CDN：離線也要能用(Tailwind 沒了整個版面會爆),用 cache-first 收進程式桶(opaque 也存)。
 const EXTERNAL_HOSTS = ['cdn.tailwindcss.com', 'placehold.co'];
+
+// 導覽文件 network-first:有快取墊底時,等網路最多這麼久還沒回就先回快取(背景仍把快取更新到最新)。
+//   離線時 fetch 會更快直接失敗、不會等滿這段;這只是「連得到但很慢/卡住」時不讓開場被網路拖死的安全閥。
+const NAV_TIMEOUT_MS = 4000;
 
 self.addEventListener('install', () => {
   // 不 skipWaiting：首次安裝會自動啟用;更新則停 waiting,等頁面決定何時接管(自動/手動更新)。
@@ -188,6 +195,34 @@ async function cacheFirst(req, cacheName) {
   }
 }
 
+// 導覽文件 network-first(配合 fetch 分流):線上拿最新殼、離線退快取。
+//   ① 有快取墊底 → 等網路最多 NAV_TIMEOUT_MS:拿到最新就回最新;逾時/失敗先回快取,
+//      但背景那筆 fetch 會繼續把快取更新到最新(下次載入就新),不讓慢網路把開場卡死。
+//   ② 沒有快取(第一次載入)→ 只能等網路;離線就如實 throw(瀏覽器顯示無法連線,屬正常)。
+//   ③ 寫快取用「去掉 query 的路徑」當 key → ?__afkfresh / ?cb 等變體不會在桶裡累積,離線退快取也用 ignoreSearch 找得到。
+async function navFirst(e, req) {
+  const cache = await caches.open(CODE_CACHE);
+  const u = new URL(req.url);
+  const putKey = u.origin + u.pathname;
+  const netP = fetch(req).then((res) => {
+    if (res && res.ok) cache.put(putKey, res.clone()).catch(() => {});
+    return res;
+  });
+  e.waitUntil(netP.catch(() => {}));   // 背景抓取+寫快取確保跑完,不被 SW 提早回收
+
+  const cached = await cache.match(req, { ignoreSearch: true })
+              || await cache.match(putKey)
+              || await cache.match('index.html')
+              || await cache.match('./');
+  if (!cached) return netP;            // 沒有墊底 → 等網路(離線會 throw,正常)
+
+  const winner = await Promise.race([
+    netP.catch(() => null),
+    new Promise((resolve) => setTimeout(() => resolve(null), NAV_TIMEOUT_MS)),
+  ]);
+  return (winner && winner.ok) ? winner : cached;
+}
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -202,11 +237,20 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 程式桶:同源的 導覽/js/html/manifest/PWA 圖示,以及外部 CDN
-  const isCodePath = sameOrigin && (
+  // 導覽文件(整頁 navigate / 目錄 '/' / *.html)→ network-first:線上一律拿最新殼,離線退快取。
+  const isNav = sameOrigin && (
     req.mode === 'navigate' ||
     url.pathname.endsWith('/') ||
-    /\.(?:js|html|webmanifest)$/.test(url.pathname) ||
+    /\.html$/.test(url.pathname)
+  );
+  if (isNav) {
+    e.respondWith(navFirst(e, req));
+    return;
+  }
+
+  // 程式桶:js / manifest / PWA 圖示,以及外部 CDN → cache-first(帶 ?v= 版本號,換版即換 URL,不會被釘舊版)
+  const isCodePath = sameOrigin && (
+    /\.(?:js|webmanifest)$/.test(url.pathname) ||
     /pwa-icon[^/]*\.png$/.test(url.pathname)
   );
   if (isCodePath || EXTERNAL_HOSTS.includes(url.hostname)) {
@@ -214,5 +258,5 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 其餘(last-sync.json / assets-manifest.json / 其它)→ 不攔截,直接走網路、永遠最新。
+  // 其餘(last-sync.json / assets-manifest.json / version.json / 其它)→ 不攔截,直接走網路、永遠最新。
 });

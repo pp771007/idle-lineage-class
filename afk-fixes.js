@@ -221,5 +221,46 @@
     } catch (e) { console.warn('[AFK-fixes] saveGame 空白角色防呆 安裝失敗,已略過:', e); }
   })();
 
+  /* --------------------------------------------------------------------------
+   * 修正#6:存檔匯出在手機下載 0 byte — 改用 data: URL 取代 blob: URL
+   *
+   * 問題:原作 downloadSaveFile 用 URL.createObjectURL 產生 blob: 連結再 <a download> 點擊。
+   *   手機版瀏覽器(Android Chrome 行動站台模式)對 blob: 下載常常吐出 0 byte 的空檔;
+   *   切到瀏覽器選單的「桌面版網站」走桌機行為才正常(使用者回報的就是這條:手機版匯出 0 byte、
+   *   勾桌面版就好)。手機沒有 File System Access API(showSaveFilePicker),exportSave 必走
+   *   downloadSaveFile 這條退路 → 一定中。data: URL 下載在行動瀏覽器穩定、且檔案是純 JSON 文字、
+   *   體積小,不會踩到 data URL 的長度上限,桌機也照常運作。
+   * 解法:在最外層包住 window.downloadSaveFile,改用 data:application/json;charset=utf-8 +
+   *   encodeURIComponent 產生連結下載。exportSave 以全域名稱呼叫 downloadSaveFile,改寫同一個全域
+   *   即生效;成功訊息 logSys 沿用原文案,行為一致。
+   * 何時可移除:原作者把 downloadSaveFile 改成 data: URL(或自行做了手機可用的下載)時,本段即多餘,
+   *   可整段刪掉。在那之前留著無害(抓不到 downloadSaveFile 自動 no-op)。
+   * ------------------------------------------------------------------------ */
+  (function () {
+    function install() {
+      if (typeof window.downloadSaveFile !== 'function' || window.downloadSaveFile.__dataUrlDl) return false;
+      var patched = function (data, fname) {
+        var a = document.createElement('a');
+        a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
+        a.download = fname;
+        document.body.appendChild(a); a.click(); a.remove();
+        try {
+          if (typeof window.logSys === 'function')
+            window.logSys('<span class="text-indigo-300 font-bold">✔ 存檔已匯出至下載資料夾：' + fname + '</span>');
+        } catch (e) {}
+      };
+      patched.__dataUrlDl = true;
+      window.downloadSaveFile = patched;
+      console.log('[AFK-fixes] 匯出下載改用 data: URL(修手機 0 byte) 已掛上');
+      return true;
+    }
+    try {
+      if (!install()) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+        else setTimeout(install, 0);
+      }
+    } catch (e) { console.warn('[AFK-fixes] 匯出下載修正 安裝失敗,已略過:', e); }
+  })();
+
   console.log('[AFK-fixes] hooks OK — 通用修正外掛已啟用。');
 })();

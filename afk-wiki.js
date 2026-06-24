@@ -861,7 +861,7 @@
     { k: 'oblivion', n: '遺忘之島' },
     { k: 'kingroom', n: '軍王之室' }
   ];
-  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', equipCls: 'all' };
+  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', equipCls: 'all', equipSlot: 'wpn' };
 
   // 把內文裡任何「分頁名」(夾在「」裡、且整段剛好等於某個分頁名)做成可點的跳頁連結。
   // 用「整段精確等於分頁名」當條件:像「席琳套裝」「席琳的世界」不會誤中分頁「席琳」,避免把一般引號詞變連結。
@@ -936,6 +936,9 @@
         if (det) det.style.display = (det.style.display === 'none') ? '' : 'none';
         return;
       }
+      // 裝備分頁的「部位篩選」
+      var eqslot = e.target.closest ? e.target.closest('[data-equipslot]') : null;
+      if (eqslot) { state.equipSlot = eqslot.getAttribute('data-equipslot'); render(); return; }
       // 裝備分頁的「職業篩選」
       var eqcls = e.target.closest ? e.target.closest('[data-equipcls]') : null;
       if (eqcls) { state.equipCls = eqcls.getAttribute('data-equipcls'); render(); return; }
@@ -1136,7 +1139,7 @@
     clsRow.style.display = showCls ? 'flex' : 'none';
     var _allBtn = clsRow.querySelector('.m-wiki-clsbtn-all'); if (_allBtn) _allBtn.style.display = (state.tab === 'quest') ? '' : 'none';   // 全職業鈕只在任務分頁
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
-    body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : (state.tab === 'equip') ? renderEquip(state.equipCls) : tabHTML(state.tab, state.cls), state.tab);
+    body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : (state.tab === 'equip') ? renderEquip(state.equipCls, state.equipSlot) : tabHTML(state.tab, state.cls), state.tab);
   }
 
   function renderMastery(cls) {
@@ -1344,17 +1347,22 @@
     var bits = [];
     if (d.type === 'wpn') { if (d.dmgS != null) bits.push('攻擊 ' + d.dmgS + '/' + d.dmgL); if (d.hit) bits.push('命中 ' + (d.hit > 0 ? '+' : '') + d.hit); }
     else if (d.ac != null) bits.push('防禦(AC) ' + ((-d.ac) >= 0 ? '+' : '') + (-d.ac));
-    if (d.req && d.req !== 'all') bits.push((EQUIP_REQ_CN[d.req] || d.req) + '專用');
+    if (d.req && d.req !== 'all') bits.push(String(d.req).split(',').map(function (x) { return EQUIP_REQ_CN[x] || x; }).join('／') + '專用');   // 多職業 req(如 knight,elf,dark)逐一轉中文
     return bits.join('　');
   }
   var _equipHtml = {};
-  function renderEquip(cls) {
-    cls = cls || 'all';
-    if (_equipHtml[cls] !== undefined) return _equipHtml[cls];
-    var filterRow = '<div class="m-wiki-mfilter">' + EQUIP_FILTERS.map(function (f) {
+  function renderEquip(cls, slot) {
+    cls = cls || 'all'; slot = slot || 'all';
+    var ckey = cls + '|' + slot;
+    if (_equipHtml[ckey] !== undefined) return _equipHtml[ckey];
+    // 部位 tag 列(全部＋各部位):一次只看一個部位,避免整頁太長
+    var slotRow = '<div class="m-wiki-mfilter"><button type="button" class="m-wiki-mfbtn' + (slot === 'all' ? ' on' : '') + '" data-equipslot="all">全部</button>' +
+      EQUIP_GROUPS.map(function (g) { return '<button type="button" class="m-wiki-mfbtn' + (g.k === slot ? ' on' : '') + '" data-equipslot="' + g.k + '">' + g.n + '</button>'; }).join('') + '</div>';
+    // 職業 tag 列
+    var clsRow = '<div class="m-wiki-mfilter">' + EQUIP_FILTERS.map(function (f) {
       return '<button type="button" class="m-wiki-mfbtn' + (f[0] === cls ? ' on' : '') + '" data-equipcls="' + f[0] + '">' + f[1] + '</button>';
     }).join('') + '</div>';
-    var note = '<div class="m-wiki-note">依<b>部位</b>列出全部裝備(讀遊戲資料、作者新增自動出現)。上方可<b>篩職業</b>;<b>點任一件展開完整數值與取得方式</b>(數值與遊戲內顯示一致)。搜尋會連展開內容一起命中。</div>';
+    var note = '<div class="m-wiki-note">選<b>部位</b>與<b>職業</b>篩選;<b>點任一件展開完整數值與取得方式</b>(數值與遊戲內一致)。搜尋會跨全部裝備、連展開內容一起命中。</div>';
     var buckets = {};
     Object.keys(DB.items).forEach(function (id) {
       var d = DB.items[id];
@@ -1362,6 +1370,7 @@
       if (d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc') return;
       if (!classCanEquip(d, id, cls)) return;
       var gk = equipGroupKey(d);
+      if (slot !== 'all' && gk !== slot) return;   // 只看選定部位
       (buckets[gk] = buckets[gk] || []).push({ id: id, d: d });
     });
     function card(e) {
@@ -1375,7 +1384,7 @@
         '<div class="m-eq-detail" style="display:none;border-top:1px solid #1e293b;margin-top:6px;padding-top:6px;">' + equipDetailHTML(id) + '</div>' +
       '</div>';
     }
-    var html = filterRow + note;
+    var html = slotRow + clsRow + note;
     var total = 0;
     EQUIP_GROUPS.forEach(function (g) {
       var list = buckets[g.k]; if (!list || !list.length) return;
@@ -1383,8 +1392,8 @@
       total += list.length;
       html += '<div class="m-wiki-sub">' + g.n + '（' + list.length + '）</div>' + list.map(card).join('');
     });
-    if (!total) html += '<div class="m-wiki-hint">這個職業沒有可裝備的裝備。</div>';
-    _equipHtml[cls] = html;
+    if (!total) html += '<div class="m-wiki-hint">沒有符合的裝備。</div>';
+    _equipHtml[ckey] = html;
     return html;
   }
 

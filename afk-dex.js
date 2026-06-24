@@ -380,7 +380,8 @@
     if (_shopIndex === null) buildShopIndex();
     if (_shopIndex[id]) return true;                                          // 商店販售
     var acq = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
-    return !!(acq && acq.short);                                             // 手動補的取得方式(兌換/試煉/喚回…)
+    if (acq && acq.short) return true;                                        // 手動補的取得方式(兌換/試煉/喚回…)
+    var bt = boxTiersOf(id); return !!(bt && bt.length);                      // 歐西里斯寶箱開出(底比斯武器)
   }
 
   // ===== 對外 API:給小百科「裝備」分頁重用「取得方式」呈現(手動/製作/商店/怪物掉落) =====
@@ -396,6 +397,15 @@
       });
     });
   }
+  // 歐西里斯寶箱開出的物品(讀遊戲獎勵池 OSIRIS_BOX_*,作者改池自動跟上);底比斯武器只此來源,否則會誤標「沒有固定取得途徑」
+  var _boxBy = null;   // itemId -> { 初級, 高級 }
+  function buildBoxBy() {
+    _boxBy = {};
+    function add(tbl, label) { if (typeof tbl === 'undefined' || !tbl) return; tbl.forEach(function (e) { var iid = e[0]; if (!iid) return; (_boxBy[iid] = _boxBy[iid] || {})[label] = 1; }); }
+    try { add(OSIRIS_BOX_BASIC, '初級'); } catch (e) {}
+    try { add(OSIRIS_BOX_HIGH, '高級'); } catch (e) {}
+  }
+  function boxTiersOf(id) { if (_boxBy === null) buildBoxBy(); return _boxBy[id] ? Object.keys(_boxBy[id]) : null; }
   function acquireHTML(id) {
     if (!INDEX.length) buildIndexes();
     if (_dropBy === null) buildDropBy();
@@ -410,6 +420,10 @@
       var cap = 12, more = mobs.length > cap;
       parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">👹 怪物掉落</div><div class="m-dex-craft-mats">' +
         mobs.slice(0, cap).map(esc).join('、') + (more ? ' …等 ' + mobs.length + ' 種' : '') + '（機率見掉落查詢）</div></div>');
+    }
+    var tiers = boxTiersOf(id);
+    if (tiers && tiers.length) {
+      parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎁 寶箱開出</div><div class="m-dex-craft-mats">開「上鎖的歐西里斯寶箱（' + tiers.join('／') + '）」隨機獲得，每開消耗 1 顆 龜裂之核（寶箱由碎片合成；碎片／高級寶箱由底比斯怪掉落）</div></div>');
     }
     var body = parts.filter(Boolean).join('');
     if (body) return body;

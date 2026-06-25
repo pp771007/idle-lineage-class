@@ -931,6 +931,7 @@
       '#m-whqty-title{color:#e2e8f0;font-size:15px;font-weight:bold;margin-bottom:14px;text-align:center;line-height:1.5;}',
       '#m-whqty-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;}',
       '#m-whqty-row button{flex:0 0 auto;width:44px;height:44px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:18px;cursor:pointer;padding:0;}',
+      '#m-whqty-row #m-whqty-one{width:auto;padding:0 12px;font-size:14px;font-weight:bold;color:#93c5fd;}',
       '#m-whqty-row #m-whqty-all{width:auto;padding:0 12px;font-size:14px;font-weight:bold;color:#fcd34d;}',
       '#m-whqty-input{flex:1 1 auto;min-width:0;height:44px;text-align:center;background:#1e293b;border:1px solid #334155;color:#fff;border-radius:8px;font-size:18px;font-weight:bold;font-family:inherit;}',
       '#m-whqty-btns{display:flex;gap:10px;}',
@@ -950,6 +951,7 @@
           '<button type="button" id="m-whqty-dec" aria-label="減一">−</button>' +
           '<input id="m-whqty-input" type="number" inputmode="numeric" min="1">' +
           '<button type="button" id="m-whqty-inc" aria-label="加一">＋</button>' +
+          '<button type="button" id="m-whqty-one">1</button>' +
           '<button type="button" id="m-whqty-all">全部</button>' +
         '</div>' +
         '<div id="m-whqty-btns">' +
@@ -968,14 +970,17 @@
       titleEl.textContent = '「' + name + '」要幾個？（1 ~ ' + curMax + '）';
       input.max = curMax; input.value = curMax;
       modal.classList.add('open');
-      // 不自動 focus input:手機上會每次都彈出鍵盤。預設值＝全部、又有 −/＋/全部 鈕,多數情況直接按確定即可;要改數字再自己點輸入框。
+      // 不自動 focus input:手機上會每次都彈出鍵盤。預設值＝全部、又有 −/＋/1/全部 鈕,多數情況直接按確定即可;要改數字再自己點輸入框(輸入後按 Enter 直接確認)。
     }
     function closeQty() { modal.classList.remove('open'); curCb = null; }
     modal.querySelector('#m-whqty-dec').addEventListener('click', function () { input.value = clampV((Number(input.value) || 0) - 1); });
     modal.querySelector('#m-whqty-inc').addEventListener('click', function () { input.value = clampV((Number(input.value) || 0) + 1); });
+    modal.querySelector('#m-whqty-one').addEventListener('click', function () { input.value = 1; });
     modal.querySelector('#m-whqty-all').addEventListener('click', function () { input.value = curMax; });
     modal.querySelector('#m-whqty-cancel').addEventListener('click', closeQty);
-    modal.querySelector('#m-whqty-ok').addEventListener('click', function () { var v = clampV(input.value); var cb = curCb; closeQty(); if (cb) cb(v); });
+    function doConfirm() { var v = clampV(input.value); var cb = curCb; closeQty(); if (cb) cb(v); }
+    modal.querySelector('#m-whqty-ok').addEventListener('click', doConfirm);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doConfirm(); } });   // 輸入框按 Enter 直接確認
     modal.addEventListener('click', function (e) { if (e.target === modal) closeQty(); });
 
     // 包住原作的 whDeposit/whWithdraw:手機 + 未指定數量 + 可堆疊(>1) → 改用自製視窗;否則照原行為。

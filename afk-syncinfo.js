@@ -54,7 +54,7 @@
     foot.id = 'afk-syncinfo';
     foot.innerHTML =
       '<div class="afk-si-row">' +
-        '<span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span> <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(原版連結)</a></span>' +
+        '<span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span> <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(正版連結)</a></span>' +
         '<span class="afk-si-sep">·</span>' +
         '<span class="afk-si-time">原版最後同步：載入中…</span>' +
       '</div>' +

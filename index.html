@@ -5399,8 +5399,13 @@ function spawnMob(idx) {
     let wantBoss = !backSlot && (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (Math.random() < 0.03)));
     if(mapState.forceBoss) mapState.forceBoss = false;   // 強制旗標只作用於下一次生怪
     if(wantBoss) {
-        mobId = bossPool[Math.floor(Math.random() * bossPool.length)];
-    } else {
+        // 🔧 同名BOSS限制：場上已有同名BOSS時不再抽到該名→需地圖池有 2 種以上「不同名」BOSS 才可能同時出現多隻；若無不同名可出則退回一般怪
+        let _onFieldBoss = mapState.mobs.filter(m => m && m.boss).map(m => m.n);
+        let _bossPick = bossPool.filter(id => !_onFieldBoss.includes(DB.mobs[id].n));
+        if (_bossPick.length > 0) mobId = _bossPick[Math.floor(Math.random() * _bossPick.length)];
+        else wantBoss = false;
+    }
+    if(!wantBoss) {
         let safePool = normalPool.length > 0 ? normalPool : pool;
         if (siegeArea) {   // 攻城區：避免場上同時出現兩名以上同名敵人
             let onFieldNames = mapState.mobs.filter(m => m).map(m => m.n);

@@ -119,6 +119,12 @@
         #battle-view.area-fit .mob-img-wrap { flex: 1 1 auto; min-height: 0; align-items: flex-end; }   /* 🦶 怪物圖貼齊框底(腳齊底)，供腳下接觸陰影對齊 */
         #battle-view.area-fit .mob-img-inner { position: relative; height: 100%; display: inline-flex; align-items: flex-end; justify-content: center; }   /* 內層 inline-flex 縮到圖寬→影子寬度跟著每隻怪縮放 */
         #battle-view.area-fit .mob-img-wrap img { height: 100%; width: auto; max-width: 100%; max-height: 100%; position: relative; z-index: 1; }
+        /* 🙈 怪物名字預設隱藏，滑鼠游標移到「怪物圖片」上才顯示（:has 偵測圖片區 hover；img 為 pointer-events:none→hover 落在 .mob-img-wrap；保留名稱列空間避免版面跳動）。.name-show＝JS 依 _hoverMobUid 套用→跨重繪持續顯示(每 tick 換 innerHTML 時 :hover 會瞬失效，靠它穩住不閃) */
+        #battle-view .mob-name { opacity: 0; transition: opacity 0.12s ease; }
+        #battle-view .mob-target:has(.mob-img-wrap:hover) .mob-name,
+        #battle-view .mob-target.name-show .mob-name { opacity: 1; }
+        /* 🏷️ 怪物名字固定白色＋黑邊、永不因受擊/狀態變色或閃動（受擊特效只套在怪物圖片 img 上·名字是獨立元素不受影響）。!important 覆蓋任何等差色/脈動 */
+        #battle-view .mob-name, #battle-view .mob-name span { color: #fff !important; text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000, 0 0 3px #000 !important; animation: none !important; }
         #battle-view.area-fit .mob-img-inner::after { content: ''; position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); width: 70%; height: 16px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.28) 45%, rgba(0,0,0,0) 80%); filter: blur(2px); z-index: 0; pointer-events: none; }   /* 🌑 腳下橢圓接觸陰影：墊在圖後(z-index 0<1)、掛內層非img→固定在地上不隨受擊晃動。加高(16px)+上移(bottom4)+羽化(blur2)→往上擴散覆蓋腳離底5~10px的怪、更圓潤柔和 */
         /* 👑 方案B：純BOSS房專屬版面——boss 圖放大佔滿整格高度(約1.8×·寬型受框寬限制亦較大)，名字/徽章/狀態/血條改絕對定位疊在圖上(字陰影保可讀)、圖完全不被切(無transform·靠回收上下列空間放大) */
         #battle-view.area-fit:has(.boss-slot) { padding: 0; }   /* 🐉 龍窟：去除框內距(p-4)，怪卡填滿整個戰鬥框高度→約2× */
@@ -129,8 +135,20 @@
         #battle-view.area-fit .boss-slot > :nth-child(4) { position: absolute; bottom: 13px; left: 0; right: 0; margin: 0; z-index: 5; text-shadow: 0 1px 3px #000; }
         #battle-view.area-fit .boss-slot > :nth-child(5) { position: absolute; bottom: 2px; left: 6px; right: 6px; margin: 0; z-index: 5; box-shadow: 0 0 5px #000; }
         /* 👹 一般頭目輕度放大(非龍窟)：純 transform 視覺放大1.2×(不reflow·框架/卡片/其餘列完全不動)，腳錨定往上長；名字/徽章提到圖上層(relative+z-index·無offset故不影響版面)避免被放大的圖蓋住 */
-        #battle-view.area-fit .boss-zoom .mob-img-inner { transform: scale(1.2); transform-origin: bottom center; }
+        #battle-view.area-fit .boss-zoom { overflow: visible; }                                  /* 👑 頭目放大需溢出卡邊(由戰鬥框 overflow:hidden 收邊)，避免被單格裁切 */
+        #battle-view.area-fit .boss-zoom .mob-img-wrap { overflow: visible; }
+        #battle-view.area-fit .boss-zoom .mob-img-inner { transform: scale(1.78); transform-origin: bottom center; }   /* 👑 頭目圖放大 1.78×(由 1.2× 調大)；底部對齊原點→只往上/兩側脹大、腳不動 */
         #battle-view.area-fit .boss-zoom > :nth-child(1), #battle-view.area-fit .boss-zoom > :nth-child(2) { position: relative; z-index: 5; }
+        /* 🆕 五怪前後排：一般狩獵地圖於原三格(前排·略低·z2)之間插入兩格(後排·略高·z1)，營造前後景深；後排不出頭目。位移/縮放只套在圖層(mob-img-inner)→名稱/徽章/狀態列不被裁、徽章可讀 */
+        #battle-view .mob-front, #battle-view .mob-back { position: relative; overflow: visible; }   /* 前排放大(1.1×)/頭目(1.78×)需溢出卡片(由戰鬥框 overflow:hidden 收邊) */
+        #battle-view .mob-front { z-index: 2; flex: 1.2 1 0%; }
+        #battle-view .mob-back  { z-index: 1; flex: 0.8 1 0%; }
+        #battle-view.area-fit .mob-front .mob-img-wrap, #battle-view.area-fit .mob-back .mob-img-wrap { overflow: visible; }
+        /* 🔒 防忽大忽小：怪圖(height:100%)以「框高」為準＝原3格大小(框高鎖 1920/580 比例·與格數無關)；切勿用 max-width:none(會讓已載入怪圖的自然尺寸回灌 flex intrinsic→怪數變動時整框/背景重算抖動)。min-width/min-height:0＝flex 項不被內容撐大 */
+        #battle-view.area-fit .mob-target { min-width: 0; }
+        #battle-view.area-fit { min-height: 0; }
+        #battle-view .mob-back .mob-img-inner { transform: translateY(-24px); transform-origin: bottom center; }                      /* 後排：維持原 3 格大小(框高)、僅上提→看起來在後方 */
+        #battle-view .mob-front:not(.boss-zoom) .mob-img-inner { transform: translateY(6px) scale(1.1); transform-origin: bottom center; }   /* 前排：比原本稍大(1.1×)、略下→看起來在前方(頭目除外·保留 1.78×) */
         #town-view.has-bg { background-size: cover; background-position: center; border-radius: 0.5rem; }
         #town-view.has-bg #town-npc-container > div { background: rgba(30,41,59,0.72); }
         #town-view.has-bg #town-npc-container > div:hover { background: rgba(51,65,85,0.78); }
@@ -305,6 +323,7 @@
         .mc-lgreen { color: #86efac !important; }   /* 低4~6：淺綠 */
         .mc-lblue  { color: #bae6fd !important; }   /* 低7~10：淺藍（更淺） */
         .mc-dblue  { color: #2158e1 !important; }   /* 低11等以上：深藍（稍微淺一點點·仍深藍） */
+        .mc-mobname { color: #fcd34d !important; }   /* 🔧 戰鬥日誌怪名專用（淡金色）：怪卡名已統一白色、日誌怪名改金色以與其他白色訊息區隔 */
 
         /* 三詞綴(屬性+遠古+祝福)：紅→藍→綠→琥珀 循環變換光（顏色不變，顯眼度最高，恆定強光+大光暈） */
         @keyframes triGlow {
@@ -539,6 +558,7 @@
                 <div class="panel-header text-slate-100 text-lg border-b border-red-900/40 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                     <span class="shrink-0">戰鬥日誌</span>
                     <div class="flex items-center gap-1 flex-wrap justify-end">
+                        <button id="cf-btn-status" onclick="toggleMobStatus()" class="cf-pill" style="color:#e2e8f0;border-color:#64748b;background:rgba(71,85,105,.30)" title="點亮/點暗：怪物圖片上的異常狀態徽章與出血/鈍擊/硬皮等狀態標示">狀態</button>
                         <button id="cf-btn-enemy" onclick="toggleCombatFilter('enemy')" class="cf-pill" style="color:#fca5a5;border-color:#b91c1c;background:rgba(127,29,29,.30)" title="點亮/點暗：敵人的戰鬥訊息">敵人</button>
                         <button id="cf-btn-player" onclick="toggleCombatFilter('player')" class="cf-pill" style="color:#93c5fd;border-color:#2563eb;background:rgba(30,58,138,.30)" title="點亮/點暗：玩家的戰鬥訊息">玩家</button>
                         <button id="cf-btn-mercenary" onclick="toggleCombatFilter('mercenary')" class="cf-pill" style="color:#6ee7b7;border-color:#059669;background:rgba(6,78,59,.30)" title="點亮/點暗：傭兵的戰鬥訊息">傭兵</button>
@@ -3323,6 +3343,30 @@ const WARRIOR_DROPS = {
     // 亡命之徒（墮落的鐮刀死神→實際怪名「邪惡的鐮刀死神」）
     '邪惡的鐮刀死神': [['bk_warrior_outlaw',1]], '死亡之劍': [['bk_warrior_outlaw',0.01]]
 };
+// 🔮 記憶水晶掉落表（幻術士法術書·全職可掉，怪物名稱 → [[mem_ID, 機率%], ...]）：killMob 獨立 roll、受 _dropMult／經典模式影響；與 MOB_DROPS 既有的底比斯心靈破壞/立方地裂掉落並存疊加。多水晶怪（哈維/遺忘之島巨大牛人/思克巴）合併於單一鍵避免重複鍵覆蓋。
+const MEM_DROPS = {
+    // 心靈破壞 mem_mindbreak
+    '混沌': [['mem_mindbreak',2.5]], '死亡': [['mem_mindbreak',2.5]], '多眼怪': [['mem_mindbreak',0.5]], '梅杜莎': [['mem_mindbreak',0.5]],
+    // 立方：地裂 mem_cube_quake
+    '遺忘之島巨斧牛人': [['mem_cube_quake',0.5]], '莫妮亞': [['mem_cube_quake',0.4]], '犰狳': [['mem_cube_quake',0.1]],
+    '哈維': [['mem_mindbreak',0.1],['mem_cube_quake',0.1]],            // 心靈破壞 + 立方地裂
+    '遺忘之島巨大牛人': [['mem_cube_quake',0.8],['mem_pain',0.8]],     // 立方地裂 + 疼痛
+    // 幻想 mem_fantasy
+    '不幸的幻象眼魔': [['mem_fantasy',2]], '小幻象眼魔': [['mem_fantasy',1]], '卡司特王': [['mem_fantasy',0.1]], '奇美拉': [['mem_fantasy',0.1]], '毒蠍': [['mem_fantasy',0.1]], '卡司特': [['mem_fantasy',0.05]],
+    // 幻覺：鑽石高崙 mem_golem
+    '鋼鐵高崙': [['mem_golem',0.5]], '熔岩高崙': [['mem_golem',0.5]], '冰石高崙': [['mem_golem',0.05]],
+    // 洞察 mem_insight
+    '墳墓守護者法師': [['mem_insight',1]], '受詛咒的艾爾摩法師': [['mem_insight',0.5]], '黑暗妖精法師': [['mem_insight',0.1]], '艾爾摩法師': [['mem_insight',0.05]], '黑暗妖精殘兵(法師)': [['mem_insight',0.1]],
+    // 恐慌 mem_panic
+    '巴風特': [['mem_panic',1.5]], '變形怪首領': [['mem_panic',1]], '黑法師': [['mem_panic',0.1]],
+    // 疼痛的歡愉 mem_pain
+    '邪惡的鐮刀死神': [['mem_pain',2.5]], '傲慢的潔尼斯女王': [['mem_pain',2]], '扭曲的潔尼斯女王': [['mem_pain',2]], '不死鳥': [['mem_pain',1]], '遺忘之島飛龍': [['mem_pain',0.5]], '魔狼': [['mem_pain',0.1]], '獨眼巨人': [['mem_pain',0.1]], '殘暴的史巴托': [['mem_pain',0.1]], '恐怖的地獄犬': [['mem_pain',0.1]],
+    '思克巴': [['mem_pain',0.1],['mem_cube_harmony',0.25]],            // 疼痛 + 立方和諧
+    // 幻覺：化身 mem_avatar
+    '不死的木乃伊王': [['mem_avatar',2]], '古代巨人': [['mem_avatar',1]], '巨人': [['mem_avatar',0.3]], '巨人戰士': [['mem_avatar',0.3]], '巨人長老': [['mem_avatar',0.3]], '地獄奴隸': [['mem_avatar',0.25]],
+    // 立方：和諧 mem_cube_harmony
+    '暗黑思克巴女皇': [['mem_cube_harmony',1.5]], '深淵水靈': [['mem_cube_harmony',1.5]], '深淵火靈': [['mem_cube_harmony',1.5]], '水靈之主': [['mem_cube_harmony',0.8]], '火靈之主': [['mem_cube_harmony',0.8]], '思克巴女皇': [['mem_cube_harmony',0.25]]
+};
 // 🔒 試煉兌換道具 → 限定職業：列在 MOB_DROPS 內的「各職業試煉交付/兌換道具」僅該職業擊殺才會掉（非本職直接跳過、也不顯示於掉落表）。
 //    龍騎士的試煉道具走 DRAGON_DROPS 表本身已限定 dragon，故不列於此。掛點：killMob 的 MOB_DROPS 迴圈 + _auditMobDrops 顯示，皆呼叫 trialDropBlocked()。
 const TRIAL_ITEM_CLASS = {
@@ -3561,7 +3605,7 @@ let player = {
          hpRegenMax: 0, hpR: 0, mpR: 0, aspd: 1.0 }
 };
 
-let mapState = { current: "training", mobs: [null, null, null], targetIdx: 0 };
+let mapState = { current: "training", mobs: [null, null, null, null, null], targetIdx: 0 };   // 🆕 5 格（前排 0,1,2＋後排 3,4）
 let createBase = { 
     knight: {str:16, dex:12, con:14, int:8, wis:9, cha:8, pts:8}, 
     mage: {str:8, dex:7, con:12, int:12, wis:12, cha:8, pts:16},
@@ -3869,7 +3913,7 @@ function initCombatLogLock() {
 // ⚡ 快速強化（批次強化）狀態：wpn=武器分頁、arm=防具分頁（含飾品）。sel 為 uid→true 的勾選集合。
 let quickEnh = { wpn: { active: false, target: 6, sel: {} }, arm: { active: false, target: 6, sel: {} } };
 // 🗑️ 快速廢品（批次標記廢品）狀態：wpn/arm/item 三分頁；啟用時預先勾選「已是廢品」者。sel 為 uid→true。（與快速強化同分頁互斥）
-let quickJunk = { wpn: { active: false, sel: {} }, arm: { active: false, sel: {} }, item: { active: false, sel: {} } };
+let quickJunk = { wpn: { active: false, sel: {}, known: {} }, arm: { active: false, sel: {}, known: {} }, item: { active: false, sel: {}, known: {} } };   // known＝面板開啟時(及之後同步)已納入的物品 uid，避免「面板開啟後才掉落的廢品」於確認時被誤取消標記
 
 // ===== ⚔️ 戰鬥日誌來源過濾（敵人/玩家/傭兵/召喚/夥伴）=====
 // _combatSrc：目前正在記錄的戰鬥訊息來源，由各攻擊派發點設定；為 null 時依顏色 type 推定（'enemy'→敵人，其餘→玩家）。
@@ -3882,8 +3926,13 @@ function applyCombatFilter(){
     let el = document.getElementById('combat-log');
     if (el) for (let k in _combatFilter) el.classList.toggle('cf-hide-' + k, !_combatFilter[k]);   // 以 CSS class 隱藏 → 既有與未來訊息一併套用，重新點亮即還原
     for (let k in _combatFilter) { let b = document.getElementById('cf-btn-' + k); if (b) b.classList.toggle('cf-off', !_combatFilter[k]); }   // 按鈕點亮/點暗
+    { let sb = document.getElementById('cf-btn-status'); if (sb) sb.classList.toggle('cf-off', !_showMobStatus); }   // 🩹 狀態顯示鈕點亮/點暗（與過濾列同步初始化）
 }
 function toggleCombatFilter(k){ if (!(k in _combatFilter)) return; _combatFilter[k] = !_combatFilter[k]; saveCombatFilter(); applyCombatFilter(); }
+// 🩹 怪物異常狀態/出血鈍擊等標示顯示開關（按鈕在戰鬥日誌過濾列最左·點暗即隱藏怪卡上的狀態徽章與狀態列；頭目/席琳恩賜標籤不受影響）
+let _showMobStatus = true;
+(function(){ try { let s = localStorage.getItem('lineage_idle_mob_status'); if (s !== null) _showMobStatus = (s === '1'); } catch(e){} })();
+function toggleMobStatus(){ _showMobStatus = !_showMobStatus; try { localStorage.setItem('lineage_idle_mob_status', _showMobStatus ? '1' : '0'); } catch(e){} let b = document.getElementById('cf-btn-status'); if (b) b.classList.toggle('cf-off', !_showMobStatus); renderMobs(); }
 
 function logCombat(msg, type="player", src=null) {
     if(state.ff) return; // 補跑期間不洗版
@@ -4602,8 +4651,8 @@ function hasTeleportRing() {
 // 傳送：清空當前怪物並重置生怪排程；forceBoss=true 時讓下一次生怪必定為 BOSS
 function doTeleport(forceBoss) {
     saveSiegeBossHp();   // 傳送前保存攻城塔/門血量
-    mapState.mobs = [null, null, null];
-    mapState.spawnAt = [null, null, null];
+    mapState.mobs = [null, null, null, null, null];
+    mapState.spawnAt = [null, null, null, null, null];
     if(forceBoss) mapState.forceBoss = true;
     mapState.suppressSiegeBoss = !forceBoss;   // 無戒指傳送：必不出現城門/守護塔；持戒指：forceBoss 必定出現
     renderMobs();
@@ -4842,6 +4891,27 @@ let _uiDirty = false, _mobsDirty = false;
 function updateUI() { if (state.inTick) { _uiDirty = true; return; } _uiDirty = false; _updateUIImpl(); }
 function renderMobs() { if (state.inTick) { _mobsDirty = true; return; } _mobsDirty = false; _renderMobsImpl(); }
 function flushTickRender() { if (_uiDirty) { _uiDirty = false; _updateUIImpl(); } if (_mobsDirty) { _mobsDirty = false; _renderMobsImpl(); } }
+// 🚀 怪物卡互動穩定：① 滑鼠所在怪的 uid 以 JS 追蹤(_hoverMobUid)、每次重繪都重新套用「顯示名字」class→避免重繪(每 tick 換掉 #mob-list 內容)使 :hover 瞬間失效造成名字一直閃；② 按住怪物卡期間(_mobPointerDown)延後重繪→避免 mousedown↔mouseup 之間整列被換掉使點擊切換目標失效。
+let _hoverMobUid = null, _mobPointerDown = false, _mobRebuildPending = false;
+function _applyHoverName() {   // 依 _hoverMobUid 即時切換各卡名字顯示(不整列重繪)
+    let ml = document.getElementById('mob-list'); if (!ml) return;
+    ml.querySelectorAll('.mob-target').forEach(c => c.classList.toggle('name-show', !!_hoverMobUid && c.getAttribute('data-uid') === _hoverMobUid));
+}
+function _initMobListGuard() {   // 在 #mob-list(穩定父節點·只換其 innerHTML)上掛委派事件，跨重繪存活
+    let ml = document.getElementById('mob-list'); if (!ml || ml._guardInit) return;
+    ml._guardInit = true;
+    ml.addEventListener('pointerdown', () => { _mobPointerDown = true; });
+    ml.addEventListener('mouseover', e => {   // 只有滑到「怪物圖片區」才顯示名字(圖 pointer-events:none→事件落在 .mob-img-inner)
+        let inImg = e.target.closest && e.target.closest('.mob-img-wrap');
+        let card = e.target.closest && e.target.closest('.mob-target');
+        let uid = (card && inImg) ? card.getAttribute('data-uid') : null;
+        if (uid !== _hoverMobUid) { _hoverMobUid = uid; _applyHoverName(); }
+    });
+    ml.addEventListener('mouseleave', () => { if (_hoverMobUid !== null) { _hoverMobUid = null; _applyHoverName(); } });   // 真正離開整個怪物列才清(不受內部重繪影響)
+    let release = () => { if (!_mobPointerDown) return; _mobPointerDown = false; if (_mobRebuildPending) { _mobRebuildPending = false; setTimeout(() => _renderMobsImpl(), 0); } };   // 放開後(讓 click→setTarget 先在存活節點上觸發)再補一次重繪
+    document.addEventListener('pointerup', release);
+    document.addEventListener('pointercancel', release);
+}
 function tick() {
     if(!state.running || player.dead) return;
     state.ticks++;
@@ -4949,7 +5019,7 @@ function tick() {
     // mapState.spawnAt[i] = 該格子預定出怪的 tick 值；為 null 代表該格目前有怪、無需排程。
     {
         let isPureBossMap = PURE_BOSS_MAPS.includes(mapState.current) && !KING_ROOMS[mapState.current];   // 🔧 軍王之室仍屬純BOSS房(免自動瞬移/追蹤)，但版面用三格
-        if(!mapState.spawnAt) mapState.spawnAt = [null, null, null];
+        if(!mapState.spawnAt) mapState.spawnAt = [null, null, null, null, null];
         let nowT = state.ticks;
         if(KING_ROOMS[mapState.current] && state._kbRespawnAt != null) {
             // 🔧 軍王之室復活等待中：15 秒內不刷任何怪；時間到則消耗 1 把鑰匙、從頭重生軍王與兩側小怪（背景/離線補跑期間也照常復活）
@@ -4958,7 +5028,8 @@ function tick() {
             // 🏛️ 雙BOSS祭壇：不逐格自動補怪（初次生成於 changeMap；單隻陣亡不補）。防呆：兩隻皆亡卻未標記全滅 → 補標，交由 settleDeadMobs 啟動 15 秒同時復活
             if(state._kbVictory !== true && !mapState.mobs.some(m => m && m.boss)) state._kbVictory = true;
         } else {
-            for(let i=0; i<3; i++) {
+            let slotCount = backSlotsActive() ? 5 : 3;                          // 🆕 一般狩獵地圖開放後排兩格(3,4)→最多 5 隻；特殊版面維持 3 格
+            for(let i=0; i<slotCount; i++) {
                 if(mapState.mobs[i]) { mapState.spawnAt[i] = null; continue; } // 有怪：清除排程
                 if(isPureBossMap && i !== 1) continue;                          // 純 BOSS 房只生中央
                 let delay;
@@ -4987,7 +5058,7 @@ function tick() {
         }
     }
     
-    for(let i=0; i<3; i++) {
+    for(let i=0; i<mapState.mobs.length; i++) {   // 🆕 含後排(3,4)：所有在場怪皆會行動攻擊
         let m = mapState.mobs[i];
         if(!m) continue;
         if(m._hasteTicks > 0) { m._hasteTicks--; if(m._hasteTicks <= 0 && m._baseAtkSpd !== undefined) { m.atkSpd = m._baseAtkSpd; m._baseAtkSpd = undefined; } }  // 自我加速到期恢復
@@ -5221,6 +5292,15 @@ const KING_ROOMS = {
 const PURE_BOSS_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room', 'thebes_temple'];
 const BOSS_BIG_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair'];   // 👑 方案B放大版面只套用這3個龍窟(不含底比斯祭壇等其餘純BOSS房)
 
+// 🆕 後排雙格：一般狩獵地圖在原本三格(前排)之外，再追加兩格「後排」小怪→場上最多同時 5 隻。
+//    後排(idx 3,4)只出一般怪、不出頭目；純BOSS房/軍王之室/攻城/時空裂痕維持三格不變(避免改動其專屬版面與平衡)。
+function backSlotsActive() {
+    return !PURE_BOSS_MAPS.includes(mapState.current)
+        && !KING_ROOMS[mapState.current]
+        && mapState.current !== 'rift_battle'
+        && !isSiegeArea(mapState.current);
+}
+
 // 血盟敵人：等級與能力隨玩家等級縮放，於生成當下依各自的 scale 參數計算
 function applySiegeEnemyScaling(mob) {
     let L = Math.max(1, player.lv);
@@ -5303,6 +5383,7 @@ function spawnMob(idx) {
         if(mapState.mobs[idx].hard) initHardSkin(mapState.mobs[idx]);
         return;
     }
+    let backSlot = idx >= 3;   // 🆕 後排格(3,4)：只出一般怪，不出任何頭目(含 wantBoss/卡瑞/林德拜爾)
     let bossInBattle = mapState.mobs.some(m => m && m.boss);
     let bossPool = pool.filter(id => DB.mobs[id] && DB.mobs[id].boss);
     let normalPool = pool.filter(id => DB.mobs[id] && !DB.mobs[id].boss);
@@ -5314,7 +5395,8 @@ function spawnMob(idx) {
     
     let mobId;
     let siegeArea = isSiegeArea(mapState.current);
-    let wantBoss = !bossInBattle && bossPool.length > 0 && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (Math.random() < 0.03)));
+    let allowMultiBoss = backSlotsActive();   // 🆕 5格地圖：前3格(0,1,2)可同時出現多隻頭目（不再受 bossInBattle 限制·後排3,4仍由 !backSlot 排除）；攻城等3格版面維持單頭目
+    let wantBoss = !backSlot && (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (Math.random() < 0.03)));
     if(mapState.forceBoss) mapState.forceBoss = false;   // 強制旗標只作用於下一次生怪
     if(wantBoss) {
         mobId = bossPool[Math.floor(Math.random() * bossPool.length)];
@@ -5350,7 +5432,7 @@ function spawnMob(idx) {
     }
     // 🔧 卡瑞（BOSS）：身上「同時」攜帶 飛龍的爪子/蜥蜴的角/水晶球/妖魔戰士護身符 時，
     //    於龍之谷地監6樓 1% 機率出現（場上無其他 BOSS 時才出現，且同時最多一隻）
-    if (mapState.current === 'zone_31'
+    if (!backSlot && mapState.current === 'zone_31'
         && !bossInBattle
         && !mapState.mobs.some(m => m && m.n === '卡瑞')
         && ['item_dragon_claw', 'item_lizard_horn', 'item_crystal_ball', 'item_orc_amulet'].every(q => player.inv.some(i => i.id === q && i.cnt > 0))
@@ -5366,7 +5448,7 @@ function spawnMob(idx) {
     }
     // 🐉 林德拜爾（BOSS）：持有「幼龍蛋」於任一野外地圖時，1% 機率改為刷出林德拜爾
     //    （場上無其他 BOSS 時才出現、同時最多一隻；賣掉幼龍蛋即不再遭遇）
-    if (!bossInBattle
+    if (!backSlot && !bossInBattle
         && MAP_CATEGORIES.wild.some(m => m.v === mapState.current)
         && !mapState.mobs.some(m => m && m.n === '林德拜爾')
         && player.inv.some(i => i.id === 'item_dragon_egg' && i.cnt > 0)
@@ -5396,21 +5478,14 @@ function spawnMob(idx) {
 }
 
 function getMobColor(mobLv) {
-    let diff = mobLv - player.lv;
-    if (diff >= 11) return "mc-red";      // 比自己高11等以上：鮮紅
-    if (diff >= 7)  return "mc-lred";     // 高7~10：淺紅（淡）
-    if (diff >= 4)  return "mc-yellow";   // 高4~6：黃色
-    if (diff >= -3) return "mc-white";    // 高3~低3：白色
-    if (diff >= -6) return "mc-lgreen";   // 低4~6：淺綠
-    if (diff >= -10) return "mc-lblue";   // 低7~10：淺藍
-    return "mc-dblue";                    // 低11等以上：深藍
+    return "mc-mobname";   // 🔧 戰鬥日誌怪名＝淡金色（2026-06）：怪卡名已統一白色(getMobNameClass 直接回白)，日誌怪名改金色以與其他白色訊息區隔；getMobColor 主要供 logCombat 怪名 span 使用
 }
 
 // 怪物名稱顯示用 class：血盟＝固定鮮紅+紅色醒目特效（不受等差影響）；頭目＝保留等差顏色+金色專屬特效
 function getMobNameClass(m) {
-    if (m && m.race === '血盟') return 'mob-name-pledge font-bold';
-    if (m && m.boss) return getMobColor(m.lv) + ' font-bold mob-name-boss';
-    return getMobColor(m.lv) + ' font-bold';
+    if (m && m.race === '血盟') return 'mc-white font-bold';   // 🔧 統一白色（血盟原紅色脈動 mob-name-pledge 已取消，與其他怪一致）
+    if (m && m.boss) return 'mc-white font-bold mob-name-boss';   // 🔧 怪卡名固定白色（不走 getMobColor·日誌怪名才用金色 mc-mobname）
+    return 'mc-white font-bold';
 }
 
 function getTarget() {
@@ -5418,7 +5493,7 @@ function getTarget() {
     if (t && t._dead) t = null;   // 🔧 架構#2：已死亡待清算的怪不可作為目標
     // 當前目標不存在（如剛開局或剛擊殺）時，依照「中央(1) -> 左邊(0) -> 右邊(2)」順序鎖定第一個活著的敵人
     if(!t) {
-        let priorityOrder = [1, 0, 2];
+        let priorityOrder = [1, 0, 2, 3, 4];   // 🆕 前排(中1→左0→右2)優先，其次後排(3,4)；後排為 undefined 時自動略過
         for(let i of priorityOrder) {
             if(mapState.mobs[i] && !mapState.mobs[i]._dead) {
                 setTarget(i);
@@ -6594,13 +6669,16 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
         resFactor = Math.max(0, Math.min(1, resFactor));
         totalDmg = Math.floor(totalDmg * resFactor);
 
-        // 隨機減免：騎士 (10-AC)/2、妖精/黑暗妖精 (10-AC)/3、法師 (10-AC)/5
+        // 隨機減免：騎士 (10-AC)/2；妖精/黑暗妖精/龍騎士/戰士 (10-AC)/3；幻術士 (10-AC)/4；王族/法師等 (10-AC)/5
         let rndDrMax = 0;
         let acGap = Math.max(0, 10 - player.d.ac);
-        if (player.cls === 'knight')      rndDrMax = Math.floor(acGap / 2);
-        else if (player.cls === 'elf')    rndDrMax = Math.floor(acGap / 3);
-        else if (player.cls === 'dark')   rndDrMax = Math.floor(acGap / 3);   // 🔧 黑暗妖精：(10-AC)/3（同妖精）
-        else                              rndDrMax = Math.floor(acGap / 5);
+        if (player.cls === 'knight')         rndDrMax = Math.floor(acGap / 2);
+        else if (player.cls === 'elf')       rndDrMax = Math.floor(acGap / 3);
+        else if (player.cls === 'dark')      rndDrMax = Math.floor(acGap / 3);   // 🔧 黑暗妖精：(10-AC)/3（同妖精）
+        else if (player.cls === 'dragon')    rndDrMax = Math.floor(acGap / 3);   // 🐉 龍騎士：(10-AC)/3
+        else if (player.cls === 'warrior')   rndDrMax = Math.floor(acGap / 3);   // ⚔️ 戰士：(10-AC)/3
+        else if (player.cls === 'illusion')  rndDrMax = Math.floor(acGap / 4);   // 🔮 幻術士：(10-AC)/4
+        else                                 rndDrMax = Math.floor(acGap / 5);   // 👑 王族／法師等：(10-AC)/5
         rndDrMax = Math.max(0, rndDrMax);
         let randomDr = Math.floor(Math.random() * (rndDrMax + 1));
 
@@ -7252,6 +7330,7 @@ function _auditMobDrops(mobName) {
     if (typeof DARK_CRYSTAL_DROPS !== 'undefined') push(DARK_CRYSTAL_DROPS);
     if (typeof DRAGON_DROPS !== 'undefined') push(DRAGON_DROPS);   // 🐉 龍騎士掉落表全職可掉（書板/鎖鏈劍）；妖魔搜索文件等試煉道具由 push 內 trialDropBlocked 對非龍騎士隱藏
     if (typeof WARRIOR_DROPS !== 'undefined') push(WARRIOR_DROPS);   // ⚔️ 戰士技能印記掉落表（全職可掉）
+    if (typeof MEM_DROPS !== 'undefined') push(MEM_DROPS);   // 🔮 記憶水晶掉落表（全職可掉）
     return ids;
 }
 function renderAuditDrops(el) {
@@ -7441,6 +7520,9 @@ function killMob(idx) {
     // === ⚔️ 戰士技能印記掉落（全職可掉·僅戰士可學）===
     { let _wrd = (typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[mob.n] : null;
       if (_wrd) _wrd.forEach(e => { if (DB.items[e[0]] && Math.random() < (e[1] * _dropMult) / 100) gainItem(e[0], 1); }); }
+    // 🔮 記憶水晶掉落（幻術士法術書·全職可掉，獨立 roll·與 MOB_DROPS 並存）
+    { let _memd = (typeof MEM_DROPS !== 'undefined') ? MEM_DROPS[mob.n] : null;
+      if (_memd) _memd.forEach(e => { if (DB.items[e[0]] && Math.random() < (e[1] * _dropMult) / 100) gainItem(e[0], 1); }); }
 
     // === 40等以上 BOSS（夢幻之島 + 攻城區/siegeEnemy 除外）：賦予祝福卷軸稀有掉落，各自獨立判定 ===
     if (mob.boss && mob.lv >= 40 && mapState.current !== 'dream_island' && !isSiegeArea(mapState.current) && !mob.siegeEnemy) {
@@ -7531,6 +7613,15 @@ function settleDeadMobs() {
             if (mapState.targetIdx === 2) mapState.targetIdx = -1;
         }
     }
+    // 🆕 後排(3,4)死亡：原地清空，不參與前排輸送帶位移（後排為固定位置的獨立格，各自重新排程出怪）
+    for (let i = 3; i < mapState.mobs.length; i++) {
+        if (mapState.mobs[i] && mapState.mobs[i]._dead) {
+            mapState.mobs[i] = null;
+            if (mapState.spawnAt) mapState.spawnAt[i] = null;
+            if (mapState.targetIdx === i) mapState.targetIdx = -1;
+            changed = true;
+        }
+    }
     if (changed) renderMobs();
     // 🔧 軍王之室：擊敗頭目（掉落已於 killMob 發放）後處理；補跑期間延後到回到即時再執行。
     //   身上仍有「軍王的鑰匙」→ 留在室內，清空全部怪物，15 秒後消耗 1 把鑰匙從頭復活軍王；
@@ -7542,8 +7633,8 @@ function settleDeadMobs() {
         let _keyNm = DB.items[_keyId] ? DB.items[_keyId].n : '鑰匙';
         let _hasKey = _krm && player.inv.some(i => i.id === _keyId && (i.cnt || 1) >= 1);
         if (_hasKey) {
-            mapState.mobs = [null, null, null];
-            mapState.spawnAt = [null, null, null];
+            mapState.mobs = [null, null, null, null, null];
+            mapState.spawnAt = [null, null, null, null, null];
             mapState.targetIdx = -1;
             state._kbRespawnAt = state.ticks + 150;   // 15 秒（150 tick）後復活
             if (!state.ff) { renderMobs(); updateUI(); }   // 補跑期間不逐次刷新，跑完由 gameLoop 統一刷新
@@ -7585,7 +7676,7 @@ function kbRoomRespawn() {
     if ((_kit.cnt || 1) > 1) _kit.cnt -= 1; else player.inv.splice(_ki, 1);
     if (_kr.dual) { _kr.bosses.forEach((bid, k) => spawnMob(k)); }   // 🏛️ 雙BOSS祭壇：兩隻BOSS同時復活
     else { spawnMob(1); spawnMob(0); spawnMob(2); }                  // 中央軍王 + 兩側小怪，全新滿血
-    mapState.spawnAt = [null, null, null];
+    mapState.spawnAt = [null, null, null, null, null];
     mapState.targetIdx = -1;
     logSys(`<span class="text-amber-300 font-bold">你消耗了 1 把 ${_keyNm}，${_kr.dual ? '兩位神祇' : '軍王'}再度甦醒！</span>`);
     if (!state.ff) { renderTabs(true); renderMobs(); updateUI(); saveGame(); }   // 🔧 補跑期間不逐次刷新/存檔，跑完由 gameLoop 統一處理（避免大量 localStorage 寫入）
@@ -7610,7 +7701,7 @@ function enterPrideFloor(n) {
     mapState.current = 'pride_f' + n;
     player.lastBattleMap = mapState.current;   // 🗼 記錄攀登位置：回村後點「出發」會被導回傲慢之塔1樓（見 departToLastBattle）
     state.prideFloor = n;
-    mapState.mobs = [null, null, null];
+    mapState.mobs = [null, null, null, null, null];
     state._kbRespawnAt = null;
     mapState.forceBoss = false;
     mapState.targetIdx = -1;
@@ -7682,7 +7773,7 @@ function enterOblivionMap(mapKey) {
     saveSiegeBossHp();
     mapState.current = mapKey;
     player.lastBattleMap = mapKey;
-    mapState.mobs = [null, null, null];
+    mapState.mobs = [null, null, null, null, null];
     state._kbRespawnAt = null;
     mapState.forceBoss = false;
     mapState.targetIdx = -1;
@@ -7778,7 +7869,7 @@ function enterRiftMap() {   // 仿 enterPrideFloor 的戰鬥進場（不走 chan
     saveSiegeBossHp();
     mapState.current = 'rift_battle';
     player.lastBattleMap = 'rift_battle';
-    mapState.mobs = [null, null, null];
+    mapState.mobs = [null, null, null, null, null];
     state._kbRespawnAt = null;
     mapState.forceBoss = false;
     mapState.targetIdx = -1;
@@ -9671,6 +9762,7 @@ function castSkillInner(skId) {
     if(player.mp < cost) return false;
     if(sk.hpCost && player.hp <= sk.hpCost + 5) return false;  // HP 不足，拒絕施放
     if(sk.hpCost && sk.type !== 'convert') { let _hpSkEl = document.getElementById('set-hp-skill'); let _hpSkThr = _hpSkEl ? (parseFloat(_hpSkEl.value) || 0) : 0; if(_hpSkThr > 0 && (player.mhp || 0) > 0 && (player.hp / player.mhp * 100) < _hpSkThr) return false; }   // 🐉 消耗HP技能：HP 低於自訂門檻(%)時暫停自動施放（自動路徑專用；轉換魔法另有 set-hp-convert 門檻，故排除避免重複）
+    if(sk.hpCost && sk.mp && sk.type !== 'convert') { let _mpSkEl = document.getElementById('set-mp-atk'); let _mpSkThr = _mpSkEl ? (parseFloat(_mpSkEl.value) || 0) : 0; if(_mpSkThr > 0 && (player.mmp || 0) > 0 && (player.mp / player.mmp * 100) < _mpSkThr) return false; }   // 🔧 同時消耗HP與MP的技能：MP 低於「攻擊技能MP門檻(set-mp-atk)」時亦暫停自動施放→與HP門檻(set-hp-skill)取「任一不符即停」（攻擊型本就在 autoCastSpells 先擋過此門檻，這裡再涵蓋增益型如覺醒/冥想/隱身/堅固防護）
 
     if(sk.type === 'convert') {
         // 🔧 魔力奪取（drain）：消耗 HP，必須對怪物施展；以異常魔法命中（abnormalMagicHit，與迷魅術一致，
@@ -11389,50 +11481,53 @@ function _updateUIImpl() {
 
 function _renderMobsImpl() {
     if(state.ff) return; // 補跑期間不刷新畫面
+    _initMobListGuard();
+    if(_mobPointerDown) { _mobRebuildPending = true; return; }   // 🚀 按住怪物卡期間延後重繪→點擊切換目標不被中斷
     let html = '';
     let isPureBossMap = PURE_BOSS_MAPS.includes(mapState.current) && !KING_ROOMS[mapState.current];   // 🔧 軍王之室仍屬純BOSS房(免自動瞬移/追蹤)，但版面用三格
 
-    for(let i=0; i<3; i++) {
+    let _back = backSlotsActive();                                   // 🆕 五格模式：原三格(前排)＋後排兩格
+    let _order = _back ? [0, 3, 1, 4, 2] : [0, 1, 2];                // 後排(3,4)插在前排之間→交錯前後景深
+    for(const i of _order) {
         let m = mapState.mobs[i];
+        let _rowCls = (i >= 3) ? ' mob-back' : (_back ? ' mob-front' : '');   // 後排/前排版位 class（三格模式不加→沿用原版面）
         if (m) {
             let act = (i === mapState.targetIdx) ? 'active' : '';
-            let pct = Math.max(0, (m.curHp / m.hp)*100);
             let imgUrl = m.img || `assets/icons/monsters/${m.n}.png`;
             let hitClass = m.justHit ? (m.justHit === true ? 'anim-hit-normal' : `anim-hit-${m.justHit}`) : '';
             m.justHit = false;
 
             let _badgeTags = '';
-            if(m.st) {
+            if(_showMobStatus && m.st) {   // 🩹 狀態開關關閉時不顯示異常狀態徽章
                 let order = ['freeze','stun','stone','sleep','blind','weaken','disease','vacuum','broken','slow','mrhalf','magicseal','fragile','armorbreak','confuse','panic','guardbreak','terror','doom'];   // 🔮 含脆弱、🔧 破甲(黑妖破壞盔甲)、🔮 混亂/恐慌、🐉 護衛毀滅/恐懼/死神；中毒不顯示、出血改用 🩸 emoji（見下方圖片下方列）
                 _badgeTags = order.filter(k => m.st[k] > 0).map(k =>
                     `<span class="px-1 rounded bg-purple-900/70 text-purple-200 text-[10px]">${STATUS_NAME[k]}</span>`).join(' ');
             }
-            // 🐉 弱點曝光：以堆疊層數顯示（非 m.st，獨立 m.weakExpose）
-            if(m.weakExpose > 0) _badgeTags = (_badgeTags ? _badgeTags + ' ' : '') + `<span class="px-1 rounded bg-amber-900/70 text-amber-200 text-[10px] font-bold">弱點${m.weakExpose}</span>`;
-            // 🔮 席琳恩賜：名字下方常駐標誌（置於異常狀態列最前，不會被狀態列覆蓋）
-            if(m._grace) _badgeTags = `<span class="px-1 rounded bg-red-950/80 grace-badge text-[10px] font-bold">席琳恩賜</span>` + (_badgeTags ? ' ' + _badgeTags : '');
-            // 🔧 頭目標籤：BOSS 名字下方常駐金色「頭目」標籤（置於最前）
-            if(m.boss) _badgeTags = `<span class="px-1 rounded bg-amber-900/80 text-amber-200 text-[10px] font-bold border border-amber-500/60">頭目</span>` + (_badgeTags ? ' ' + _badgeTags : '');
+            // 🐉 弱點曝光：以堆疊層數顯示（非 m.st，獨立 m.weakExpose）；🩹 狀態開關關閉時不顯示
+            if(_showMobStatus && m.weakExpose > 0) _badgeTags = (_badgeTags ? _badgeTags + ' ' : '') + `<span class="px-1 rounded bg-amber-900/70 text-amber-200 text-[10px] font-bold">弱點${m.weakExpose}</span>`;
+            // 🔮 席琳恩賜：名字下方常駐標誌（置於異常狀態列最前，不會被狀態列覆蓋）；🩹 狀態開關關閉時亦隱藏
+            if(_showMobStatus && m._grace) _badgeTags = `<span class="px-1 rounded bg-red-950/80 grace-badge text-[10px] font-bold">席琳恩賜</span>` + (_badgeTags ? ' ' + _badgeTags : '');
+            // 🔧 頭目標籤：BOSS 名字下方常駐金色「頭目」標籤（置於最前）；🩹 狀態開關關閉時亦隱藏
+            if(_showMobStatus && m.boss) _badgeTags = `<span class="px-1 rounded bg-amber-900/80 text-amber-200 text-[10px] font-bold border border-amber-500/60">頭目</span>` + (_badgeTags ? ' ' + _badgeTags : '');
             // 徽章列固定常駐（單行、固定高度），避免有/無狀態時背景框忽大忽小
             let badges = `<div class="flex justify-center gap-0.5 mb-1 overflow-hidden" style="height:18px;">${_badgeTags}</div>`;
+            // 🩹 狀態列（出血/猛爆毒/鈍擊/硬皮）：狀態開關關閉時清空內容（保留固定高度列避免版面跳動）
+            let _statRow = !_showMobStatus ? '' : `${(m.bleeds && m.bleeds.length) ? `<span class="text-[11px] font-bold" style="display:inline-flex;align-items:center;line-height:1;" title="出血層數">🩸×${m.bleeds.length}</span>` : ''}${(m._burstPoison && m._burstPoison.left > 0) ? `<span class="text-[11px] font-bold" style="display:inline-flex;align-items:center;line-height:1;color:#a3e635;" title="猛爆劇毒：每秒100固定傷害（5秒）">💥毒</span>` : ''}${(m._bluntShow && state.ticks < m._bluntShow) ? `<span class="text-[11px] font-bold text-amber-300" style="display:inline-flex;align-items:center;line-height:1;" title="鈍擊：攻擊延遲中">🔨鈍</span>` : ''}${(m.hardSkin > 0) ? `<span class="text-[11px] font-bold text-stone-300" style="display:inline-flex;align-items:center;line-height:1;" title="硬皮值：額外物理減傷（魔法不減），可用鈍器/重擊消磨">🛡${m.hardSkin}</span>` : ''}`;
 
-            html += `<div class="mob-target ${act}${BOSS_BIG_MAPS.includes(mapState.current) ? ' boss-slot' : (m.boss ? ' boss-zoom' : '')}" onclick="setTarget(${i})">
-                        <div class="flex justify-center text-sm mb-1">
+            html += `<div class="mob-target ${act}${_rowCls}${m.uid === _hoverMobUid ? ' name-show' : ''}${BOSS_BIG_MAPS.includes(mapState.current) ? ' boss-slot' : (m.boss ? ' boss-zoom' : '')}" data-uid="${m.uid}" onclick="setTarget(${i})">
+                        <div class="flex justify-center text-sm mb-1 mob-name">
                             <span class="${getMobNameClass(m)}">${m.n}</span>
                         </div>
                         ${badges}
                         <div class="flex justify-center mb-1 mob-img-wrap">
                             <span class="mob-img-inner"><img src="${imgUrl}" alt="${m.n}" onerror="this.onerror=null; this.src='https://placehold.co/100x100/1e293b/ffffff?text=?';" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}"></span>
                         </div>
-                        <div class="flex justify-center items-center gap-2 mb-1" style="height:16px;display:flex;align-items:center;justify-content:center;gap:8px;">${(m.bleeds && m.bleeds.length) ? `<span class="text-[11px] font-bold" style="display:inline-flex;align-items:center;line-height:1;" title="出血層數">🩸×${m.bleeds.length}</span>` : ''}${(m._burstPoison && m._burstPoison.left > 0) ? `<span class="text-[11px] font-bold" style="display:inline-flex;align-items:center;line-height:1;color:#a3e635;" title="猛爆劇毒：每秒100固定傷害（5秒）">💥毒</span>` : ''}${(m._bluntShow && state.ticks < m._bluntShow) ? `<span class="text-[11px] font-bold text-amber-300" style="display:inline-flex;align-items:center;line-height:1;" title="鈍擊：攻擊延遲中">🔨鈍</span>` : ''}${(m.hardSkin > 0) ? `<span class="text-[11px] font-bold text-stone-300" style="display:inline-flex;align-items:center;line-height:1;" title="硬皮值：額外物理減傷（魔法不減），可用鈍器/重擊消磨">🛡${m.hardSkin}</span>` : ''}</div>
-                        ${player.classicMode ? '' : `<div class="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                            <div class="bg-red-500 h-full transition-all" style="width:${pct}%"></div>
-                        </div>`}
+                        <div class="flex justify-center items-center gap-2 mb-1" style="height:16px;display:flex;align-items:center;justify-content:center;gap:8px;">${_statRow}</div>
                      </div>`;
         } else {
             // 👇 修改這裡：純 BOSS 房除了中央（i === 1）以外，其餘兩格渲染為透明隱形區塊
             // 🔧 怪物尚未出現的空格：不顯示「搜尋中...」與虛線框，渲染為透明隱形區塊（保留版位、不擾亂背景）
-            html += `<div class="mob-target !border-transparent !bg-transparent cursor-default pointer-events-none"></div>`;
+            html += `<div class="mob-target${_rowCls} !border-transparent !bg-transparent cursor-default pointer-events-none"></div>`;
         }
     }
     document.getElementById('mob-list').innerHTML = html;
@@ -12505,6 +12600,7 @@ function buildQuickHeader(type) {
     let hasEnh = (type === 'wpn' || type === 'arm');
     if (hasEnh && quickEnh[type].active) return buildQuickEnhanceHeader(type);   // 強化進行中：沿用原強化表頭
     let jnk = quickJunk[type];
+    if (jnk.active) _qjSync(type);   // 🔧 渲染前先同步新掉落物品到面板狀態（新廢品預先勾選），確認時才不會誤取消其標記
     let hdr = document.createElement('div');
     hdr.className = 'sticky top-0 z-10 mb-1 bg-slate-900 pb-1';
     if (jnk.active) {   // 快速廢品進行中：取消／確認／全選（無數值選擇）
@@ -12529,16 +12625,24 @@ function buildQuickHeader(type) {
 // 啟用快速廢品：取消同分頁快速強化＋預先勾選「已是廢品」者（用戶要求：廢品一開始就是勾選中）
 function toggleQuickJunk(type) {
     if ((type === 'wpn' || type === 'arm') && quickEnh[type].active) { quickEnh[type].active = false; quickEnh[type].sel = {}; }
-    let st = quickJunk[type]; st.active = true; st.sel = {};
-    _qjEligibleItems(type).forEach(i => { if (i.junk) st.sel[i.uid] = true; });
+    let st = quickJunk[type]; st.active = true; st.sel = {}; st.known = {};
+    _qjEligibleItems(type).forEach(i => { st.known[i.uid] = true; if (i.junk) st.sel[i.uid] = true; });   // 開啟當下：全部納入 known，已是廢品者預先勾選
     renderTabs(true);
 }
-function cancelQuickJunk(type) { let st = quickJunk[type]; st.active = false; st.sel = {}; renderTabs(true); }
+// 🔧 面板開啟後才掉落／新增的可廢品物品：比照「開啟當下」納入面板——標記 known，且「已是廢品(junkPrefs 自動標記)」者預先勾選。
+//    這樣確認時不會把這些新廢品當成「未勾選」而誤 i.junk=false＋刪除 junkPrefs（刪簽章＝整類廢品記憶被取消）。已在 known 者不再覆寫其勾選狀態（尊重使用者手動取消勾選）。
+function _qjSync(type) {
+    let st = quickJunk[type]; if (!st.active) return;
+    if (!st.known) st.known = {};
+    _qjEligibleItems(type).forEach(i => { if (!st.known[i.uid]) { st.known[i.uid] = true; if (i.junk) st.sel[i.uid] = true; } });
+}
+function cancelQuickJunk(type) { let st = quickJunk[type]; st.active = false; st.sel = {}; st.known = {}; renderTabs(true); }
 function quickJunkSelectAll(type, checked) { let st = quickJunk[type]; st.sel = {}; if (checked) _qjEligibleItems(type).forEach(i => st.sel[i.uid] = true); renderTabs(true); }
 function toggleQuickJunkItem(type, uid) { let st = quickJunk[type]; if (st.sel[uid]) delete st.sel[uid]; else st.sel[uid] = true; renderTabs(true); }
 // 確認：依勾選最終狀態設定每件 junk（勾＝廢品、未勾＝取消廢品），同步 junkPrefs（記憶/取消記憶）
 function runQuickJunk(type) {
     let st = quickJunk[type];
+    _qjSync(type);   // 🔧 確認前再同步一次：戰鬥節流期間(renderTabs 被合併)剛掉落的廢品也納入並預先勾選，避免被當未勾選誤取消標記
     if (!player.junkPrefs) player.junkPrefs = {};
     let marked = 0, unmarked = 0;
     _qjEligibleItems(type).forEach(i => {
@@ -12548,7 +12652,7 @@ function runQuickJunk(type) {
         if (want) { player.junkPrefs[itemSig(i)] = true; marked++; }
         else { delete player.junkPrefs[itemSig(i)]; unmarked++; }
     });
-    st.active = false; st.sel = {};
+    st.active = false; st.sel = {}; st.known = {};
     logSys(`<span class="text-amber-300 font-bold">快速廢品完成：</span>標記 ${marked} 件、取消 ${unmarked} 件。`);
     renderTabs(true);
     saveGame();
@@ -13102,9 +13206,12 @@ function departToLastBattle() {
         return;
     }
     if (!tgt || (!DB.maps[tgt] && !KING_ROOMS[tgt])) { logSys('<span class="text-slate-400">尚無上一張戰鬥地圖，請從地圖選單選擇前往。</span>'); return; }
-    if (KING_ROOMS[tgt] && !player.inv.some(i => i.id === 'item_king_key' && (i.cnt || 1) >= 1)) {
-        logSys('<span class="text-red-400">鑰匙不足，無法進入軍王之室。</span>');
-        return;
+    if (KING_ROOMS[tgt]) {   // 🔧 鑰匙閘改用「該房自己的鑰匙」(_kr.key)——底比斯歐西里斯祭壇需 item_thebes_altar_key，不再誤用 item_king_key（修：持軍王鑰匙竟能直接「出發」回祭壇）
+        let _kk = KING_ROOMS[tgt].key || 'item_king_key';
+        if (!player.inv.some(i => i.id === _kk && (i.cnt || 1) >= 1)) {
+            logSys(`<span class="text-red-400">鑰匙不足，無法進入${KING_ROOMS[tgt].name || '軍王之室'}。</span>`);
+            return;
+        }
     }
     setMapSelectors(tgt);
     if (document.getElementById('map-select').value !== tgt) {   // 目標目前不可前往（如攻城已結束、地圖未開放）
@@ -13613,7 +13720,7 @@ function changeMap(force) {
     mapState.current = document.getElementById('map-select').value;
     if (!mapState.current.startsWith('town_')) player.lastBattleMap = mapState.current;   // 🔧 記住最後所在的戰鬥地圖，供村莊「出發」按鈕一鍵返回
     { let _c = mapCategoryOf(mapState.current); if(_c) { if(!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat[_c] = mapState.current; } }   // 記住各分類最後到過的地圖
-    mapState.mobs = [null, null, null];
+    mapState.mobs = [null, null, null, null, null];
     state._kbRespawnAt = null;    // 🔧 離開/進入任何地圖即取消軍王之室未完成的復活倒數（避免殘留狀態）
     state._kbVictory = false;     // 🏛️ 進入新地圖一併清除未結算的全滅旗標（避免雙BOSS祭壇殘留誤觸發）
     mapState.forceBoss = false;   // 🔧 傳送戒指的必出BOSS僅在施放傳送的當下有效：換地圖即失效，需再次手動施放傳送術
@@ -13668,7 +13775,7 @@ function changeMap(force) {
         // 🏛️ 雙BOSS祭壇：進場立即生成兩隻BOSS（之後不逐格補怪，兩隻皆亡才會在 15 秒後同時復活）
         if (KING_ROOMS[mapState.current] && KING_ROOMS[mapState.current].dual) {
             KING_ROOMS[mapState.current].bosses.forEach((bid, k) => spawnMob(k));
-            mapState.spawnAt = [null, null, null];
+            mapState.spawnAt = [null, null, null, null, null];
         }
         logSys(`--- 你走向了新的區域 ---`);
         renderMobs();
@@ -15296,11 +15403,15 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     crystal_cave1: 'assets/area/水晶洞穴.jpg', crystal_cave2: 'assets/area/水晶洞穴.jpg', crystal_cave3: 'assets/area/水晶洞穴.jpg',   // 💎 水晶洞穴（地監·3樓共用）
     fire_dragon: 'assets/area/火龍窟.jpg',   // 🔥 火龍窟（野外）
     elf_forest: 'assets/area/森林.jpg', zone_01: 'assets/area/森林.jpg', mirror_forest: 'assets/area/森林.jpg',   // 🌲 妖魔森林/妖精森林周邊/鏡子森林（野外·共用森林背景）
-    zone_15: 'assets/area/洞窟.jpg', zone_16: 'assets/area/洞窟.jpg', zone_17: 'assets/area/洞窟.jpg',   // 🕳️ 眠龍洞穴1~3樓
+    zone_15: 'assets/area/洞窟.jpg', zone_16: 'assets/area/洞窟.jpg',   // 🕳️ 眠龍洞穴1~2樓
+    zone_17: 'assets/area/龍之谷地監深層.jpg',   // 🐉 眠龍洞穴3樓（改龍之谷地監深層·area-fit）
     zone_22: 'assets/area/洞窟.jpg', zone_23: 'assets/area/洞窟.jpg', zone_24: 'assets/area/洞窟.jpg', zone_25: 'assets/area/洞窟.jpg',   // 🕳️ 沙漠地監1~4樓
-    zone_26: 'assets/area/洞窟.jpg', zone_27: 'assets/area/洞窟.jpg', zone_28: 'assets/area/洞窟.jpg', zone_29: 'assets/area/洞窟.jpg', zone_30: 'assets/area/洞窟.jpg', zone_31: 'assets/area/洞窟.jpg',   // 🕳️ 龍之谷地監1~6樓
-    zone_32: 'assets/area/洞窟.jpg', zone_33: 'assets/area/洞窟.jpg',   // 🐜 螞蟻洞窟1~2樓（共用洞窟背景·已在 AREA_BG_FIT）
-    zone_37: 'assets/area/象牙塔.jpg', zone_38: 'assets/area/象牙塔.jpg', zone_39: 'assets/area/象牙塔.jpg', zone_40: 'assets/area/象牙塔.jpg', zone_41: 'assets/area/象牙塔.jpg',   // 🏛️ 象牙塔4~8樓
+    zone_26: 'assets/area/洞窟.jpg', zone_27: 'assets/area/洞窟.jpg', zone_28: 'assets/area/洞窟.jpg',   // 🕳️ 龍之谷地監1~3樓
+    zone_29: 'assets/area/龍之谷地監深層.jpg', zone_30: 'assets/area/龍之谷地監深層.jpg', zone_31: 'assets/area/龍之谷地監深層.jpg',   // 🐉 龍之谷地監4~6樓（改深層·area-fit）
+    zone_32: 'assets/area/洞窟.jpg',   // 🐜 螞蟻洞窟1樓（共用洞窟背景）
+    zone_33: 'assets/area/龍之谷地監深層.jpg',   // 🐜 螞蟻洞窟2樓（改龍之谷地監深層·area-fit）
+    zone_37: 'assets/area/象牙塔.jpg', zone_38: 'assets/area/象牙塔.jpg',   // 🏛️ 象牙塔4~5樓
+    zone_39: 'assets/area/象牙塔深層.jpg', zone_40: 'assets/area/象牙塔深層.jpg', zone_41: 'assets/area/象牙塔深層.jpg',   // 🏛️ 象牙塔6~8樓（改深層背景·area-fit）
     heine: 'assets/area/森林.jpg',   // 🌲 海音（野外狩獵·共用森林背景·安全區 town_heine 不變）
     eva_kingdom: 'assets/area/伊娃王國.jpg',   // 🏰 伊娃王國（地監·專屬背景·area-fit）
     windwood: 'assets/area/沙漠.jpg',   // 🏜️ 風木（野外·共用沙漠背景）
@@ -15309,6 +15420,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     dream_island: 'assets/area/夢幻之島.jpg',   // 🆕 夢幻之島（套 area-fit·專屬背景）
     zone_02: 'assets/area/歐瑞.jpg', zone_03: 'assets/area/歐瑞.jpg', zone_05: 'assets/area/歐瑞.jpg',   // 🗺️ 歐瑞/歐瑞雪原/國境要塞（野外·共用歐瑞背景）
     zone_04: 'assets/area/艾爾摩.jpg',   // ⚔️ 艾爾摩激戰地（野外·專屬背景）
+    zone_09: 'assets/area/地監深層.jpg', zone_10: 'assets/area/地監深層.jpg', zone_11: 'assets/area/地監深層.jpg', zone_12: 'assets/area/地監深層.jpg', zone_14: 'assets/area/地監深層.jpg',   // 🕳️ 古魯丁地監4~7樓＋說話之島地監2樓（改深層背景·area-fit）
     dragon_valley: 'assets/area/龍之谷.jpg', twilight_mt: 'assets/area/龍之谷.jpg',   // 🐉 龍之谷/黃昏山脈（野外·共用龍之谷背景；地監龍之谷 zone_26~31 仍為洞窟.jpg）
     elf_grave: 'assets/area/拉斯塔巴德.jpg', hidden_cave: 'assets/area/拉斯塔巴德.jpg', giant_tomb: 'assets/area/拉斯塔巴德.jpg',   // 🏚️ 精靈墓穴/大洞穴隱遁者村莊地區/古代巨人之墓（野外·拉斯塔巴德背景）
     rastabad_cave1: 'assets/area/拉斯塔巴德.jpg', rastabad_cave2: 'assets/area/拉斯塔巴德.jpg', rastabad_cave3: 'assets/area/拉斯塔巴德.jpg', rastabad_gate: 'assets/area/拉斯塔巴德.jpg', rastabad_beast: 'assets/area/拉斯塔巴德.jpg', dark_magic_lab: 'assets/area/拉斯塔巴德.jpg', necro_training: 'assets/area/拉斯塔巴德.jpg',   // 🏚️ 拉斯塔巴德地下洞穴1~3樓/正門/魔獸訓練場/黑魔法研究室/冥法軍訓練場（地監·拉斯塔巴德背景）
@@ -15327,7 +15439,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     thebes_temple: 'assets/area/底比斯.jpg'        // 🏛️ 底比斯 歐西里斯祭壇（純BOSS房）
 };
 const CATEGORY_AREA_BG = { wild: 'assets/area/村莊周邊.jpg', dungeon: 'assets/area/地監.jpg', siege: 'castle.png', tower: 'assets/area/傲慢之塔.jpg', rift: 'Rift.png' };   // 🆕 野外/地監/傲慢之塔狩獵改 area-fit 沙漠格式新背景；siege/rift 暫維持 16:9 cover。🗼 塔狩獵=傲慢之塔.jpg，入口安全區另由 TOWN_AREA_BG.tower 保留 TowerofInsolence.png 不變；🏛️ 底比斯3圖另由 SPECIAL_AREA_BG 覆寫（底比斯沙漠.jpg／底比斯.jpg）
-const AREA_BG_FIT = new Set(['assets/area/沙漠.jpg', 'assets/area/水晶洞穴.jpg', 'assets/area/地監.jpg', 'assets/area/火龍窟.jpg', 'assets/area/森林.jpg', 'assets/area/村莊周邊.jpg', 'assets/area/傲慢之塔.jpg', 'assets/area/洞窟.jpg', 'assets/area/象牙塔.jpg', 'assets/area/伊娃王國.jpg', 'assets/area/城鎮周邊.jpg', 'assets/area/歐瑞.jpg', 'assets/area/拉斯塔巴德.jpg', 'assets/area/軍王之室.jpg', 'assets/area/安塔瑞斯.jpg', 'assets/area/法利昂.jpg', 'assets/area/巴拉卡斯.jpg', 'assets/area/底比斯沙漠.jpg', 'assets/area/底比斯.jpg', 'assets/area/龍之谷.jpg', 'assets/area/說話之島港口.jpg', 'assets/area/遺忘之島.jpg', 'assets/area/夢幻之島.jpg', 'assets/area/艾爾摩.jpg']);   // 🏜️ 條狀比例(非16:9·1920×580)背景：用 contain+area-fit(框高鎖圖比例·無上下黑邊·省空間給戰鬥日誌)。所有新狩獵區背景都列於此→自動套沙漠格式。⚠️這些 jpg 需放 assets/area/（同沙漠.jpg）；未放檔時背景空白但版面/格式仍正確。日後新增條狀背景就把路徑加進來
+const AREA_BG_FIT = new Set(['assets/area/沙漠.jpg', 'assets/area/水晶洞穴.jpg', 'assets/area/地監.jpg', 'assets/area/火龍窟.jpg', 'assets/area/森林.jpg', 'assets/area/村莊周邊.jpg', 'assets/area/傲慢之塔.jpg', 'assets/area/洞窟.jpg', 'assets/area/象牙塔.jpg', 'assets/area/伊娃王國.jpg', 'assets/area/城鎮周邊.jpg', 'assets/area/歐瑞.jpg', 'assets/area/拉斯塔巴德.jpg', 'assets/area/軍王之室.jpg', 'assets/area/安塔瑞斯.jpg', 'assets/area/法利昂.jpg', 'assets/area/巴拉卡斯.jpg', 'assets/area/底比斯沙漠.jpg', 'assets/area/底比斯.jpg', 'assets/area/龍之谷.jpg', 'assets/area/說話之島港口.jpg', 'assets/area/遺忘之島.jpg', 'assets/area/夢幻之島.jpg', 'assets/area/艾爾摩.jpg', 'assets/area/地監深層.jpg', 'assets/area/象牙塔深層.jpg', 'assets/area/龍之谷地監深層.jpg']);   // 🏜️ 條狀比例(非16:9·1920×580)背景：用 contain+area-fit(框高鎖圖比例·無上下黑邊·省空間給戰鬥日誌)。所有新狩獵區背景都列於此→自動套沙漠格式。⚠️這些 jpg 需放 assets/area/（同沙漠.jpg）；未放檔時背景空白但版面/格式仍正確。日後新增條狀背景就把路徑加進來
 const SPECIAL_TOWN_BG = { town_silent: 'silentcave.png' };                                        // 🔧 安全區逐張對應背景（沉默洞穴）
 const TOWN_AREA_BG = { village: 'village.png', castle: 'castle.png', tower: 'TowerofInsolence.png', rift: 'Rift.png' };   // 村莊畫面依分類（🗼 傲慢之塔入口；🌀 時空裂痕入口 Rift.png）
 function applyAreaBackground() {
@@ -17749,7 +17861,7 @@ window.onload = () => {
         let meta = [];
         let needLv = (typeof skillReqLv==='function') ? skillReqLv(sk, sid) : undefined;
         if(needLv !== undefined) meta.push('需求 Lv.'+needLv);
-        if(sk.mp) meta.push('消耗 MP '+sk.mp);
+        { let _costs = []; if(sk.hpCost) _costs.push('HP '+sk.hpCost); if(sk.mp) _costs.push('MP '+sk.mp); if(_costs.length) meta.push('消耗 '+_costs.join('、')); }   // 🐉 同時消耗 HP＋MP 的技能(覺醒/冥想/隱身/堅固防護/幻術士混亂等)：兩者並列顯示
         if(sk.dur) meta.push('持續 '+sk.dur+' 秒');
         if(sk.cd) meta.push('冷卻 '+(sk.cd/10)+' 秒');
         if(meta.length) parts.push(`<div class="text-slate-300">${meta.join(' ・ ')}</div>`);

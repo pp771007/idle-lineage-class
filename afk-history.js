@@ -4,13 +4,15 @@
  * 把「📜 離線掛機紀錄」註冊成首頁設定選單的一項(選單本身由 afk-storage 渲染)。
  * 點開後彈出 modal,把每個存檔位角色「最近 5 筆離線掛機」列成可比較的卡片:
  *   時間範圍(關閉→登入、真實時長)、地點、經驗/金錢(含 /10分 平均)、升級、
- *   獲得道具(依品階上色)、擊殺各怪數量(少→多)。
+ *   獲得道具(依品階上色)、擊殺各怪數量(多→少)。
+ *
+ * 上方工具列可:① 選只看某個存檔位 / 全部;② 多選要顯示哪些欄位(經驗/金錢/道具/擊殺),方便整理。
  *
  * 資料來源:afk-offline.js 結算離線時寫進的 localStorage 鍵 afk_hist_<slot>(陣列)。
  * 角色身分:呼叫遊戲全域 slotSummary(n) 唯讀讀存檔摘要(名稱/職業/等級),讀不到就只顯示存檔位。
  *
  * 🔒 純唯讀:本檔只 getItem,從不寫入任何 localStorage、不呼叫 saveGame、不碰存檔。
- *           (紀錄的「寫入」全在 afk-offline.js,且只動 afk_hist_<slot>。)
+ *           (篩選/多選的偏好只存在記憶體,連我們自己的 key 都不寫。)
  *
  * 優雅降級:抓不到 #main-menu 就安靜停用,不影響遊戲。
  * 掛接:在 index.html 的 </body> 前加一行 <script src="afk-history.js"></script>
@@ -25,6 +27,11 @@
 
   var HIST_RE = /^afk_hist_(\d+)$/;
   var CLS_NAME = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
+  var FIELD_DEFS = [{ k: 'exp', label: '經驗' }, { k: 'gold', label: '金錢' }, { k: 'items', label: '道具' }, { k: 'kills', label: '擊殺' }];
+
+  // ----- 顯示偏好(只存記憶體,維持純唯讀):看哪個存檔位、顯示哪些欄位 -----
+  var slotFilter = 'all';
+  var fState = { exp: true, gold: true, items: true, kills: true };
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   function fmtNum(n) { try { return (n || 0).toLocaleString(); } catch (e) { return '' + (n || 0); } }
@@ -50,7 +57,7 @@
     return Math.floor(val / (settledMs / 600000));
   }
 
-  // 掃 localStorage 取得「有離線紀錄」的存檔位(由小到大),每個附角色摘要(唯讀)
+  // 掃 localStorage 取得「有離線紀錄」的存檔位(由小到大),每個附 records
   function collectSlots() {
     var slots = [];
     for (var k in localStorage) {
@@ -66,15 +73,25 @@
     return slots;
   }
 
-  // 角色身分文字:優先用遊戲 slotSummary(唯讀讀存檔);讀不到就只顯示存檔位
-  function slotTitle(slot) {
+  // 角色摘要(唯讀讀存檔);回 { name, cls(中文) } 或 null
+  function slotInfo(slot) {
     var sum = null;
     try { if (typeof slotSummary === 'function') sum = slotSummary(slot); } catch (e) {}
-    if (!sum) return '存檔 ' + slot;
-    var cls = sum.cls || '';   // slotSummary 回的 cls 已是中文職業名;保險再對一次表
-    if (CLS_NAME[cls]) cls = CLS_NAME[cls];
-    return '存檔 ' + slot + ' · <span class="m-hist-cname">' + esc(sum.name || '未命名') + '</span>'
-      + ' <span class="m-hist-cmeta">' + esc(cls) + ' Lv.' + (sum.lv || 1) + '</span>';
+    if (!sum) return null;
+    var cls = sum.cls || ''; if (CLS_NAME[cls]) cls = CLS_NAME[cls];
+    return { name: sum.name || '未命名', cls: cls, lv: sum.lv || 1 };
+  }
+  function slotHeadHTML(slot, count) {
+    var info = slotInfo(slot);
+    var title = info
+      ? '存檔 ' + slot + ' · <span class="m-hist-cname">' + esc(info.name) + '</span> <span class="m-hist-cmeta">' + esc(info.cls) + ' Lv.' + info.lv + '</span>'
+      : '存檔 ' + slot;
+    return '<div class="m-hist-slot-head">' + title + '<span class="m-hist-count">最近 ' + count + ' 筆</span></div>';
+  }
+  // 存檔下拉選項的純文字標籤(option 不放 HTML)
+  function slotOptLabel(slot) {
+    var info = slotInfo(slot);
+    return info ? ('存檔 ' + slot + ' · ' + info.name + '（' + info.cls + ' Lv.' + info.lv + '）') : ('存檔 ' + slot);
   }
 
   function kindBadge(kind) {
@@ -86,33 +103,32 @@
 
   function recordCard(r) {
     var html = '<div class="m-hist-card">';
-    // 時間列
+    // 時間列(永遠顯示)
     html += '<div class="m-hist-time">🕒 <b>' + fmtClock(r.closeTs) + '</b> → <b>' + fmtClock(r.loginTs) + '</b>'
       + '<span class="m-hist-dur">（共 ' + fmtDur(r.realMs) + '）</span>';
     if (r.capped) html += '<span class="m-hist-flag flag-cap" title="離線超過 24 小時,實際只結算到上限">已達 24h 上限</span>';
     if (r.died) html += '<span class="m-hist-flag flag-died">陣亡</span>';
     html += '</div>';
-    // 地點
+    // 地點(永遠顯示)
     html += '<div class="m-hist-map">📍 ' + esc(r.map || '?') + ' ' + kindBadge(r.kind) + '</div>';
-    // 經驗 / 金錢 / 升級(含 /10分 平均)
+    // 經驗 / 升級 / 金錢(升級跟著「經驗」一起開關)
     var stats = [];
-    if (r.exp > 0) stats.push('<span class="m-hist-stat"><span class="lbl">經驗</span> <b class="v-exp">+' + fmtNum(r.exp) + '</b>'
+    if (fState.exp && r.exp > 0) stats.push('<span class="m-hist-stat"><span class="lbl">經驗</span> <b class="v-exp">+' + fmtNum(r.exp) + '</b>'
       + '<span class="avg">平均 ' + fmtNum(per10(r.exp, r.settledMs)) + ' / 10分</span></span>');
-    if (r.gold > 0) stats.push('<span class="m-hist-stat"><span class="lbl">金錢</span> <b class="v-gold">+' + fmtNum(r.gold) + '</b>'
+    if (fState.exp && r.lv > 0) stats.push('<span class="m-hist-stat"><span class="lbl">升級</span> <b class="v-lv">+' + r.lv + ' 級</b></span>');
+    if (fState.gold && r.gold > 0) stats.push('<span class="m-hist-stat"><span class="lbl">金錢</span> <b class="v-gold">+' + fmtNum(r.gold) + '</b>'
       + '<span class="avg">平均 ' + fmtNum(per10(r.gold, r.settledMs)) + ' / 10分</span></span>');
-    if (r.lv > 0) stats.push('<span class="m-hist-stat"><span class="lbl">升級</span> <b class="v-lv">+' + r.lv + ' 級</b></span>');
     if (stats.length) html += '<div class="m-hist-stats">' + stats.join('') + '</div>';
-    else html += '<div class="m-hist-empty-line">（無明顯經驗 / 金錢收益）</div>';
     // 道具(依品階上色)
-    if (r.items && r.items.length) {
+    if (fState.items && r.items && r.items.length) {
       var its = r.items.map(function (it) {
         return '<span class="m-hist-item ' + esc(it.c || 'text-slate-200') + '">' + esc(it.n) + ' ×' + fmtNum(it.cnt) + '</span>';
       }).join('');
       html += '<div class="m-hist-row"><span class="m-hist-rowlbl">道具</span><span class="m-hist-rowval">' + its + '</span></div>';
     }
-    // 擊殺(少 → 多)
-    if (r.kills && r.kills.length) {
-      var ks = r.kills.map(function (k) {
+    // 擊殺:顯示一律「多 → 少」(不管儲存順序,先複製再排序、不動原陣列)
+    if (fState.kills && r.kills && r.kills.length) {
+      var ks = r.kills.slice().sort(function (a, b) { return b.cnt - a.cnt; }).map(function (k) {
         return '<span class="m-hist-kill">' + esc(k.n) + ' ×' + fmtNum(k.cnt) + '</span>';
       }).join('');
       html += '<div class="m-hist-row"><span class="m-hist-rowlbl">擊殺</span><span class="m-hist-rowval">' + ks + '</span></div>';
@@ -122,26 +138,57 @@
     return html;
   }
 
-  function renderBody() {
+  // 工具列:存檔下拉 + 欄位多選 chips。slotFilter / fState 變動時只重畫清單。
+  function renderToolbar() {
+    var tb = document.getElementById('m-hist-toolbar');
+    if (!tb) return;
     var slots = collectSlots();
+    if (slotFilter !== 'all' && !slots.some(function (s) { return s.slot === slotFilter; })) slotFilter = 'all';   // 選的存檔已無紀錄 → 回全部
+    var opts = '<option value="all">全部存檔</option>';
+    slots.forEach(function (s) { opts += '<option value="' + s.slot + '">' + esc(slotOptLabel(s.slot)) + '</option>'; });
+    var chips = FIELD_DEFS.map(function (f) {
+      return '<span class="m-hist-chip' + (fState[f.k] ? ' on' : '') + '" data-field="' + f.k + '">' + f.label + '</span>';
+    }).join('');
+    tb.innerHTML =
+      '<div class="m-hist-tb-row"><span class="m-hist-tb-lbl">存檔</span>' +
+        '<select id="m-hist-slot-sel" class="m-hist-sel">' + opts + '</select></div>' +
+      '<div class="m-hist-tb-row"><span class="m-hist-tb-lbl">顯示</span>' +
+        '<div class="m-hist-chips">' + chips + '</div></div>';
+    var sel = tb.querySelector('#m-hist-slot-sel');
+    sel.value = slotFilter;
+    sel.addEventListener('change', function () { slotFilter = this.value; renderList(); });
+    tb.querySelectorAll('.m-hist-chip').forEach(function (c) {
+      c.addEventListener('click', function () {
+        var k = this.getAttribute('data-field');
+        fState[k] = !fState[k];
+        this.classList.toggle('on', fState[k]);
+        renderList();
+      });
+    });
+  }
+
+  function renderList() {
+    var list = document.getElementById('m-hist-list');
+    if (!list) return;
+    var slots = collectSlots().filter(function (s) { return slotFilter === 'all' || s.slot === slotFilter; });
     if (!slots.length) {
-      return '<div class="m-hist-none">目前還沒有任何離線掛機紀錄。<br>離線掛機並重新登入結算後,這裡就會逐筆累積(每個角色保留最近 5 筆)。</div>';
+      list.innerHTML = '<div class="m-hist-none">目前還沒有任何離線掛機紀錄。<br>離線掛機並重新登入結算後,這裡就會逐筆累積(每個角色保留最近 5 筆)。</div>';
+      return;
     }
     var html = '';
     slots.forEach(function (s) {
-      html += '<div class="m-hist-slot">';
-      html += '<div class="m-hist-slot-head">' + slotTitle(s.slot)
-        + '<span class="m-hist-count">最近 ' + s.recs.length + ' 筆</span></div>';
+      html += '<div class="m-hist-slot">' + slotHeadHTML(s.slot, s.recs.length);
       s.recs.forEach(function (r) { html += recordCard(r); });
       html += '</div>';
     });
-    return html;
+    list.innerHTML = html;
   }
 
   var _layer = null;
   function openModal() {
     var m = document.getElementById('m-hist-modal'); if (!m) return;
-    document.getElementById('m-hist-body').innerHTML = renderBody();
+    renderToolbar();
+    renderList();
     m.classList.add('open');
     _layer = window.AFK_UI ? AFK_UI.openLayer(hideModal) : null;
   }
@@ -158,7 +205,10 @@
           '<span id="m-hist-title">📜 離線掛機紀錄</span>' +
           '<button id="m-hist-close" title="關閉">✕</button>' +
         '</div>' +
-        '<div id="m-hist-body"></div>' +
+        '<div id="m-hist-body">' +
+          '<div id="m-hist-toolbar"></div>' +
+          '<div id="m-hist-list"></div>' +
+        '</div>' +
       '</div>';
     document.body.appendChild(modal);
     document.getElementById('m-hist-close').addEventListener('click', closeModal);
@@ -178,6 +228,14 @@
       '#m-hist-close{width:34px;height:34px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:15px;cursor:pointer;line-height:1;}',
       '#m-hist-close:active{background:#334155;}',
       '#m-hist-body{flex:1 1 auto;overflow-y:auto;padding:14px;}',
+      // 工具列:吸頂,滑動清單時固定在上方
+      '#m-hist-toolbar{position:sticky;top:0;z-index:2;background:#0f172a;margin:-14px -14px 12px;padding:12px 14px;border-bottom:1px solid #1e293b;display:flex;flex-direction:column;gap:8px;}',
+      '.m-hist-tb-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}',
+      '.m-hist-tb-lbl{color:#94a3b8;font-size:12px;flex:0 0 auto;width:30px;}',
+      '.m-hist-sel{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:6px 9px;font-size:13px;font-family:inherit;}',
+      '.m-hist-chips{display:flex;flex-wrap:wrap;gap:6px;}',
+      '.m-hist-chip{cursor:pointer;user-select:none;font-size:12.5px;border-radius:999px;padding:4px 13px;border:1px solid #334155;background:#1e293b;color:#64748b;}',
+      '.m-hist-chip.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:bold;}',
       '.m-hist-none{color:#94a3b8;text-align:center;padding:26px 10px;font-size:14px;line-height:1.8;}',
       '.m-hist-slot{margin-bottom:18px;}',
       '.m-hist-slot:last-child{margin-bottom:0;}',
@@ -205,7 +263,6 @@
       '.m-hist-stat .v-gold{color:#fde047;}',
       '.m-hist-stat .v-lv{color:#86efac;}',
       '.m-hist-stat .avg{color:#64748b;font-size:11.5px;margin-left:3px;}',
-      '.m-hist-empty-line{font-size:12.5px;color:#64748b;margin-top:7px;}',
       '.m-hist-row{display:flex;gap:8px;margin-top:8px;font-size:13px;}',
       '.m-hist-rowlbl{flex:0 0 auto;color:#94a3b8;font-size:12px;padding-top:1px;}',
       '.m-hist-rowval{flex:1 1 auto;display:flex;flex-wrap:wrap;gap:4px 8px;}',

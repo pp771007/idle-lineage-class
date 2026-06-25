@@ -24,8 +24,8 @@
  * 背景預抓：頁面送 {type:'precache-images', manifest:[[path,sha],...]} → 此處分批抓進圖桶並回報進度,讓安裝後可完全離線。
  * ========================================================================== */
 <<<<<<< HEAD
-const CODE_VERSION = 'code-122bb7c82d86';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0625-1800'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+const CODE_VERSION = 'code-827da69e520d';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0625-1845'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 =======
 const CODE_VERSION = 'code-b0053cec82a1';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
 const BUILD_ID     = '0625-1630'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)

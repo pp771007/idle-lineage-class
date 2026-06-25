@@ -72,7 +72,7 @@
         body.sherine-world .mob-target.active { background: #450a0a; border-color: #ef4444; }
         body.sherine-world .mob-target:hover:not(.active) { background: #2c0a10; }
         body.sherine-world #battle-view.has-bg .mob-target { background: transparent !important; border-color: transparent !important; box-shadow: none; }
-        body.sherine-world #battle-view.has-bg .mob-target.active { background: transparent !important; border-color: transparent !important; filter: drop-shadow(0 0 5px #ef4444); }
+        body.sherine-world #battle-view.has-bg .mob-target.active { background: transparent !important; border-color: transparent !important; }   /* 🔴 紅色鎖定光暈改只套怪物圖(見上方 .mob-img-inner 規則)，不再套整卡→不影響名字 */
         body.sherine-world #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
         /* 🏅 傳說武器：琥珀金（比祝福金更深更橘、帶金屬光澤）名稱與圖示光芒 */
         .c-legend { color: #d98a04 !important; font-weight: bold; text-shadow: 0 0 4px rgba(217,138,4,0.65), 0 0 10px rgba(180,83,9,0.5); }
@@ -109,7 +109,8 @@
         /* 區域背景：背景圖由 JS 依地圖/分類設為 inline 樣式（特殊地圖逐張不同）；卡片較不透明，使背景不過於顯眼 */
         #battle-view.has-bg { background-size: cover; background-position: center; background-repeat: no-repeat; background-color: #0b1220; border-radius: 0.5rem; }   /* no-repeat：條狀背景(沙漠)用 contain 時留白處不平鋪；background-color：留白填深色(像電影黑邊)。16:9 圖維持 cover 滿版、看不到底色 */
         #battle-view.has-bg .mob-target { background: transparent !important; border-color: transparent !important; box-shadow: none; text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.85); }   /* 🔧 狩獵區去框：怪物原圖直接呈現於背景，只保留名稱/血量/狀態(加字陰影保可讀) */
-        #battle-view.has-bg .mob-target.active { background: transparent !important; border-color: transparent !important; filter: drop-shadow(0 0 5px #ef4444); }   /* 選取中：紅色光暈標示(非邊框) */
+        #battle-view.has-bg .mob-target.active { background: transparent !important; border-color: transparent !important; }   /* 選取中：去框 */
+        #battle-view.has-bg .mob-target.active .mob-img-inner { filter: drop-shadow(0 0 4px #ef4444) drop-shadow(0 0 7px #ef4444); }   /* 🔴 紅色鎖定光暈只套在「怪物圖」上(沿輪廓)，不影響名字/徽章/狀態 */
         #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
         /* 🏜️ 條狀比例背景(沙漠等·套 area-fit)：戰鬥框高度鎖定＝圖片比例(1920/580)，背景滿版貼齊「上緣」、任何視窗寬度都無上下黑邊；省下的高度由下方戰鬥日誌(flex-1)自動吸收長高。怪物卡填滿框高、怪物圖改彈性填中段隨高度縮放(名稱/血量/異常徽章固定不裁) */
         #battle-view.area-fit { aspect-ratio: 1920 / 580; background-position: top center; overflow: hidden; }
@@ -139,7 +140,7 @@
         #battle-view.area-fit .boss-zoom .mob-img-wrap { overflow: visible; }
         #battle-view.area-fit .boss-zoom .mob-img-inner { transform: scale(1.78); transform-origin: bottom center; }   /* 👑 頭目圖放大 1.78×(由 1.2× 調大)；底部對齊原點→只往上/兩側脹大、腳不動 */
         #battle-view.area-fit .boss-zoom > :nth-child(1), #battle-view.area-fit .boss-zoom > :nth-child(2) { position: relative; z-index: 5; }
-        /* 🆕 五怪前後排：一般狩獵地圖於原三格(前排·略低·z2)之間插入兩格(後排·略高·z1)，營造前後景深；後排不出頭目。位移/縮放只套在圖層(mob-img-inner)→名稱/徽章/狀態列不被裁、徽章可讀 */
+        /* 🆕 五怪前後排：一般狩獵地圖於原三格(前排·略低·z2)之間插入兩格(後排·略高·z1)，營造前後景深；頭目可出現於任一格(後排頭目套下方專屬放大規則)。位移/縮放只套在圖層(mob-img-inner)→名稱/徽章/狀態列不被裁、徽章可讀 */
         #battle-view .mob-front, #battle-view .mob-back { position: relative; overflow: visible; }   /* 前排放大(1.1×)/頭目(1.78×)需溢出卡片(由戰鬥框 overflow:hidden 收邊) */
         #battle-view .mob-front { z-index: 2; flex: 1.2 1 0%; }
         #battle-view .mob-back  { z-index: 1; flex: 0.8 1 0%; }
@@ -149,6 +150,8 @@
         #battle-view.area-fit { min-height: 0; }
         #battle-view .mob-back .mob-img-inner { transform: translateY(-24px); transform-origin: bottom center; }                      /* 後排：維持原 3 格大小(框高)、僅上提→看起來在後方 */
         #battle-view .mob-front:not(.boss-zoom) .mob-img-inner { transform: translateY(6px) scale(1.1); transform-origin: bottom center; }   /* 前排：比原本稍大(1.1×)、略下→看起來在前方(頭目除外·保留 1.78×) */
+        #battle-view.area-fit .mob-back.boss-zoom .mob-img-inner { transform: translateY(-24px) scale(1.78); transform-origin: bottom center; }   /* 👑 後排頭目：保留後排上提(-24)＋頭目放大1.78× */
+        #battle-view .mob-back.boss-zoom { z-index: 4; }                                                                                          /* 後排頭目提到前排(z2)之上，避免大圖被前排小怪遮住 */
         #town-view.has-bg { background-size: cover; background-position: center; border-radius: 0.5rem; }
         #town-view.has-bg #town-npc-container > div { background: rgba(30,41,59,0.72); }
         #town-view.has-bg #town-npc-container > div:hover { background: rgba(51,65,85,0.78); }
@@ -172,6 +175,10 @@
         .c-attr-earth1 { color: #fcd34d; } .c-attr-earth3 { color: #f59e0b; } .c-attr-earth5 { color: #d97706; }
         .c-attr-glow { text-shadow: 0 0 6px currentColor, 0 0 10px currentColor; }
         .log-entry { margin-bottom: 6px; line-height: 1.5; font-size: 1.05rem; }
+        /* 🎯 三大戰鬥訊息分類：左色條＋淡底，一眼分辨「玩家一般攻擊(藍)／玩家技能(紫)／敵人傷害(紅)」；文字色仍保留爆擊/重擊等資訊 */
+        .log-cat-attack { border-left: 3px solid #3b82f6; padding-left: 8px; background: rgba(59,130,246,0.07);  border-radius: 0 4px 4px 0; }   /* 玩家一般攻擊 */
+        .log-cat-skill  { border-left: 3px solid #a855f7; padding-left: 8px; background: rgba(168,85,247,0.11);  border-radius: 0 4px 4px 0; }   /* 玩家技能 */
+        .log-cat-enemy  { border-left: 3px solid #ef4444; padding-left: 8px; background: rgba(239,68,68,0.10);   border-radius: 0 4px 4px 0; }   /* 敵人傷害 */
         /* ⚔️ 戰鬥日誌來源過濾：點亮(顯示)/點暗(隱藏) 敵人/玩家/傭兵/召喚/夥伴 */
         .cf-pill { font-size: 0.7rem; font-weight: 700; line-height: 1; padding: 3px 6px; border-radius: 9999px; border: 1px solid; cursor: pointer; user-select: none; transition: opacity .15s, filter .15s; white-space: nowrap; }
         .cf-pill.cf-off { opacity: 0.4; filter: grayscale(0.85); }
@@ -1088,15 +1095,15 @@ const DB = {
         "new_item_collar_husky": { n: "項圈 (哈士奇)", p: 10, gachaWeight: 0 },
         "new_item_238": { n: "項圈 (牧羊犬)", p: 10, gachaWeight: 0 },
         // ===== 🐾 寵物進化系統：進化果實（消耗道具，Lv30+且有對應基礎項圈才能使用）=====
-        "new_fruit_rabbit":    { n: "進化果實：暴走兔", type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_collar_husky", evolveTo: "new_collar_rabbit", d: "玩家等級30以上、且持有 項圈 (哈士奇) 時可使用：將一個 項圈 (哈士奇) 進化為 項圈(暴走兔)。", gachaWeight: 0 },
+        "new_fruit_rabbit":    { n: "進化果實：暴走兔", type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_collar_husky", evolveTo: "new_collar_rabbit", d: "玩家等級30以上、且持有 項圈 (哈士奇) 時可使用：將一個 項圈 (哈士奇) 進化為 項圈 (暴走兔)。", gachaWeight: 0 },
         "new_fruit_fox":       { n: "進化果實：狐狸",   type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_184",          evolveTo: "new_collar_fox",    d: "玩家等級30以上、且持有 項圈 (杜賓狗) 時可使用：將一個 項圈 (杜賓狗) 進化為 項圈(狐狸)。", gachaWeight: 0 },
         "new_fruit_beagle":    { n: "進化果實：小獵犬", type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_238",          evolveTo: "new_collar_beagle", d: "玩家等級30以上、且持有 項圈 (牧羊犬) 時可使用：將一個 項圈 (牧羊犬) 進化為 項圈(小獵犬)。", gachaWeight: 0 },
-        "new_fruit_stbernard": { n: "進化果實：聖伯納", type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_185",          evolveTo: "new_collar_stbernard", d: "玩家等級30以上、且持有 項圈 (狼) 時可使用：將一個 項圈 (狼) 進化為 項圈(聖伯納)。", gachaWeight: 0 },
+        "new_fruit_stbernard": { n: "進化果實：聖伯納", type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_185",          evolveTo: "new_collar_stbernard", d: "玩家等級30以上、且持有 項圈 (狼) 時可使用：將一個 項圈 (狼) 進化為 項圈 (聖伯納)。", gachaWeight: 0 },
         // 進化項圈（呼叫進化夥伴所需；不可存倉）
-        "new_collar_rabbit":    { n: "項圈(暴走兔)",  p: 10, c: "text-cyan-300", gachaWeight: 0 },
+        "new_collar_rabbit":    { n: "項圈 (暴走兔)",  p: 10, c: "text-cyan-300", gachaWeight: 0 },
         "new_collar_fox":       { n: "項圈 (狐狸)",   p: 10, c: "text-orange-300", gachaWeight: 0 },
         "new_collar_beagle":    { n: "項圈 (小獵犬)", p: 10, c: "text-amber-300", gachaWeight: 0 },
-        "new_collar_stbernard": { n: "項圈(聖伯納)",  p: 10, c: "text-emerald-300", gachaWeight: 0 },
+        "new_collar_stbernard": { n: "項圈 (聖伯納)",  p: 10, c: "text-emerald-300", gachaWeight: 0 },
         // 不死鳥之心（製作材料，不死鳥 1% 掉落）
         "new_phoenix_heart": { n: "不死鳥之心", type: "etc", p: 0, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "不死鳥體內不滅的核心。製作材料。" },
         // ===== 🦴 寵物裝備（之牙）：裝在「寵物裝備」欄，能力只影響項圈夥伴，可用對飾品施法的卷軸強化至+5 =====
@@ -3940,19 +3947,21 @@ function logCombat(msg, type="player", src=null) {
     let colorClass = "text-white";
     
     // 單純以顏色區分，移除前綴標籤
-    if (type === "player") { colorClass = "text-blue-300"; } // 我方普攻 (淺藍)
-    else if (type === "player-heavy") { colorClass = "text-yellow-300 font-bold"; } // 我方重擊 (黃色粗體)
-    else if (type === "player-crit") { colorClass = "crit-hit"; } // 我方爆擊 (顯眼鮮紅＋微光：僅保留給爆擊／含爆擊訊息)
-    else if (type === "player-special") { colorClass = "text-orange-300"; } // 我方特殊效果/寵物等非爆擊傷害 (沉穩橘色，較不搶眼)
-    else if (type === "player-graze") { colorClass = "text-blue-200/80"; } // 我方擦傷 (較亮的淡藍，灰底上仍清楚)
-    else if (type === "enemy") { colorClass = "text-red-400"; } // 敵方攻擊 (紅色)
-    else if (type === "magic") { colorClass = "text-cyan-300"; } // 魔法技能 (青色)
+    let catClass = "";   // 🎯 三大分類左色條：玩家一般攻擊(藍)／玩家技能(紫)／敵人傷害(紅)
+    if (type === "player") { colorClass = "text-blue-300"; catClass = "log-cat-attack"; } // 我方普攻 (淺藍)
+    else if (type === "player-heavy") { colorClass = "text-yellow-300 font-bold"; catClass = "log-cat-attack"; } // 我方重擊 (黃色粗體)
+    else if (type === "player-crit") { colorClass = "crit-hit"; catClass = "log-cat-attack"; } // 我方爆擊 (顯眼鮮紅＋微光：僅保留給爆擊／含爆擊訊息)
+    else if (type === "player-special") { colorClass = "text-orange-300"; catClass = "log-cat-attack"; } // 我方特殊效果/寵物等非爆擊傷害 (沉穩橘色，較不搶眼)
+    else if (type === "player-graze") { colorClass = "text-blue-200/80"; catClass = "log-cat-attack"; } // 我方擦傷 (較亮的淡藍，灰底上仍清楚)
+    else if (type === "skill") { colorClass = "text-purple-300"; catClass = "log-cat-skill"; } // 🟣 我方技能傷害 (紫色＋紫左條)
+    else if (type === "enemy") { colorClass = "text-red-400"; catClass = "log-cat-enemy"; } // 敵方攻擊 (紅色＋紅左條)
+    else if (type === "magic") { colorClass = "text-cyan-300"; } // 魔法效果/法系觸發 (青色·非主動施放技能)
     else if (type === "heal") { colorClass = "text-green-300"; } // 恢復效果 (綠色)
     else if (type === "miss" || type === "dodge") { colorClass = "text-slate-200"; } // 未命中/閃避 (淺灰，避免與灰底相近)
     else if (type === "evade") { colorClass = "text-teal-300"; } // ER獨立迴避 (淡青綠色)
-    
+
     let _src = src || _combatSrc || (type === 'enemy' ? 'enemy' : 'player');   // 來源：明確指定 > 派發點情境(_combatSrc) > 依顏色type推定
-    el.insertAdjacentHTML('beforeend', `<div class="log-entry ${colorClass}" data-src="${_src}">${msg}</div>`);   // 🚀 只解析新訊息、不重建整個日誌(原 innerHTML+= 會 O(n) 重建全部子節點，戰鬥洗版時造成卡頓)
+    el.insertAdjacentHTML('beforeend', `<div class="log-entry ${colorClass} ${catClass}" data-src="${_src}">${msg}</div>`);   // 🚀 只解析新訊息、不重建整個日誌(原 innerHTML+= 會 O(n) 重建全部子節點，戰鬥洗版時造成卡頓)
     // 🔒 鎖定捲動時保留更多歷史；未鎖定時維持一般上限
     let _max = _combatLogLocked ? COMBAT_LOG_MAX_LOCKED : COMBAT_LOG_MAX;
     while(el.children.length > _max && el.children.length > 1) el.removeChild(el.firstChild);
@@ -5383,7 +5392,7 @@ function spawnMob(idx) {
         if(mapState.mobs[idx].hard) initHardSkin(mapState.mobs[idx]);
         return;
     }
-    let backSlot = idx >= 3;   // 🆕 後排格(3,4)：只出一般怪，不出任何頭目(含 wantBoss/卡瑞/林德拜爾)
+    // 🆕 2026-06：後排格(3,4)現在也會 roll 頭目——原本後排不出王，但死亡輸送帶把存活怪往前壓實、空格往後堆→補位幾乎都落在後排、跳過頭目判定而稀釋出王率；故 wantBoss/卡瑞/林德拜爾改成全 5 格皆判定（idx>=3 不再排除頭目）
     let bossInBattle = mapState.mobs.some(m => m && m.boss);
     let bossPool = pool.filter(id => DB.mobs[id] && DB.mobs[id].boss);
     let normalPool = pool.filter(id => DB.mobs[id] && !DB.mobs[id].boss);
@@ -5395,8 +5404,8 @@ function spawnMob(idx) {
     
     let mobId;
     let siegeArea = isSiegeArea(mapState.current);
-    let allowMultiBoss = backSlotsActive();   // 🆕 5格地圖：前3格(0,1,2)可同時出現多隻頭目（不再受 bossInBattle 限制·後排3,4仍由 !backSlot 排除）；攻城等3格版面維持單頭目
-    let wantBoss = !backSlot && (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (Math.random() < 0.03)));
+    let allowMultiBoss = backSlotsActive();   // 🆕 5格地圖：5格(0~4)皆可同時出現多隻頭目（不再受 bossInBattle 限制·後排也會出王·同名仍限1隻）；攻城等3格版面維持單頭目
+    let wantBoss = (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (Math.random() < 0.01)));
     if(mapState.forceBoss) mapState.forceBoss = false;   // 強制旗標只作用於下一次生怪
     if(wantBoss) {
         // 🔧 同名BOSS限制：場上已有同名BOSS時不再抽到該名→需地圖池有 2 種以上「不同名」BOSS 才可能同時出現多隻；若無不同名可出則退回一般怪
@@ -5437,7 +5446,7 @@ function spawnMob(idx) {
     }
     // 🔧 卡瑞（BOSS）：身上「同時」攜帶 飛龍的爪子/蜥蜴的角/水晶球/妖魔戰士護身符 時，
     //    於龍之谷地監6樓 1% 機率出現（場上無其他 BOSS 時才出現，且同時最多一隻）
-    if (!backSlot && mapState.current === 'zone_31'
+    if (mapState.current === 'zone_31'
         && !bossInBattle
         && !mapState.mobs.some(m => m && m.n === '卡瑞')
         && ['item_dragon_claw', 'item_lizard_horn', 'item_crystal_ball', 'item_orc_amulet'].every(q => player.inv.some(i => i.id === q && i.cnt > 0))
@@ -5453,7 +5462,7 @@ function spawnMob(idx) {
     }
     // 🐉 林德拜爾（BOSS）：持有「幼龍蛋」於任一野外地圖時，1% 機率改為刷出林德拜爾
     //    （場上無其他 BOSS 時才出現、同時最多一隻；賣掉幼龍蛋即不再遭遇）
-    if (!backSlot && !bossInBattle
+    if (!bossInBattle
         && MAP_CATEGORIES.wild.some(m => m.v === mapState.current)
         && !mapState.mobs.some(m => m && m.n === '林德拜爾')
         && player.inv.some(i => i.id === 'item_dragon_egg' && i.cnt > 0)
@@ -9842,7 +9851,7 @@ function castSkillInner(skId) {
                 if (t.curHp > 0) wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true, player.classicMode);
             }
             if (consume && applied) t.weakExpose = 0;
-            if (total > 0) { logCombat(`施放 ${sk.n}，連續斬擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 [${log.join(', ')}] 共 ${total} 點傷害${bonus > 0 ? `（弱點曝光 每擊+${bonus}）` : ''}。`, 'player'); if (t.curHp <= 0) killMob(mapState.targetIdx); else renderMobs(); }
+            if (total > 0) { logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，連續斬擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 [${log.join(', ')}] 共 ${total} 點傷害${bonus > 0 ? `（弱點曝光 每擊+${bonus}）` : ''}。`, 'skill'); if (t.curHp <= 0) killMob(mapState.targetIdx); else renderMobs(); }
             else logCombat(`施放 ${sk.n} 未命中 <span class="${getMobColor(t.lv)}">${t.n}</span>。`, 'miss');
             return true;
         }
@@ -9855,7 +9864,7 @@ function castSkillInner(skId) {
             if (sk.hpCost) player.hp = Math.max(1, player.hp - effHpCost(sk));
             let base = 50 + Math.max(0, (player.lv || 1) - 30);
             targets.forEach(m => { if (!m || m.curHp <= 0 || m._dead) return; let dmg = Math.max(1, Math.floor(base * fragileMult(m))); m.curHp -= dmg; m.justHit = 'magic'; mobWake(m); });
-            logCombat(`施放 ${sk.n}，咆哮震懾全場，對所有敵人造成約 ${base} 點固定傷害。`, 'player');
+            logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，咆哮震懾全場，對所有敵人造成約 ${base} 點固定傷害。`, 'skill');
             targets.forEach(m => { if (m && m.curHp <= 0 && !m._dead) { let i = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (i !== -1) killMob(i); } });
             renderMobs();
             return true;
@@ -9918,7 +9927,7 @@ function castSkillInner(skId) {
             dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(player)));   // 🔮 幻術士等級加成 ×(1+等級/50)（粉碎能量/骷髏毀壞/心靈破壞）
             t.curHp -= dmg; t.justHit = sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'magic'; mobWake(t);
             if (sk.mpDmgPct && t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;   // 🔧 心靈破壞（魔法）：受一次魔法傷害後解除魔抗減半（與其他魔法路徑一致）
-            logCombat(`施放 ${sk.n}，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。`, 'player');
+            logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。`, 'skill');
             if (t.curHp > 0 && sk.status) applyMobStatus(t, sk.status, sk.n);
             if (t.curHp <= 0) killMob(mapState.targetIdx); else renderMobs();
             return true;
@@ -9975,7 +9984,7 @@ function castSkillInner(skId) {
             if(landed > 0) {
                 let detail = hits > 1 ? `[${hitsLog.join(', ')}] 共 ${totalDmg}` : `${totalDmg}`;
                 let tag = totalDmg > 0 && hitsLog.some(x => x.includes('爆') || x.includes('會心')) ? 'player-crit' : 'player';
-                logCombat(`施放 ${sk.n}，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${detail} 點物理傷害。`, tag);
+                logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${detail} 點物理傷害。`, 'skill');
                 if(t.curHp <= 0) { if(!killed) killMob(mapState.targetIdx); }
                 else renderMobs();
             } else {
@@ -10074,7 +10083,7 @@ function castSkillInner(skId) {
                 if(t.curHp > 0 && sk.instakill) tryInstakill(t, sk.instakill, sk.n, mapState.mobs.findIndex(m => m && m.uid === t.uid));
             });
             
-            logCombat(`施放 ${sk.n} -> ${totalDmgText.join(" | ")}`, 'magic');
+            logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span> -> ${totalDmgText.join(" | ")}`, 'skill');
             
             targets.forEach((t) => {
                 if(t.curHp <= 0) {

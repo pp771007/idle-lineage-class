@@ -429,6 +429,11 @@
                     <span class="text-amber-300 font-bold shrink-0">經典模式</span>
                     <span class="text-slate-400 text-xs">砍半的經驗與金錢、掉寶率僅 1/10，死掉還噴經驗——感受更「經典」的天堂回憶（永久・預設關閉）</span>
                 </label>
+                <label id="lbl-create-traditional" class="flex items-center gap-2 mt-2 px-1 cursor-pointer select-none opacity-40" title="須先勾選「經典模式」才能選擇；傳統模式為經典之上的子模式，永久生效">
+                    <input type="checkbox" id="create-traditional-toggle" onchange="onToggleTraditional(this)" disabled class="w-5 h-5 accent-purple-600 shrink-0">
+                    <span class="text-purple-300 font-bold shrink-0">傳統模式</span>
+                    <span class="text-slate-400 text-xs">經典之上：所有裝備不可強化（隱藏快速強化），怪物/黑市不出施法卷軸；改由掉落/黑市/製作的裝備「自帶隨機強化值」。倉庫與角色獨立，須先勾經典（永久）</span>
+                </label>
                 <div class="flex gap-4 shrink-0 mt-2">
                     <button onclick="backToMenu()" class="btn w-1/4 py-3 text-base">返回</button>
                     <button onclick="startGame()" id="btn-start" class="btn w-3/4 py-3 font-bold text-lg text-white shadow-lg" disabled>開始冒險</button>
@@ -453,7 +458,7 @@
         <div id="col-left" class="w-[340px] flex flex-col gap-4">
             <!-- 新增了 id="status-panel"，並加入去底色與加深背景的樣式確保文字可讀 -->
             <div id="status-panel" class="panel bg-cover bg-top bg-no-repeat" style="background-blend-mode: multiply; background-color: rgba(30, 41, 59, 0.85);">
-                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：物品掉落 ×1/10、經驗減半、金幣剩一般模式的 1/2、死亡損失該等級 10% 最大經驗（不降等）">⚔經典</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
+                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：物品掉落 ×1/10、經驗減半、金幣剩一般模式的 1/2、死亡損失該等級 10% 最大經驗（不降等）">⚔經典</span><span id="traditional-badge" class="hidden font-bold ml-1" style="color:#c4b5fd;text-shadow:0 0 5px rgba(196,181,253,0.7);font-size:0.85rem;line-height:1;" title="傳統模式（經典之上）：所有裝備無強化、改由掉落自帶強化值、怪物/黑市無施法卷軸、倉庫與角色獨立">🏛️傳統</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
                 <div class="p-4 space-y-3 text-base">
                     <div class="flex justify-between text-slate-400 border-b border-slate-700 pb-2"><span>等級</span> <span class="text-white font-bold text-xl" id="st-lv">1</span></div>
                     <div class="flex justify-between text-slate-400"><span>防禦 (AC)</span> <span class="text-white font-bold" id="st-ac">10</span></div>
@@ -2090,7 +2095,7 @@ const DB = {
                 { id: "npc_nikki", n: "尼奇", title: "雜貨商人", type: "shop", d: "硝煙散去後，尼奇在新得的城裡擺起攤子——攻城獲勝後開放的肯特城雜貨商。" },
                 { id: "npc_wh_kent", n: "巴歐", title: "倉庫", type: "warehouse", d: "巴歐替占領者看管著肯特城的庫房，存放物品與金幣，四個存檔角色共用。" },
                 { id: "npc_ally_b", n: "傭兵公會", title: "協力", type: "ally", d: "傭兵公會替你牽起命運的絲線，召喚其他存檔位的角色一起作戰。" },
-                { id: "npc_ismael", n: "伊賽馬利", title: "交換物品", type: "exchange", d: "伊賽馬利精於以物易物，以卷軸或金幣交換稀有的祝福卷軸與飾品卷軸。" },
+                { id: "npc_ismael", n: "伊賽馬利", title: "交換物品", type: "exchange", traditionalHide: true, d: "伊賽馬利精於以物易物，以卷軸或金幣交換稀有的祝福卷軸與飾品卷軸。" },
                 { id: "npc_pandora", n: "潘朵拉", title: "黑市", type: "exchange", d: "潘朵拉的黑市藏匿著來路不明的寶物，每 10 分鐘隨機上架一件商品，可直接購買。" },
                 { id: "npc_kent_guard", n: "肯特守衛隊長", title: "城堡護衛", type: "castleguard", d: "肯特守衛隊長以盾為誓，雇用守衛替你承擔 10% 一般攻擊傷害（HP 低於設定門檻時發動）。" },
                 { id: "npc_esti", n: "依詩蒂", title: "血盟", type: "pledge", d: "依詩蒂低聲訴說著血盟的古老誓言，為你尋找以血為盟的夥伴。" },
@@ -3204,7 +3209,7 @@ function sameItemSig(a, b) { return itemSig(a) === itemSig(b); }
 const SAVE_VERSION = 2;   // v1 = 未標版本的舊存檔
 const SAVE_DEFAULTS = {
     name: null, bonus: 0, panaceaUsed: 0, bloodPledge: null,
-    magicShieldCd: 0, reviveScrollCd: 0, lastMapByCat: {}, lastBattleMap: null, tracking: null, ismaelAccUsed: false, sherineWorld: false, classicMode: false,
+    magicShieldCd: 0, reviveScrollCd: 0, lastMapByCat: {}, lastBattleMap: null, tracking: null, ismaelAccUsed: false, sherineWorld: false, classicMode: false, traditionalMode: false,
     masteryQuest: null, mastery: null, masteryChangeCnt: 0,
     prideBeatJenis: false, demonTempleOpen: false, flameAffinity: 0, trialStage: 0, prideRank: { best: null, last: null, isNew: false }, prideRankSherine: { best: null, last: null, isNew: false },
     riftRank: { best: null, last: null, isNew: false }, riftRankSherine: { best: null, last: null, isNew: false }, riftRewardMs: null,
@@ -3242,6 +3247,7 @@ function sherineWorldActive() { return !!(player && player.sherineWorld); }
 function applySherineTheme() { document.body.classList.toggle('sherine-world', sherineWorldActive()); }
 let _sherineLootCtx = null;   // 擊殺掉落上下文：killMob 期間設定（{boss,grace}），供 gainItem 判定詞綴×3 與套裝效果
 let _forceSherineSet = false;   // 🔮 席琳製作：成品必定附帶隨機套裝效果（doCraft 產出期間設定）
+let _tradLootCtx = false;   // 🏛️ 傳統模式「掠奪上下文」：在怪物掉落／潘朵拉黑市／製作期間設 true，供 gainItem 為裝備隨機自帶強化值＋抑制施法卷軸（商店購買不設→恆 +0）
 
 // ===== 🔮 席琳套裝效果（9 組；不再分五種詞綴，seteff 直接存「套裝名」＝組名）=====
 // 掉落判定：席琳的世界中，武器/頭盔/盔甲/手套/長靴/斗篷/腰帶 掉落時，
@@ -4062,6 +4068,40 @@ function enhanceArmAc(en) {
     return base + over;
 }
 
+// ===== 🏛️ 傳統模式（傳統＝「經典之上」的子模式：創角須先勾經典才能再勾傳統）=====
+//  傳統模式：所有裝備無強化選項（隱藏強化／快速強化），怪物不掉落＋黑市不販售施法卷軸；
+//  取而代之——怪物掉落／潘朵拉黑市／製作 的武器/防具/飾品會「隨機自帶已強化值」（商店購買恆 +0）。
+function traditionalActive(){ return !!(player && player.classicMode && player.traditionalMode); }
+// 施法卷軸家族（武器/盔甲/飾品＋祝福_b/詛咒_c 變體）：傳統模式不掉落、黑市不上架
+const TRAD_NO_SCROLLS = { scroll_weapon:1, scroll_armor:1, scroll_acc:1, scroll_weapon_b:1, scroll_armor_b:1, scroll_weapon_c:1, scroll_armor_c:1 };
+// 掉落自帶強化值權重表：每筆 [強化值, 權重]；依「物品類型＋安定值 safe」選表
+//  （實測全部物品 safe 僅出現 wpn{6,0}／arm{6,4,0}／acc{0}，下表完整涵蓋，無遺漏組合）
+const TRAD_EN_TABLES = {
+    wpn6: [[20,1],[19,2],[18,3],[17,4],[16,5],[15,6],[14,7],[13,8],[12,9],[11,10],[10,11],[9,12],[8,13],[7,14],[6,27],[5,28],[4,28],[3,28],[2,28],[1,28],[0,28]],
+    wpn0: [[20,1],[19,2],[18,3],[17,4],[16,5],[15,6],[14,7],[13,8],[12,9],[11,10],[10,11],[9,12],[8,13],[7,14],[6,15],[5,16],[4,17],[3,18],[2,19],[1,20],[0,90]],
+    arm6: [[15,1],[14,2],[13,3],[12,4],[11,5],[10,6],[9,7],[8,8],[7,9],[6,18],[5,18],[4,18],[3,18],[2,18],[1,18],[0,147]],
+    arm4: [[15,1],[14,2],[13,3],[12,4],[11,5],[10,6],[9,7],[8,8],[7,9],[6,10],[5,11],[4,22],[3,22],[2,22],[1,22],[0,146]],
+    arm0: [[15,1],[14,2],[13,3],[12,4],[11,5],[10,6],[9,7],[8,8],[7,9],[6,10],[5,11],[4,12],[3,13],[2,14],[1,15],[0,180]],
+    acc0: [[5,1],[4,2],[3,3],[2,4],[1,5],[0,285]]
+};
+function _tradEnTableFor(d){
+    if(!d) return null;
+    let safe = d.safe || 0;
+    if(d.type === 'wpn') return (safe >= 6) ? TRAD_EN_TABLES.wpn6 : TRAD_EN_TABLES.wpn0;
+    if(d.type === 'arm') return (safe >= 6) ? TRAD_EN_TABLES.arm6 : (safe >= 4 ? TRAD_EN_TABLES.arm4 : TRAD_EN_TABLES.arm0);
+    if(d.type === 'acc') return TRAD_EN_TABLES.acc0;
+    return null;
+}
+// 傳統模式：依物品(類型,安定值)權重抽一個自帶強化值（夾擠至各類上限 wpn20/arm15/acc5）
+function rollTraditionalEnhance(d){
+    let tbl = _tradEnTableFor(d);
+    if(!tbl) return 0;
+    let total = 0; for(let e of tbl) total += e[1];
+    let r = Math.random() * total, acc = 0, lvl = 0;
+    for(let e of tbl){ acc += e[1]; if(r < acc){ lvl = e[0]; break; } }
+    return capEn(lvl, d);
+}
+
 function recomputeStats() {
     let p = player, d = p.d, b = p.base, a = p.alloc;
 
@@ -4779,7 +4819,9 @@ const OSIRIS_BOX_HIGH = [
     ['new_item_152', 8], ['new_item_155', 8], ['new_item_158', 8], ['new_item_161', 8]
 ];
 function osirisBoxRoll(table) {
-    let r = Math.random() * 100, acc = 0;
+    if (traditionalActive()) table = table.filter(e => !TRAD_NO_SCROLLS[e[0]]);   // 🏛️ 傳統模式：寶箱不開出施法卷軸（改抽其餘獎品，不浪費龜裂之核）
+    let total = 0; for (let e of table) total += e[1];   // 過濾後重算總權重（一般情況=100）
+    let r = Math.random() * total, acc = 0;
     for (let e of table) { acc += e[1]; if (r < acc) return e[0]; }
     return table[table.length - 1][0];
 }
@@ -7237,7 +7279,7 @@ function pledgeBonusDrop(mob) {
         // 🔧 詞綴改走新制（同 gainItem/rollAffixesNew）：只可能獲得「祝福的」1%；屬性/遠古不再隨機掉落（改由象牙塔『碧恩』取得）
         let _af = rollAffixesNew();
         let attr = _af.attr, bless = _af.bless, anc = _af.anc;
-        let en = rollPledgeDropEnhance(d0.safe || 0);   // 依物品安定值決定強化等級
+        let en = traditionalActive() ? rollTraditionalEnhance(d0) : rollPledgeDropEnhance(d0.safe || 0);   // 依物品安定值決定強化等級（🏛️ 傳統模式改用傳統權重表）
         let _jProbe = { id: id, en: en, bless: bless, anc: anc, attr: attr, seteff: false };   // 🔧 廢品記憶：血盟/攻城掉寶比照 gainItem，依完整簽章（含強化/祝福/詞綴）自動標記
         player.inv.push({ id: id, uid: uid(), cnt: 1, en: en, bless: bless, anc: anc, attr: attr, seteff: false, lock: false, junk: !!(player.junkPrefs && player.junkPrefs[itemSig(_jProbe)]) });
         renderTabs();
@@ -7406,6 +7448,8 @@ function killMob(idx) {
     let _kbRoom = !!KING_ROOMS[mapState.current];   // 🔧 軍王之室
     let _kbNoReward = _kbRoom && !mob.boss;                     // 除頭目外（地獄束縛犬）：不給金錢/掉落
     _sherineLootCtx = mob._sherine ? { boss: !!mob.boss, grace: !!mob._grace } : null;   // 🔮 席琳的世界：本次擊殺掉落套用 詞綴×3／套裝效果判定（恩賜怪套裝機率×5）
+    _tradLootCtx = traditionalActive();   // 🏛️ 傳統模式：本次擊殺掉落的裝備隨機自帶強化值＋抑制施法卷軸（於 _sherineLootCtx 清除處一併關閉）
+    try {
     if(typeof auditTrackKill === 'function') auditTrackKill(mob);   // 統計：累計經驗/擊殺
     // 🔧 轉場建築（往上層的樓梯 / 遺忘之島傳送門）：擊敗即進入下一層/島，不顯示「擊敗了…」戰鬥訊息（race 建築且 noAutoTeleport，排除攻城塔/城門）
     let _hideKillMsg = (mob.race === '建築' && mob.noAutoTeleport);
@@ -7586,7 +7630,10 @@ function killMob(idx) {
         }
     }
     
-    _sherineLootCtx = null;   // 🔮 掉落判定結束，清除上下文
+    } finally {
+        _sherineLootCtx = null;   // 🔮 掉落判定結束，清除上下文（try/finally：縱使中途拋例外也必清，杜絕 _tradLootCtx 殘留洩漏到兌換/任務/其他 forceNormal=false 獎勵）
+        _tradLootCtx = false;     // 🏛️ 傳統模式掠奪上下文一併關閉
+    }
     // 🔧 架構#2：不在此處位移輸送帶（呼叫點可能正在迭代怪物陣列）。
     // tick 內的擊殺延後到 gameLoop 的 settleDeadMobs()；手動操作則立即清算。
     if (!state.inTick) settleDeadMobs();
@@ -9227,6 +9274,48 @@ function allyKnightAct(ally) {
     }
     allyAttackOnce(ally);
 }
+// ⚔️ 戰士協力一次行動：依設定攻擊技能施放——咆哮（roarFixed・對全體造成 50+(等級-30) 固定無屬性傷害，不計 MR/DR/元素）；無此技／MP不足／無敵人則退回一般攻擊（含迅猛雙斧/狂暴等普攻特效）
+function allyWarriorAct(ally) {
+    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); return; }
+    let sk = DB.skills[ally._atkSkill];
+    let d = ally.d || {};
+    if (sk && sk.type === 'atk' && sk.roarFixed) {                                          // ⚔️ 咆哮：全體固定傷害（戰士唯一主動攻擊技）
+        let targets = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
+        if (targets.length) {
+            let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+            if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
+            if ((ally.mp || 0) >= cost) {
+                ally.mp -= cost;
+                let base = 50 + Math.max(0, (ally.lv || 1) - 30);
+                targets.forEach(m => { if (!m || m.curHp <= 0 || m._dead) return; let dmg = Math.max(1, Math.floor(base * fragileMult(m))); m.curHp -= dmg; m.justHit = 'magic'; mobWake(m); });
+                logCombat(`<span class="font-bold" style="color:#fca5a5;text-shadow:0 0 6px #dc2626;">【協力·${ally._allyName}·咆哮】</span>咆哮震懾全場，對所有敵人造成約 ${base} 點固定傷害。`, 'player-special');   // _combatSrc='mercenary' 期間→自動歸傭兵來源
+                targets.forEach(m => { if (m && m.curHp <= 0 && !m._dead) { let i = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (i !== -1) killMob(i); } });
+                renderMobs();
+                return;
+            }
+        }
+    }
+    allyAttackOnce(ally);
+}
+// 👑 王族協力一次行動：依設定攻擊技能施放——呼喚盟友（callAllies・所有上場傭兵立即各發動一次額外一般攻擊）；無傭兵／MP不足則退回一般攻擊。其餘王族技皆為增益(buff)/被動，傭兵不自動施放（與其他職業傭兵一致；王者加護被動由 recomputeStats 已套）
+function allyRoyalAct(ally) {
+    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); return; }
+    let sk = DB.skills[ally._atkSkill];
+    let d = ally.d || {};
+    if (sk && sk.type === 'atk' && sk.callAllies) {                                          // 👑 呼喚盟友：號召所有傭兵各補一刀
+        let allies = (player.allies || []).filter(a => a && a.curHp > 0);
+        let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+        if (allyHasMastery(ally, 'k_royal_pledge')) cost = Math.ceil(cost / 2);              // 🏅 血盟精通（傭兵）：呼喚盟友消耗 MP 減半
+        if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
+        if (allies.length && (ally.mp || 0) >= cost) {
+            ally.mp -= cost;
+            logCombat(`<span class="text-amber-300 font-bold">【協力·${ally._allyName}·呼喚盟友】</span>號召盟友一同出擊！`, 'player-special');   // _combatSrc='mercenary' 期間→自動歸傭兵來源
+            allies.forEach(a => { try { allyAttackOnce(a); } catch(e){} });                 // 含自己在內各補一次普攻；allyAttackOnce 為純普攻不會再觸發技能→無遞迴
+            return;
+        }
+    }
+    allyAttackOnce(ally);
+}
 // 🐉 龍騎士協力一次行動：依設定攻擊技能施放——傷害魔法(岩漿噴吐/岩漿之箭/奪命之雷)、屠宰者(物理多段)、控制(護衛毀滅/恐懼無助/驚悚死神)；皆不適用則退回一般攻擊(含鎖鏈劍特效/弱點曝光/吸血)
 // ⚠️ 傭兵不付技能 HP 消耗：傭兵無 HP 再生且不被攻擊(ally.hp 僅吸血會增)，若扣 HP 則龍騎士 mp:0 的技能只能放數次後永久停擺；故僅付 MP（MP 有再生），效果等同玩家被再生支撐的連續施放。
 function allyDragonAct(ally) {
@@ -9406,7 +9495,7 @@ function alliesTick() {
                 if (allyHasMastery(ally, 'e_sword') && wpn && !wpn.w2h && !wpn.isBow && !wpn.ranged) _itv = Math.max(8, Math.round(_itv * (1/1.5)));   // 🏅 劍術精通（傭兵）：持單手近戰武器攻速+50%
                 if (ally.cls === 'illusion' && wpn && !wpn.isBow && ((allyHasMastery(ally, 'i_qigu') && wpn.qigu) || (allyHasMastery(ally, 'i_magicsword') && !wpn.qigu))) _itv = Math.max(8, Math.round(_itv * (1/1.3)));   // 🔮 奇古獸/魔劍精通（傭兵）：攻速+30%（鏡像玩家 recomputeStats spdMult）
                 ally._atkCd = _itv;
-                if (ally.cls === 'elf') allyElfAct(ally); else if (ally.cls === 'dark') allyDarkAct(ally); else if (ally.cls === 'knight') allyKnightAct(ally); else if (ally.cls === 'dragon') allyDragonAct(ally); else if (ally.cls === 'illusion') allyIllusionAct(ally); else allyAttackOnce(ally);
+                if (ally.cls === 'elf') allyElfAct(ally); else if (ally.cls === 'dark') allyDarkAct(ally); else if (ally.cls === 'knight') allyKnightAct(ally); else if (ally.cls === 'dragon') allyDragonAct(ally); else if (ally.cls === 'illusion') allyIllusionAct(ally); else if (ally.cls === 'warrior') allyWarriorAct(ally); else if (ally.cls === 'royal') allyRoyalAct(ally); else allyAttackOnce(ally);
             }
         }
     });
@@ -9429,8 +9518,8 @@ function toggleAlly(slotN) {
         }
         let sum = slotSummary(slotN);
         if (!sum) { logSys(`<span class="text-red-400">存檔 ${slotN} 沒有可用的角色。</span>`); }
-        else if (!!sum.classic !== !!player.classicMode) {   // 🎮 經典/一般 不可跨模式招募
-            logSys(`<span class="text-red-400">${player.classicMode ? '經典模式只能招募「經典模式存檔」的傭兵。' : '一般模式無法招募「經典模式存檔」的傭兵。'}</span>`);
+        else if ((sum.traditional ? 'trad' : (sum.classic ? 'classic' : 'normal')) !== (player.traditionalMode ? 'trad' : (player.classicMode ? 'classic' : 'normal'))) {   // 🎮🏛️ 一般／經典／傳統 不可跨模式招募
+            logSys(`<span class="text-red-400">只能招募與本角色「相同模式（一般／經典／傳統）」的存檔傭兵。</span>`);
         }
         else {
             let cost = (sum.lv || 1) * 10000;
@@ -9450,15 +9539,18 @@ function renderAllyNPC(div) {
         let sum = slotSummary(n);
         let active = isAllyActive(n);
         if (!sum) return `<div class="w-full text-left py-2 px-3 text-sm bg-slate-900/60 border border-slate-700 rounded opacity-60">存檔 ${n}：<span class="text-slate-500">（空）</span></div>`;
-        let _classic = !!sum.classic;                                  // 🎮 經典模式存檔：琥珀金顯示
-        let _modeMatch = (_classic === !!player.classicMode);          // 🎮 只能招募與自己同模式（經典↔經典、一般↔一般）的存檔
-        let _tag = _classic ? '<span style="color:#fbbf24;font-weight:bold;">⚔經典</span> ' : '';
-        let _nameStyle = _classic ? 'style="color:#fbbf24;"' : 'class="text-amber-300"';
+        let _classic = !!sum.classic;                                  // 🎮 經典模式存檔
+        let _trad = !!sum.traditional;                                 // 🏛️ 傳統模式存檔
+        let _sumMode = _trad ? 'trad' : (_classic ? 'classic' : 'normal');
+        let _myMode = player.traditionalMode ? 'trad' : (player.classicMode ? 'classic' : 'normal');
+        let _modeMatch = (_sumMode === _myMode);                       // 🎮🏛️ 只能招募與自己同模式（一般/經典/傳統）的存檔
+        let _tag = _trad ? '<span style="color:#c4b5fd;font-weight:bold;">🏛️傳統</span> ' : (_classic ? '<span style="color:#fbbf24;font-weight:bold;">⚔經典</span> ' : '');
+        let _nameStyle = _trad ? 'style="color:#c4b5fd;"' : (_classic ? 'style="color:#fbbf24;"' : 'class="text-amber-300"');
         let _btn = active
             ? `<button onclick="toggleAlly('${n}')" class="btn py-1 px-4 text-sm font-bold bg-red-900 border-red-700 text-red-200">解除</button>`
             : (_modeMatch
                 ? `<button onclick="toggleAlly('${n}')" class="btn py-1 px-4 text-sm font-bold bg-emerald-900 border-emerald-700 text-emerald-200">召喚　${((sum.lv||1)*10000).toLocaleString()}金</button>`
-                : `<span class="text-xs text-slate-500 px-2 text-right">${player.classicMode ? '非經典存檔<br>不可招募' : '經典存檔<br>不可招募'}</span>`);
+                : `<span class="text-xs text-slate-500 px-2 text-right">非同模式存檔<br>不可招募</span>`);
         // 🔋 出戰中傭兵剩餘資源：騎士/戰士(純物理)不顯示；龍騎士以 HP 為資源(技能吃HP)；其餘職業顯示 MP
         let _res = '';
         if (active) {
@@ -10350,6 +10442,8 @@ function rollAffixesOld() {
     return { attr: false, bless: (Math.random() < 0.01 * m), anc: false };
 }
 function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
+    // 🏛️ 傳統模式：任何來源都不產生施法卷軸（武器/盔甲/飾品＋祝福/詛咒變體）——掉落／黑市／歐西里斯寶箱／血盟入盟禮／兌換等全擋
+    if (TRAD_NO_SCROLLS[id] && traditionalActive()) return null;
     // 卷軸變祝福／詛咒機率：各 1%（互斥）
     if (!forceNormal && (id === 'scroll_weapon' || id === 'scroll_armor')) {
         let _r = Math.random();
@@ -10398,13 +10492,15 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
         }
     }
 
-    let _probe = { id: id, en: 0, bless: bless, anc: anc, attr: attr, seteff: seteff };
-    let ex = player.inv.find(i => (i.en || 0) === 0 && sameItemSig(i, _probe));   // 🔧 架構#3：統一簽章比對（並容忍舊存檔 en 為 undefined）
+    // 🏛️ 傳統模式：掉落／黑市／製作的「裝備」隨機自帶強化值（_tradLootCtx 期間；商店 forceNormal=true 不設→恆 +0；箭矢/材料/消耗品不套）
+    let _tEn = (_tradLootCtx && !forceNormal && d && ((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc') && traditionalActive()) ? rollTraditionalEnhance(d) : 0;
+    let _probe = { id: id, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff };
+    let ex = _tEn > 0 ? null : player.inv.find(i => (i.en || 0) === 0 && sameItemSig(i, _probe));   // 🔧 架構#3：統一簽章比對（並容忍舊存檔 en 為 undefined）；🏛️ 自帶強化(en>0)獨立成堆、不併入 +0
     if(ex) ex.cnt += cnt;   // 不論是否鎖定都疊加；僅加數量、不更動既有堆疊的鎖定/廢品狀態
-    else player.inv.push({ id: id, uid: uid(), cnt: cnt, en: 0, bless: bless, anc: anc, attr: attr, seteff: seteff, lock: false, junk: !!(player.junkPrefs && player.junkPrefs[itemSig(_probe)]) });   // 🔧 廢品記憶改以完整簽章比對：詞綴物品也可自動標記，但僅限「完全相同詞綴」者
+    else player.inv.push({ id: id, uid: uid(), cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff, lock: false, junk: !!(player.junkPrefs && player.junkPrefs[itemSig(_probe)]) });   // 🔧 廢品記憶改以完整簽章比對：詞綴物品也可自動標記，但僅限「完全相同詞綴」者
 
     // 紀錄這次產生的物品屬性
-    let itemInfo = { id: id, cnt: cnt, en: 0, bless: bless, anc: anc, attr: attr, seteff: seteff };
+    let itemInfo = { id: id, cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff };
     
     if (!silent && d) {
         logSys(`獲得物品: <span class="font-bold">${getItemFullName(itemInfo)}</span>`);
@@ -11118,6 +11214,7 @@ function buyItem(id, qty) {
 
 let activeScroll = null;
 function openEnhanceModal(scroll) {
+    if (traditionalActive()) { logSys('<span class="text-amber-300">🏛️ 傳統模式無法強化裝備。</span>'); return; }   // 🏛️ 縱深防護：傳統模式封鎖卷軸強化路徑
     activeScroll = scroll;
     let targets = Object.values(player.eq).filter(e => e && DB.items[e.id].type === scroll.target && !isMaxEnhanced(e) && !DB.items[e.id].noEnhance);   // 🔧 已達強化上限者不列入；🏛️ 無法強化的裝備（古老系列）不列入
     
@@ -11140,6 +11237,7 @@ function openEnhanceModal(scroll) {
 }
 
 function doEnhance(targetUid, isEq = true) {
+    if (traditionalActive()) return;   // 🏛️ 縱深防護：傳統模式不可強化
     if(!activeScroll) return;
     
     let target, slot;
@@ -11364,7 +11462,7 @@ function _updateUIImpl() {
       let mb = document.getElementById('mv-action-btn');
       if (mb) { mb.style.display = ''; mb.textContent = _txt; mb.onclick = _fn; mb.style.background = _riftLock ? '#7c3aed' : (_inTown ? '#1d4ed8' : '#047857'); mb.style.borderColor = _riftLock ? '#c4b5fd' : (_inTown ? '#93c5fd' : '#34d399'); } }
     { let vb = document.getElementById('victory-badge'); if (vb) { let _va = siegeVictoryActive(); vb.style.display = _va ? 'inline-flex' : 'none'; if (_va) vb.title = `攻城獲勝期間：全商店8折、開放${victoryCityCfg().castleName}`; } }   // 攻城獲勝淡金黃標記（inline-flex 讓👑與文字水平置中；🔧 tooltip 依實際獲勝城池動態，不再固定肯特）
-    { let cb = document.getElementById('classic-badge'); if (cb) cb.style.display = player.classicMode ? 'inline' : 'none'; }   // 🎮 經典模式標記
+    { let cb = document.getElementById('classic-badge'); if (cb) cb.style.display = (player.classicMode && !player.traditionalMode) ? 'inline' : 'none'; let tb = document.getElementById('traditional-badge'); if (tb) tb.style.display = player.traditionalMode ? 'inline' : 'none'; }   // 🎮 經典／🏛️ 傳統模式標記（傳統角色顯示傳統徽章、不重複顯示經典）
     applyAreaBackground();   // 區域背景：地監/攻城→戰鬥區、城堡→村莊畫面
     
     // 處理顯示文字：只顯示 騎士、法師、妖精、黑暗妖精
@@ -11693,7 +11791,7 @@ player.inv.forEach(i => {
     // ⚡ 快速強化模式：對應分頁啟用且為可強化裝備（未鎖定）時，右側顯示勾選欄，點整列切換勾選
     let _qeType = (d.type === 'wpn' && !d.isArrow) ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : null);
     let _qjType = (d.type === 'wpn') ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : 'item');   // 🗑️ 快速廢品分頁歸屬（含箭矢→武器分頁、其餘→道具分頁）
-    if (_qeType && quickEnh[_qeType].active && !i.lock) {
+    if (_qeType && quickEnh[_qeType].active && !i.lock && !traditionalActive()) {   // 🏛️ 傳統模式：不顯示快速強化勾選列
         let _checked = !!quickEnh[_qeType].sel[i.uid];
         el.innerHTML = `<div class="flex items-center justify-between gap-2">${_rowInner}<input type="checkbox" class="pointer-events-none w-4 h-4 mr-1 flex-shrink-0" ${_checked ? 'checked' : ''}></div>`;
         if (_checked) el.className += ' ring-2 ring-blue-500/70';
@@ -12228,7 +12326,7 @@ function openModal(item, isEq, slot) {
     }
 
     // 👇 修改：為武器、防具、飾品加入專屬的「強化」按鈕 (加入 !d.isArrow 防呆，箭矢不顯示強化按鈕)
-    if (((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc') && !isMaxEnhanced(item) && !d.noEnhance) {   // 🔧 已達淬鍊（強化上限）：隱藏強化按鈕；🏛️ 無法強化的裝備（古老系列）不顯示強化鈕
+    if (((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc') && !isMaxEnhanced(item) && !d.noEnhance && !traditionalActive()) {   // 🔧 已達淬鍊（強化上限）：隱藏強化按鈕；🏛️ 無法強化的裝備（古老系列）不顯示強化鈕；🏛️ 傳統模式：所有裝備皆無強化選項
         act += `<button class="col-span-2 w-full btn border-purple-700 bg-purple-900 hover:bg-purple-800 text-purple-200 py-3 text-lg font-bold mt-2" onclick="showEnhanceOptions('${item.uid}', ${isEq})">強化</button>`;
     }
 
@@ -12563,6 +12661,7 @@ function quickEnhanceSelectAll(type, checked) { let st = quickEnh[type]; st.sel 
 function toggleQuickItem(type, uid) { let st = quickEnh[type]; if (st.sel[uid]) delete st.sel[uid]; else st.sel[uid] = true; renderTabs(true); }
 
 function runQuickEnhance(type) {
+    if (traditionalActive()) return;   // 🏛️ 縱深防護：傳統模式不可批次強化
     let st = quickEnh[type];
     let goal = Number((document.getElementById('qe-target-' + type) || {}).value) || st.target || 0;
     let entries = _qeEligibleItems(type).filter(i => st.sel[i.uid]);
@@ -12624,7 +12723,7 @@ function _qjEligibleItems(type) {
 }
 // ⚡🗑️ 分頁頂端快速操作表頭：武器/防具＝[快速強化][快速廢品]；道具＝[快速廢品]（強化進行中沿用原強化表頭）
 function buildQuickHeader(type) {
-    let hasEnh = (type === 'wpn' || type === 'arm');
+    let hasEnh = (type === 'wpn' || type === 'arm') && !traditionalActive();   // 🏛️ 傳統模式：無強化→隱藏「快速強化」按鈕與面板（只保留快速廢品）
     if (hasEnh && quickEnh[type].active) return buildQuickEnhanceHeader(type);   // 強化進行中：沿用原強化表頭
     let jnk = quickJunk[type];
     if (jnk.active) _qjSync(type);   // 🔧 渲染前先同步新掉落物品到面板狀態（新廢品預先勾選），確認時才不會誤取消其標記
@@ -13666,6 +13765,7 @@ function renderBianBless(el) {
         </div>`;
 }
 function ismaelBuyAcc() {
+    if (traditionalActive()) { alert('🏛️ 傳統模式無法購買施法卷軸。'); return; }   // 🏛️ 縱深防護（伊賽馬利在傳統模式已隱藏，正常情況不可達）
     if (!ismaelAccAvailable()) { alert('本次購買額度已用完，攻城獲勝後可再購買 1 張。'); return; }
     if (player.gold < 1000000) { alert(`金幣不足（需 1,000,000，目前 ${player.gold.toLocaleString()}）。`); return; }
     player.gold -= 1000000;
@@ -13986,6 +14086,7 @@ function renderTownNPCs(townId) {
         }
         if (npc.darkOnly && player.cls !== 'dark') return;   // 🔧 黑暗妖精限定試煉：其他職業看不到
         if (npc.classicHide && player.classicMode) return;   // 🔥 經典模式：隱藏克里斯特/碧恩/漢（無法賦予祝福與精通）
+        if (npc.traditionalHide && player.traditionalMode) return;   // 🏛️ 傳統模式：隱藏肯特城兌換 NPC（伊賽馬利）
         let el = document.createElement('div');
         el.className = 'bg-slate-800 border border-slate-600 rounded-lg p-3 hover:bg-slate-700 transition-colors cursor-pointer flex flex-col justify-between';
         
@@ -14061,6 +14162,7 @@ function interactNPC(npcId, townId) {
     let npc = DB.towns[townId].npcs.find(n => n.id === npcId);
     if(!npc) return;
     if (npc.classicHide && player.classicMode) return;   // 🔥 經典模式：克里斯特/碧恩/漢 不可互動（縱深防護，正常情況卡片已不渲染）
+    if (npc.traditionalHide && player.traditionalMode) return;   // 🏛️ 傳統模式：肯特城兌換 NPC（伊賽馬利）不可互動（縱深防護）
     _activePanel = null;   // 開啟新面板：先清除自動刷新標記，由對應 render 視需要重新設定
 
     document.getElementById('town-npc-container').classList.add('hidden');
@@ -14169,7 +14271,7 @@ function closeNpcInteraction() {
 // ===== 共用倉庫（存檔角色共用，獨立於存檔位的 localStorage 鍵）=====
 // 🎮 經典模式與非經典模式角色的倉庫不共通：依 player.classicMode 切換 localStorage 鍵（傭兵走存檔位、與倉庫無關，仍共通）。
 const WH_KEY = 'lineage_idle_warehouse';
-function whKey(p){ let _p = (p !== undefined) ? p : player; return (_p && _p.classicMode) ? (WH_KEY + '_classic') : WH_KEY; }
+function whKey(p){ let _p = (p !== undefined) ? p : player; return (_p && _p.traditionalMode) ? (WH_KEY + '_trad') : (_p && _p.classicMode) ? (WH_KEY + '_classic') : WH_KEY; }   // 🏛️ 傳統倉庫獨立桶（須先判 traditional，因傳統角色 classicMode 亦為 true）
 const WH_MAX = 500;   // 倉庫格數上限（🔧 100 → 200 → 500）
 const WH_NO_STORE = ['new_item_239','new_item_241','new_item_collar_husky','new_item_238','new_item_184','new_item_185','new_collar_rabbit','new_collar_fox','new_collar_beagle','new_collar_stbernard','item_mastery_proof',
     'item_pride_pass_11','item_pride_pass_21','item_pride_pass_31','item_pride_pass_41','item_pride_pass_51','item_pride_pass_61','item_pride_pass_71','item_pride_pass_81','item_pride_pass_91',
@@ -14554,9 +14656,13 @@ function joinPledge(faction) {
     if (player.cls === 'royal') return;   // 👑 王族陣營於創角時固定指派，不可由此變更
     if (player.bloodPledge) return;
     player.bloodPledge = faction;   // 設定血盟陣營標籤（供日後戰鬥遭遇特殊敵人觸發）
-    PLEDGE_GIFT.forEach(g => gainItem(g.id, g.cnt, true, true));
-    logSys(`<span class="text-green-300 font-bold">${cfg.name}：太好了，歡迎加入${cfg.pledgeName}，我的好夥伴！這些見面禮收下吧。</span>`);
-    logSys(`你獲得了 對武器施法的卷軸 x5 與 對盔甲施法的卷軸 x10。`);
+    if (!traditionalActive()) {   // 🏛️ 傳統模式：不發放入盟禮施法卷軸（傳統無強化），退盟亦不需交還
+        PLEDGE_GIFT.forEach(g => gainItem(g.id, g.cnt, true, true));
+        logSys(`<span class="text-green-300 font-bold">${cfg.name}：太好了，歡迎加入${cfg.pledgeName}，我的好夥伴！這些見面禮收下吧。</span>`);
+        logSys(`你獲得了 對武器施法的卷軸 x5 與 對盔甲施法的卷軸 x10。`);
+    } else {
+        logSys(`<span class="text-green-300 font-bold">${cfg.name}：歡迎加入${cfg.pledgeName}，我的好夥伴！</span>`);
+    }
     saveGame();
     renderTabs();
     updateUI();
@@ -14567,23 +14673,27 @@ function leavePledge(faction) {
     let cfg = PLEDGE_CFG[faction];
     if (player.cls === 'royal') { logSys('<span class="text-amber-300">👑 王族世代效忠，無法退出血盟。</span>'); return; }   // 👑 王族不可退出
     if (player.bloodPledge !== faction) return;
-    if (!confirm(`${cfg.name}：你必須交還贈送的禮物（對武器施法的卷軸 x5、對盔甲施法的卷軸 x10）才能退出血盟。確定交還並退出？`)) return;
-    let lack = PLEDGE_GIFT.some(g => player.inv.filter(i => i.id === g.id && !i.lock).reduce((s, i) => s + i.cnt, 0) < g.cnt);   // 🔧 只計入未鎖定的卷軸
-    if (lack) {
-        logSys(`<span class="text-red-400">${cfg.name}：你的卷軸不足，無法退出血盟（需 對武器施法的卷軸 x5、對盔甲施法的卷軸 x10）。</span>`);
-        alert(`禮物不足，無法退出血盟。\n需交還：對武器施法的卷軸 x5、對盔甲施法的卷軸 x10`);
-        return;
-    }
-    // 交還（扣除）禮物
-    PLEDGE_GIFT.forEach(g => {
-        let remaining = g.cnt;
-        player.inv.filter(i => i.id === g.id && !i.lock).forEach(it => {   // 🔧 鎖定的卷軸不被收走（與賣出/倉庫的鎖定保護一致）
-            if (remaining <= 0) return;
-            let take = Math.min(it.cnt, remaining);
-            it.cnt -= take; remaining -= take;
+    if (traditionalActive()) {   // 🏛️ 傳統模式：入盟未發放禮物卷軸，退盟亦不需交還
+        if (!confirm(`${cfg.name}：確定要退出${cfg.pledgeName}？`)) return;
+    } else {
+        if (!confirm(`${cfg.name}：你必須交還贈送的禮物（對武器施法的卷軸 x5、對盔甲施法的卷軸 x10）才能退出血盟。確定交還並退出？`)) return;
+        let lack = PLEDGE_GIFT.some(g => player.inv.filter(i => i.id === g.id && !i.lock).reduce((s, i) => s + i.cnt, 0) < g.cnt);   // 🔧 只計入未鎖定的卷軸
+        if (lack) {
+            logSys(`<span class="text-red-400">${cfg.name}：你的卷軸不足，無法退出血盟（需 對武器施法的卷軸 x5、對盔甲施法的卷軸 x10）。</span>`);
+            alert(`禮物不足，無法退出血盟。\n需交還：對武器施法的卷軸 x5、對盔甲施法的卷軸 x10`);
+            return;
+        }
+        // 交還（扣除）禮物
+        PLEDGE_GIFT.forEach(g => {
+            let remaining = g.cnt;
+            player.inv.filter(i => i.id === g.id && !i.lock).forEach(it => {   // 🔧 鎖定的卷軸不被收走（與賣出/倉庫的鎖定保護一致）
+                if (remaining <= 0) return;
+                let take = Math.min(it.cnt, remaining);
+                it.cnt -= take; remaining -= take;
+            });
         });
-    });
-    player.inv = player.inv.filter(i => i.cnt > 0);
+        player.inv = player.inv.filter(i => i.cnt > 0);
+    }
     player.bloodPledge = null;
     logSys(`<span class="text-slate-300">${cfg.name}：很遺憾……你交還了禮物，已退出${cfg.pledgeName}。</span>`);
     saveGame();
@@ -14646,11 +14756,14 @@ function trialRun(reqs, rewardId, sherine) {
     let qty = Math.min(trialQtyVal(), Math.max(0, maxN));
     if (qty < 1) { logSys('<span class="text-red-400 font-bold">材料不足，無法兌換。</span>'); return 0; }
     norm.forEach(p => questConsumeId(p[0], (p[1] || 1) * qty));   // 🔧 背包優先扣除，不足扣共用倉庫
-    for (let i = 0; i < qty; i++) {
-        if (sherine) { questConsumeId('sherine_crystal', 1); _forceSherineSet = true; }
-        gainItem(rewardId, 1, false, false);   // forceNormal=false：詞綴機率同一般兌換
-        _forceSherineSet = false;
-    }
+    let _savedTrad = _tradLootCtx; _tradLootCtx = false;   // 🏛️ 傳統模式：試煉／任務「兌換」物品不自帶隨機強化值（視同商店＝+0；亦防任何 _tradLootCtx 殘留洩漏到此）
+    try {
+        for (let i = 0; i < qty; i++) {
+            if (sherine) { questConsumeId('sherine_crystal', 1); _forceSherineSet = true; }
+            gainItem(rewardId, 1, false, false);   // forceNormal=false：詞綴機率同一般兌換
+            _forceSherineSet = false;
+        }
+    } finally { _tradLootCtx = _savedTrad; }
     return qty;
 }
 function trialExName(n, rewardId) { return `${DB.items[rewardId].n}${n > 1 ? ` ×${n}` : ''}`; }
@@ -15442,7 +15555,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     heine: 'assets/area/森林.jpg',   // 🌲 海音（野外狩獵·共用森林背景·安全區 town_heine 不變）
     eva_kingdom: 'assets/area/伊娃王國.jpg',   // 🏰 伊娃王國（地監·專屬背景·area-fit）
     windwood: 'assets/area/沙漠.jpg',   // 🏜️ 風木（野外·共用沙漠背景）
-    windwood_dungeon: 'assets/area/風木地監.jpg',   // 🏰 風木地監（攻城獲勝後開放的城堡狩獵區·專屬背景·area-fit·dynamic 城堡區故不走同名探測、需在此明列）
+    windwood_dungeon: 'assets/area/地監.jpg',   // 🏰 風木地監（攻城獲勝後開放的城堡狩獵區）：fallback＝地監.jpg；優先用同名 風木地監.jpg（下方 applyAreaBackground 對 windwood_dungeon 特例啟用同名探測：存在才切換、不存在維持地監.jpg）
     gludio: 'assets/area/城鎮周邊.jpg', kent: 'assets/area/城鎮周邊.jpg', giran: 'assets/area/城鎮周邊.jpg',   // 🏙️ 古魯丁/肯特/奇岩（野外·城鎮周邊·≠村莊周邊）
     training: 'assets/area/村莊周邊.jpg',   // 🆕 新兵修鍊場（套 area-fit·與其餘野外共用村莊周邊背景）
     dream_island: 'assets/area/夢幻之島.jpg',   // 🆕 夢幻之島（套 area-fit·專屬背景）
@@ -15467,7 +15580,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     thebes_temple: 'assets/area/底比斯.jpg'        // 🏛️ 底比斯 歐西里斯祭壇（純BOSS房）
 };
 const CATEGORY_AREA_BG = { wild: 'assets/area/村莊周邊.jpg', dungeon: 'assets/area/地監.jpg', siege: 'castle.png', tower: 'assets/area/傲慢之塔.jpg', rift: 'Rift.png' };   // 🆕 野外/地監/傲慢之塔狩獵改 area-fit 沙漠格式新背景；siege/rift 暫維持 16:9 cover。🗼 塔狩獵=傲慢之塔.jpg，入口安全區另由 TOWN_AREA_BG.tower 保留 TowerofInsolence.png 不變；🏛️ 底比斯3圖另由 SPECIAL_AREA_BG 覆寫（底比斯沙漠.jpg／底比斯.jpg）
-const AREA_BG_FIT = new Set(['assets/area/沙漠.jpg', 'assets/area/水晶洞穴.jpg', 'assets/area/地監.jpg', 'assets/area/火龍窟.jpg', 'assets/area/森林.jpg', 'assets/area/村莊周邊.jpg', 'assets/area/傲慢之塔.jpg', 'assets/area/洞窟.jpg', 'assets/area/象牙塔.jpg', 'assets/area/伊娃王國.jpg', 'assets/area/城鎮周邊.jpg', 'assets/area/歐瑞.jpg', 'assets/area/拉斯塔巴德.jpg', 'assets/area/軍王之室.jpg', 'assets/area/安塔瑞斯.jpg', 'assets/area/法利昂.jpg', 'assets/area/巴拉卡斯.jpg', 'assets/area/底比斯沙漠.jpg', 'assets/area/底比斯.jpg', 'assets/area/龍之谷.jpg', 'assets/area/說話之島港口.jpg', 'assets/area/遺忘之島.jpg', 'assets/area/夢幻之島.jpg', 'assets/area/艾爾摩.jpg', 'assets/area/地監深層.jpg', 'assets/area/象牙塔深層.jpg', 'assets/area/龍之谷地監深層.jpg', 'assets/area/風木地監.jpg']);   // 🏜️ 條狀比例(非16:9·1920×580)背景：用 contain+area-fit(框高鎖圖比例·無上下黑邊·省空間給戰鬥日誌)。所有新狩獵區背景都列於此→自動套沙漠格式。⚠️這些 jpg 需放 assets/area/（同沙漠.jpg）；未放檔時背景空白但版面/格式仍正確。日後新增條狀背景就把路徑加進來
+const AREA_BG_FIT = new Set(['assets/area/沙漠.jpg', 'assets/area/水晶洞穴.jpg', 'assets/area/地監.jpg', 'assets/area/火龍窟.jpg', 'assets/area/森林.jpg', 'assets/area/村莊周邊.jpg', 'assets/area/傲慢之塔.jpg', 'assets/area/洞窟.jpg', 'assets/area/象牙塔.jpg', 'assets/area/伊娃王國.jpg', 'assets/area/城鎮周邊.jpg', 'assets/area/歐瑞.jpg', 'assets/area/拉斯塔巴德.jpg', 'assets/area/軍王之室.jpg', 'assets/area/安塔瑞斯.jpg', 'assets/area/法利昂.jpg', 'assets/area/巴拉卡斯.jpg', 'assets/area/底比斯沙漠.jpg', 'assets/area/底比斯.jpg', 'assets/area/龍之谷.jpg', 'assets/area/說話之島港口.jpg', 'assets/area/遺忘之島.jpg', 'assets/area/夢幻之島.jpg', 'assets/area/艾爾摩.jpg', 'assets/area/地監深層.jpg', 'assets/area/象牙塔深層.jpg', 'assets/area/龍之谷地監深層.jpg']);   // 🏜️ 條狀比例(非16:9·1920×580)背景：用 contain+area-fit(框高鎖圖比例·無上下黑邊·省空間給戰鬥日誌)。所有新狩獵區背景都列於此→自動套沙漠格式。⚠️這些 jpg 需放 assets/area/（同沙漠.jpg）；未放檔時背景空白但版面/格式仍正確。日後新增條狀背景就把路徑加進來
 const SPECIAL_TOWN_BG = { town_silent: 'silentcave.png' };                                        // 🔧 安全區逐張對應背景（沉默洞穴）
 const TOWN_AREA_BG = { village: 'village.png', castle: 'castle.png', tower: 'TowerofInsolence.png', rift: 'Rift.png' };   // 村莊畫面依分類（🗼 傲慢之塔入口；🌀 時空裂痕入口 Rift.png）
 // 🆕 同名背景圖：地圖顯示名稱(MAP_CATEGORIES 的 t) → 嘗試 assets/area/[名稱].jpg；探測結果快取(undefined=未探測、null=探測中、{found,fit}=結果)
@@ -15482,6 +15595,7 @@ function applyAreaBackground() {
         let useSrc = null, useFit = false;
         // 🆕 優先尋找「同名地圖圖檔」assets/area/[地圖名稱].jpg：存在才用、找不到才退回 fallback。瀏覽器無法同步判斷檔案是否存在→非同步探測＋快取(首訪先顯示 fallback、載入成功後切換)
         let _nm = mapDisplayName(cur);
+        if (!_nm && cur === 'windwood_dungeon') _nm = '風木地監';   // 🏰 風木地監＝動態城堡區(不在 MAP_CATEGORIES)：手動指定同名圖名→優先探測 assets/area/風木地監.jpg、不存在則退回 fbImg(地監.jpg)
         let _c = _nm ? _areaNameBgCache[cur] : null;
         if (_c && _c.found) { useSrc = `assets/area/${_nm}.jpg`; useFit = _c.fit; }   // 已知存在→直接用(條狀比例 1920/580→area-fit)
         else {
@@ -15671,7 +15785,7 @@ function _summaryFromRaw(s){
     if(!s) return null;
     try { let d = JSON.parse(s); let p = d.p;
         let clsName = { knight:'騎士', mage:'法師', elf:'妖精', dark:'黑暗妖精', illusion:'幻術士', dragon:'龍騎士', warrior:'戰士', royal:'王族' }[p.cls] || p.cls;
-        return { name: p.name || '未命名', cls: clsName, lv: p.lv || 1, gold: p.gold || 0, classic: !!p.classicMode, avatar: p.avatar || null };   // 🎮 經典模式旗標：供存檔位琥珀金顯示與傭兵同模式招募限制；avatar＝職業性別頭像名（assets/character/<avatar>.png）
+        return { name: p.name || '未命名', cls: clsName, lv: p.lv || 1, gold: p.gold || 0, classic: !!p.classicMode, traditional: !!p.traditionalMode, avatar: p.avatar || null };   // 🎮 經典／🏛️ 傳統模式旗標：供存檔位顯示與傭兵同模式招募限制；avatar＝職業性別頭像名（assets/character/<avatar>.png）
     } catch(e){ return null; }
 }
 function slotSummary(n){ return _summaryFromRaw(localStorage.getItem('lineage_idle_save_' + n)); }
@@ -15679,7 +15793,7 @@ function slotBackupSummary(n){ return _summaryFromRaw(localStorage.getItem('line
 let _slotMode = 'new';
 function openSlotSelect(mode){
     _slotMode = mode;
-    { let _ct = document.getElementById('create-classic-toggle'); if (_ct && mode === 'new') _ct.checked = false; }   // 🎮 創角流程重置經典模式開關（預設關閉）
+    { let _ct = document.getElementById('create-classic-toggle'); if (_ct && mode === 'new') _ct.checked = false; if (mode === 'new' && typeof _setTraditionalToggle === 'function') _setTraditionalToggle(false); }   // 🎮 創角流程重置經典＋傳統模式開關（預設關閉，傳統鎖定）
     document.getElementById('main-menu').classList.add('hidden');
     document.getElementById('creation-panel').classList.add('hidden');
     document.getElementById('slot-select-panel').classList.remove('hidden');
@@ -15688,8 +15802,11 @@ function openSlotSelect(mode){
     for(let n = 1; n <= 8; n++){
         let sum = slotSummary(n);
         let _classic = !!(sum && sum.classic);   // 🎮 經典模式存檔：以琥珀金顯示
-        let label = sum ? `${_classic ? '⚔ ' : ''}存檔 ${n}　${sum.cls} Lv.${sum.lv}　${sum.name}${_classic ? '（經典）' : ''}` : `存檔 ${n}　（空）`;
-        let _classicStyle = _classic ? 'color:#fbbf24;border-color:#d97706;' : '';   // 琥珀金文字＋琥珀邊框
+        let _trad = !!(sum && sum.traditional);  // 🏛️ 傳統模式存檔：以淡紫顯示（傳統角色 classic 亦為 true，故先判 traditional）
+        let _tag = _trad ? '🏛️ ' : (_classic ? '⚔ ' : '');
+        let _modeName = _trad ? '（傳統）' : (_classic ? '（經典）' : '');
+        let label = sum ? `${_tag}存檔 ${n}　${sum.cls} Lv.${sum.lv}　${sum.name}${_modeName}` : `存檔 ${n}　（空）`;
+        let _classicStyle = _trad ? 'color:#c4b5fd;border-color:#7c3aed;' : (_classic ? 'color:#fbbf24;border-color:#d97706;' : '');   // 🏛️ 傳統＝淡紫文字＋紫邊框；🎮 經典＝琥珀金文字＋琥珀邊框
         let disabled = (mode === 'load' && !sum);
         let bak = (mode === 'load') ? slotBackupSummary(n) : null;
         // 動作區固定寬度：匯入(+復原)鈕各 flex-1。無備份時匯入鈕獨佔整個動作區
@@ -15907,9 +16024,23 @@ function updateCreateUI() {
     document.getElementById('btn-start').disabled = left <= 0 ? false : true;
 }
 
+function _setTraditionalToggle(enabled){   // 同步傳統模式勾選框可用狀態（經典關閉→鎖定並取消傳統）
+    let _tt = document.getElementById('create-traditional-toggle');
+    let _tl = document.getElementById('lbl-create-traditional');
+    if (_tt) { _tt.disabled = !enabled; if (!enabled) _tt.checked = false; }
+    if (_tl) _tl.classList.toggle('opacity-40', !enabled);
+}
 function onToggleClassic(el) {
-    if (!el.checked) return;   // 取消勾選不需確認
+    if (!el.checked) { _setTraditionalToggle(false); return; }   // 取消經典：連帶鎖定＋取消傳統（傳統須建立在經典之上）
     let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 物品掉落機率 → 原本的 1/10\n‧ 經驗值取得 → 減半\n‧ 怪物金幣 → 僅剩一般模式的 1/2\n‧ 死亡 → 損失該等級 10% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n確定要以「經典模式」創建此角色嗎？');
+    if (!ok) { el.checked = false; _setTraditionalToggle(false); return; }   // 取消 → 還原為未勾選並鎖定傳統
+    _setTraditionalToggle(true);   // 經典確認開啟 → 解鎖傳統模式選項
+}
+function onToggleTraditional(el) {
+    if (!el.checked) return;   // 取消勾選不需確認
+    let _ct = document.getElementById('create-classic-toggle');
+    if (!_ct || !_ct.checked) { el.checked = false; alert('傳統模式須先勾選「經典模式」才能啟用。'); return; }   // 防呆：未開經典不可開傳統
+    let ok = confirm('🏛️ 傳統模式（建立在「經典模式」之上）\n\n開啟後，此角色將在經典規則之上「永久」再套用下列規則：\n\n‧ 所有武器/防具/飾品 → 沒有強化選項（隱藏快速強化）\n‧ 怪物不掉落、黑市不販售「對武器/盔甲/飾品施法的卷軸」\n‧ 隱藏肯特城的兌換 NPC（伊賽馬利）\n‧ 取而代之 → 怪物掉落／潘朵拉黑市／製作 的裝備會「隨機自帶已強化值」（商店購買仍為 +0）\n‧ 倉庫與角色 與「經典模式」「一般模式」皆不共通\n\n確定要以「傳統模式」創建此角色嗎？');
     if (!ok) el.checked = false;   // 取消 → 還原為未勾選
 }
 function startGame() {
@@ -15932,6 +16063,7 @@ function startGame() {
     // 👑 王族：依性別自動入盟、不可選擇／退出（王子→特羅斯 tros、公主→依詩蒂 esti）
     if (player.cls === 'royal') player.bloodPledge = (curCreate.rawCls && curCreate.rawCls.startsWith('f_')) ? 'esti' : 'tros';
     player.classicMode = !!(document.getElementById('create-classic-toggle') && document.getElementById('create-classic-toggle').checked);   // 🎮 經典模式：依創角開關決定（此角色永久生效）
+    player.traditionalMode = player.classicMode && !!(document.getElementById('create-traditional-toggle') && document.getElementById('create-traditional-toggle').checked);   // 🏛️ 傳統模式：經典之上的子模式（須經典亦開啟才生效・永久）
     player.name = null;   // 預設未取名，狀態欄顯示「點擊取名」，玩家可點擊命名
     
     let b = createBase[curCreate.cls];
@@ -17229,12 +17361,15 @@ function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製
     if (sherine) consumeMaterialById('sherine_crystal', makeCount);
 
     // 產出（逐個產生，使每件各自有 1% 機率取得隨機詞綴；靜音後統一記錄一次）
-    for (let k = 0; k < makeCount; k++) {
-        _forceSherineSet = !!sherine;   // 🔮 席琳製作：每件成品必定附帶隨機一種席琳套裝效果（其餘詞綴機率照舊）
-        let _petGearResult = !!(DB.items[recipe.result] && DB.items[recipe.result].slot === 'pet');   // 🦴 寵物裝備：白板製作，不附任何詞綴
-        gainItem(recipe.result, recipe.yield || 1, true, _petGearResult);
-        _forceSherineSet = false;
-    }
+    _tradLootCtx = true;   // 🏛️ 傳統模式：製作的武器/防具/飾品隨機自帶強化值（寵物裝備走 forceNormal、材料非裝備→皆不受影響、恆 +0）
+    try {
+        for (let k = 0; k < makeCount; k++) {
+            _forceSherineSet = !!sherine;   // 🔮 席琳製作：每件成品必定附帶隨機一種席琳套裝效果（其餘詞綴機率照舊）
+            let _petGearResult = !!(DB.items[recipe.result] && DB.items[recipe.result].slot === 'pet');   // 🦴 寵物裝備：白板製作，不附任何詞綴
+            gainItem(recipe.result, recipe.yield || 1, true, _petGearResult);
+            _forceSherineSet = false;
+        }
+    } finally { _tradLootCtx = false; _forceSherineSet = false; }   // try/finally：例外也必清旗標，杜絕殘留洩漏
     let totalOut = (recipe.yield || 1) * makeCount;
     logSys(`${sherine ? '<span class="c-sherine font-bold">席琳製作</span>' : '製作'}完成：<span class="${getItemColor({ id: recipe.result })} font-bold">${DB.items[recipe.result].n}</span> ×${totalOut}${sherine ? `（消耗 席琳結晶 ×${makeCount}）` : ''}`);
 
@@ -17426,6 +17561,7 @@ function getWeightedGachaResult(doubleNonRare) {
 
     // 建立抽獎池並計算總權重
     for (let id in DB.items) {
+        if (TRAD_NO_SCROLLS[id] && traditionalActive()) continue;   // 🏛️ 傳統模式：潘朵拉黑市／抽獎不上架施法卷軸（武器/盔甲/飾品＋變體）
         let weight = DB.items[id].gachaWeight !== undefined ? DB.items[id].gachaWeight : 100;
         if (weight > 0) {
             if (doubleNonRare && weight !== 1) weight *= 2;   // 🔧 血盟野外特殊掉落：潘朵拉權重 1 以外的物品以 2 倍權重計算（權重100→200）
@@ -17598,7 +17734,8 @@ function buyPandoraItem() {
     if ((player.gold || 0) < m.price) { let e = msgEl(); if (e) e.innerHTML = `<span class="text-red-400">金幣不足！需 ${m.price.toLocaleString()} 金幣。</span>`; return; }
     if (m.sold) { let e = msgEl(); if (e) e.innerHTML = '<span class="text-red-400">本輪商品已售出，請等待下次上架。</span>'; return; }
     player.gold -= m.price;
-    let gi = gainItem(m.id, 1, true, false, false);   // 黑市購買：即所見、不附帶詞綴
+    _tradLootCtx = true;                              // 🏛️ 傳統模式：潘朵拉黑市裝備隨機自帶強化值
+    let gi; try { gi = gainItem(m.id, 1, true, false, false); } finally { _tradLootCtx = false; }   // 黑市購買：即所見、不附帶詞綴（try/finally 防殘留洩漏）
     let inst = gi || { id: m.id };
     logSys(`在潘朵拉黑市花費 <span class="text-yellow-300">${m.price.toLocaleString()}</span> 金幣購買了 <span class="${getItemColor(inst)} font-bold">${getItemFullName(inst)}</span>。`);
     m.sold = true;   // 🔧 購買後標記「已售出」：本輪不可再購買，須等 10 分鐘刷新才會上架新商品
@@ -17650,7 +17787,8 @@ function doPandoraGacha() {
     // 原本結算寫在動畫回呼內：動畫期間切換面板會令 getElementById 取得 null 而拋錯，
     // gachaRolling 永遠無法復位 → 單抽/十連按鈕全部失效；且扣款後關頁會付費未取貨。
     let finalId = getWeightedGachaResult();
-    let gainedItem = gainItem(finalId, 1, false, false, true);   // 潘朵拉：詞綴維持舊制（各1%）
+    _tradLootCtx = true;                                         // 🏛️ 傳統模式：潘朵拉抽獎裝備隨機自帶強化值
+    let gainedItem; try { gainedItem = gainItem(finalId, 1, false, false, true); } finally { _tradLootCtx = false; }   // 潘朵拉：詞綴維持舊制（各1%）（try/finally 防殘留洩漏）
     if (!gainedItem) gainedItem = { id: finalId, en: 0, bless: false, anc: false, attr: false, cnt: 1 };
     saveGame();
 
@@ -17766,12 +17904,15 @@ function doPandoraGacha10() {
 
     // 🔧 修復：10 件獎品於動畫前一次結算入包並存檔，動畫純為展示（理由同單抽）
     let results = [];
-    for (let k = 0; k < 10; k++) {
-        let fid = getWeightedGachaResult();
-        let gi = gainItem(fid, 1, false, false, true);   // 潘朵拉10連：詞綴維持舊制（各1%）
-        if (!gi) gi = { id: fid, en: 0, bless: false, anc: false, attr: false, cnt: 1 };
-        results.push(gi);
-    }
+    _tradLootCtx = true;                                  // 🏛️ 傳統模式：潘朵拉十連裝備隨機自帶強化值
+    try {
+        for (let k = 0; k < 10; k++) {
+            let fid = getWeightedGachaResult();
+            let gi = gainItem(fid, 1, false, false, true);   // 潘朵拉10連：詞綴維持舊制（各1%）
+            if (!gi) gi = { id: fid, en: 0, bless: false, anc: false, attr: false, cnt: 1 };
+            results.push(gi);
+        }
+    } finally { _tradLootCtx = false; }   // try/finally 防殘留洩漏
     saveGame();
 
     gachaRolling = true;

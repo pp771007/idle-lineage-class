@@ -342,6 +342,15 @@
       '<b>MP 恢復</b>：每次回「<b>精神決定的固定值</b>」加裝備的「MP 恢復量」（不是隨機）。精神 9＝1、19＝3、29＝6、44＝10、70 以上＝23。此外，精神還讓你<b>每擊殺一隻怪就立刻多回一些 MP</b>：精神 11 起每殺一隻回 <b>1</b>、20＝3、30＝6、45＝8、60＝10、<b>79 以上封頂 16</b>（精神 10 以下沒有這個回復）。',
       '<b>背太重會直接「停掉」自然恢復</b>：負重進入懲罰階時，HP 與 MP 都不會自然回（很多人「血／魔不回」其實是背太重，詳見「負重」分頁）。另外<b>狂暴狀態下不回 HP</b>。'
     ]},
+    { t: '盾牌格擋（裝備上標示「格檔」）', lines: [
+      '裝<b>盾牌</b>時，被敵人的一般攻擊命中有機率<b>格擋</b>，擋下時這一擊傷害<b>直接減半</b>（×0.5、無條件捨去）。',
+      '<b>發動率看「是不是重擊」</b>：被敵人<b>重擊</b>命中時，格擋率＝<b>盾牌的格擋值</b>（如 100% 盾＝必擋）；被<b>非重擊</b>的一般攻擊命中時，格擋率只有盾牌格擋值的 <b>30%</b>。剛好在你最痛的「重擊」那一下最可靠。（重擊是什麼見上面「重擊 vs 爆擊」。）',
+      '<table style="width:100%;border-collapse:collapse;margin:4px 0;font-size:13px;color:#cbd5e1;"><thead><tr><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #475569;">盾牌格擋值</th><th style="text-align:center;padding:4px 6px;border-bottom:1px solid #475569;">被重擊時</th><th style="text-align:center;padding:4px 6px;border-bottom:1px solid #475569;">被一般攻擊時</th></tr></thead><tbody><tr><td style="padding:4px 6px;">30%</td><td style="text-align:center;padding:4px 6px;">30%</td><td style="text-align:center;padding:4px 6px;">9%</td></tr><tr><td style="padding:4px 6px;">50%</td><td style="text-align:center;padding:4px 6px;">50%</td><td style="text-align:center;padding:4px 6px;">15%</td></tr><tr><td style="padding:4px 6px;">70%</td><td style="text-align:center;padding:4px 6px;">70%</td><td style="text-align:center;padding:4px 6px;">21%</td></tr><tr><td style="padding:4px 6px;">100%</td><td style="text-align:center;padding:4px 6px;">100%</td><td style="text-align:center;padding:4px 6px;">30%</td></tr></tbody></table>',
+      '<b>格擋值看你裝哪面盾</b>：各盾不同，從 <b>10%</b>（法師的法書／水晶球）到 <b>100%</b>（死亡之盾），常見 20～70%。實際數字在「掉落查詢」搜盾牌名、或裝備上會標「<b>格檔 N%</b>」。',
+      '<b>只有真盾牌有格擋</b>：同一格（副手／盾牌欄）的<b>臂甲沒有格擋</b>，空手也沒有。',
+      '<b>格擋＝必定反擊</b>：裝<b>單手劍</b>時本來受擊有 50% 機率反擊，<b>只要這次格擋成功就「必定」觸發反擊</b>（傭兵的反擊同理）——所以「盾＋單手劍」防反很搭。',
+      '<b>經典模式沒有格擋</b>（盾牌不格擋）。'
+    ]},
     { t: '臂甲：能和雙手武器並用的副手裝備', lines: [
       '<b>臂甲</b>是裝在「<b>副手（盾牌欄）</b>」的防具，但和盾牌不同：<b>可以和雙手武器同時使用</b>——拿雙手劍／矛／弓也能再戴一隻臂甲。它和盾牌共用同一格，所以臂甲與盾牌仍是二選一。',
       '<b>強化規則和一般防具不一樣</b>：臂甲<b>強化不加防禦(AC)，改成每強化 +1 給 HP +10</b>；強化上限 +15（同盾牌），一樣能帶祝福／詞綴。',

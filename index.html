@@ -345,6 +345,45 @@
         }
         .tri-glow { animation: triGlow 2.4s infinite linear; }
 
+        /* ===== ✨ 戰鬥特效層 VFX（純視覺，不影響任何遊戲數值/邏輯） ===== */
+        #vfx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 45; overflow: hidden; }
+        .vfx-dmg { position: absolute; transform: translate(-50%,-50%); font-weight: 900; font-family: 'Arial Black','Segoe UI',system-ui,sans-serif; white-space: nowrap; letter-spacing: .5px; will-change: transform,opacity; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 7px rgba(0,0,0,.55); animation: vfxFloat .85s ease-out forwards; }
+        .vfx-dmg.vfx-crit { animation: vfxCrit 1.05s cubic-bezier(.18,.85,.25,1) forwards; -webkit-text-stroke: 1px rgba(0,0,0,.45); }
+        @keyframes vfxFloat {
+            0%   { opacity: 0; transform: translate(-50%,-40%) scale(.55); }
+            18%  { opacity: 1; transform: translate(-50%,-95%) scale(1.06); }
+            72%  { opacity: 1; transform: translate(-50%,-150%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%,-200%) scale(.9); }
+        }
+        @keyframes vfxCrit {
+            0%   { opacity: 0; transform: translate(-50%,-40%) scale(.5) rotate(-8deg); }
+            14%  { opacity: 1; transform: translate(-50%,-90%) scale(1.55) rotate(4deg); }
+            32%  { transform: translate(-50%,-118%) scale(1.12) rotate(-2deg); }
+            72%  { opacity: 1; transform: translate(-50%,-170%) scale(1.18); }
+            100% { opacity: 0; transform: translate(-50%,-235%) scale(1); }
+        }
+        .vfx-particle { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); will-change: transform,opacity; }
+        @keyframes vfxShake {
+            0%,100% { transform: translate(0,0); }
+            15% { transform: translate(-5px,3px); }   30% { transform: translate(5px,-3px); }
+            45% { transform: translate(-4px,-2px); }  60% { transform: translate(4px,2px); }
+            80% { transform: translate(-2px,1px); }
+        }
+        .vfx-shake { animation: vfxShake .45s ease-in-out; }
+        @keyframes vfxHurt { 0%,100% { box-shadow: inset 0 0 0 0 rgba(220,38,38,0); } 42% { box-shadow: inset 0 0 32px 6px rgba(220,38,38,.55); } }
+        .vfx-hurt { animation: vfxHurt .5s ease-out; }
+        /* 命中衝擊環 */
+        .vfx-ring { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); border: 2px solid #fff; will-change: transform,opacity; }
+        @keyframes vfxRing { 0% { opacity: .9; transform: translate(-50%,-50%) scale(.2); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
+        /* 升級慶祝 */
+        .vfx-lvring { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); border: 3px solid #ffd54f; box-shadow: 0 0 18px #ffca28, inset 0 0 18px #ffca28; will-change: transform,opacity; }
+        @keyframes vfxLvRing { 0% { opacity: 1; transform: translate(-50%,-50%) scale(.15); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
+        .vfx-lvtext { position: absolute; transform: translate(-50%,-50%); font-weight: 900; font-family: 'Arial Black','Segoe UI',system-ui,sans-serif; color: #ffe082; text-shadow: 0 0 9px #ff9800, 0 2px 3px rgba(0,0,0,.9); white-space: nowrap; will-change: transform,opacity; }
+        @keyframes vfxLvText { 0% { opacity: 0; transform: translate(-50%,-30%) scale(.6); } 20% { opacity: 1; transform: translate(-50%,-72%) scale(1.18); } 75% { opacity: 1; transform: translate(-50%,-120%) scale(1); } 100% { opacity: 0; transform: translate(-50%,-160%) scale(.95); } }
+        .vfx-areaflash { position: absolute; border-radius: 10px; will-change: opacity; }
+        @keyframes vfxLvFlash { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes vfxBossFlash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+
         #mobile-vitals { display: none !important; }   /* 🖥️ 桌機專用：手機版排版已移除，此置頂血條元件永久隱藏 */
 
         /* 🖥️ 桌面高解析度清晰度：略增文字與圖示銳利度（1920/2560/3840 通用，效果輕微、不改版面） */
@@ -3331,6 +3370,7 @@ function applySherineTheme() { document.body.classList.toggle('sherine-world', s
 let _sherineLootCtx = null;   // 擊殺掉落上下文：killMob 期間設定（{boss,grace}），供 gainItem 判定詞綴×3 與套裝效果
 let _forceSherineSet = false;   // 🔮 席琳製作：成品必定附帶隨機套裝效果（doCraft 產出期間設定）
 let _tradLootCtx = false;   // 🏛️ 傳統模式「掠奪上下文」：在怪物掉落／潘朵拉黑市／製作期間設 true，供 gainItem 為裝備隨機自帶強化值＋抑制施法卷軸（商店購買不設→恆 +0）
+let _vfxLootCtx = false;   // ✨ VFX：擊殺掉落期間設 true，供 gainItem 判定稀有(潘朵拉權重=1)掉落閃光
 
 // ===== 🔮 席琳套裝效果（9 組；不再分五種詞綴，seteff 直接存「套裝名」＝組名）=====
 // 掉落判定：席琳的世界中，武器/頭盔/盔甲/手套/長靴/斗篷/腰帶 掉落時，
@@ -4160,12 +4200,12 @@ const TRAD_NO_SCROLLS = { scroll_weapon:1, scroll_armor:1, scroll_acc:1, scroll_
 // 掉落自帶強化值權重表：每筆 [強化值, 權重]；依「物品類型＋安定值 safe」選表
 //  （實測全部物品 safe 僅出現 wpn{6,0}／arm{6,4,0}／acc{0}，下表完整涵蓋，無遺漏組合）
 const TRAD_EN_TABLES = {
-    wpn6: [[20,1],[19,2],[18,3],[17,4],[16,5],[15,6],[14,7],[13,8],[12,9],[11,10],[10,11],[9,12],[8,13],[7,14],[6,27],[5,28],[4,28],[3,28],[2,28],[1,28],[0,28]],
-    wpn0: [[20,1],[19,2],[18,3],[17,4],[16,5],[15,6],[14,7],[13,8],[12,9],[11,10],[10,11],[9,12],[8,13],[7,14],[6,15],[5,16],[4,17],[3,18],[2,19],[1,20],[0,90]],
-    arm6: [[15,1],[14,2],[13,3],[12,4],[11,5],[10,6],[9,7],[8,8],[7,9],[6,18],[5,18],[4,18],[3,18],[2,18],[1,18],[0,147]],
-    arm4: [[15,1],[14,2],[13,3],[12,4],[11,5],[10,6],[9,7],[8,8],[7,9],[6,10],[5,11],[4,22],[3,22],[2,22],[1,22],[0,146]],
-    arm0: [[15,1],[14,2],[13,3],[12,4],[11,5],[10,6],[9,7],[8,8],[7,9],[6,10],[5,11],[4,12],[3,13],[2,14],[1,15],[0,180]],
-    acc0: [[5,1],[4,2],[3,3],[2,4],[1,5],[0,285]]
+    wpn6: [[20,1],[19,3],[18,5],[17,7],[16,8],[15,10],[14,12],[13,13],[12,15],[11,17],[10,18],[9,20],[8,22],[7,23],[6,45],[5,47],[4,47],[3,47],[2,47],[1,47],[0,46]],
+    wpn0: [[20,1],[19,3],[18,5],[17,7],[16,8],[15,10],[14,12],[13,13],[12,15],[11,17],[10,18],[9,20],[8,22],[7,23],[6,25],[5,27],[4,28],[3,30],[2,32],[1,33],[0,151]],
+    arm6: [[15,1],[14,3],[13,5],[12,7],[11,8],[10,10],[9,12],[8,13],[7,15],[6,30],[5,30],[4,30],[3,30],[2,30],[1,30],[0,246]],
+    arm4: [[15,1],[14,3],[13,5],[12,7],[11,8],[10,10],[9,12],[8,13],[7,15],[6,17],[5,18],[4,37],[3,37],[2,37],[1,37],[0,243]],
+    arm0: [[15,1],[14,3],[13,5],[12,7],[11,8],[10,10],[9,12],[8,13],[7,15],[6,17],[5,18],[4,20],[3,22],[2,23],[1,25],[0,301]],
+    acc0: [[5,1],[4,3],[3,5],[2,7],[1,8],[0,476]]
 };
 function _tradEnTableFor(d){
     if(!d) return null;
@@ -5735,6 +5775,7 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     // 爆擊判定（依遠/近距離爆擊率；🔧 迴避精通：forceCrit 必定爆擊）
     let isCrit = !!forceCrit || (Math.random() * 100 < critRate);
     if (graze) isCrit = false;   // 擦傷不會爆擊
+    if (target) { if (isCrit) target._vfxBig = 'crit'; else if (heavy) target._vfxBig = 'heavy'; }   // ✨ VFX：玩家物理命中→爆擊大紅／重擊大金（唯一樞紐 getPhysicalDmg，涵蓋連射/連擊/雙擊/穿透/魔擊/反擊/居合）
     let critMult = isCrit ? (1 + critDmg / 100) : 1;  // 爆擊係數 = 1 + 爆擊傷害%
 
     // 武器傷害（重擊必定取最大值；🔧 烈焰之魂：持續內近距離一般攻擊武器擲骰必定最大值）
@@ -6473,7 +6514,7 @@ function playerAttack() {
         if (player.eq.wpn && target.curHp > 0 && !player.classicMode && Math.random() < _bleedChance) {   // 🎮 經典模式：停用出血
             applyBleed(target, result.dmg, hasMastery('d_bleed') ? 10 : 5, hasMastery('d_bleed'));   // 🔧 出血精通：上限 10 層 + 每層 +10% 傷害
         }
-        if (player.buffs.sk_warrior_throwaxe > 0 && !result.ranged) { if (target.curHp > 0) applyBleed(target, result.dmg, 5, hasMastery('k_dualaxe')); player.buffs.sk_warrior_throwaxe = 0; logCombat('<span class="font-bold" style="color:#f87171;">【戰斧投擲】</span>斧刃撕裂了敵人，造成出血！', 'player'); }   // ⚔️ 戰斧投擲：下一次近戰一般攻擊附加出血（一次性消耗）；🏅 雙斧精通：每層+10%
+        if (player.buffs.sk_warrior_throwaxe > 0 && !result.ranged) { if (target.curHp > 0) applyBleed(target, result.dmg, 5, hasMastery('k_dualaxe')); player.buffs.sk_warrior_throwaxe = 0; try { _vfxProjectile(_vfxSlotRect(target.uid), 'axe'); } catch(e){} logCombat('<span class="font-bold" style="color:#f87171;">【戰斧投擲】</span>斧刃撕裂了敵人，造成出血！', 'player'); }   // ✨ VFX：戰斧投擲觸發時射出旋轉金屬斧   // ⚔️ 戰斧投擲：下一次近戰一般攻擊附加出血（一次性消耗）；🏅 雙斧精通：每層+10%
         // 單手鈍器鈍擊：命中使目標攻擊延遲 1 秒；每個敵人攻擊週期僅延遲一次（攻擊後重置），故最多 +1 秒、不會無限延遲
         let _isBlunt1h = !player.classicMode && !!(player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('單手鈍器'));   // 🎮 經典模式：停用鈍擊（延遲＋硬皮-1）
         if (player.eq.wpn && target.curHp > 0 && _isBlunt1h) {
@@ -6938,6 +6979,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
         totalDmg = castleGuardAbsorb(totalDmg, 'phys');   // 🏰 肯特城護衛：承擔 10% 一般攻擊
         totalDmg = Math.floor(totalDmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +10% 怪物攻擊力
         player.hp -= totalDmg;
+        try { vfxPlayerHit(totalDmg); } catch(e){}   // ✨ VFX：較大一擊→戰場震動＋HP條紅閃
         if(player.buffs.sk_illu_pain > 0 && mob && mob.curHp > 0 && totalDmg > 0) {   // 🔮 疼痛的歡愉：受傷時對攻擊者反射等量（損失HP）的無屬性魔法傷害
             let _rf = Math.max(1, Math.floor(totalDmg * fragileMult(mob)));
             mob.curHp -= _rf; mob.justHit = 'magic'; mobWake(mob);
@@ -7583,11 +7625,13 @@ function killMob(idx) {
     let mob = mapState.mobs[idx];
     if (!mob || mob._dead) return;        // 冪等保護：同一隻怪只結算一次獎勵
     mob._dead = true;
+    try { vfxKill(mob); } catch(e){}   // ✨ VFX：擊殺粒子爆裂（趁格子 DOM 仍在、重繪前）
     if (mob.curHp > 0) mob.curHp = 0;     // 待清算期間不可被當成活目標
     let _kbRoom = !!KING_ROOMS[mapState.current];   // 🔧 軍王之室
     let _kbNoReward = _kbRoom && !mob.boss;                     // 除頭目外（地獄束縛犬）：不給金錢/掉落
     _sherineLootCtx = mob._sherine ? { boss: !!mob.boss, grace: !!mob._grace } : null;   // 🔮 席琳的世界：本次擊殺掉落套用 詞綴×3／套裝效果判定（恩賜怪套裝機率×5）
     _tradLootCtx = traditionalActive();   // 🏛️ 傳統模式：本次擊殺掉落的裝備隨機自帶強化值＋抑制施法卷軸（於 _sherineLootCtx 清除處一併關閉）
+    _vfxLootCtx = true;   // ✨ VFX：本次擊殺掉落期間→gainItem 對潘朵拉權重=1 物品閃光
     try {
     if(typeof auditTrackKill === 'function') auditTrackKill(mob);   // 統計：累計經驗/擊殺
     // 🔧 轉場建築（往上層的樓梯 / 遺忘之島傳送門）：擊敗即進入下一層/島，不顯示「擊敗了…」戰鬥訊息（race 建築且 noAutoTeleport，排除攻城塔/城門）
@@ -7772,6 +7816,7 @@ function killMob(idx) {
     } finally {
         _sherineLootCtx = null;   // 🔮 掉落判定結束，清除上下文（try/finally：縱使中途拋例外也必清，杜絕 _tradLootCtx 殘留洩漏到兌換/任務/其他 forceNormal=false 獎勵）
         _tradLootCtx = false;     // 🏛️ 傳統模式掠奪上下文一併關閉
+        _vfxLootCtx = false;      // ✨ VFX：擊殺掉落上下文一併關閉
     }
     // 🔧 架構#2：不在此處位移輸送帶（呼叫點可能正在迭代怪物陣列）。
     // tick 內的擊殺延後到 gameLoop 的 settleDeadMobs()；手動操作則立即清算。
@@ -8262,6 +8307,7 @@ function checkLvUp() {
         logSys(`<span class="text-yellow-400 font-bold text-lg">★★★ 升級了！目前等級 ${player.lv} ★★★</span>`);
         calcStats();
         player.hp = player.mhp; player.mp = player.mmp;
+        try { vfxLevelUp(); } catch(e){}   // ✨ VFX：升級慶祝
     }
 }
 
@@ -10676,6 +10722,7 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     if(DB.items[id] && DB.items[id].grantSkills) { calcStats(); renderSkillSelects(); }   // 取得授予技能的頭盔：立即生效
     
     if(typeof auditTrackGain === 'function') auditTrackGain(itemInfo);   // 統計：掉落計數
+    try { if (_vfxLootCtx && d && d.gachaWeight === 1 && typeof vfxRareDrop === 'function') vfxRareDrop(d.n); } catch(e){}   // ✨ VFX：潘朵拉權重=1 的稀有掉落金色閃光
     return itemInfo; // 👈 讓拉霸機可以讀取最終產生的物品
 }
 
@@ -11275,6 +11322,13 @@ function equipItem(item) {
         else slot = 'ring1';
     }
 
+    // 💍 相同名字戒指最多裝兩顆：目標欄以外的戒指欄已有 2 顆同款（同 id）→ 阻擋裝第 3 顆（換上同款升級/不同強化值不受影響）
+    if ((slot === 'ring1' || slot === 'ring2' || slot === 'ring3' || slot === 'ring4')
+        && ['ring1','ring2','ring3','ring4'].filter(rs => rs !== slot && player.eq[rs] && player.eq[rs].id === item.id).length >= 2) {
+        logSys(`<span class="text-amber-300">「${d.n}」相同的戒指最多只能同時裝備 2 顆。</span>`);
+        return;
+    }
+
     // 🔧 詛咒鎖定：欲換裝的欄位若有詛咒裝備，無法替換（等同被迫卸下）
     if (isEquipCursed(slot)) { logSys('<span class="text-red-400 font-bold">原本的裝備被詛咒纏身，無法更換！</span><span class="text-red-300">請先解除詛咒。</span>'); return; }
     // 雙手武器（弓 / w2h）無法與盾牌並存：裝雙手武器自動卸盾、裝盾自動卸雙手武器
@@ -11760,6 +11814,300 @@ function _updateUIImpl() {
     updateSummonLock();   // 同步召喚類技能互斥鎖定（含迷魅生效時鎖定召喚增益）
 }
 
+// ===== ✨ 戰鬥特效層 VFX（cosmetic-only：傷害數字／擊殺粒子／受擊震動。不改任何遊戲數值，全程 try/catch，壞掉也不影響遊戲。__vfxOff=true 可關閉） =====
+let _vfxPending = [];
+let _vfxLastKillRect = null;   // 最近一次擊殺的怪物格螢幕位置（供稀有掉落閃光定位）
+const _VFX_ELE_COLOR = { fire:'#ff7a45', water:'#4fc3f7', wind:'#9ccc65', earth:'#d8a657', magic:'#ce93d8', normal:'#f1f5f9' };
+// ✨ 適合投射動畫的「非屬性」攻擊技能（屬性魔法已自動涵蓋）：技能id→投射外觀(屬性色 or 'axe'=旋轉金屬斧)
+const _VFX_PROJECTILE_SKILLS = { sk_lightarrow:'magic', sk_disintegrate:'magic', sk_illu_mindbreak:'magic', sk_elf_triple:'wind' };   // 戰斧投擲是「下一擊」增益→改在攻擊觸發處射斧，不走 cast 樞紐
+function _vfxLayer() {
+    let l = document.getElementById('vfx-layer');
+    if (!l) { l = document.createElement('div'); l.id = 'vfx-layer'; document.body.appendChild(l); }
+    return l;
+}
+// 由 _renderMobsImpl 迴圈呼叫（讀 m.justHit 前）：用 HP 差捕捉本幀傷害，免改 50+ 個傷害落點
+function _vfxQueueDmg(m) {
+    if (window.__vfxOff || !m) { if (m) m._vfxBig = false; return; }
+    let prev = (m._vfxHp == null) ? m.curHp : m._vfxHp;
+    let d = prev - m.curHp;
+    m._vfxHp = m.curHp;
+    let big = m._vfxBig; m._vfxBig = false;   // 'crit' | 'heavy' | undefined（只有爆擊/重擊才放大上色，不再用傷害量門檻）
+    if (d > 0 && m.curHp > 0) {   // 致命一擊交給 vfxKill 的粒子，這裡只顯示非致命傷害數字
+        let ele = (m.justHit && m.justHit !== true) ? m.justHit : 'normal';
+        _vfxPending.push({ uid: m.uid, dmg: d, ele: ele, big: big });
+    }
+}
+// innerHTML 重建後呼叫：此時格子已布局，可取螢幕座標生成飄字
+function _vfxFlush() {
+    if (window.__vfxOff) { _vfxPending = []; return; }
+    if (!_vfxPending.length) return;
+    let layer = _vfxLayer();
+    let ml = document.getElementById('mob-list');
+    if (layer.childElementCount < 110 && ml) {   // 防洪：場上已有大量特效時略過本批
+        for (const p of _vfxPending) {
+            let slot = ml.querySelector('.mob-target[data-uid="' + p.uid + '"]');
+            if (!slot) continue;
+            let box = slot.querySelector('.mob-img-wrap') || slot;
+            let r = box.getBoundingClientRect();
+            if (r.width === 0) continue;
+            let cx = r.left + r.width / 2, cy = r.top + r.height * 0.45;
+            _vfxImpact(cx, cy, p.ele, p.big);   // ✨ 命中衝擊環＋屬性火花
+            _vfxNumber(cx + (Math.random() * 26 - 13), r.top + r.height * 0.40, p.dmg, p.ele, p.big);
+        }
+    }
+    _vfxPending = [];
+}
+function _vfxNumber(x, y, dmg, ele, big) {
+    let el = document.createElement('div');
+    el.className = 'vfx-dmg' + (big ? ' vfx-crit' : '');
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    el.style.color = big === 'crit' ? '#ff3b30' : (big === 'heavy' ? '#ffd54f' : (_VFX_ELE_COLOR[ele] || '#f1f5f9'));   // 爆擊大紅／重擊大金／其餘依屬性
+    el.style.fontSize = (big ? 30 : 18) + 'px';
+    el.textContent = dmg >= 10000 ? (dmg / 1000).toFixed(1) + 'k' : ('' + dmg);
+    _vfxLayer().appendChild(el);
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 1400);
+}
+// 命中衝擊：擴散圓環 + 數顆屬性火花（大傷害更大更紅、更多火花）
+function _vfxImpact(cx, cy, ele, big) {
+    let layer = _vfxLayer();
+    let col = big === 'crit' ? '#ff3b30' : (big === 'heavy' ? '#ffd54f' : (_VFX_ELE_COLOR[ele] || '#f1f5f9'));   // 爆擊紅／重擊金／其餘依屬性
+    let ring = document.createElement('div');
+    ring.className = 'vfx-ring';
+    let rs = big ? 72 : 44;
+    ring.style.left = cx + 'px'; ring.style.top = cy + 'px';
+    ring.style.width = rs + 'px'; ring.style.height = rs + 'px';
+    ring.style.borderColor = col; ring.style.boxShadow = '0 0 8px ' + col;
+    ring.style.animation = 'vfxRing ' + (big ? 0.5 : 0.4) + 's ease-out forwards';
+    layer.appendChild(ring);
+    ring.addEventListener('animationend', () => ring.remove(), { once: true });
+    setTimeout(() => { if (ring.parentNode) ring.remove(); }, 800);
+    let n = big ? 7 : 4;
+    for (let i = 0; i < n; i++) {
+        let sp = document.createElement('div'); sp.className = 'vfx-particle';
+        let sz = 3 + Math.random() * 3;
+        sp.style.width = sz + 'px'; sp.style.height = sz + 'px';
+        sp.style.left = cx + 'px'; sp.style.top = cy + 'px';
+        sp.style.background = col; sp.style.boxShadow = '0 0 5px ' + col;
+        layer.appendChild(sp);
+        let ang = Math.PI * 2 * Math.random();
+        let dist = (big ? 34 : 22) + Math.random() * 26;
+        let dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist - 6;
+        sp.animate(
+            [ { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+              { transform: 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(.2)', opacity: 0 } ],
+            { duration: 300 + Math.random() * 220, easing: 'cubic-bezier(.2,.7,.3,1)' }
+        ).onfinish = () => sp.remove();
+    }
+}
+// 擊殺粒子爆裂：在 killMob 標記死亡後、重繪前呼叫（此時格子 DOM 仍在）
+function vfxKill(mob) {
+    try {
+        if (window.__vfxOff || !mob) return;
+        let ml = document.getElementById('mob-list');
+        let slot = ml && ml.querySelector('.mob-target[data-uid="' + mob.uid + '"]');
+        if (!slot) return;
+        let box = slot.querySelector('.mob-img-wrap') || slot;
+        let r = box.getBoundingClientRect();
+        if (r.width === 0) return;
+        let cx = r.left + r.width / 2, cy = r.top + r.height * 0.45;
+        _vfxLastKillRect = { left: r.left, top: r.top, width: r.width, height: r.height };   // 供稀有掉落閃光定位
+        let layer = _vfxLayer();
+        let color = mob.boss ? '#ffd54f' : '#ff8a5c';
+        let n = mob.boss ? 22 : 13;
+        for (let i = 0; i < n; i++) {
+            let pt = document.createElement('div');
+            pt.className = 'vfx-particle';
+            let sz = (mob.boss ? 6 : 5) + Math.random() * 5;
+            pt.style.width = sz + 'px'; pt.style.height = sz + 'px';
+            pt.style.left = cx + 'px'; pt.style.top = cy + 'px';
+            pt.style.background = color; pt.style.boxShadow = '0 0 7px ' + color;
+            layer.appendChild(pt);
+            let ang = Math.PI * 2 * (i / n) + Math.random() * 0.6;
+            let dist = (mob.boss ? 60 : 42) + Math.random() * 55;
+            let dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist - 12;
+            pt.animate(
+                [ { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+                  { transform: 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(.25)', opacity: 0 } ],
+                { duration: 460 + Math.random() * 260, easing: 'cubic-bezier(.2,.7,.3,1)' }
+            ).onfinish = () => pt.remove();
+        }
+        if (mob.boss) {   // 👑 頭目擊殺：戰場金白閃光
+            let bv = document.getElementById('battle-view'); let br = bv && bv.getBoundingClientRect();
+            if (br && br.width > 0) {
+                let fl = document.createElement('div'); fl.className = 'vfx-areaflash';
+                fl.style.left = br.left + 'px'; fl.style.top = br.top + 'px'; fl.style.width = br.width + 'px'; fl.style.height = br.height + 'px';
+                fl.style.background = 'radial-gradient(circle, rgba(255,255,255,.6), rgba(255,213,79,.25) 45%, rgba(255,213,79,0) 75%)';
+                fl.style.animation = 'vfxBossFlash .7s ease-out forwards';
+                layer.appendChild(fl); fl.addEventListener('animationend', () => fl.remove(), { once: true }); setTimeout(() => { if (fl.parentNode) fl.remove(); }, 1200);
+            }
+        }
+    } catch (e) {}
+}
+// 升級慶祝：金色擴散圓環 + 上升文字 + 戰場金光 + 金色火花
+function vfxLevelUp() {
+    try {
+        if (window.__vfxOff) return;
+        let bv = document.getElementById('battle-view');
+        let r = bv ? bv.getBoundingClientRect() : null;
+        if (!r || r.width === 0) { let hb = document.getElementById('bar-hp'); r = hb ? hb.getBoundingClientRect() : null; }
+        if (!r || r.width === 0) return;
+        let cx = r.left + r.width / 2, cy = r.top + r.height * 0.5;
+        let layer = _vfxLayer();
+        if (bv && bv.getBoundingClientRect().width > 0) {
+            let br = bv.getBoundingClientRect();
+            let fl = document.createElement('div'); fl.className = 'vfx-areaflash';
+            fl.style.left = br.left + 'px'; fl.style.top = br.top + 'px'; fl.style.width = br.width + 'px'; fl.style.height = br.height + 'px';
+            fl.style.background = 'radial-gradient(circle, rgba(255,213,79,.42), rgba(255,213,79,0) 70%)';
+            fl.style.animation = 'vfxLvFlash .9s ease-out forwards';
+            layer.appendChild(fl); fl.addEventListener('animationend', () => fl.remove(), { once: true }); setTimeout(() => { if (fl.parentNode) fl.remove(); }, 1500);
+        }
+        for (let i = 0; i < 2; i++) {
+            let ring = document.createElement('div'); ring.className = 'vfx-lvring';
+            let sz = 90 + i * 44;
+            ring.style.left = cx + 'px'; ring.style.top = cy + 'px'; ring.style.width = sz + 'px'; ring.style.height = sz + 'px';
+            ring.style.animation = 'vfxLvRing ' + (0.7 + i * 0.15) + 's ease-out forwards';
+            layer.appendChild(ring); ring.addEventListener('animationend', () => ring.remove(), { once: true }); setTimeout(() => { if (ring.parentNode) ring.remove(); }, 1500);
+        }
+        let t = document.createElement('div'); t.className = 'vfx-lvtext';
+        t.style.left = cx + 'px'; t.style.top = cy + 'px'; t.style.fontSize = '26px';
+        t.textContent = 'LEVEL UP!  Lv.' + player.lv;
+        t.style.animation = 'vfxLvText 1.5s ease-out forwards';
+        layer.appendChild(t); t.addEventListener('animationend', () => t.remove(), { once: true }); setTimeout(() => { if (t.parentNode) t.remove(); }, 2200);
+        let n = 18;
+        for (let i = 0; i < n; i++) {
+            let sp = document.createElement('div'); sp.className = 'vfx-particle';
+            let sz = 4 + Math.random() * 4; sp.style.width = sz + 'px'; sp.style.height = sz + 'px';
+            sp.style.left = cx + 'px'; sp.style.top = cy + 'px'; sp.style.background = '#ffd54f'; sp.style.boxShadow = '0 0 7px #ffca28';
+            layer.appendChild(sp);
+            let ang = Math.PI * 2 * (i / n) + Math.random() * 0.4; let dist = 60 + Math.random() * 70;
+            let dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist;
+            sp.animate(
+                [ { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+                  { transform: 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(.2)', opacity: 0 } ],
+                { duration: 650 + Math.random() * 350, easing: 'cubic-bezier(.15,.7,.3,1)' }
+            ).onfinish = () => sp.remove();
+        }
+    } catch (e) {}
+}
+// 取得某怪物格的螢幕矩形（不存在/未布局回 null）
+function _vfxSlotRect(uid) {
+    let ml = document.getElementById('mob-list');
+    let slot = ml && ml.querySelector('.mob-target[data-uid="' + uid + '"]');
+    if (!slot) return null;
+    let box = slot.querySelector('.mob-img-wrap') || slot;
+    let r = box.getBoundingClientRect();
+    return (r.width > 0) ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
+}
+// 魔法拋射物：從戰場底部中央飛向目標（本遊戲戰場無玩家 sprite）→ 抵達時小火花；衝擊環/數字由渲染側負責，避免重疊
+function _vfxProjectile(rect, ele) {
+    try {
+        if (window.__vfxOff || !rect) return;
+        let bv = document.getElementById('battle-view'); let br = bv && bv.getBoundingClientRect();
+        if (!br || br.width === 0) return;
+        let layer = _vfxLayer();
+        if (layer.childElementCount > 120) return;
+        let sx = br.left + br.width / 2, sy = br.bottom - 10;
+        let tx = rect.left + rect.width / 2, ty = rect.top + rect.height * 0.45;
+        let isAxe = (ele === 'axe');
+        let col = isAxe ? '#cbd5e1' : (_VFX_ELE_COLOR[ele] || '#ce93d8');
+        let orb = document.createElement('div'); orb.className = 'vfx-particle';
+        let osz = isAxe ? 18 : 15; orb.style.width = osz + 'px'; orb.style.height = osz + 'px';
+        orb.style.left = sx + 'px'; orb.style.top = sy + 'px';
+        orb.style.background = isAxe ? 'radial-gradient(circle, #f8fafc 25%, #94a3b8 78%, rgba(0,0,0,0) 100%)' : 'radial-gradient(circle, #fff 10%, ' + col + ' 55%, rgba(0,0,0,0) 100%)';
+        orb.style.boxShadow = isAxe ? '0 0 8px #cbd5e1' : ('0 0 14px ' + col + ', 0 0 26px ' + col);
+        layer.appendChild(orb);
+        let dx = tx - sx, dy = ty - sy;
+        let _endTf = 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(1.05)' + (isAxe ? ' rotate(720deg)' : '');
+        let anim = orb.animate(
+            [ { transform: 'translate(-50%,-50%) scale(.7)' + (isAxe ? ' rotate(0deg)' : ''), opacity: .85 },
+              { transform: _endTf, opacity: 1 } ],
+            { duration: 180, easing: 'cubic-bezier(.45,.05,.7,1)' }
+        );
+        anim.onfinish = () => {
+            orb.remove();
+            for (let i = 0; i < 4; i++) {
+                let sp = document.createElement('div'); sp.className = 'vfx-particle';
+                let sz = 3 + Math.random() * 3; sp.style.width = sz + 'px'; sp.style.height = sz + 'px';
+                sp.style.left = tx + 'px'; sp.style.top = ty + 'px'; sp.style.background = col; sp.style.boxShadow = '0 0 5px ' + col;
+                layer.appendChild(sp);
+                let ang = Math.PI * 2 * Math.random(), dist = 16 + Math.random() * 20;
+                let ex = Math.cos(ang) * dist, ey = Math.sin(ang) * dist;
+                sp.animate([ { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(calc(-50% + ' + ex.toFixed(1) + 'px), calc(-50% + ' + ey.toFixed(1) + 'px)) scale(.2)', opacity: 0 } ], { duration: 260 + Math.random() * 160, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = () => sp.remove();
+            }
+        };
+    } catch (e) {}
+}
+// castSkill 包裝用：對本次施法「掉了血」的怪各射一發拋射物（before=施法前 HP/位置快照）
+function _vfxCastProjectiles(before, ele) {
+    if (window.__vfxOff || !before) return;
+    let e = (ele && ele !== 'none') ? ele : 'magic';
+    for (const b of before) {
+        if (!b) continue;
+        let m = mapState.mobs.find(x => x && x.uid === b.uid);
+        let alive = m && !m._dead;
+        let hp = alive ? m.curHp : 0;
+        if (hp < b.hp) {   // 這隻吃到傷害
+            let rect = alive ? _vfxSlotRect(b.uid) : b.rect;   // 活著→現位置；被殺→施法前位置
+            if (rect) _vfxProjectile(rect, e);
+        }
+    }
+}
+// 稀有掉落（潘朵拉權重=1）：金色名稱上升 + 金色星芒火花，定位於剛擊殺的怪物格
+function vfxRareDrop(name) {
+    try {
+        if (window.__vfxOff) return;
+        let rect = _vfxLastKillRect;
+        if (!rect || rect.width === 0) { let bv = document.getElementById('battle-view'); let br = bv && bv.getBoundingClientRect(); if (br && br.width > 0) rect = { left: br.left, top: br.top, width: br.width, height: br.height }; }
+        if (!rect) return;
+        let cx = rect.left + rect.width / 2, cy = rect.top + rect.height * 0.4;
+        let layer = _vfxLayer();
+        let t = document.createElement('div'); t.className = 'vfx-lvtext';
+        t.style.left = cx + 'px'; t.style.top = cy + 'px'; t.style.fontSize = '20px'; t.style.color = '#ffe08a';
+        t.textContent = '✦ ' + (name || '稀有掉落') + ' ✦';
+        t.style.animation = 'vfxLvText 1.6s ease-out forwards';
+        layer.appendChild(t); t.addEventListener('animationend', () => t.remove(), { once: true }); setTimeout(() => { if (t.parentNode) t.remove(); }, 2300);
+        let n = 16;
+        for (let i = 0; i < n; i++) {
+            let sp = document.createElement('div'); sp.className = 'vfx-particle';
+            let sz = 4 + Math.random() * 4; sp.style.width = sz + 'px'; sp.style.height = sz + 'px';
+            sp.style.left = cx + 'px'; sp.style.top = cy + 'px'; sp.style.background = '#ffe082'; sp.style.boxShadow = '0 0 8px #ffca28, 0 0 14px #ffb300';
+            layer.appendChild(sp);
+            let ang = Math.PI * 2 * (i / n) + Math.random() * 0.4, dist = 40 + Math.random() * 55;
+            let dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist - 8;
+            sp.animate([ { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(.2)', opacity: 0 } ], { duration: 600 + Math.random() * 350, easing: 'cubic-bezier(.15,.7,.3,1)' }).onfinish = () => sp.remove();
+        }
+    } catch (e) {}
+}
+// 玩家受到較大一擊：戰場輕微震動 + HP 條紅閃
+function vfxPlayerHit(dmg) {
+    try {
+        if (window.__vfxOff) return;
+        let frac = (player && player.mhp) ? dmg / player.mhp : 0;
+        if (frac < 0.10) return;   // 只在 ≥10% 最大HP 的一擊才震，避免每下都晃
+        let bv = document.getElementById('battle-view');
+        if (bv) { bv.classList.remove('vfx-shake'); void bv.offsetWidth; bv.classList.add('vfx-shake'); bv.addEventListener('animationend', () => bv.classList.remove('vfx-shake'), { once: true }); }
+        let bar = document.getElementById('bar-hp'); bar = bar && bar.parentElement;
+        if (bar) { bar.classList.remove('vfx-hurt'); void bar.offsetWidth; bar.classList.add('vfx-hurt'); bar.addEventListener('animationend', () => bar.classList.remove('vfx-hurt'), { once: true }); }
+    } catch (e) {}
+}
+
+// ✨ VFX：包裝 castSkill → 對本次「攻擊魔法」施法中掉血的目標各射一發拋射物（用 HP 差比對，與內部實作無關；僅有屬性、非武器/投擲類技能觸發）
+if (typeof castSkill === 'function' && !castSkill._vfxWrapped) {
+    let _vfxOrigCastSkill = castSkill;
+    castSkill = function (skId) {
+        let sk = DB.skills[skId];
+        let _pele = (sk && sk.ele && sk.ele !== 'none' && !sk.weaponDmg && !sk.throwAxe) ? sk.ele : (sk ? _VFX_PROJECTILE_SKILLS[skId] : null);   // 屬性攻擊魔法 ＋ 白名單投射技能(光箭/究極光裂/心靈破壞/三重矢/戰斧投擲)
+        let proj = !window.__vfxOff && !!_pele;
+        let before = null;
+        if (proj) { before = mapState.mobs.map(m => (m && !m._dead) ? { uid: m.uid, hp: m.curHp, rect: _vfxSlotRect(m.uid) } : null); }
+        let r = _vfxOrigCastSkill(skId);
+        if (proj) { try { _vfxCastProjectiles(before, _pele); } catch (e) {} }
+        return r;
+    };
+    castSkill._vfxWrapped = true;
+}
+
 function _renderMobsImpl() {
     if(state.ff) return; // 補跑期間不刷新畫面
     _initMobListGuard();
@@ -11776,6 +12124,7 @@ function _renderMobsImpl() {
             let act = (i === mapState.targetIdx) ? 'active' : '';
             let imgUrl = m.img || `assets/icons/monsters/${m.n}.png`;
             let hitClass = m.justHit ? (m.justHit === true ? 'anim-hit-normal' : `anim-hit-${m.justHit}`) : '';
+            try { _vfxQueueDmg(m); } catch(e){}   // ✨ VFX：用 HP 差捕捉本幀傷害（須在重設 justHit 前）
             m.justHit = false;
 
             let _badgeTags = '';
@@ -11814,6 +12163,7 @@ function _renderMobsImpl() {
         }
     }
     document.getElementById('mob-list').innerHTML = html;
+    try { _vfxFlush(); } catch(e){}   // ✨ VFX：格子重建後生成飄動傷害數字
 }
 
 // 🚀 效能：分頁面板重繪保護＋節流。狩獵時扣箭/耗肉/掉寶會每 tick 觸發 renderTabs 重建整個面板，
@@ -14916,7 +15266,7 @@ function sherineExGain(rewardId, sherine) {
         questConsumeId('sherine_crystal', 1);   // 🔧 背包優先，不足扣倉庫
         _forceSherineSet = true;
     }
-    gainItem(rewardId, 1, false, false);   // forceNormal=false：詞綴機率與一般兌換相同
+    { let _sv = _tradLootCtx; _tradLootCtx = true; try { gainItem(rewardId, 1, false, false); } finally { _tradLootCtx = _sv; } }   // 🏛️ 傳統模式：兌換裝備比照掉落/製作自帶隨機強化值（forceNormal=false：詞綴機率同一般兌換）
     _forceSherineSet = false;
 }
 
@@ -15054,7 +15404,7 @@ function doYuriaExchange(rewardId) {
     if (!YURIA_REWARDS.some(r => r.id === rewardId)) return;
     if (questCountId('item_olin_diary') < 1) { logSys('<span class="text-red-400 font-bold">歐林的日記本不足。</span>'); return; }
     questConsumeId('item_olin_diary', 1);   // 背包優先，不足扣倉庫
-    gainItem(rewardId, 1, false, false);    // 詞綴機率同一般（slot:shield 不會出席琳效果）
+    { let _sv = _tradLootCtx; _tradLootCtx = true; try { gainItem(rewardId, 1, false, false); } finally { _tradLootCtx = _sv; } }   // 🏛️ 傳統模式：臂甲兌換自帶隨機強化值（詞綴機率同一般；slot:shield 不會出席琳效果）
     saveGame();
     logSys(`<span class="text-amber-200">尤麗婭：拿去吧，這是你的 <b>${DB.items[rewardId].n}</b>。</span>`);
     closeNpcInteraction();
@@ -15064,7 +15414,7 @@ function doYuriaHatinExchange(rewardId) {
     if (!YURIA_HATIN_REWARDS.some(r => r.id === rewardId)) return;
     if (questCountId('item_hatin_diary') < 1) { logSys('<span class="text-red-400 font-bold">黑暗哈汀的日記本不足。</span>'); return; }
     questConsumeId('item_hatin_diary', 1);   // 背包優先，不足扣倉庫
-    gainItem(rewardId, 1, false, false);     // 詞綴機率同一般兌換
+    { let _sv = _tradLootCtx; _tradLootCtx = true; try { gainItem(rewardId, 1, false, false); } finally { _tradLootCtx = _sv; } }   // 🏛️ 傳統模式：魔族武器兌換自帶隨機強化值（詞綴機率同一般兌換）
     saveGame();
     logSys(`<span class="text-fuchsia-200">尤麗婭：成了……這是你的 <b>${DB.items[rewardId].n}</b>，小心別讓它反噬了你。</span>`);
     closeNpcInteraction();
@@ -15101,7 +15451,7 @@ function renderRedQuest(div) {
 function doRedExchange() {
     if (!RED_QUEST_REQS.every(([id, n]) => questCountId(id) >= n)) return;   // 二次確認，避免開著視窗丟材料仍可按
     RED_QUEST_REQS.forEach(([id, n]) => questConsumeId(id, n));   // 背包優先扣除，不足自動扣共用倉庫
-    gainItem('acc_summon_ctrl', 1, false, false);
+    { let _sv = _tradLootCtx; _tradLootCtx = true; try { gainItem('acc_summon_ctrl', 1, false, false); } finally { _tradLootCtx = _sv; } }   // 🏛️ 傳統模式：兌換飾品自帶隨機強化值
     saveGame();
     logSys(`雷德：這是你應得的——<span class="text-amber-300 font-bold">召喚控制戒指</span>。願它助你向蕾雅討回公道。`);
     closeNpcInteraction();
@@ -15304,7 +15654,7 @@ function shenienEx(type, rewardId) {
     if (cfg.needTemple && !player.demonTempleOpen) { logSys('需先完成 50 級試煉第一階段。'); return; }
     if (!_shenienEnough(type)) { logSys('試煉道具不足。'); return; }
     cfg.cost.forEach(([id,cnt]) => questConsumeId(id, cnt));
-    gainItem(rewardId, 1);
+    { let _sv = _tradLootCtx; _tradLootCtx = true; try { gainItem(rewardId, 1); } finally { _tradLootCtx = _sv; } }   // 🏛️ 傳統模式：幻術士兌換裝備自帶隨機強化值
     logSys(`<span class="text-amber-200">希蓮恩：交易成立，你獲得了 <b>${DB.items[rewardId].n}</b>。</span>`);
     saveGame(); renderTabs();
     let _c = document.getElementById('interaction-content'); if (_c) renderShenien(_c);
@@ -15429,7 +15779,7 @@ function procelEx(type, rewardId) {
     if (cfg.needTemple && !player.demonTempleOpen) { logSys('需先完成 50 級試煉第一階段。'); return; }
     if (!_procelEnough(type)) { logSys('試煉道具不足。'); return; }
     cfg.cost.forEach(([id,cnt]) => questConsumeId(id, cnt));
-    gainItem(rewardId, 1);
+    { let _sv = _tradLootCtx; _tradLootCtx = true; try { gainItem(rewardId, 1); } finally { _tradLootCtx = _sv; } }   // 🏛️ 傳統模式：龍騎士兌換裝備自帶隨機強化值
     logSys(`<span class="text-amber-200">普洛凱爾：交易成立，你獲得了 <b>${DB.items[rewardId].n}</b>。</span>`);
     saveGame(); renderTabs();
     let _c = document.getElementById('interaction-content'); if (_c) renderProcel(_c);

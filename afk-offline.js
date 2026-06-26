@@ -307,7 +307,18 @@
   function gotoMap(mapKey) {
     try {
       if (typeof setMapSelectors === 'function') setMapSelectors(mapKey);
-      var sel = document.getElementById('map-select'); if (sel) sel.value = mapKey;
+      var sel = document.getElementById('map-select');
+      if (sel) {
+        // 🏛️ 通用支援「非選單地圖」(隱藏狩獵區域等只在 DB.maps、不在地圖選單的房間圖):選單沒有就臨時補一個 option,
+        //    changeMap(true) 才讀得到值進得去(等同 enterHiddenArea 的通用化)。免為每張新隱藏圖各寫特例。
+        //    註:真正「有旅程進度」的攀登/遺忘之島仍走各自的 enterPrideFloor/enterOblivionMap(要還原狀態),不適用此通用路。
+        if (!Array.prototype.some.call(sel.options, function (o) { return o.value === mapKey; })) {
+          var o = document.createElement('option'); o.value = mapKey;
+          o.textContent = (typeof mapName === 'function' ? mapName(mapKey) : mapKey);
+          sel.appendChild(o);
+        }
+        sel.value = mapKey;
+      }
       if (typeof changeMap === 'function') changeMap(true);
     } catch (e) { console.warn('[AFK] gotoMap(' + mapKey + ') 失敗:', e); }
   }
@@ -553,6 +564,12 @@
       }
       if (typeof isSiegeArea === 'function' && isSiegeArea(savedMap)) {
         console.info('[AFK] 關閉時位於攻城區，略過離線結算。');
+        return;
+      }
+      // 🛡️ 通用保險:地圖不在 DB.maps(無怪池可撈)→ 一律略過,不硬跑(避免空轉)。
+      //   涵蓋未來「還沒補邏輯的新特殊戰場」(時空裂痕式暫態圖、木人場假地圖等)。隱藏狩獵區域在 DB.maps,不受影響、照常結算。
+      if (typeof DB !== 'undefined' && DB.maps && !DB.maps[savedMap]) {
+        console.info('[AFK] 上次地圖「' + savedMap + '」非標準狩獵圖(不在 DB.maps)，離線略過以免空轉。');
         return;
       }
     }

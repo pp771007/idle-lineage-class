@@ -1177,7 +1177,7 @@
       var _h2p = {}; for (var _pz in HIDDEN_AREA_PARENT) _h2p[HIDDEN_AREA_PARENT[_pz]] = _pz;   // 母樓層→隱藏 反轉成 隱藏→母樓層
       Object.keys(HIDDEN_AREA_NAMES).forEach(function (hid) {
         var pz = _h2p[hid], pname = pz ? (mapTitleOf(pz) || pz) : '?', lv = mapLvRange(hid), bits = [];
-        bits.push('<span class="c-mappath">📍 在「' + esc(pname) + '」內手動傳送進入</span>');
+        bits.push('<span class="c-mappath">📍 隱藏狩獵區域｜在「' + esc(pname) + '」手動施放傳送術／用瞬間移動卷軸進入</span>');
         if (lv) bits.push('<b style="color:#86efac;margin:0;">' + lv + '</b>');
         h += '<div class="m-wiki-kv"><b>' + esc(HIDDEN_AREA_NAMES[hid]) + '</b>' + bits.join('　') + '</div>';
       });

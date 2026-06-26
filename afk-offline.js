@@ -197,6 +197,7 @@
       if (id === 'oblivion_island') return '遺忘之島';   // 遺忘之島地圖不在 MAP_CATEGORIES,自己組名
       if (id === 'oblivion_travel') return '遺忘之島途中';
       if (id === 'rift_battle') return '時空裂痕';        // 時空裂痕戰場不在 MAP_CATEGORIES(離線一律跳過,理論上不會用到,保險補名)
+      if (typeof HIDDEN_AREA_NAMES !== 'undefined' && HIDDEN_AREA_NAMES[id]) return HIDDEN_AREA_NAMES[id];   // 🏛️ 隱藏狩獵區域(惡靈封印室等):不在 MAP_CATEGORIES,讀遊戲全域補中文名(離線收益摘要 / 選角掛機地點都走此函式)
       if (id && typeof MAP_CATEGORIES !== 'undefined') {
         for (var c in MAP_CATEGORIES) {
           for (var i = 0; i < MAP_CATEGORIES[c].length; i++) if (MAP_CATEGORIES[c][i].v === id) return MAP_CATEGORIES[c][i].t;

@@ -8,7 +8,7 @@
  *       ▸ 「導覽文件」(index.html / 目錄 '/')走 network-first：線上一律抓最新「殼」,根除 cache-first 把舊版釘死、
  *         又得靠 SW 換版才更新得了的老問題(iOS 換版尤其不穩);離線/網路慢退快取,離線遊玩照常(見 navFirst)。
  *       ▸ js / manifest / 圖示走 cache-first：它們帶 ?v= 版本號,換版即換 URL,撲空就抓新、不會被釘舊版,故維持 cache-first(秒開、省流量)。
- *   ● 圖桶 IMG_CACHE：assets/ 全部圖。cache-first＋連網補抓(on-demand)＋可由頁面驅動「背景全預抓」。
+ *   ● 圖桶 IMG_CACHE：assets/ 全部圖。cache-first＋連網補抓(on-demand)——用到才抓、不預抓整包。
  *       桶名 IMG_VERSION 是「固定不變」的快取名(不再隨改版 bump、不整桶倒掉)。
  *       失效改走「逐張對帳」：assets-manifest.json 每張圖帶一個 git blob sha,SW 記下「自己快取的是哪個 sha」;
  *       頁面(afk-pwa)每次載入送來最新 manifest → SW 比對 → 只刪掉 sha 對不上的那幾張(reconcileImages),
@@ -21,10 +21,10 @@
  *     導覽已 network-first、頁面端也沒有 controllerchange→reload,所以「立刻接管」不會強制 reload、不打斷遊玩;
  *     好處是卡在舊 cache-first SW 的人載到新 sw.js 就即時換成 network-first,不必等「所有分頁徹底關閉」(iOS 上極不可靠)。
  *
- * 背景預抓：頁面送 {type:'precache-images', manifest:[[path,sha],...]} → 此處分批抓進圖桶並回報進度,讓安裝後可完全離線。
+ * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
-const CODE_VERSION = 'code-69a5ed5b5601';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0626-1526'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+const CODE_VERSION = 'code-ec6c81b5e8ec';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0626-1700'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;
@@ -60,11 +60,7 @@ self.addEventListener('message', (e) => {
   const d = e.data || {};
   if (d === 'skip-waiting' || d.type === 'skip-waiting') { self.skipWaiting(); return; }
   if (d.type === 'reconcile-images' && Array.isArray(d.manifest)) {
-    e.waitUntil(reconcileImages(d.manifest, e.source, d.deferReplaced));
-    return;
-  }
-  if (d.type === 'precache-images' && Array.isArray(d.manifest || d.urls)) {
-    e.waitUntil(precacheImages(d.manifest || d.urls, e.source, d.checkOnly));
+    e.waitUntil(reconcileImages(d.manifest, e.source));
   }
 });
 
@@ -99,10 +95,8 @@ async function writeImgHashes(cache, map) {
 //   - 記錄相符 → 一定是最新,跳過(快路徑,不讀 bytes)。
 //   - 沒記過 sha 的舊快取 → 用實際 bytes 算 sha:相符就補記、不符才清(讓本機制上線前的舊快取也能被healed)。
 //   - 作者已移除的圖(不在 manifest)→ 連快取帶記錄一起清掉。
-//   - deferReplaced(已安裝、預抓改走「手動下載」時由頁面帶上)→ 被作者換掉內容的舊圖「先不刪」:
-//       否則 reconcile 刪了、新圖卻要等使用者按下載才抓,中間離線會 404。保留舊圖(舊內容)頂著,
-//       等使用者按下載由 precache 以新 bytes 覆寫即更新。作者「移除」的圖照樣清(不會被請求,無 404 風險)。
-async function reconcileImages(manifest, client, deferReplaced) {
+//   - 內容對不上(作者換過該圖)→ 清掉舊圖,下次 on-demand 用到才抓新版。
+async function reconcileImages(manifest, client) {
   const entries = manifestEntries(manifest);
   const cache = await caches.open(IMG_CACHE);
   const hashes = await readImgHashes(cache);
@@ -118,7 +112,6 @@ async function reconcileImages(manifest, client, deferReplaced) {
       try { actual = await gitBlobSha(await cached.clone().arrayBuffer()); } catch (err) { /* 算不出當作要清 */ }
       if (actual === en.sha) { hashes[en.path] = en.sha; continue; }   // 舊快取內容其實是最新 → 補記、免重抓
     }
-    if (deferReplaced) continue;                    // 已安裝走手動下載:被換掉的舊圖先留著,避免離線空窗
     await cache.delete(en.path);                    // 內容對不上 → 清掉舊圖
     delete hashes[en.path];
     evicted++;
@@ -128,61 +121,6 @@ async function reconcileImages(manifest, client, deferReplaced) {
   }
   await writeImgHashes(cache, hashes);
   if (client) client.postMessage({ type: 'reconcile-done', evicted });
-}
-
-// 背景把圖桶抓滿,分兩階段、各自回報進度給發起的分頁:
-//   階段1「檢查」:掃 manifest 找出哪些圖需要下載(stale)。已記錄 sha 且相符的瞬間略過、不碰磁碟,
-//     所以「沒變動」時這階段幾乎即時完成。回報 {type:'precache-check', checked, total}。
-//   階段2「下載」:只抓階段1 圈出的 stale 圖(分批),回報 {type:'precache-progress', done, need}。
-//   沒有要抓的(need=0)就只跑階段1、直接結束。順手把每張抓到的 sha 記進對照表。
-//   checkOnly=true(已安裝、更新帶新圖)→ 只跑階段1 回報 need,讓頁面顯示「N 張待下載」按鈕,不自動下載;
-//     使用者按下載時頁面再送一次 checkOnly=false 走完整流程(重跑階段1 很快、無狀態較穩)。
-async function precacheImages(manifest, client, checkOnly) {
-  const entries = manifestEntries(manifest);
-  const cache = await caches.open(IMG_CACHE);
-  const hashes = await readImgHashes(cache);
-  const total = entries.length;
-
-  // ── 階段1:檢查 ──
-  const toFetch = [];
-  let checked = 0;
-  const CHECK_BATCH = 100;
-  for (let i = 0; i < total; i += CHECK_BATCH) {
-    const batch = entries.slice(i, i + CHECK_BATCH);
-    await Promise.all(batch.map(async (en) => {
-      if (en.sha && hashes[en.path] === en.sha) return;   // 快路徑:記錄相符=最新,免讀磁碟
-      const cached = await cache.match(en.path);
-      // 對不上(沒快取、或記錄的 sha≠manifest)就排進下載。不樂觀補記:沒記過 sha 的舊快取交給 reconcile
-      // 用實際 bytes 驗證,這裡若硬補記可能把破損期殘留的舊圖誤標成最新。
-      if (!cached || (en.sha && hashes[en.path] !== en.sha)) toFetch.push(en);
-    }));
-    checked = Math.min(checked + CHECK_BATCH, total);
-    if (client) client.postMessage({ type: 'precache-check', checked, total });
-  }
-
-  const need = toFetch.length;
-  if (client) client.postMessage({ type: 'precache-check-done', need, total, checkOnly: !!checkOnly });
-  if (checkOnly) return;   // 只檢查:不下載(階段1 不動 hashes,毋須寫回)
-
-  // ── 階段2:下載 ──
-  let done = 0;
-  const BATCH = 8;
-  for (let i = 0; i < need; i += BATCH) {
-    const batch = toFetch.slice(i, i + BATCH);
-    await Promise.all(batch.map(async (en) => {
-      try {
-        const res = await fetch(en.path, { cache: 'no-cache' });
-        if (res && (res.ok || res.type === 'opaque')) {
-          await cache.put(en.path, res.clone());
-          if (en.sha) hashes[en.path] = en.sha;
-        }
-      } catch (err) { /* 單張失敗不中斷整批 */ }
-      done++;
-    }));
-    if (client) client.postMessage({ type: 'precache-progress', done, need });
-  }
-  await writeImgHashes(cache, hashes);
-  if (client) client.postMessage({ type: 'precache-done', total, downloaded: need });
 }
 
 // cache-first + 連網補存。ok(200)或 opaque(跨網域)都存。

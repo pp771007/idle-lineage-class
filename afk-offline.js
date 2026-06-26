@@ -555,7 +555,7 @@
         return;
       }
       // 🛡️ 通用保險:地圖不在 DB.maps(無怪池可撈)→ 一律略過,不硬跑(避免空轉)。
-      //   涵蓋未來「還沒補邏輯的新特殊戰場」(時空裂痕式暫態圖、木人場假地圖等)。隱藏狩獵區域在 DB.maps,不受影響、照常結算。
+      //   涵蓋未來「還沒補邏輯的新特殊戰場」(時空裂痕式暫態戰場等)。隱藏狩獵區域在 DB.maps,不受影響、照常結算。
       if (typeof DB !== 'undefined' && DB.maps && !DB.maps[savedMap]) {
         console.info('[AFK] 上次地圖「' + savedMap + '」非標準狩獵圖(不在 DB.maps)，離線略過以免空轉。');
         return;

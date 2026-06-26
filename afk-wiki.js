@@ -853,6 +853,10 @@
     { k: 'kingroom', n: '軍王之室' }
   ];
   var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', equipCls: 'all', equipSlot: 'wpn' };
+  // 搜尋打字防抖:每次按鍵只重設計時器,停手這麼久才真的過濾+重渲染(降低逐字輸入的 INP)。
+  var SEARCH_DEBOUNCE_MS = 150;
+  var _searchTimer = null;
+  function debouncedRender() { if (_searchTimer) clearTimeout(_searchTimer); _searchTimer = setTimeout(function () { _searchTimer = null; render(); }, SEARCH_DEBOUNCE_MS); }
 
   // 把內文裡任何「分頁名」(夾在「」裡、且整段剛好等於某個分頁名)做成可點的跳頁連結。
   // 用「整段精確等於分頁名」當條件:像「席琳套裝」「席琳的世界」不會誤中分頁「席琳」,避免把一般引號詞變連結。
@@ -905,8 +909,8 @@
     var clearBtn = document.getElementById('m-wiki-clear');
     input.addEventListener('input', function () {
       state.q = input.value;
-      clearBtn.classList.toggle('show', !!input.value);
-      render();
+      clearBtn.classList.toggle('show', !!input.value);   // state.q 與清除鈕即時更新
+      debouncedRender();                                   // 重的過濾/渲染延後 → 打字不卡
     });
     clearBtn.addEventListener('click', function () { input.value = ''; state.q = ''; clearBtn.classList.remove('show'); render(); input.focus(); });
     // 職業魔法分頁的「職業篩選」按鈕(事件委派;body innerHTML 重繪後仍有效)
@@ -1111,6 +1115,7 @@
   }
 
   function render() {
+    if (_searchTimer) { clearTimeout(_searchTimer); _searchTimer = null; }   // 直接 render 蓋過待觸發的防抖,避免重複渲染
     var body = document.getElementById('m-wiki-body');
     if (!body) return;
     syncUrl();   // 狀態變動時同步到網址(獨立頁才會動)

@@ -14,6 +14,10 @@
 
   var MAX_RESULTS = 60;
   var INDEX = [];   // [{ id, mob, maps:[名稱], drops:[[id,名稱,pct]], hay:可搜尋字串(小寫) }]
+  // 搜尋打字防抖:每次按鍵只重設計時器,停手這麼久才真的過濾+重渲染(降低逐字輸入的 INP)。
+  var SEARCH_DEBOUNCE_MS = 150;
+  var _searchTimer = null;
+  function debouncedSearch() { if (_searchTimer) clearTimeout(_searchTimer); _searchTimer = setTimeout(function () { _searchTimer = null; doSearch(); }, SEARCH_DEBOUNCE_MS); }
   var DROPPED_SET = {};   // itemId -> true:被任一隻怪掉落過(由 buildIndexes 統一收集;用於判斷物品「有沒有怪掉的固定來源」)
 
   function ready(fn) {
@@ -194,6 +198,7 @@
 
   // ----- 搜尋 + 渲染 ------------------------------------------------------
   function doSearch() {
+    if (_searchTimer) { clearTimeout(_searchTimer); _searchTimer = null; }   // 直接呼叫(清除鈕/書籤/URL)蓋過待觸發的防抖
     var input = document.getElementById('m-dex-input');
     var results = document.getElementById('m-dex-results');
     if (!input || !results) return;
@@ -707,7 +712,7 @@
       '</div>' +
       '<div id="m-dex-itempop"><div id="m-dex-itempop-card"><button id="m-dex-itempop-close" type="button" title="關閉" aria-label="關閉">✕</button><div id="m-dex-itempop-body"></div></div></div>';
     document.body.appendChild(m);
-    document.getElementById('m-dex-input').addEventListener('input', doSearch);
+    document.getElementById('m-dex-input').addEventListener('input', debouncedSearch);
     document.getElementById('m-dex-mode').addEventListener('change', doSearch);
     document.getElementById('m-dex-close').addEventListener('click', userCloseTop);
     document.getElementById('m-dex-clear').addEventListener('click', function () {

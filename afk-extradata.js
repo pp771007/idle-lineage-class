@@ -14,6 +14,32 @@
 (function () {
   window.AFK_EXTRA = {
 
+    // ── 🗺️ 統一地圖名解析（唯一一份；afk-dex / afk-wiki / afk-offline / afk-slotinfo 都呼叫這份）──
+    //   涵蓋：風木地監、遺忘之島、時空裂痕、隱藏狩獵區域(HIDDEN_AREA_NAMES)、攀登(pride_fN / pride_a_b)、
+    //   選單地圖(MAP_CATEGORIES)、攻城(SIEGE_CITY)、村莊(DB.towns)；查不到回 id。
+    //   ⭐ 以後作者新增「不在 MAP_CATEGORIES 的地圖類型」只要改這一處，四支外掛同時生效（免再逐份補）。
+    //   讀的是遊戲執行期全域，外掛載入順序不影響（呼叫時才求值）。
+    mapName: function (id) {
+      try {
+        if (!id || typeof id !== 'string') return id || '?';
+        if (id === 'windwood_dungeon') return '風木地監';
+        if (id === 'oblivion_island') return '遺忘之島';
+        if (id === 'oblivion_travel') return '遺忘之島途中';
+        if (id === 'rift_battle') return '時空裂痕';
+        if (typeof HIDDEN_AREA_NAMES !== 'undefined' && HIDDEN_AREA_NAMES[id]) return HIDDEN_AREA_NAMES[id];   // 🏛️ 隱藏狩獵區域
+        var pf = /^pride_f(\d+)$/.exec(id); if (pf) return '傲慢之塔 ' + pf[1] + ' 樓';
+        var pr = /^pride_(\d+)_(\d+)$/.exec(id); if (pr) return '傲慢之塔 ' + pr[1] + '~' + pr[2] + ' 樓（直接挑戰）';
+        if (typeof MAP_CATEGORIES !== 'undefined') {
+          for (var c in MAP_CATEGORIES) { var l = MAP_CATEGORIES[c]; for (var i = 0; i < l.length; i++) if (l[i].v === id) return l[i].t; }
+        }
+        if (typeof SIEGE_CITY !== 'undefined') {
+          for (var k in SIEGE_CITY) { var s = SIEGE_CITY[k]; if (s.outer === id) return s.outerName; if (s.inner === id) return s.innerName; if (s.castle === id) return s.castleName; }
+        }
+        if (typeof DB !== 'undefined' && DB.towns && DB.towns[id]) return DB.towns[id].n;
+      } catch (e) {}
+      return id;
+    },
+
     // ── 物品取得方式(特殊、可控的取得鏈;一般抽獎/掉落不放這,交給掉落查詢動態呈現)──
     //   key   = 物品 id
     //   short = 掉落查詢物品卡用的簡短一行

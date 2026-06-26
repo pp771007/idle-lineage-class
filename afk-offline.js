@@ -190,22 +190,9 @@
     } catch (e) { console.warn('[AFK] recordHistory error:', e); }
   }
   // 地圖 id → 顯示名稱(查原作者的 MAP_CATEGORIES);查不到就回 id 本身
-  function mapName(id) {
-    try {
-      var pm = (typeof id === 'string') ? id.match(/^pride_f(\d+)$/) : null;   // 攀登樓層不在 MAP_CATEGORIES,自己組名
-      if (pm) return '傲慢之塔 ' + pm[1] + ' 樓';
-      if (id === 'oblivion_island') return '遺忘之島';   // 遺忘之島地圖不在 MAP_CATEGORIES,自己組名
-      if (id === 'oblivion_travel') return '遺忘之島途中';
-      if (id === 'rift_battle') return '時空裂痕';        // 時空裂痕戰場不在 MAP_CATEGORIES(離線一律跳過,理論上不會用到,保險補名)
-      if (typeof HIDDEN_AREA_NAMES !== 'undefined' && HIDDEN_AREA_NAMES[id]) return HIDDEN_AREA_NAMES[id];   // 🏛️ 隱藏狩獵區域(惡靈封印室等):不在 MAP_CATEGORIES,讀遊戲全域補中文名(離線收益摘要 / 選角掛機地點都走此函式)
-      if (id && typeof MAP_CATEGORIES !== 'undefined') {
-        for (var c in MAP_CATEGORIES) {
-          for (var i = 0; i < MAP_CATEGORIES[c].length; i++) if (MAP_CATEGORIES[c][i].v === id) return MAP_CATEGORIES[c][i].t;
-        }
-      }
-    } catch (e) {}
-    return id || '?';
-  }
+  // 地圖 id → 中文名：統一委派 afk-extradata 共用解析(離線收益摘要 + 選角掛機地點 afk-slotinfo 委派此函式都走這份)。
+  //   afk-offline 雖比 afk-extradata 早載入,但本函式在「執行期」才被呼叫,屆時 AFK_EXTRA 已就緒;缺了則退回 id。
+  function mapName(id) { try { return (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(id) : (id || '?'); } catch (e) { return id || '?'; } }
   // 累積總經驗(等級已過的各級需求總和 + 目前這級經驗)。player.exp 是「當級經驗」升級會歸零,
   // 直接相減在升級時會變負;改用累積值相減才正確(getExpReq=每級所需經驗,核心遊戲全域函式)。
   function expTotal(lv, exp) {

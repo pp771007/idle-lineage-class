@@ -1155,7 +1155,7 @@
     if (e.classicHide) p.push('經典模式無法進入');
     return p.join('・');
   }
-  function mapTitleOf(v) { for (var c in MAP_CATEGORIES) { var l = MAP_CATEGORIES[c]; for (var i = 0; i < l.length; i++) if (l[i].v === v) return l[i].t; } return null; }
+  function mapTitleOf(v) { return (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(v) : v; }   // 統一委派 afk-extradata 共用地圖名解析
   function renderMap() {
     if (typeof MAP_CATEGORIES === 'undefined') return '<div class="m-wiki-note">讀不到地圖資料。</div>';
     var h = '<div class="m-wiki-note">遊戲移動方式：打開<b>地圖選單</b>→ 選分類 → 選地圖直接傳送（受進入條件擋）。下面每張地圖都標出<b>📍進入路徑（在哪個分類）</b>、<b>等級範圍</b>（看該圖怪物等級）與<b>進入條件</b>。所以即使用搜尋（例 <b>底比斯</b>）也看得到它在「時空裂痕」分類底下。</div>';

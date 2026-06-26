@@ -92,27 +92,8 @@
 
   // ----- 名稱查詢 ---------------------------------------------------------
   // CASTLE_EXTRA 類地圖(如風木地監)只有 getCastleAreas() 動態才有中文名、靜態表查不到,在這補上
-  // 遺忘之島地圖(oblivion_*)是搭船前往的特殊離島,不在 MAP_CATEGORIES/DB.maps 靜態表,自己補名
-  var EXTRA_MAP_NAMES = { windwood_dungeon: '風木地監', oblivion_island: '遺忘之島', oblivion_travel: '遺忘之島途中' };
-  function mapNameOf(id) {
-    try {
-      if (EXTRA_MAP_NAMES[id]) return EXTRA_MAP_NAMES[id];
-      if (typeof HIDDEN_AREA_NAMES !== 'undefined' && HIDDEN_AREA_NAMES[id]) return HIDDEN_AREA_NAMES[id];   // 🏛️ 隱藏狩獵區域(惡靈封印室等):不在 MAP_CATEGORIES,讀遊戲全域補中文名
-      // 🗼 傲慢之塔:樓層(pride_fN)與區間(pride_a_b)地圖無靜態中文名,比照遊戲內命名動態產生
-      var _pf = /^pride_f(\d+)$/.exec(id); if (_pf) return '傲慢之塔 ' + _pf[1] + 'F';
-      var _pr = /^pride_(\d+)_(\d+)$/.exec(id); if (_pr) return '傲慢之塔 ' + _pr[1] + '~' + _pr[2] + '樓（直接挑戰）';
-      if (typeof MAP_CATEGORIES !== 'undefined') {
-        for (var c in MAP_CATEGORIES) {
-          for (var i = 0; i < MAP_CATEGORIES[c].length; i++) if (MAP_CATEGORIES[c][i].v === id) return MAP_CATEGORIES[c][i].t;
-        }
-      }
-      if (typeof SIEGE_CITY !== 'undefined') {
-        for (var k in SIEGE_CITY) { var s = SIEGE_CITY[k]; if (s.outer === id) return s.outerName; if (s.inner === id) return s.innerName; if (s.castle === id) return s.castleName; }
-      }
-      if (DB.towns && DB.towns[id]) return DB.towns[id].n;
-    } catch (e) {}
-    return id;
-  }
+  // 地圖 id → 中文名：統一委派 afk-extradata 的共用解析(唯一一份,涵蓋隱藏區/攀登/遺忘之島/攻城/村莊…)
+  function mapNameOf(id) { try { return (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(id) : id; } catch (e) { return id; } }
   function itemNameOf(id) { return (DB.items[id] && DB.items[id].n) ? DB.items[id].n : id; }
   // 龍騎士掉落表附註:職業限定的任務道具標「🐉僅X」(讀 TRIAL_ITEM_CLASS);書板/鎖鏈劍全職可掉→不附註
   var _CLS_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士' };

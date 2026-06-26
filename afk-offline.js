@@ -124,7 +124,7 @@
     var barWrap = document.createElement('div');
     barWrap.setAttribute('style', 'width:min(70vw,420px);height:14px;background:#1e293b;border-radius:8px;overflow:hidden;border:1px solid #334155');
     overlayBar = document.createElement('div');
-    overlayBar.setAttribute('style', 'height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#86efac);transition:width .1s linear');
+    overlayBar.setAttribute('style', 'height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#86efac)');   // ⚠ 不要加 transition：補跑迴圈每 250ms 同步卡住主執行緒,寬度動畫跑不動會讓進度條看起來一直空著(踩過);直接瞬間套用寬度最準
     barWrap.appendChild(overlayBar);
     overlayTxt = document.createElement('div');
     overlayTxt.setAttribute('style', 'font-size:13px;color:#94a3b8');

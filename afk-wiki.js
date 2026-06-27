@@ -12,15 +12,17 @@
 (function () {
   'use strict';
 
+  // 職業順序統一＝創角畫面順序(js/13-shop-save.js btnIds:royal→knight→mage→elf→dark→illusion→dragon→warrior)。
+  // 小百科所有職業篩選列(主列 CLASSES／魔法 MAGIC_FILTERS／裝備 EQUIP_FILTERS)都照這個排,「全部」永遠最前。
   var CLASSES = [
     { k: 'royal', n: '王族' },
     { k: 'knight', n: '騎士' },
-    { k: 'warrior', n: '戰士' },
     { k: 'mage', n: '法師' },
     { k: 'elf', n: '妖精' },
     { k: 'dark', n: '黑暗妖精' },
     { k: 'illusion', n: '幻術士' },
-    { k: 'dragon', n: '龍騎士' }
+    { k: 'dragon', n: '龍騎士' },
+    { k: 'warrior', n: '戰士' }
   ];
 
   function ready(fn) {
@@ -910,17 +912,17 @@
       tabs.appendChild(b);
     });
     var clsRow = document.getElementById('m-wiki-cls');
+    // 「全職業」鈕放最前(只在「任務」分頁顯示):看不分職業的共通任務
+    var allBtn = document.createElement('button');
+    allBtn.className = 'm-wiki-clsbtn m-wiki-clsbtn-all'; allBtn.setAttribute('data-cls', 'all'); allBtn.textContent = '全職業';
+    allBtn.addEventListener('click', function () { state.cls = 'all'; render(); });
+    clsRow.appendChild(allBtn);
     CLASSES.forEach(function (c) {
       var b = document.createElement('button');
       b.className = 'm-wiki-clsbtn'; b.setAttribute('data-cls', c.k); b.textContent = c.n;
       b.addEventListener('click', function () { state.cls = c.k; render(); });
       clsRow.appendChild(b);
     });
-    // 「全職業」篩選鈕(只在「任務」分頁出現):看不分職業的共通任務
-    var allBtn = document.createElement('button');
-    allBtn.className = 'm-wiki-clsbtn m-wiki-clsbtn-all'; allBtn.setAttribute('data-cls', 'all'); allBtn.textContent = '全職業';
-    allBtn.addEventListener('click', function () { state.cls = 'all'; render(); });
-    clsRow.appendChild(allBtn);
     var input = document.getElementById('m-wiki-input');
     var clearBtn = document.getElementById('m-wiki-clear');
     input.addEventListener('input', function () {
@@ -1335,7 +1337,7 @@
   // 裝備總覽:直接讀遊戲 DB.items 依部位分組。數值用遊戲自己的 buildItemDescHTML(永遠與遊戲一致、作者新增自動跟上),
   // 取得方式接掉落查詢的 AFK_DEX_API.acquireHTML。每件「詳情」常駐 DOM(display:none)→ 連完整數值/特效都進統一搜尋;
   // 詳情與整頁 HTML 都建一次就快取(_equipDetail/_equipHtml)→ 搜尋每次重渲染 441 件也不卡。
-  var EQUIP_FILTERS = [['all', '全部'], ['knight', '騎士'], ['mage', '法師'], ['elf', '妖精'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士'], ['warrior', '戰士'], ['royal', '王族']];
+  var EQUIP_FILTERS = [['all', '全部'], ['royal', '王族'], ['knight', '騎士'], ['mage', '法師'], ['elf', '妖精'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士'], ['warrior', '戰士']];   // 順序＝全部＋創角職業序(同 CLASSES)
   var EQUIP_GROUPS = [
     { k: 'wpn', n: '⚔️ 武器' }, { k: 'helm', n: '🪖 頭部' }, { k: 'armor', n: '🛡 身體' },
     { k: 'shield', n: '🔰 盾牌／副手' }, { k: 'cloak', n: '🧥 斗篷' }, { k: 'gloves', n: '🧤 手套' },
@@ -1930,7 +1932,7 @@
       (lvLabel ? '<div class="m-wiki-spell-lv">' + esc(lvLabel) + '</div>' : '') +
     '</div>';
   }
-  var MAGIC_FILTERS = [['all', '全部'], ['royal', '王族'], ['mage', '法師'], ['elf', '妖精'], ['knight', '騎士'], ['warrior', '戰士'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士']];
+  var MAGIC_FILTERS = [['all', '全部'], ['royal', '王族'], ['knight', '騎士'], ['mage', '法師'], ['elf', '妖精'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士'], ['warrior', '戰士']];   // 順序＝全部＋創角職業序(同 CLASSES)
   function magicFilterRow(sel) {
     return '<div class="m-wiki-mfilter">' + MAGIC_FILTERS.map(function (f) {
       return '<button type="button" class="m-wiki-mfbtn' + (f[0] === sel ? ' on' : '') + '" data-magiccls="' + f[0] + '">' + f[1] + '</button>';

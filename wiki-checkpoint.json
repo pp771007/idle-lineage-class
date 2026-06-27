@@ -1,6 +1,6 @@
 {
-  "reconciledIndexCommit": "2a926aa507230a3ebf366e54644e1fd512edb501",
-  "reconciledIndexBlob": "60a5fc71f0cc313ed3ff3f630c9556bc60f990c8",
-  "reconciledAt": "2026-06-28 00:24 (UTC+8)",
-  "note": "錨點前進到 2a926aa(2026-06-28 那輪「更新小百科」)。本輪做的：① 作者新增 js/16-equip-book.js(裝備收集冊)→新增「裝備圖鑑」分頁(data-driven 讀 EQUIP_CATEGORIES/EQUIP_CAT_BONUS)；② 比對遊戲 18 套裝 vs 小百科 SETS→補漏的『藍海賊套裝』；③ 裝備分頁武器部位改照裝備圖鑑細分(重用 equipCatKey/EQUIP_ITEM_CAT)。先前 V2.32 期間已陸續做卡片/地圖領域分組/製作/技能效果稽核/聖地遺物。⚠ 仍非對 js/ 全量逐行重對(沿用前一錨點的定點修補模式)，日後有空建議對 js/ 全量再對一次(尤其 QUEST_BY_CLASS/MASTERY_DATA/WEAPON_TRAITS 這些手動維護清單)。下次 diff：git diff <reconciledIndexCommit> HEAD -- js/。"
+  "reconciledIndexCommit": "620c5711e182cb6996791ca14fd8186912127a24",
+  "reconciledIndexBlob": "618863de1f15765bda764fdfbc07815ec8abaf46",
+  "reconciledAt": "2026-06-28 00:40 (UTC+8)",
+  "note": "錨點前進到 620c571。本輪『更新小百科』先做太淺(只挑新檔)被使用者抓到,於是用 `git diff 2ea101a..HEAD -- js/` 把作者自上一錨點以來的改動逐項重對。實際做的：① 裝備收集冊→新增「裝備圖鑑」分頁(讀 EQUIP_CATEGORIES/EQUIP_CAT_BONUS)；② 補漏的『藍海賊套裝』(SETS)；③ 裝備分頁武器部位照裝備圖鑑細分(重用 equipCatKey/EQUIP_ITEM_CAT)；④ 補漏的『瘋狂席琳模式』(席琳分頁改一般/瘋狂雙欄,怪傷×3、經驗金錢×10、結晶與套裝效果×3)。逐項查證『已涵蓋、不需動』的：卡片(卡片分頁)、地圖領域分組(地圖分頁)、隱藏魔族武器+尤莉亞哈丁兌換(dex buildTrialBy 已含)、致命落雷(聖晶魔杖 proc·非可學·魔法頁正確排除)、真冥皇執行劍+暈眩(裝備頁自動收·異常狀態表已有)、新條件式掉落(只有聖地遺物·已補)。此範圍視為已逐項對齊。下次 diff：git diff <reconciledIndexCommit> HEAD -- js/。"
 }

@@ -30,8 +30,8 @@ function abnormalMagicHit(m, maxHv, hitOff) {
 function applyMobStatus(m, st, skillName) {
     if(!m.st) m.st = newMobStatus();
     if(BOSS_IMMUNE.includes(st.kind) && m.boss) return;
-    // 異常狀態魔法命中（玩家對怪物）：見 abnormalMagicHit
-    if(!abnormalMagicHit(m)) {
+    // 異常狀態魔法命中（玩家對怪物）：見 abnormalMagicHit；st.hitOff＝命中加值（🏛️ 真．冥皇執行劍 衝擊之暈 +4≈命中率+20%）
+    if(!abnormalMagicHit(m, undefined, st.hitOff)) {
         logCombat(`<span class="${getMobColor(m.lv)}">${m.n}</span> 抵抗了${skillName || '異常狀態'}。`, 'miss');
         return;
     }
@@ -291,7 +291,7 @@ function allyQiguAttack(ally, t, wpn) {
             let pd = 0, lb = '';
             if (wpn.qiguProc === 'phantom') { pd = 79 + roll(1, 81); lb = '幻影衝擊'; }
             else if (wpn.qiguProc === 'mindbreak') { let _m = (t.st && t.st.mrhalf > 0) ? t.mr/2 : t.mr; pd = Math.max(1, Math.floor((ally.mmp||0) * 0.05 * (1 + ((ally.d && ally.d.magicDmg) || 0) / 16) * ((ally.mastery==='i_qigu' && wpn.qigu)?1:mrMult(_m)))); lb = '心靈破壞'; }   // 🔮 比照技能：×(1+魔法傷害/16)
-            if (pd > 0) { pd = Math.max(1, Math.floor(pd * fragileMult(t) * illuLvMult(ally))); t.curHp -= pd; t.justHit = 'magic'; mobWake(t); logCombat(`<span class="font-bold" style="color:#a78bfa;">【協力·${lb}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${pd} 點傷害！`, 'magic'); }
+            if (pd > 0) { pd = Math.max(1, Math.floor(pd * fragileMult(t) * illuLvMult(ally) * enhanceWpnFinalMult(en))); t.curHp -= pd; t.justHit = 'magic'; mobWake(t); logCombat(`<span class="font-bold" style="color:#a78bfa;">【協力·${lb}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${pd} 點傷害！`, 'magic'); }
         }
     }
     let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid);
@@ -305,7 +305,7 @@ function allyAttackOnce(ally) {
     // 🔮 幻術士傭兵 奇古獸攻擊（公式同玩家，用傭兵自身衍生值；裝奇古獸或魔劍精通）
     if (ally.cls === 'illusion') {
         let _qw = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
-        if (_qw && !_qw.isBow && (_qw.qigu || ally.mastery === 'i_magicsword')) { allyQiguAttack(ally, t, _qw); return; }
+        if (_qw && !_qw.isBow && (_qw.qigu || (ally.mastery === 'i_magicsword' && !isWandWeapon(_qw)))) { allyQiguAttack(ally, t, _qw); return; }   // 🔮 魔劍精通：排除魔杖
     }
     if (ally.cls === 'mage') {
         let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
@@ -316,6 +316,7 @@ function allyAttackOnce(ally) {
         let base = roll(1,6) * spCoef * critMult;
         let dmg = Math.max(1, Math.floor((Math.max(1, Math.floor((base + (d.extraMp||0)) * mrFactor) - (t.dr||0))) * 1.55));
         dmg = Math.max(1, Math.floor(dmg * fragileMult(t)));   // 🔮 脆弱（白鳥5）
+        dmg = Math.max(1, Math.floor(dmg * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（傭兵法師光箭普攻·與玩家普攻一致）
         t.curHp -= dmg; t.justHit = 'magic'; mobWake(t);
         logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>魔法攻擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 <span class="${isCrit?'text-yellow-500 font-bold':'text-emerald-200'}">${dmg}</span> 點傷害。`, 'magic');
         allyWeaponProcs(ally, t, { hit: true, dmg: dmg });   // 🔧 法師普攻（光箭）也觸發武器特效：共鳴/魔擊/瑪那回魔
@@ -359,6 +360,7 @@ function allyAttackOnce(ally) {
         if (heavy && allyHasMastery(ally, 'k_cleave') && wpn && wpn.eff === 'cleave') dmg = Math.max(1, Math.floor(dmg * 1.5));   // 🏅 切割精通（傭兵）：觸發重擊時傷害 ×1.5
         dmg = Math.max(1, Math.floor(dmg * fragileMult(t)));   // 🔮 脆弱（白鳥5）
         if (ally.skills.includes('sk_warrior_berserk') && !isRanged && Math.random() < 0.05) dmg = Math.max(1, dmg * 2);   // ⚔️ 狂暴（傭兵）：一般攻擊5%機率傷害x2
+        dmg = Math.max(1, Math.floor(dmg * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（傭兵物理普攻·與玩家普攻 getPhysicalDmg 一致）
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
         // 🔧 黑暗妖精傭兵：預設攻擊自動維持附加劇毒（學過 sk_dark_poison 即視為常駐增益）；命中 50%／劇毒精通 100% 使目標中毒（與玩家同規則）
         if (ally.cls === 'dark' && ally.skills && ally.skills.includes('sk_dark_poison') && t.curHp > 0 && Math.random() < (allyHasMastery(ally, 'd_poison') ? 1 : 0.5)) {
@@ -455,6 +457,7 @@ function allyCastMagic(ally, sk) {
             if (ally._setRedLion5) dd = Math.floor(dd * 1.2);   // 🔮 紅獅 5/5（傭兵快照）
             if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) dd = Math.floor(dd * 2);   // 🔧 傭兵魔導精通：同屬性傷害魔法 ×2
             dd = Math.max(1, Math.floor(dd * fragileMult(t) * illuLvMult(ally)));   // 🔮 脆弱（白鳥5）；🔮 幻術士(傭兵)等級加成 ×(1+等級/50)
+            dd = Math.max(1, Math.floor(dd * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（也影響傭兵施放的傷害魔法；物理技走 allyStrikeRoll 已含）
             totalDmg += dd;
         });
         t.curHp -= totalDmg;
@@ -562,7 +565,7 @@ function allyCastPhysicalSkill(ally, sk) {
             totalDmg += res.dmg;
             let mark = (res.heavy && res.crit) ? '會心' : (res.crit ? '爆' : (res.heavy ? '重' : ''));
             logHits.push(res.dmg + (mark ? '(' + mark + ')' : ''));
-            if (sk.stun) applyMobStatus(t, { kind: 'stun', pbase: sk.stun, dur: 6 }, sk.n);
+            if (sk.stun) applyMobStatus(t, { kind: 'stun', pbase: sk.stun, dur: 6, hitOff: (wpn && wpn.stunHitBonus) ? Math.round(wpn.stunHitBonus / 5) : 0 }, sk.n);   // 🏛️ 傭兵持真．冥皇執行劍：衝擊之暈暈眩命中率 +20%
             if (sk.status) applyMobStatus(t, sk.status, sk.n);
             if (t.curHp > 0 && sk.instakill) { let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (idx !== -1) tryInstakill(t, sk.instakill, sk.n, idx, true); }   // 🔧 deferKill：換身期間不結算，由下方還原 player 後的 killMob 處理
         }
@@ -609,7 +612,7 @@ function allyRapidfire(ally) {
         let mt = mapState.mobs[ti];
         let dice = wpn ? (mt.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
         let _hsSub = (wpn && wpn.ignHardSkin) ? 0 : mobHardSkin(mt);   // 🗡️ 貫穿（暗黑十字弓）：傭兵連射亦無視硬皮額外減傷
-        let dmg = Math.max(1, Math.floor((roll(1, dice) + (d.rangedDmg||0) + (d.extraDmg||0) - (mt.dr||0) - _hsSub + allyUnbonusBonus(ally, mt)) * _rfMult * fragileMult(mt) * ((wpn && wpn.finalMult) ? wpn.finalMult : 1)));   // 🔧 硬皮：額外物理減傷（貫穿時不扣）；對不死/狼人 +1D20；連射倍率（疾風5/5/連射精通）；脆弱；🏛️ 武器最終傷害倍率（古老的弩槍×1.5，與玩家連射一致）
+        let dmg = Math.max(1, Math.floor((roll(1, dice) + (d.rangedDmg||0) + (d.extraDmg||0) - (mt.dr||0) - _hsSub + allyUnbonusBonus(ally, mt)) * _rfMult * fragileMult(mt) * ((wpn && wpn.finalMult) ? wpn.finalMult : 1) * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔧 硬皮：額外物理減傷（貫穿時不扣）；對不死/狼人 +1D20；連射倍率（疾風5/5/連射精通）；脆弱；🏛️ 武器最終傷害倍率（古老的弩槍×1.5）＋武器強化 +11~+20 最終倍率（與玩家連射一致）
         mt.curHp -= dmg; mt.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(mt);
         logCombat(`<span class="text-amber-300 font-bold">【協力·${ally._allyName}·連射】</span>箭矢命中 <span class="${getMobColor(mt.lv)}">${mt.n}</span>，造成 ${dmg} 點傷害。`, 'player');
         if (mt.curHp <= 0) killMob(ti);
@@ -693,8 +696,9 @@ function allyProcLightArrow(ally, t) {
     let core = roll(sk.dmgDice[0], sk.dmgDice[1]) * spCoef * critMult;
     let dmg = Math.max(1, Math.floor((core + (sk.dmgBase||0) + (d.extraMp||0)) * mrFactor) - (t.dr||0));
     dmg = Math.floor(dmg * mageMult);
-    let _allyReso = allyHasMastery(ally, 'm_resonance');   // 🔧 傭兵共鳴精通：光箭×2、回魔/5
-    if (_allyReso) dmg = Math.max(1, Math.floor(dmg * 2));
+    dmg = Math.max(1, Math.floor(dmg * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（共鳴光箭·鏡像玩家 procLightArrow）
+    let _allyReso = allyHasMastery(ally, 'm_resonance');   // 🔧 傭兵共鳴精通：光箭+5、回魔/5
+    if (_allyReso) dmg = Math.max(1, dmg + 5);
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     ally.mp = Math.min(ally.mmp||0, (ally.mp||0) + Math.max(1, Math.floor(dmg/(_allyReso ? 5 : 10))));   // 共鳴回魔 → 傭兵自身
     logCombat(`<span class="text-cyan-300 font-bold">【協力·${ally._allyName}·共鳴】</span>光箭對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。${isCrit?' (爆擊!)':''}`, 'magic');
@@ -741,7 +745,7 @@ function allyProcMoonburst(ally, t) {
 function _allyProcWeaponSpellHit(ally, t, sp, en) {
     if (!t || t.curHp <= 0) return;
     let d = ally.d || {};
-    let base = roll(sp.dice[0], sp.dice[1]) * (1 + en / 20);
+    let base = roll(sp.dice[0], sp.dice[1]);   // 🔧 基礎傷害（強化改吃 +11 最終倍率·見下方，原 ×(1+強化/20) 移除）
     let core = base * (1 + 3 * (d.magicDmg || 0) / 16);
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
@@ -749,6 +753,7 @@ function _allyProcWeaponSpellHit(ally, t, sp, en) {
     let dd = Math.floor(core * mrFactor) + fixed - (t.dr || 0);
     if (allyHasMastery(ally, 'e_magic') && sp.ele && sp.ele !== 'none' && sp.ele === ally.elfEle) dd = Math.floor(Math.max(1, dd) * 2);   // 🏅 傭兵魔導精通：同屬性 ×2
     dd = Math.max(1, Math.floor(Math.max(1, dd) * fragileMult(t)));
+    dd = Math.max(1, Math.floor(dd * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     let glow = (sp.ele === 'fire') ? '#fca5a5;text-shadow:0 0 6px #dc2626'
              : (sp.ele === 'wind') ? '#67e8f9;text-shadow:0 0 6px #06b6d4'
@@ -783,7 +788,7 @@ function allyProcFreeMagicSkill(ally, t, skId, en) {
     let dmgArray = sk.multiDmg || (sk.dmgDice ? [[sk.dmgDice[0], sk.dmgDice[1]]] : []);
     let total = 0;
     dmgArray.forEach((dc, idx) => {
-        let core = roll(dc[0], dc[1]) * (1 + (en || 0) / 20) * spCoef * critMult;
+        let core = roll(dc[0], dc[1]) * spCoef * critMult;   // 🔧 強化改吃 +11 最終倍率（見迴圈後，原 ×(1+強化/20) 移除）
         let fixed = 0, extra = 0;
         if (idx === dmgArray.length - 1) {
             extra = (d.extraMp || 0);
@@ -796,6 +801,7 @@ function allyProcFreeMagicSkill(ally, t, skId, en) {
         if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) dd = Math.floor(dd * 2);
         total += Math.max(1, Math.floor(dd * fragileMult(t)));
     });
+    total = Math.floor(total * enhanceWpnFinalMult(en));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
     if (total > 0) {
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
         logCombat(`<span class="font-bold" style="color:#93c5fd;text-shadow:0 0 6px #2563eb;">【協力·${ally._allyName}·${sk.n}】</span>額外施放，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 <span class="${isCrit ? 'text-yellow-500 font-bold' : 'text-cyan-300'}">${total}</span> 點傷害${isCrit ? '（爆擊!）' : ''}。`, 'player-special');
@@ -811,7 +817,7 @@ function allyLaiaWandHitProc(ally, t) {
     let d = ally.d || {};
     let sp = w.meleeHitSpell; let en = capWpnEn(inst.en);
     let _spTier = 8;   // 🔧 冰裂術改套「法師 8 階法術傷害公式」(同玩家)
-    let core = roll(sp.dice[0], sp.dice[1]) * (1 + en / 10) * (1 + 3 * (d.magicDmg || 0) / 16) * (1 + _spTier / 3);
+    let core = roll(sp.dice[0], sp.dice[1]) * (1 + 3 * (d.magicDmg || 0) / 16) * (1 + _spTier / 3);   // 🔧 強化改吃 +11 最終倍率（見下方，原 ×(1+強化/10) 移除）
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
     let fixed = (sp.ele && sp.ele !== 'none' && isElementCounter(sp.ele, t.e)) ? 6 : 0;
@@ -820,6 +826,7 @@ function allyLaiaWandHitProc(ally, t) {
     dd = Math.floor(Math.max(1, dd) * (1.5 + _spTier / 20));   // 🔧 法師 8 階法術最終傷害倍率 (=1.9)
     if (wasFrozen) { dd += (sp.shatter || 0); t.st.freeze = 0; }
     dd = Math.max(1, Math.floor(Math.max(1, dd) * fragileMult(t)));
+    dd = Math.max(1, Math.floor(dd * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/10)）
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     logCombat(`<span class="font-bold" style="color:#93c5fd;text-shadow:0 0 6px #2563eb;">【協力·${ally._allyName}·${sp.skn || '冰裂術'}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dd} 點水屬性魔法傷害${wasFrozen ? '（冰碎!）' : ''}。`, 'player-special');
     _allyDamageMob(ally, t, dd, sp.ele);
@@ -846,6 +853,7 @@ function allyWeaponProcs(ally, target, hitInfo) {
                 let fixed = isElementCounter('water', t.e) ? 6 : 0;
                 let dmg = Math.floor(core * mrMult(effMr)) + fixed - (t.dr || 0);
                 dmg = Math.max(1, Math.floor(Math.max(1, dmg) * fragileMult(t)));
+                dmg = Math.max(1, Math.floor(dmg * enhanceWpnFinalMult(_en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（與其他武器特效一致）
                 if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
                 let _hl = Math.floor(dmg * 0.10);
                 if (ally.hp != null) ally.hp = Math.min(ally.mhp || ally.hp, (ally.hp || 0) + _hl);
@@ -1196,7 +1204,7 @@ function allyCastCrush(ally, sk) {
     let _dmgB = _rng ? (d.rangedDmg || 0) : (d.meleeDmg || 0);
     let _base = roll(1, dice) + _dmgB + enB + (sk.weaponFlat || 0);
     let dmg = Math.max(1, Math.floor(_base * (1 + (d.magicDmg || 0) / 16))) + (sk.flatBonus || 0);   // 🔮 魔法技能：必定命中、不受DR/硬皮；🦴 骷髏毀壞 +flatBonus(20) 固定傷害（粉碎能量無此欄位→+0）
-    dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(ally)));   // 🔮 幻術士(傭兵)等級加成 ×(1+等級/50)
+    dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(ally) * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔮 幻術士(傭兵)等級加成 ×(1+等級/50)；🔧 武器強化 +11~+20 最終倍率
     t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
     logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n}，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。`, 'magic');
     let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid);
@@ -1263,7 +1271,7 @@ function allyCastMpDmg(ally, sk) {
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     if (t.st && (t.st.confuse > 0 || t.st.panic > 0)) effMr -= 10;   // 🔮 混亂/恐慌：MR -10（與玩家心靈破壞一致）
     dmg = Math.max(1, Math.floor(dmg * (1 + (((ally.d && ally.d.magicDmg) || 0)) / 16) * mrMult(Math.max(0, effMr))));   // 🔮 基礎=消耗MP量，再依魔法傷害加成(1+魔法傷害/16)放大
-    dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(ally)));   // 🔮 幻術士(傭兵)等級加成 ×(1+等級/50)
+    dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(ally) * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔮 幻術士(傭兵)等級加成 ×(1+等級/50)；🔧 武器強化 +11~+20 最終倍率
     t.curHp -= dmg; t.justHit = 'magic'; mobWake(t);
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n}，撕裂 <span class="${getMobColor(t.lv)}">${t.n}</span> 的心靈，造成 ${dmg} 點傷害。`, 'magic');
@@ -1311,7 +1319,7 @@ function alliesTick() {
                 let _itv = Math.max(8, Math.round((wpn && wpn.spd ? wpn.spd : 1.0) * 10));
                 { let _aClvW = wpn && wpn.eff === 'cleave'; if (!ally.classicMode && (ally._cleaveTicks > 0 || (allyHasMastery(ally, 'k_cleave') && _aClvW))) _itv = Math.max(8, Math.round(_itv * (allyHasMastery(ally, 'k_cleave') ? 0.50 : 0.8))); }   // 🔧 切割：攻速+20%（🏅 切割精通 +50%・持切割武器常駐）；🎮 經典模式停用
                 if (allyHasMastery(ally, 'e_sword') && wpn && !wpn.w2h && !wpn.isBow && !wpn.ranged) _itv = Math.max(8, Math.round(_itv * (1/1.5)));   // 🏅 劍術精通（傭兵）：持單手近戰武器攻速+50%
-                if (ally.cls === 'illusion' && wpn && !wpn.isBow && ((allyHasMastery(ally, 'i_qigu') && wpn.qigu) || (allyHasMastery(ally, 'i_magicsword') && !wpn.qigu))) _itv = Math.max(8, Math.round(_itv * (1/1.3)));   // 🔮 奇古獸/魔劍精通（傭兵）：攻速+30%（鏡像玩家 recomputeStats spdMult）
+                if (ally.cls === 'illusion' && wpn && !wpn.isBow && ((allyHasMastery(ally, 'i_qigu') && wpn.qigu) || (allyHasMastery(ally, 'i_magicsword') && !wpn.qigu && !isWandWeapon(wpn)))) _itv = Math.max(8, Math.round(_itv * (1/1.3)));   // 🔮 奇古獸/魔劍精通（傭兵·排除魔杖）：攻速+30%（鏡像玩家 recomputeStats spdMult）
                 ally._atkCd = _itv;
                 if (ally.cls === 'elf') allyElfAct(ally); else if (ally.cls === 'dark') allyDarkAct(ally); else if (ally.cls === 'knight') allyKnightAct(ally); else if (ally.cls === 'dragon') allyDragonAct(ally); else if (ally.cls === 'illusion') allyIllusionAct(ally); else if (ally.cls === 'warrior') allyWarriorAct(ally); else if (ally.cls === 'royal') allyRoyalAct(ally); else allyAttackOnce(ally);
             }

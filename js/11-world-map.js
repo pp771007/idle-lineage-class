@@ -32,6 +32,7 @@ const MAP_CATEGORIES = {
         {v:'rastabad_beast',t:'魔獸訓練場'},
         {v:'dark_magic_lab',t:'黑魔法研究室'},
         {v:'necro_training',t:'冥法軍訓練場'},
+        {v:'elder_room',t:'格蘭肯神殿．長老之室'},
         {v:'demon_temple',t:'魔族神殿',c:'#9b2c2c',questReq:'demonTemple'},
         {v:'shadow_temple',t:'暗影神殿',c:'#7c3aed',keyHoldReq:'item_shadow_temple_key',affinityReq:1000}
     ],
@@ -71,6 +72,109 @@ const MAP_CATEGORIES = {
         {v:'pirate_dungeon', t:'海賊島地監', c:'#38bdf8'}
     ]
 };
+// ===== 🗺️ 地圖「地區」分類（依 map_categories.md：城堡/銀騎士村/.../席琳神殿）=====
+//  下拉選單改以「地區」分組顯示；MAP_CATEGORIES（村莊/野外/地監…）維持原樣，仍是掉落(js/05)/魔物追蹤(obelMapList)/背景(applyAreaBackground)等遊戲邏輯依據。
+//  每筆只記 {v, t}：t＝下拉顯示名（可較 MAP_CATEGORIES 原名精確，如「奇岩城鎮/奇岩周邊」）；顏色 c 與進入條件(needKey/questReq/prideReq…)一律由 MAP_CATEGORIES 對應項解析，免重複維護。
+//  攻城獲勝城堡：不再獨立成「城堡」分類，改依位置注入所屬地區(肯特/風木/海音·castleCity+castleAt)；風木地監隨風木城一起進風木地區。攻城進行中(動態 getSiegeAreas) 仍由 rebuildMapCategoryOptions 視狀態插「攻城」。
+//  ⚠️新增地圖時：除了加進 MAP_CATEGORIES，也要在此對應地區補一筆，否則該圖不會出現在下拉。
+const MAP_REGIONS = [
+    { key: 'silverknight', label: '銀騎士村', maps: [
+        {v:'town_silver_knight', t:'銀騎士村莊'}, {v:'silver_knight', t:'銀騎士村周邊'}, {v:'training', t:'新兵修練場'}
+    ]},
+    { key: 'fairyforest', label: '妖精森林', maps: [
+        {v:'town_elf', t:'妖精森林村莊'}, {v:'zone_01', t:'妖精森林周邊'},
+        {v:'zone_15', t:'眠龍洞穴1樓'}, {v:'zone_16', t:'眠龍洞穴2樓'}, {v:'zone_17', t:'眠龍洞穴3樓'}
+    ]},
+    { key: 'talkingisland', label: '說話之島', maps: [
+        {v:'town_talking', t:'說話之島村莊'}, {v:'talking_island_port', t:'說話之島港口'}, {v:'talking_island', t:'說話之島周邊'},
+        {v:'zone_13', t:'說話之島地監1樓'}, {v:'zone_14', t:'說話之島地監2樓'}
+    ]},
+    { key: 'burningwillow', label: '燃柳村', maps: [
+        {v:'town_gludio', t:'燃柳村莊'}, {v:'elf_forest', t:'妖魔森林'},
+        {v:'town_pirate_village', t:'海賊島村莊'}, {v:'pirate_wild', t:'海賊島周邊'}, {v:'pirate_dungeon', t:'海賊島地監'},
+        {v:'elf_grave', t:'精靈墓穴'}, {v:'hidden_cave', t:'大洞穴隱遁者村莊地區'}
+    ]},
+    { key: 'gludin', label: '古魯丁', maps: [
+        {v:'gludio', t:'古魯丁周邊'},
+        {v:'zone_06', t:'古魯丁地監1樓'}, {v:'zone_07', t:'古魯丁地監2樓'}, {v:'zone_08', t:'古魯丁地監3樓'}, {v:'zone_09', t:'古魯丁地監4樓'}, {v:'zone_10', t:'古魯丁地監5樓'}, {v:'zone_11', t:'古魯丁地監6樓'}, {v:'zone_12', t:'古魯丁地監7樓'}
+    ]},
+    { key: 'kent', label: '肯特', castleCity: 'kent', castleAt: 0, maps: [
+        {v:'kent', t:'肯特周邊'}
+    ]},
+    { key: 'windwood', label: '風木', castleCity: 'windwood', castleAt: 0, maps: [
+        {v:'windwood', t:'風木周邊'}, {v:'desert', t:'沙漠'},
+        {v:'zone_22', t:'沙漠地監1樓'}, {v:'zone_23', t:'沙漠地監2樓'}, {v:'zone_24', t:'沙漠地監3樓'}, {v:'zone_25', t:'沙漠地監4樓'},
+        {v:'zone_32', t:'螞蟻洞窟1樓'}, {v:'zone_33', t:'螞蟻洞窟2樓'}
+    ]},
+    { key: 'heine', label: '海音', castleCity: 'heine', castleAt: 1, maps: [
+        {v:'town_heine', t:'海音城鎮'}, {v:'heine', t:'海音周邊'}, {v:'mirror_forest', t:'鏡子森林'},
+        {v:'zone_34', t:'地下通道1樓'}, {v:'zone_35', t:'地下通道2樓'}, {v:'zone_36', t:'地下通道3樓'},
+        {v:'eva_kingdom', t:'伊娃王國'}, {v:'fafurion_lair', t:'法利昂洞穴'}
+    ]},
+    { key: 'giran', label: '奇岩', maps: [
+        {v:'town_giran', t:'奇岩城鎮'}, {v:'giran', t:'奇岩周邊'},
+        {v:'zone_18', t:'奇岩地監1樓'}, {v:'zone_19', t:'奇岩地監2樓'}, {v:'zone_20', t:'奇岩地監3樓'}, {v:'zone_21', t:'奇岩地監4樓'}
+    ]},
+    { key: 'dragonvalley', label: '龍之谷', maps: [
+        {v:'dragon_valley', t:'龍之谷'},
+        {v:'zone_26', t:'龍之谷地監1樓'}, {v:'zone_27', t:'龍之谷地監2樓'}, {v:'zone_28', t:'龍之谷地監3樓'}, {v:'zone_29', t:'龍之谷地監4樓'}, {v:'zone_30', t:'龍之谷地監5樓'}, {v:'zone_31', t:'龍之谷地監6樓'},
+        {v:'antaras_lair', t:'安塔瑞斯棲息地'}, {v:'town_silent', t:'沉默洞穴'}, {v:'silent_outer', t:'沉默洞穴周邊'}
+    ]},
+    { key: 'witon', label: '威頓', maps: [
+        {v:'town_witon', t:'威頓村莊'}, {v:'fire_dragon', t:'火龍窟'}, {v:'valakas_lair', t:'巴拉卡斯巢穴'}, {v:'town_behemoth', t:'貝希摩斯'}
+    ]},
+    { key: 'oren', label: '歐瑞', maps: [
+        {v:'town_oren', t:'歐瑞村莊'}, {v:'zone_02', t:'歐瑞周邊'}, {v:'zone_03', t:'歐瑞雪原'}, {v:'zone_04', t:'艾爾摩激戰地'}, {v:'zone_05', t:'國境要塞'},
+        {v:'town_ivory_tower', t:'象牙塔（1~3樓）'}, {v:'zone_37', t:'象牙塔4樓'}, {v:'zone_38', t:'象牙塔5樓'}, {v:'zone_39', t:'象牙塔6樓'}, {v:'zone_40', t:'象牙塔7樓'}, {v:'zone_41', t:'象牙塔8樓'},
+        {v:'crystal_cave1', t:'水晶洞穴1樓'}, {v:'crystal_cave2', t:'水晶洞穴2樓'}, {v:'crystal_cave3', t:'水晶洞穴3樓'},
+        {v:'shadow_temple', t:'暗影神殿'}, {v:'town_hyperia', t:'希培利亞'}
+    ]},
+    { key: 'aden', label: '亞丁', maps: [
+        {v:'town_aden', t:'亞丁城鎮'}, {v:'twilight_mt', t:'黃昏山脈'}, {v:'dream_island', t:'夢幻之島'}
+    ]},
+    { key: 'tower', label: '傲慢之塔', maps: [
+        {v:'town_pride', t:'傲慢之塔1樓'}, {v:'pride_2_10', t:'傲慢之塔2~10樓'}, {v:'pride_11_20', t:'傲慢之塔11~20樓'}, {v:'pride_21_30', t:'傲慢之塔21~30樓'}, {v:'pride_31_40', t:'傲慢之塔31~40樓'}, {v:'pride_41_50', t:'傲慢之塔41~50樓'}, {v:'pride_51_60', t:'傲慢之塔51~60樓'}, {v:'pride_61_70', t:'傲慢之塔61~70樓'}, {v:'pride_71_80', t:'傲慢之塔71~80樓'}, {v:'pride_81_90', t:'傲慢之塔81~90樓'}, {v:'pride_91_100', t:'傲慢之塔91~100樓'}
+    ]},
+    { key: 'rastabad', label: '拉斯塔巴德', maps: [
+        {v:'rastabad_cave1', t:'拉斯塔巴德地下洞穴1樓'}, {v:'rastabad_cave2', t:'拉斯塔巴德地下洞穴2樓'}, {v:'rastabad_cave3', t:'拉斯塔巴德地下洞穴3樓'},
+        {v:'rastabad_gate', t:'拉斯塔巴德正門'}, {v:'giant_tomb', t:'古代巨人之墓'},
+        {v:'demon_temple', t:'魔族神殿'}, {v:'town_flame_audience', t:'炎魔謁見所'},
+        {v:'rastabad_beast', t:'魔獸訓練場'}, {v:'dark_magic_lab', t:'黑魔法研究室'}, {v:'necro_training', t:'冥法軍訓練場'}, {v:'elder_room', t:'格蘭肯神殿．長老之室'},
+        {v:'king_baranka_room', t:'魔獸君王之室'}, {v:'law_king_room', t:'法令君王之室'}, {v:'necro_king_room', t:'冥法君王之室'}, {v:'assassin_king_room', t:'暗殺君王之室'}
+    ]},
+    { key: 'rift', label: '時空裂痕', maps: [
+        {v:'town_rift', t:'時空裂痕入口'}, {v:'thebes_desert', t:'底比斯 沙漠'}, {v:'thebes_pyramid', t:'底比斯 金字塔內部'}, {v:'thebes_temple', t:'底比斯 歐西里斯祭壇'}
+    ]},
+    { key: 'sherine', label: '席琳神殿', maps: [
+        {v:'town_sherine', t:'席琳神殿'}
+    ]}
+];
+// 由地圖 v 找回 MAP_CATEGORIES 的原始定義（顏色/進入條件/原名）
+function mapEntryOf(v) { for (let c in MAP_CATEGORIES) { let e = MAP_CATEGORIES[c].find(x => x.v === v); if (e) return e; } return null; }
+// 地圖 v 屬於哪個「地區」下拉分類（特例：攻城動態、攻城獲勝城堡歸所屬地區、傲慢之塔攀登樓層、時空裂痕戰場）
+function mapRegionOf(v) {
+    if (SIEGE_OUTER_INNER.includes(v)) return 'siege';
+    if (CASTLE_EXTRA.includes(v)) return 'windwood';   // 🏰 風木地監→風木地區（攻城獲勝後開放）
+    for (let _ck in SIEGE_CITY) { if (SIEGE_CITY[_ck].castle === v) return _ck; }   // 🏰 攻城獲勝城堡→所屬地區(地區 key 與 SIEGE_CITY key 同名：kent/windwood/heine)
+    if (typeof v === 'string' && (v.startsWith('pride_f') || v === 'pride_climb')) return 'tower';   // 🗼 攀登中的樓層歸入傲慢之塔
+    if (v === 'rift_battle') return 'rift';   // 🌀 時空裂痕戰場歸入時空裂痕
+    for (let r of MAP_REGIONS) { if (r.maps.some(m => m.v === v)) return r.key; }
+    return null;
+}
+// 某地區下拉應顯示的地圖清單（攻城動態另接；其餘由 MAP_REGIONS 取 v、自 MAP_CATEGORIES 解析顏色/條件、以地區自訂名覆寫顯示）
+function regionMapList(rk) {
+    if (rk === 'siege') return getSiegeAreas();
+    let reg = MAP_REGIONS.find(r => r.key === rk); if (!reg) return [];
+    let out = reg.maps.map(m => { let ce = mapEntryOf(m.v) || {}; return Object.assign({}, ce, { v: m.v, t: m.t || ce.t || m.v }); });
+    // 🏰 攻城獲勝城堡：依位置注入所屬地區（取代舊「城堡」分類）。getCastleAreas 自帶 siegeVictoryActive 時效守衛、只回傳當前獲勝城池(風木另含風木地監)
+    if (reg.castleCity && siegeVictoryActive() && victoryCityCfg().key === reg.castleCity) {
+        let _at = reg.castleAt || 0;
+        out = out.slice(0, _at).concat(getCastleAreas(), out.slice(_at));
+    }
+    return out;
+}
+// 地區在目前模式下是否有可見地圖（經典模式隱藏整個只剩席琳神殿的地區，避免空分類）
+function regionHasVisible(rk) { return regionMapList(rk).some(m => !(m.classicHide && player.classicMode)); }
 // ===== 🔧 攻城城池設定（肯特城／風木城；機制相同，僅城門/守護塔/地圖/城堡不同）=====
 const SIEGE_CITY = {
     kent:     { key:'kent',     name:'肯特城', outer:'kent_outer', outerName:'肯特外門區', inner:'kent_inner', innerName:'肯特內城', castle:'town_kent_castle',     castleName:'肯特城', gate:'肯特城門', tower:'肯特守護塔' },
@@ -226,9 +330,9 @@ function getSiegeAreas() {
 }
 function rebuildMapCategoryOptions() {
     let catSel = document.getElementById('map-category'); if (!catSel) return;
-    let opts = [['village','村莊'],['wild','野外'],['dungeon','地監'],['special','特殊'],['tower','傲慢之塔'],['rift','時空裂痕'],['pirate_island','海賊島']];
-    if (player.siege && player.siege.active) opts.push(['siege','攻城']);
-    if (siegeVictoryActive()) opts.push(['castle','城堡']);
+    let opts = [];
+    if (player.siege && player.siege.active) opts.push(['siege','攻城']);   // ⚔️ 攻城進行中（攻城獲勝城堡不再獨立成「城堡」分類，已注入肯特/風木/海音地區）
+    MAP_REGIONS.forEach(r => { if (regionHasVisible(r.key)) opts.push([r.key, r.label]); });   // 🗺️ 17 地區（依 map_categories.md 順序；經典模式空地區自動隱藏）
     catSel.innerHTML = opts.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('');
 }
 // 🗼 是否持有指定樓層區間(N)的 傳送符 / 支配符 / 移動卷軸（任一即可進入；支配符可在塔內手動傳送）
@@ -252,7 +356,7 @@ function mapOptDisabled(m) {
 function populateMapSelect(cat) {
     let sel = document.getElementById('map-select'); if (!sel) return;
     sel.innerHTML = '';
-    let list = (cat === 'siege') ? getSiegeAreas() : (cat === 'castle') ? getCastleAreas() : (MAP_CATEGORIES[cat] || []);
+    let list = regionMapList(cat);
     list.forEach(m => {
         if (m.classicHide && player.classicMode) return;   // 🔥 經典模式：隱藏席琳神殿（連選項都不顯示）
         let o = document.createElement('option');
@@ -266,7 +370,7 @@ function onMapCategoryChange() {
     // 切換分類時，重建右側清單並讓人物一併移動到該分類的第一個可選地圖
     let cat = document.getElementById('map-category').value;
     populateMapSelect(cat);
-    let list = (cat === 'siege') ? getSiegeAreas() : (cat === 'castle') ? getCastleAreas() : (MAP_CATEGORIES[cat] || []);
+    let list = regionMapList(cat);
     let firstOk = list.find(m => !mapOptDisabled(m));
     // 優先回到該分類「上次到過」的地圖；無紀錄或已失效（如攻城結束／缺鑰匙）則用第一個可選地圖
     let remembered = player.lastMapByCat && player.lastMapByCat[cat];
@@ -279,7 +383,7 @@ function onMapCategoryChange() {
 function setMapSelectors(mapKey) {
     // 將「分類選單 + 地圖選單」同步到指定地圖
     rebuildMapCategoryOptions();
-    let cat = mapCategoryOf(mapKey);
+    let cat = mapRegionOf(mapKey);   // 🗺️ 下拉改用「地區」分類（mapCategoryOf 仍為型別分類，供掉落/追蹤/背景等邏輯）
     let catSel = document.getElementById('map-category'); if (catSel) catSel.value = cat;
     populateMapSelect(cat);
     let sel = document.getElementById('map-select'); if (sel) sel.value = mapKey;
@@ -900,7 +1004,7 @@ function changeMap(force) {
     }
     mapState.current = document.getElementById('map-select').value;
     if (!mapState.current.startsWith('town_')) player.lastBattleMap = mapState.current;   // 🔧 記住最後所在的戰鬥地圖，供村莊「出發」按鈕一鍵返回
-    { let _c = mapCategoryOf(mapState.current); if(_c) { if(!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat[_c] = mapState.current; } }   // 記住各分類最後到過的地圖
+    { let _c = mapRegionOf(mapState.current); if(_c) { if(!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat[_c] = mapState.current; } }   // 記住各「地區」分類最後到過的地圖（與下拉同鍵）
     mapState.mobs = [null, null, null, null, null];
     state._kbRespawnAt = null;    // 🔧 離開/進入任何地圖即取消軍王之室未完成的復活倒數（避免殘留狀態）
     state._kbVictory = false;     // 🏛️ 進入新地圖一併清除未結算的全滅旗標（避免雙BOSS祭壇殘留誤觸發）
@@ -1248,7 +1352,7 @@ function interactNPC(npcId, townId) {
         renderJoelCraft(contentDiv, npc.id);
     } else if (npc.id === 'npc_runde' || npc.id === 'npc_kang' || npc.id === 'npc_brudica') {   // 🔧 黑暗妖精限定試煉（仿瑞奇/甘特，而非製作）
         renderDarkTrial(contentDiv, npc.id);
-    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide'].includes(npc.id)) {
+    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide', 'npc_kororanz', 'npc_sebas'].includes(npc.id)) {
         renderUniversalCraft(contentDiv, npc.id);
     } else if (npc.id === 'npc_digallatin') {
         renderDigallatin(contentDiv);

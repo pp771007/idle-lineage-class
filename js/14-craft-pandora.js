@@ -2,6 +2,26 @@
 
 // 1. 定義製作配方
 const CRAFT_RECIPES = {
+    // 💍 賽巴斯（奇岩 寶石加工坊）：4 屬性戒指（神聖獨角獸之角×5＋月光之氣息×1＋粗糙的米索莉塊×50＋魔法寶石×30＋四種高品質寶石各×5＋金幣200萬）＋4 精靈皮帶（皮帶×1＋對應龍鱗×3＋元素石×5）
+    npc_sebas: [
+        { result: 'acc_ring_magic', req: [{ id: 'mat_unicorn_horn', cnt: 5 }, { id: 'mat_moonlight_breath', cnt: 1 }, { id: 'new_item_164', cnt: 50 }, { id: 'new_item_150', cnt: 30 }, { id: 'new_item_159', cnt: 5 }, { id: 'new_item_156', cnt: 5 }, { id: 'new_item_162', cnt: 5 }, { id: 'new_item_153', cnt: 5 }, { id: 'gold', cnt: 2000000 }] },
+        { result: 'acc_ring_str',   req: [{ id: 'mat_unicorn_horn', cnt: 5 }, { id: 'mat_moonlight_breath', cnt: 1 }, { id: 'new_item_164', cnt: 50 }, { id: 'new_item_150', cnt: 30 }, { id: 'new_item_159', cnt: 5 }, { id: 'new_item_156', cnt: 5 }, { id: 'new_item_162', cnt: 5 }, { id: 'new_item_153', cnt: 5 }, { id: 'gold', cnt: 2000000 }] },
+        { result: 'acc_ring_dex',   req: [{ id: 'mat_unicorn_horn', cnt: 5 }, { id: 'mat_moonlight_breath', cnt: 1 }, { id: 'new_item_164', cnt: 50 }, { id: 'new_item_150', cnt: 30 }, { id: 'new_item_159', cnt: 5 }, { id: 'new_item_156', cnt: 5 }, { id: 'new_item_162', cnt: 5 }, { id: 'new_item_153', cnt: 5 }, { id: 'gold', cnt: 2000000 }] },
+        { result: 'acc_ring_int',   req: [{ id: 'mat_unicorn_horn', cnt: 5 }, { id: 'mat_moonlight_breath', cnt: 1 }, { id: 'new_item_164', cnt: 50 }, { id: 'new_item_150', cnt: 30 }, { id: 'new_item_159', cnt: 5 }, { id: 'new_item_156', cnt: 5 }, { id: 'new_item_162', cnt: 5 }, { id: 'new_item_153', cnt: 5 }, { id: 'gold', cnt: 2000000 }] },
+        { result: 'acc_belt_fire',  req: [{ id: 'new_item_181', cnt: 1 }, { id: 'new_item_192', cnt: 3 }, { id: 'new_item_165', cnt: 5 }] },
+        { result: 'acc_belt_water', req: [{ id: 'new_item_181', cnt: 1 }, { id: 'new_item_190', cnt: 3 }, { id: 'new_item_165', cnt: 5 }] },
+        { result: 'acc_belt_earth', req: [{ id: 'new_item_181', cnt: 1 }, { id: 'new_item_191', cnt: 3 }, { id: 'new_item_165', cnt: 5 }] },
+        { result: 'acc_belt_wind',  req: [{ id: 'new_item_181', cnt: 1 }, { id: 'new_item_193', cnt: 3 }, { id: 'new_item_165', cnt: 5 }] }
+    ],
+    // 🏛️ 可羅蘭斯（沉默洞穴）：封印的歷史書八頁→製作武器秘笈；秘笈＋對應素材武器＋素材 → 5 件傳說武器（doCraft 會自動遞迴合成缺少的秘笈）
+    npc_kororanz: [
+        { result: 'mat_rasta_codex', req: [{ id: 'mat_history_1', cnt: 1 }, { id: 'mat_history_2', cnt: 1 }, { id: 'mat_history_3', cnt: 1 }, { id: 'mat_history_4', cnt: 1 }, { id: 'mat_history_5', cnt: 1 }, { id: 'mat_history_6', cnt: 1 }, { id: 'mat_history_7', cnt: 1 }, { id: 'mat_history_8', cnt: 1 }] },
+        { result: 'wpn_emperor_blade', req: [{ id: 'mat_rasta_codex', cnt: 1 }, { id: 'wpn_official_2h', cnt: 1 }, { id: 'mat_blackmithril_plate', cnt: 10 }, { id: 'mat_black_powder', cnt: 50 }, { id: 'mat_holy_relic', cnt: 100 }, { id: 'mat_black_blood', cnt: 50 }] },
+        { result: 'wpn_windblade_dagger', req: [{ id: 'mat_rasta_codex', cnt: 1 }, { id: 'wpn_official_blade', cnt: 1 }, { id: 'mat_blackmithril_plate', cnt: 10 }, { id: 'mat_black_powder', cnt: 50 }, { id: 'mat_holy_relic', cnt: 100 }, { id: 'mat_black_blood', cnt: 50 }] },
+        { result: 'wpn_redshadow_dual', req: [{ id: 'mat_rasta_codex', cnt: 1 }, { id: 'wpn_assassin_mark', cnt: 1 }, { id: 'mat_blackmithril_plate', cnt: 10 }, { id: 'mat_black_powder', cnt: 50 }, { id: 'mat_holy_relic', cnt: 100 }, { id: 'mat_black_blood', cnt: 50 }] },
+        { result: 'wpn_beastking_claw', req: [{ id: 'mat_rasta_codex', cnt: 1 }, { id: 'wpn_baranka_claw', cnt: 1 }, { id: 'mat_blackmithril_plate', cnt: 10 }, { id: 'mat_black_powder', cnt: 50 }, { id: 'mat_holy_relic', cnt: 100 }, { id: 'mat_black_blood', cnt: 50 }] },
+        { result: 'wpn_holycrystal_wand', req: [{ id: 'mat_rasta_codex', cnt: 1 }, { id: 'wpn_priest_wand', cnt: 1 }, { id: 'mat_blackmithril_plate', cnt: 10 }, { id: 'mat_black_powder', cnt: 50 }, { id: 'mat_holy_relic', cnt: 100 }, { id: 'mat_black_blood', cnt: 50 }] }
+    ],
     // 🏴‍☠️❄️ 大衛（歐瑞村 寶石加工）：冰之女王的耳環逐級精煉，每級＝前一級 + 冰之結晶×1；Lv8 六屬性擇一
     npc_david: [
         { result: 'acc_icequeen_ear_1', req: [{ id: 'acc_icequeen_ear_0', cnt: 1 }, { id: 'mat_ice_crystal', cnt: 1 }] },
@@ -907,7 +927,7 @@ function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製
         renderFinnCraft(document.getElementById('interaction-content'), npcId);
     } else if (npcId === 'npc_joel' || npcId === 'npc_ryan') {
         renderJoelCraft(document.getElementById('interaction-content'), npcId);
-    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide'].includes(npcId)) {
+    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide', 'npc_kororanz', 'npc_sebas'].includes(npcId)) {
         renderUniversalCraft(document.getElementById('interaction-content'), npcId);
     }
 

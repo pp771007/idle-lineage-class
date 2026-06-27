@@ -54,7 +54,7 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     let _probe = { id: id, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff };
     let ex = _tEn > 0 ? null : player.inv.find(i => (i.en || 0) === 0 && sameItemSig(i, _probe));   // 🔧 架構#3：統一簽章比對（並容忍舊存檔 en 為 undefined）；🏛️ 自帶強化(en>0)獨立成堆、不併入 +0
     if(ex) ex.cnt += cnt;   // 不論是否鎖定都疊加；僅加數量、不更動既有堆疊的鎖定/廢品狀態
-    else player.inv.push({ id: id, uid: uid(), cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff, lock: false, junk: !!(player.junkPrefs && player.junkPrefs[itemSig(_probe)]) });   // 🔧 廢品記憶改以完整簽章比對：詞綴物品也可自動標記，但僅限「完全相同詞綴」者
+    else player.inv.push({ id: id, uid: uid(), cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff, lock: false, junk: !!(player.junkPrefs && player.junkPrefs[itemSig(_probe)]) && !(d && d.noJunk) });   // 🔧 廢品記憶改以完整簽章比對：詞綴物品也可自動標記，但僅限「完全相同詞綴」者；🎴 noJunk(收集冊)永不自動標記
 
     // 紀錄這次產生的物品屬性
     let itemInfo = { id: id, cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff };
@@ -228,6 +228,10 @@ function useItem(u, silent = false) {
     if (item.id === 'scroll_revive') { if(!silent) logSys(`復活卷軸無法從道具欄使用，死亡時可於畫面下方點選『原地復活』。`); return; }
     let d = DB.items[item.id];
     if (d.noUse) { if(!silent) logSys(`此物品無法直接使用。`); return; }
+
+    // 🎴 卡片收集冊：翻開全螢幕書頁；卡片：登錄圖鑑（已收錄則改賣出）
+    if (d.eff === 'cardbook') { if (silent) return; if (typeof openCardBook === 'function') openCardBook(); return; }
+    if (d.eff === 'card') { if (silent) return; if (typeof useCardItem === 'function') useCardItem(item); return; }
 
     // 🗼 封印的傲慢之塔傳送符：使用後解封，獲得對應的 傲慢之塔傳送符（消耗 1 個）
     if (d.eff === 'pride_unseal') {
@@ -569,12 +573,18 @@ const WARRIOR_WHITELIST = new Set([
     '水晶手套','巴蘭卡手套','克特手套','死亡騎士手套','武官手套','腕甲','守護者臂甲','體力臂甲',
     '騎士面甲','鋼鐵頭盔','克特頭盔','死亡騎士頭盔','巴蘭卡頭盔','武官頭盔','治癒魔法頭盔','敏捷魔法頭盔','力量魔法頭盔'
 ]);
+// ⚔️ 戰士額外開放使用的具名武器（矛／槍類等非鈍器；使用者指定開放清單，依名稱比對 d.n）
+const WARRIOR_WEAPON_WHITELIST = new Set([
+    '古代神之槍','深紅長矛','貝卡合金','露西錘','法丘','吉薩','闊矛','拉斯塔巴德矛',
+    '覆上奧里哈魯根的角','精靈之矛','帕提森','槍','覆上米索莉的角','三叉戟','歐西斯之矛','潘的角'
+]);
 function warriorEquipOk(d, id) {
     if (!d) return false;
     if (d.type === 'wpn') {
         if (d.isArrow) return false;                                                   // 戰士不用弓箭
         let tags = getWeaponTags(id);
         if (tags.includes('單手鈍器') || tags.includes('雙手鈍器')) return true;        // 所有單手／雙手鈍器
+        if (WARRIOR_WEAPON_WHITELIST.has(d.n || '')) return true;                       // ⚔️ 具名開放武器（矛／槍等）
         return !!(d.req && typeof d.req === 'string' && d.req.split(',').includes('warrior'));   // 戰士專屬武器（保險；古代神之斧等本就具鈍器 tag）
     }
     if (WARRIOR_WHITELIST.has(d.n || '')) return true;                                 // 具名開放清單（職業限定防具／臂甲／勇敢皮帶[req:knight]）

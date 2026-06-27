@@ -574,7 +574,15 @@ function spawnMob(idx) {
     let mobId;
     let siegeArea = isSiegeArea(mapState.current);
     let allowMultiBoss = backSlotsActive();   // 🆕 5格地圖：5格(0~4)皆可同時出現多隻頭目（不再受 bossInBattle 限制·後排也會出王·同名仍限1隻）；攻城等3格版面維持單頭目
-    let wantBoss = (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (Math.random() < 0.01)));
+    // 🏛️ 長老之室 BOSS 節流：場上最多同時 2 隻長老 BOSS；已有 1 隻時須該 BOSS 存活滿 3 分鐘才可能出現第 2 隻
+    let _elderRoom = mapState.current === 'elder_room';
+    let _elderBossOk = true;
+    if (_elderRoom) {
+        let _ab = mapState.mobs.filter(m => m && m.boss && m.curHp > 0 && !m._dead);
+        if (_ab.length >= 2) _elderBossOk = false;
+        else if (_ab.length === 1) _elderBossOk = (Date.now() - (_ab[0]._bornMs || Date.now())) >= 180000;
+    }
+    let wantBoss = (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (!_elderRoom || _elderBossOk) && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (_elderRoom ? Math.random() < 0.05 : Math.random() < 0.01)));
     if(mapState.forceBoss) mapState.forceBoss = false;   // 強制旗標只作用於下一次生怪
     if(wantBoss) {
         // 🔧 同名BOSS限制：場上已有同名BOSS時不再抽到該名→需地圖池有 2 種以上「不同名」BOSS 才可能同時出現多隻；若無不同名可出則退回一般怪
@@ -640,7 +648,7 @@ function spawnMob(idx) {
     }
     let base = DB.mobs[mobId];
     if(!base) return;
-    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _magCd: {}, justHit: false, st: newMobStatus() };
+    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _magCd: {}, justHit: false, st: newMobStatus(), _bornMs: Date.now() };   // 🏛️ _bornMs：生成時間（長老之室 BOSS 3 分鐘節流用）
     // 弓：場上原本沒有任何敵人時，第一個出現的敵人不論主動/被動，都強制視為被動（搭配弓攻擊3秒延遲，可先手放風箏）
     if(!base.boss && player.eq.wpn && DB.items[player.eq.wpn.id] && DB.items[player.eq.wpn.id].isBow && !mapState.mobs.some((m, j) => m && j !== idx)) {
         mapState.mobs[idx].beh = '被動';   // 頭目除外，維持主動
@@ -865,8 +873,9 @@ function procLightArrow(t) {
     let d = Math.floor((core + extraMagicDmg) * mrFactor) - (t.dr || 0);
     d = Math.max(1, d);   // 光箭無屬性，無剋制固定加值
     d = Math.floor(d * mageDmgMult);
+    d = Math.max(1, Math.floor(d * wpnEnFinalMult(player.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（共鳴光箭比照奇古獸/物理武器；與 tooltip 顯示一致）
     d = Math.max(1, Math.floor(d * fragileMult(t)));   // 🔮 脆弱（白鳥5）
-    if (hasMastery('m_resonance')) d = Math.max(1, Math.floor(d * 2));   // 🏅 共鳴精通：光箭傷害 ×2
+    if (hasMastery('m_resonance')) d = Math.max(1, d + 5);   // 🏅 共鳴精通：光箭傷害 +5
     if (player._setRedLion5) d = Math.max(1, Math.floor(d * 1.2));   // 🔮 紅獅 5/5：最終傷害 +20%
     t.curHp -= d;
     t.justHit = 'magic';
@@ -1246,8 +1255,11 @@ function manaMasteryRefund(spent) {
     let give = Math.max(1, Math.floor(spent * 0.10));
     if (player.allies) player.allies.forEach(a => { if (a && (a.mmp || 0) > 0) a.mp = Math.min(a.mmp, (a.mp || 0) + give); });
 }
+// 🔮 是否為魔杖/法杖類武器（沿用 js/10 同一套名稱判定，排除黃金權杖＝王族單手劍）：
+//    魔劍精通(i_magicsword)只把「非奇古獸的近戰武器」轉成奇古獸必中魔法路徑，魔杖本即施法武器、不應再轉（必中/攻速+30% 皆排除）。
+function isWandWeapon(d) { return !!(d && d.type === 'wpn' && (/魔杖|法杖/.test(d.n || '') || (/杖/.test(d.n || '') && !/權杖/.test(d.n || '')))); }
 // 🔮 幻術士 奇古獸一般攻擊：[奇古獸骰 × (1 + 魔法傷害/16)] + 額外魔法點數 + 額外傷害；視為魔法傷害、100%命中、受目標MR減免（奇古獸精通無視MR）。
-//    觸發路徑：裝備奇古獸(wpn.qigu)恆走此式；或 魔劍精通 + 任意非弓武器亦套用此式。屬性詞綴→對應屬性(剋屬性+6)。
+//    觸發路徑：裝備奇古獸(wpn.qigu)恆走此式；或 魔劍精通 + 任意非弓「且非魔杖」武器亦套用此式。屬性詞綴→對應屬性(剋屬性+6)。
 // 🔮 幻術士專屬加成：所有傷害(奇古獸普攻/特效/傷害技能/立方/幻覺召喚物)最終 ×(1+等級/50)；非幻術士回 1（玩家傳 player、傭兵傳 ally）
 function illuLvMult(a){ return (a && a.cls === 'illusion') ? (1 + (a.lv || 1) / 50) : 1; }
 function qiguPlayerAttack(target, wpn) {
@@ -1296,7 +1308,7 @@ function qiguWeaponProc(target, wpn) {
         dmg = Math.max(1, Math.floor((player.mmp || 0) * 0.05 * (1 + (player.d.magicDmg || 0) / 16) * (ignoreMr ? 1 : mrMult(effMr))));   // 玩家最大MP 5% ×(1+魔法傷害/16)（比照技能心靈破壞·不消耗MP）
         label = '心靈破壞';
     } else return;
-    dmg = Math.max(1, Math.floor(dmg * fragileMult(target) * illuLvMult(player)));   // 🔮 幻術士等級加成 ×(1+等級/50)
+    dmg = Math.max(1, Math.floor(dmg * fragileMult(target) * illuLvMult(player) * enhanceWpnFinalMult(en)));   // 🔮 幻術士等級加成 ×(1+等級/50)；🔧 武器強化 +11~+20 最終倍率
     target.curHp -= dmg; target.justHit = 'magic'; mobWake(target);
     logCombat(`<span class="font-bold" style="color:#a78bfa;text-shadow:0 0 6px #7c3aed;">【${label}】</span>對 <span class="${getMobColor(target.lv)}">${target.n}</span> 造成 ${dmg} 點傷害！`, cls);
     if (target.curHp <= 0) killMob(mapState.targetIdx); else renderMobs();

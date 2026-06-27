@@ -362,3 +362,8 @@
         #game-screen img, #creation-screen img, #battle-view img { filter: contrast(1.06) saturate(1.05); }
 
         /* 📱 手機 / 小螢幕響應式排版已移除：本遊戲專注桌上型電腦顯示（1920×1080 / 2560×1440 / 3840×2160）。 */
+/* 🎴 卡片收集系統：卡片名稱色（普卡灰白／銀卡亮銀白／金卡亮金）＋未收集剪影 */
+.c-card-common { color: #d4d4d8; }
+.c-card-silver { color: #f8fafc; text-shadow: 0 0 5px #cbd5e1; }
+.c-card-gold   { color: #fcd34d; text-shadow: 0 0 7px #f59e0b; }
+.card-silhouette { filter: brightness(0) saturate(0); opacity: .55; }

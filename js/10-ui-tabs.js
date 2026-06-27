@@ -389,6 +389,8 @@ const WEAPON_TAGS = {
     wpn_chaos_thorn:['匕首'], wpn_demonking_dual:['雙刀'], wpn_demonking_2hsword:['雙手劍'],   // 🌑 暗影神殿：混沌之刺(匕首/出血)、惡魔王雙刀(雙刀/連擊)、惡魔王雙手劍(雙手劍/切割)
     // 🔧 拉斯塔巴德掉落武器：匕首(出血)/單手劍(反擊)/雙刀(連擊)
     wpn_small_katana:['匕首'], wpn_dagger_rasta:['匕首'], wpn_sword_rasta:['單手劍'], wpn_dual_rasta:['雙刀'], wpn_spear_rasta:['矛'],
+    wpn_dual_spike:['雙刀'], wpn_official_blade:['單手劍'],   // 🏛️ 長老之室：尖刺雙刀(連擊)／武官之刃(反擊)
+    wpn_emperor_blade:['雙手劍'], wpn_windblade_dagger:['匕首'], wpn_redshadow_dual:['雙刀'], wpn_beastking_claw:['鋼爪'],   // 🏛️ 長老之室傳說：真.冥皇執行劍(切割)／風刃短劍(出血)／紅影雙刀(連擊)／獸王鋼爪(連擊)；聖晶魔杖=魔杖(免tag)
     // 🔥 50級試煉擴充武器標註
     wpn_mithril_dagger:['匕首'], wpn_ori_dagger:['匕首'], wpn_crimson_spear:['矛'], wpn_demon_axe:['雙手鈍器'],
     wpn_vengeance:['雙手劍'], wpn_blackflame_sword:['單手劍','武士刀'], wpn_hate_claw:['鋼爪'], wpn_demon_claw:['鋼爪'], wpn_death_finger:['鋼爪'],
@@ -695,7 +697,7 @@ function openModal(item, isEq, slot) {
 
     // 廢品勾選（所有背包道具：武器/防具/飾品/藥水/卷軸/魔法書/技能書/材料/試煉道具等）：
     //   勾選後可被「一鍵賣出廢品」整批賣出；鎖定中無法勾選且會自動取消。
-    if (!isEq) {
+    if (!isEq && !(DB.items[item.id] && DB.items[item.id].noJunk)) {   // 🎴 noJunk(收集冊等)：不顯示「標記為廢品」
         let locked = !!item.lock;
         let checked = (item.junk && !locked) ? 'checked' : '';
         act += `<label class="col-span-2 w-full btn ${locked ? 'border-slate-700 bg-slate-800/50 opacity-50 cursor-not-allowed' : 'border-amber-700 bg-amber-950 hover:bg-amber-900 cursor-pointer'} py-2 text-base font-bold flex items-center justify-center gap-2 mt-2">`
@@ -1078,7 +1080,7 @@ function runQuickEnhance(type) {
 // 該分頁可批次標記廢品的背包物品（未鎖定）：wpn=武器(含箭矢)、arm=防具/飾品、item=其餘（藥水/卷軸/書/材料等）
 function _qjEligibleItems(type) {
     return player.inv.filter(i => {
-        let d = DB.items[i.id]; if (!d || i.lock) return false;
+        let d = DB.items[i.id]; if (!d || i.lock || d.noJunk) return false;   // 🎴 noJunk(收集冊等)不納入快速廢品
         if (type === 'wpn') return d.type === 'wpn';
         if (type === 'arm') return d.type === 'arm' || d.type === 'acc';
         return d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc';
@@ -1167,6 +1169,7 @@ function toggleJunk(uid) {
     if (!d) return;
     if (!player.junkPrefs) player.junkPrefs = {};
     if (item.lock) { item.junk = false; openModal(item, false); return; }
+    if (d.noJunk) { item.junk = false; delete player.junkPrefs[itemSig(item)]; openModal(item, false); return; }   // 🎴 收集冊等 noJunk：無法標示為廢品
     item.junk = !item.junk;
     // 🔧 記憶廢品勾選（依完整簽章 id＋詞綴）：之後獲得「完全相同詞綴」的同種物品自動標記，直到玩家取消勾選為止
     if (item.junk) player.junkPrefs[itemSig(item)] = true;

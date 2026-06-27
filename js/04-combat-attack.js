@@ -4,7 +4,7 @@ function playerAttack() {
     // 🔮 幻術士 奇古獸攻擊：裝備奇古獸(必中魔法)或魔劍精通(任意非弓武器套用奇古獸公式) → 走奇古獸路徑，繞過物理命中/迴避
     if (player.cls === 'illusion') {
         let _qw = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
-        if (_qw && !_qw.isBow && (_qw.qigu || player.mastery === 'i_magicsword')) { qiguPlayerAttack(target, _qw); return; }
+        if (_qw && !_qw.isBow && (_qw.qigu || (player.mastery === 'i_magicsword' && !isWandWeapon(_qw)))) { qiguPlayerAttack(target, _qw); return; }   // 🔮 魔劍精通：排除魔杖（魔杖不轉奇古獸必中路徑）
     }
 
     let _sureHit = !!((player._setBeauty5 && player._beautyNextSure) || player._darkEvadeSure);   // 🔮 麗人5/5 或 🔧 迴避精通：下一次一般攻擊必中
@@ -355,6 +355,7 @@ function weaponSpellProc(target) {
                 let fixed = isElementCounter('water', t.e) ? 6 : 0;
                 let dmg = Math.floor(core * mrMult(effMr)) + fixed - (t.dr || 0);
                 dmg = Math.max(1, Math.floor(Math.max(1, dmg) * fragileMult(t)));
+                dmg = Math.max(1, Math.floor(dmg * enhanceWpnFinalMult(_en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（與其他武器特效一致）
                 if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
                 let _hl = Math.floor(dmg * 0.10);
                 t.curHp -= dmg; t.justHit = 'water'; mobWake(t);
@@ -398,7 +399,7 @@ function procFreeMagicSkill(t, skId, en) {
     let dmgArray = sk.multiDmg || (sk.dmgDice ? [[sk.dmgDice[0], sk.dmgDice[1]]] : []);
     let total = 0;
     dmgArray.forEach((dc, idx) => {
-        let core = roll(dc[0], dc[1]) * (1 + (en || 0) / 20) * spCoef * critMult;   // 🔧 依武器強化值 ×(1+強化/20)
+        let core = roll(dc[0], dc[1]) * spCoef * critMult;   // 🔧 強化改吃 +11 最終倍率（見迴圈後，原 ×(1+強化/20) 移除）
         let fixed = 0, extra = 0;
         if (idx === dmgArray.length - 1) {
             extra = player.d.extraMp;
@@ -411,6 +412,7 @@ function procFreeMagicSkill(t, skId, en) {
         if (player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) d = Math.floor(d * 2);
         total += Math.max(1, Math.floor(d * fragileMult(t)));
     });
+    total = Math.floor(total * enhanceWpnFinalMult(en));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
     if (total > 0) {
         t.curHp -= total; t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic'; mobWake(t);
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
@@ -438,7 +440,7 @@ function playerEquipStatusResist(field) {
 // 單體：對 t 計算並套用一次附魔施放傷害（不負責 render；回傳是否擊殺）。aoe 由 procWeaponSpell 統一在外層迴圈處理。
 function _procWeaponSpellHit(t, sp, en) {
     if (!t || t.curHp <= 0) return false;
-    let base = roll(sp.dice[0], sp.dice[1]) * (1 + en / 20);              // 基礎傷害 ×(1+強化/20)
+    let base = roll(sp.dice[0], sp.dice[1]);   // 🔧 基礎傷害（強化改吃 +11 最終倍率·見下方，原 ×(1+強化/20) 移除）
     let core = base * (1 + 3 * (player.d.magicDmg || 0) / 16);            // 受魔法傷害影響（同一般魔法的魔攻係數）
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
@@ -446,6 +448,7 @@ function _procWeaponSpellHit(t, sp, en) {
     let d = Math.floor(core * mrFactor) + fixed - (t.dr || 0);
     if (player.cls === 'elf' && hasMastery('e_magic') && sp.ele && sp.ele !== 'none' && sp.ele === player.elfEle) d = Math.floor(Math.max(1, d) * 2);   // 🏅 魔導精通：武器附帶施放的同屬性傷害魔法 ×2（與 castSkill 一致）
     d = Math.max(1, Math.floor(Math.max(1, d) * fragileMult(t)));
+    d = Math.max(1, Math.floor(d * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)·與一般武器一致）
     if (player._setRedLion5) d = Math.max(1, Math.floor(d * 1.2));   // 🔮 紅獅 5/5：最終傷害 +20%
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     t.curHp -= d;
@@ -483,7 +486,7 @@ function laiaWandHitProc(t) {
     if (!w || !w.meleeHitSpell || !t || t.curHp <= 0) return;
     let sp = w.meleeHitSpell; let en = capWpnEn(inst.en);
     let _spTier = 8;   // 🔧 冰裂術改套「法師 8 階法術傷害公式」：階級係數 (1+階/3) ＋ 最終倍率 (1.5+階/20)
-    let core = roll(sp.dice[0], sp.dice[1]) * (1 + en / 10) * (1 + 3 * (player.d.magicDmg || 0) / 16) * (1 + _spTier / 3);   // 基礎×(1+強化/10)×魔攻係數×8階階級係數
+    let core = roll(sp.dice[0], sp.dice[1]) * (1 + 3 * (player.d.magicDmg || 0) / 16) * (1 + _spTier / 3);   // 🔧 基礎×魔攻係數×8階階級係數（強化改吃 +11 最終倍率·見下方，原 ×(1+強化/10) 移除）
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
     let fixed = (sp.ele && sp.ele !== 'none' && isElementCounter(sp.ele, t.e)) ? 6 : 0;
@@ -492,6 +495,7 @@ function laiaWandHitProc(t) {
     d = Math.floor(Math.max(1, d) * (1.5 + _spTier / 20));   // 🔧 法師 8 階法術最終傷害倍率 (=1.9)
     if (wasFrozen) { d += (sp.shatter || 0); t.st.freeze = 0; }   // 冰凍目標：額外傷害並解除冰凍
     d = Math.max(1, Math.floor(Math.max(1, d) * fragileMult(t)));
+    d = Math.max(1, Math.floor(d * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/10)）
     if (player._setRedLion5) d = Math.max(1, Math.floor(d * 1.2));   // 🔮 紅獅 5/5：最終傷害 +20%
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     t.curHp -= d; t.justHit = sp.ele; mobWake(t);
@@ -641,7 +645,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
 
         totalDmg = Math.max(1, totalDmg);
         totalDmg = castleGuardAbsorb(totalDmg, 'phys');   // 🏰 肯特城護衛：承擔 10% 一般攻擊
-        totalDmg = Math.floor(totalDmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +10% 怪物攻擊力
+        totalDmg = Math.floor(totalDmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +20% 怪物攻擊力
         player.hp -= totalDmg;
         try { vfxPlayerHit(totalDmg); } catch(e){}   // ✨ VFX：較大一擊→戰場震動＋HP條紅閃
         if(player.buffs.sk_illu_pain > 0 && mob && mob.curHp > 0 && totalDmg > 0) {   // 🔮 疼痛的歡愉：受傷時對攻擊者反射等量（損失HP）的無屬性魔法傷害
@@ -1006,7 +1010,7 @@ function applyMobMagic(mob, sk) {
         if (player.buffs.sk_illu_avatar > 0) dmg = Math.floor(dmg * 0.90);   // 🔮 幻覺：化身：受到所有傷害 -10%（魔法路徑，比照物理 enemyPhysicalAttack）
         dmg = Math.max(1, dmg);
         dmg = castleGuardAbsorb(dmg, 'magic');   // 🏰 風木城護衛：承擔 10% 魔法攻擊
-        dmg = Math.floor(dmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +10% 怪物技能傷害
+        dmg = Math.floor(dmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +20% 怪物技能傷害
 
         player.hp -= dmg;
         logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，對你造成 ${dmg} 點魔法傷害。`, 'enemy');

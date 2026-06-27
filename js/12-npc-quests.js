@@ -3,11 +3,14 @@
 const WH_KEY = 'lineage_idle_warehouse';
 function whKey(p){ let _p = (p !== undefined) ? p : player; return (_p && _p.traditionalMode) ? (WH_KEY + '_trad') : (_p && _p.classicMode) ? (WH_KEY + '_classic') : WH_KEY; }   // 🏛️ 傳統倉庫獨立桶（須先判 traditional，因傳統角色 classicMode 亦為 true）
 const WH_MAX = 500;   // 倉庫格數上限（🔧 100 → 200 → 500）
-const WH_NO_STORE = ['new_item_239','new_item_241','new_item_collar_husky','new_item_238','new_item_184','new_item_185','new_collar_rabbit','new_collar_fox','new_collar_beagle','new_collar_stbernard','item_mastery_proof',
+const WH_NO_STORE = ['item_dk_insignia','new_item_239','new_item_241','new_item_collar_husky','new_item_238','new_item_184','new_item_185','new_collar_rabbit','new_collar_fox','new_collar_beagle','new_collar_stbernard','item_mastery_proof',
     'item_pride_pass_11','item_pride_pass_21','item_pride_pass_31','item_pride_pass_41','item_pride_pass_51','item_pride_pass_61','item_pride_pass_71','item_pride_pass_81','item_pride_pass_91',
-    'item_dantes_letter','item_elf_whisper','item_ancient_book','item_sealed_intel','item_spy_report','item_chaos_key','item_royal_order','wpn_shaha_arrow','item_dragon_egg'];   // 禁止存入倉庫：潘朵拉抽獎卷、王族搜索狀、四種項圈、精通之證、傲慢之塔傳送符(11~91F)、🔥50級試煉任務道具
+    'item_dantes_letter','item_elf_whisper','item_ancient_book','item_sealed_intel','item_spy_report','item_chaos_key','item_royal_order','wpn_shaha_arrow','item_dragon_egg','item_card_book'];   // 禁止存入倉庫：潘朵拉抽獎卷、王族搜索狀、四種項圈、精通之證、傲慢之塔傳送符(11~91F)、🔥50級試煉任務道具、🎴卡片收集冊
 // 倉庫分類過濾（武器 / 防具 / 道具）：存入、取出共用同一個下拉清單
 let _whFilter = 'weapon';
+let _whQtyInput = '';   // 🔧 倉庫存取「數量」共用輸入（取代 prompt()；空字串或 0 ＝整疊全部）。以模組變數保存→面板每次重繪後數值不流失
+function _whQtyVal(){ let v = parseInt(_whQtyInput, 10); return (v > 0) ? v : 0; }   // 0 ＝全部
+function whSetQty(v){ _whQtyInput = (v == null) ? '' : String(v); }   // 由輸入框 oninput 呼叫（用具名函式而非 inline 指派 lexical let，與 whSetFilter 同模式·穩定）
 function whCategory(id){
     let d = DB.items[id];
     if(!d) return 'item';
@@ -63,15 +66,9 @@ function whDeposit(uidv, qty){
     let it = player.inv[idx];
     if(WH_NO_STORE.includes(it.id)){ logSys(`<span class="text-red-400">此物品無法存入倉庫。</span>`); return; }
     if(it.lock){ logSys(`<span class="text-red-400">鎖定物品需先解鎖才能存入倉庫。</span>`); return; }
-    // 🔧 複數物品可選數量：未指定數量且 cnt>1 時詢問（按 Enter 預設＝全部）
+    // 🔧 複數物品可選數量：改讀面板「數量」輸入框（取代 prompt）；輸入空或 0 ＝整疊全部
     let total = it.cnt || 1;
-    if(qty === undefined && total > 1){
-        let _nm = (DB.items[it.id] && DB.items[it.id].n) || it.id;
-        let ans = prompt(`要存入幾個「${_nm}」？（1 ~ ${total}）`, total);
-        if(ans === null) return;                       // 取消
-        qty = Math.floor(Number(ans));
-        if(!(qty > 0)) return;
-    }
+    if(qty === undefined){ let _q = _whQtyVal(); qty = (_q > 0) ? _q : total; }
     qty = Math.max(1, Math.min(total, qty || total));
     // 可堆疊(en0未鎖)合併進既有倉庫堆疊不佔新格；否則需有空格
     let stack = _whStackFind(w.items, it);
@@ -91,15 +88,9 @@ function whWithdraw(uidv, qty){
     let idx = w.items.findIndex(i => i.uid === uidv);
     if(idx < 0) return;
     let it = w.items[idx];
-    // 🔧 複數物品可選數量：未指定數量且 cnt>1 時詢問（按 Enter 預設＝全部）
+    // 🔧 複數物品可選數量：改讀面板「數量」輸入框（取代 prompt·避免手機/GitHub Pages/重複操作時跳出框失效→變成只能一個一個領）；輸入空或 0 ＝整疊全部
     let total = it.cnt || 1;
-    if(qty === undefined && total > 1){
-        let _nm = (DB.items[it.id] && DB.items[it.id].n) || it.id;
-        let ans = prompt(`要取出幾個「${_nm}」？（1 ~ ${total}）`, total);
-        if(ans === null) return;                       // 取消
-        qty = Math.floor(Number(ans));
-        if(!(qty > 0)) return;
-    }
+    if(qty === undefined){ let _q = _whQtyVal(); qty = (_q > 0) ? _q : total; }
     qty = Math.max(1, Math.min(total, qty || total));
     if(qty >= total){          // 全部取出
         w.items.splice(idx, 1);
@@ -140,7 +131,7 @@ function renderWarehouseNPC(div){
     let _whInvScroll = _oi ? _oi.scrollTop : 0, _whStoreScroll = _os ? _os.scrollTop : 0, _divScroll = div.scrollTop;
     div.innerHTML = `
     <div class="flex flex-col gap-3 p-1">
-        <div class="text-slate-300 text-sm leading-relaxed">將物品或金幣存入倉庫，<b class="text-amber-300">四個存檔角色共用</b>。點背包物品＝存入；點倉庫物品＝取出（可堆疊物品會詢問數量，按 Enter＝全部）。已裝備或鎖定中的物品無法存入（需先解鎖）。</div>
+        <div class="text-slate-300 text-sm leading-relaxed">將物品或金幣存入倉庫，<b class="text-amber-300">四個存檔角色共用</b>。點背包物品＝存入；點倉庫物品＝取出（依下方<b class="text-amber-300">數量</b>欄取出／存入；留空＝整疊全部）。已裝備或鎖定中的物品無法存入（需先解鎖）。</div>
         <div class="flex items-center gap-2 bg-slate-800/60 border border-slate-600 rounded p-3 text-sm flex-wrap">
             <span>金幣　背包：<span class="text-yellow-400 font-bold">${player.gold}</span>　倉庫：<span class="text-yellow-400 font-bold">${w.gold||0}</span></span>
             <input id="wh-gold-amt" type="number" min="1" value="1000" class="w-24 bg-slate-900 border border-slate-600 text-center text-white rounded h-8 ms-auto">
@@ -155,6 +146,8 @@ function renderWarehouseNPC(div){
                 <option value="item" ${_whFilter==='item'?'selected':''}>道具</option>
             </select>
             <span class="text-slate-500 text-xs">（存入／取出共用此分類）</span>
+            <span class="text-slate-300 font-bold ms-2">數量：</span>
+            <input id="wh-qty-amt" type="number" min="1" placeholder="全部" value="${_whQtyInput}" oninput="whSetQty(this.value)" title="存入／取出的數量；留空或 0 ＝整疊全部（不再使用跳出式輸入框）" class="w-20 bg-slate-900 border border-slate-600 text-center text-white rounded h-8">
             <button onclick="whOneClickDeposit()" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center ms-auto" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" title="把背包中與倉庫現有物品（詞綴+名字+強化值完全相同）的物品自動存入；鎖定物品不動">一鍵存入</button>
             <button onclick="sortWarehouse()" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 28%, #16294a 52%, #1d4ed8 76%, #101f38 100%); color: #bfdbfe; border-color: #3b82f6;" title="依背包一鍵排列的相同規則整理倉庫物品">一鍵排列</button>
         </div>

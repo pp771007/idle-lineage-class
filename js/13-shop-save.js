@@ -48,6 +48,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     law_king_room: 'assets/area/軍王之室.jpg',      // 👑 法令軍王之室
     necro_king_room: 'assets/area/軍王之室.jpg',    // 👑 冥法軍王之室
     assassin_king_room: 'assets/area/軍王之室.jpg', // 👑 暗殺軍王之室
+    elder_room: 'assets/area/軍王之室.jpg',         // 🏛️ 格蘭肯神殿．長老之室（拉斯塔巴德新狩獵地圖·借用軍王之室背景）
     thebes_desert: 'assets/area/底比斯沙漠.jpg',   // 🏛️ 底比斯 沙漠（專屬背景）
     thebes_pyramid: 'assets/area/底比斯.jpg',      // 🏛️ 底比斯 金字塔內部（與祭壇共用底比斯背景）
     thebes_temple: 'assets/area/底比斯.jpg',        // 🏛️ 底比斯 歐西里斯祭壇（純BOSS房）
@@ -590,7 +591,8 @@ function startGame() {
             gainItem('bk_lightarrow', 1, true, true); // 光箭魔法書
         }
     }
-    
+    gainItem('item_card_book', 1, true, true);   // 🎴 卡片收集冊（全職業創角預設）
+
     calcStats();
     player.hp = player.mhp; player.mp = player.mmp;
     
@@ -802,7 +804,8 @@ function loadGame() {
         // 🔧 架構#6：集中式預設值合併（放在所有「轉換型」遷移之後，作為缺漏欄位的統一保底）。
         // 日後新增欄位只需登錄於 SAVE_DEFAULTS；上方逐項 if(undefined) 為歷史遷移，不必再增列。
         applySaveDefaults(player);
-		
+        if (typeof ensureCardBook === 'function') ensureCardBook();   // 🎴 舊存檔保底：道具欄補一本卡片收集冊
+
         // 👇 正確的新版起點邏輯
         // 🔧 讀檔回「家」改走 getHomeTown()：血盟成員回盟主村莊（海音/歐瑞），否則回職業起始村，與回村按鈕邏輯一致
         setMapSelectors(getHomeTown());

@@ -146,6 +146,8 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 ### 「更新小百科內容」SOP(使用者說「更新小百科」就照這跑)
 
+> **🔴 鐵則:絕不可假設「前面幾輪做過了」就跳過 diff——每次都要真的跑 `git diff <reconciledIndexCommit> HEAD -- js/` 把整段逐項勾過(踩過 2026-06-28:我只挑了新檔『裝備收集冊』做、其餘假設 V2.32 已覆蓋就跳過,結果漏掉同期的『瘋狂席琳模式』,被使用者抓到)。** 即使 checkpoint 看起來只差一點、即使覺得自己前面做過,也要把 diff 整段看完、每個改動逐一確認小百科有沒有反映,不可憑印象判斷「應該做過了」。做完才把 checkpoint 推進、並在 note 標「此範圍已逐項對過」。
+
 1. **先同步遠端,再用 `wiki-checkpoint.json` 的錨點抓 diff(不要用 git log 猜起點——踩過,會漏改版)**:
    - **務必先 `git fetch origin && git pull --rebase origin main`**:自動同步會在背景把作者新版推上來,本機落後就會拿舊的去比、漏掉剛進來的改版(2026-06-21 席琳套裝改版就是這樣差點漏掉)。
    - 讀 `wiki-checkpoint.json` 的 `reconciledIndexCommit`,那是「小百科上次對齊到的 index.html 版本」,即本次 diff 的起點。

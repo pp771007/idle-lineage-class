@@ -25,11 +25,18 @@
 
   // key → 給人看的說明(認得的標註,認不得就只顯示原始 key)
   function friendlyLabel(key) {
-    var m;
+    var m, sfx = /_trad$/.test(key) ? '（傳統模式）' : (/_classic$/.test(key) ? '（經典模式）' : '');   // 倉庫/收集冊依模式分桶,標出是哪一桶
     if ((m = /^lineage_idle_save_(\d+)_bak$/.exec(key))) return '存檔 ' + m[1] + ' 的匯入前備份';
     if ((m = /^lineage_idle_save_(\d+)$/.exec(key))) return '存檔 ' + m[1];
-    if (/warehouse/i.test(key)) return '共用倉庫';
-    if (/^afk[-_]/i.test(key) || /combat.*filter|audit/i.test(key)) return '外掛設定';
+    if (/warehouse/i.test(key)) return '共用倉庫' + sfx;
+    if (/carddex/i.test(key)) return '卡片收集冊（怪物卡收集進度）' + sfx;       // 🎴 作者新增
+    if (/equipdex/i.test(key)) return '裝備收集冊（裝備收集進度）' + sfx;         // 🗡️ 作者新增
+    if (/mob_hp/i.test(key)) return '場上怪物 HP（戰鬥暫存）';
+    if (/mob_status/i.test(key)) return '場上怪物異常狀態（戰鬥暫存）';
+    if (/vfx_off/i.test(key)) return '特效開關設定';
+    if (/combat_filter/i.test(key)) return '戰鬥訊息過濾設定';
+    if (/audit_watch/i.test(key)) return '統計追蹤清單';
+    if (/^afk[-_]/i.test(key)) return '外掛設定';
     return '';
   }
 

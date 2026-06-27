@@ -864,6 +864,9 @@
       'body.m-mobile #interaction-content div:has(> button[onclick^="whOneClickDeposit"]) > select{flex:1 1 160px !important;}',
       'body.m-mobile #interaction-content div:has(> button[onclick^="whOneClickDeposit"]) > span.text-slate-500{display:none !important;}',
       'body.m-mobile #interaction-content div:has(> button[onclick^="whOneClickDeposit"]) > button{flex:1 1 40% !important;margin-left:0 !important;}',
+      /* 🔧 作者 V2.32 新增原生「數量」輸入框 #wh-qty-amt;手機已有我們的數量視窗(initWhQty 點物品即跳)→隱藏原生框＋其「數量：」標籤,免重複/混淆。span:has(+#wh-qty-amt)＝緊鄰在輸入框前的標籤。 */
+      'body.m-mobile #interaction-content #wh-qty-amt{display:none !important;}',
+      'body.m-mobile #interaction-content span:has(+ #wh-qty-amt){display:none !important;}',
 
       /* 血盟 NPC(依詩蒂/特羅斯):桌機 flex-row + 200px 立繪,手機窄寬下右側對話被擠成一字一行。
          改直向堆疊:立繪縮小置中、對話/按鈕整寬。招募與已加入兩種版面皆適用;原作改版規則自動失效。 */

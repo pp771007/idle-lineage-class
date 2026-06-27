@@ -1256,16 +1256,14 @@
         '命中與傷害都吃<b>完整魅力</b>（連超過 60 的都算）；「能帶幾隻」另有<b>硬上限 8 個</b>。'
       ]},
       { t: '④ 進化：把基礎犬變更強', lines: [
-        '玩家<b>等級 30 以上</b>、且持有對應基礎項圈時，用「進化果實」可把 <b>1 個基礎項圈 ＋ 1 顆果實</b>進化成更強的進化夥伴：',
-        '哈士奇 ＋ 進化果實：暴走兔 → <b>暴走兔</b>；杜賓狗 ＋ 狐狸 → <b>狐狸</b>；牧羊犬 ＋ 小獵犬 → <b>小獵犬</b>；狼 ＋ 聖伯納 → <b>聖伯納</b>。',
-        '<b>進化果實哪來</b>：打死「對應屬性」的怪有機率掉，機率 ＝ <b>0.0001% × 怪物等級</b>（怪越高機率越大）。水屬性怪掉「暴走兔」、火屬性掉「狐狸」、地屬性掉「小獵犬」、風屬性掉「聖伯納」。',
-        '<b>進化夥伴比基礎犬強</b>：傷害骰更大、命中更高，傷害還<b>額外加「魅力 × 1.2～1.3」</b>；而且<b>每次攻擊有 10% 機率追加一發法術</b>（暴走兔冰錐／狐狸燃燒的火球／小獵犬岩牢／聖伯納極道落雷，傷害用你自己的施法數值、必定命中、吃魔防）。'
+        '玩家<b>等級 30 以上</b>、持有對應基礎項圈時，用「進化果實」把 <b>1 個基礎項圈 ＋ 1 顆果實</b>進化成進化夥伴（哪隻變哪隻、強在哪見上方兩張表）。',
+        '<b>進化果實哪來</b>：打死「對應屬性」的怪有機率掉，機率 ＝ <b>0.0001% × 怪物等級</b>（怪越高越好掉）。水屬掉「暴走兔」、火屬掉「狐狸」、地屬掉「小獵犬」、風屬掉「聖伯納」。',
+        '進化夥伴每擊 10% 追加的法術，<b>用你自己的施法數值、必定命中、吃魔防</b>。'
       ]},
-      { t: '⑤ 寵物裝備（之牙）：再幫夥伴加傷害／命中', lines: [
-        '裝在<b>「寵物裝備」欄</b>的飾品，叫「之牙」。<b>只加成你帶的項圈夥伴、不影響你自己</b>，而且不分種類數量、所有夥伴一起吃。',
-        '四種數值：<b>獵犬之牙</b>＝命中 +2；<b>鋼鐵之牙</b>＝傷害 +2；<b>破滅之牙</b>＝傷害 +2、命中 +3；<b>勝利之牙</b>＝傷害 +3、命中 +1。',
-        '可用<b>「對飾品施法的卷軸」</b>強化，<b>每 +1 → 傷害與命中各 +1，最高 +5</b>（安定值 0，每次強化都有失敗風險）。',
-        '在 <b>諾斯（亞丁）</b>製作；數值見「掉落查詢」搜之牙的名字。'
+      { t: '⑤ 寵物裝備（之牙）：再幫夥伴加傷害／命中', blocks: [
+        { t: 'p', p: '裝在<b>「寵物裝備」欄</b>的飾品「之牙」，<b>只加成你帶的項圈夥伴、不影響自己</b>，且所有夥伴一起吃（不分種類數量）：' },
+        { t: 'tbl', h: ['之牙', '傷害', '命中'], rows: [['獵犬之牙', '—', '+2'], ['鋼鐵之牙', '+2', '—'], ['破滅之牙', '+2', '+3'], ['勝利之牙', '+3', '+1']] },
+        { t: 'p', p: '可用「對飾品施法的卷軸」強化：<b>每 +1 → 傷害與命中各 +1，最高 +5</b>（安定值 0、每次強化有失敗風險）。在 <b>諾斯（亞丁）</b> 製作。' }
       ]},
       { t: '⑥ 項圈保管（找亞丁的包武）', lines: [
         '<b>亞丁的包武</b>可幫你保管「項圈」，最多 <b>8 個</b>。暫時用不到、或超過攜帶上限的項圈寄放在這，背包就不會被塞滿。存／取都不花錢。',
@@ -1280,8 +1278,10 @@
       ]}
     ];
     var cards = secs.map(function (s) {
-      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
-      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+      var body = s.blocks
+        ? s.blocks.map(function (b) { return b.t === 'tbl' ? wTbl(b.h, b.rows) : '<div class="m-wiki-desc" style="margin-top:4px;">・' + b.p + '</div>'; }).join('')
+        : s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + body + '</div>';
     }).join('');
     var dogTable = '';
     if (typeof PET_DEF !== 'undefined' && PET_DEF) {   // 讀遊戲的犬定義,作者新增犬種/進化夥伴會自動出現
@@ -1310,6 +1310,9 @@
       };
       var baseN = [], evoN = [];
       Object.keys(PET_DEF).forEach(function (nm) { (PET_DEF[nm].proc ? evoN : baseN).push(nm); });
+      var _eleOrder = { fire: 0, earth: 1, water: 2, wind: 3 };   // 火地水風:統一基礎犬/進化夥伴兩表的寵物順序
+      var _byEle = function (a, b) { var ea = _eleOrder[PET_DEF[a].ele], eb = _eleOrder[PET_DEF[b].ele]; return (ea != null ? ea : 9) - (eb != null ? eb : 9); };
+      baseN.sort(_byEle); evoN.sort(_byEle);
       var tbl = function (title, hint, names) {
         if (!names.length) return '';
         return '<div class="m-wiki-card"><div class="m-wiki-name">' + title + '</div>' +
@@ -1317,9 +1320,9 @@
           '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><tbody>' + names.map(rowOf).join('') + '</tbody></table></div>';
       };
       dogTable = tbl('基礎犬的特性', '傷害偏移越高，傷害上限越高；命中偏移越高，越容易打中。屬性決定相剋。最右欄是用對應進化果實能進化成的夥伴。', baseN) +
-        tbl('進化夥伴的特性', '由基礎犬進化而來（見上面「④ 進化」）；傷害另加魅力×倍率，每次攻擊還有 10% 追加對應法術。', evoN);
+        tbl('進化夥伴的特性', '由基礎犬進化而來（見下方「④ 進化」）；傷害另加魅力×倍率，每次攻擊還有 10% 追加對應法術。', evoN);
     }
-    return note + cards + dogTable;
+    return note + dogTable + cards;   // 兩張寵物特性表移到最上面(緊接 note),操作說明在下
   }
 
   function renderSet() {

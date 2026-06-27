@@ -443,20 +443,21 @@
     if (body) return body;
     return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">目前沒有固定取得途徑</div></div>';
   }
-  window.AFK_DEX_API = { acquireHTML: acquireHTML };
+  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML };   // itemDetailHTML 供小百科「裝備」分頁重用完整詳情(noHead/noSearchBtn)
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
   var IT_SLOT = { helm: '頭盔', armor: '盔甲', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊' };
   function _baseInst(id) { return { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false }; }
-  function itemDetailHTML(id) {
+  function itemDetailHTML(id, opts) {
+    opts = opts || {};   // 🔧 noHead:不要圖示+名稱列(呼叫端自己有名稱,如小百科裝備卡);noSearchBtn:不要「查掉落」互動鈕(改列怪物掉落文字,給非 dex 頁重用)
     var d = DB.items[id];
     if (!d) return '<div class="m-dex-hint">查無此物品資料。</div>';
     var icon = '';
     try { icon = (typeof getIconUrl === 'function') ? getIconUrl(d) : ''; } catch (e) {}
     var img = icon ? '<img class="m-dex-iimg" src="' + esc(icon) + '" alt="" onerror="this.style.display=\'none\'">' : '';
     var nameCls = d.legend ? ' c-legend' : '';
-    var head = '<div class="m-dex-ihead">' + img + '<div class="m-dex-iname-big' + nameCls + '">' + esc(d.n) + '</div></div>';
+    var head = opts.noHead ? '' : ('<div class="m-dex-ihead">' + img + '<div class="m-dex-iname-big' + nameCls + '">' + esc(d.n) + '</div></div>');
     var typeLine = '<div style="color:#94a3b8;font-size:12px;margin:2px 0 4px;">' + esc(IT_TYPE[d.type] || d.type || '道具') + (d.slot ? '・' + esc(IT_SLOT[d.slot] || d.slot) : '') + '</div>';
     // 數值/說明:用遊戲自己的 buildItemDescHTML(全物品共用、與遊戲內顯示一致、作者新增裝備/特效自動跟上),
     //   base 實例(en:0、無詞綴)。失敗或空(如無描述材料)則退回顯示物品說明文字。適用職業 logo 由它產生,點擊有 tip(afk-fixes#7)。
@@ -483,7 +484,13 @@
     var _tc = trialClassOf(id);
     var trialLine = _tc ? '<div class="m-dex-craft" style="margin:4px 0;border-left:3px solid #b45309;padding-left:7px;"><div class="m-dex-craft-h">🔒 職業限定</div><div class="m-dex-craft-mats">只有 <b>' + _tc.join('／') + '</b> 擊殺對應怪物才會掉落（其他職業打同一隻怪不會掉）。</div></div>' : '';
     var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
-    return head + typeLine + trialLine + body + spdLine + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + searchBtn;
+    var tail = searchBtn;
+    if (opts.noSearchBtn) {   // 非 dex 頁(無互動鈕,如小百科裝備):改列怪物掉落文字(與 acquireHTML 同邏輯)
+      if (_dropBy === null) buildDropBy();
+      var mobs = _dropBy[id];
+      tail = (mobs && mobs.length) ? ('<div class="m-dex-craft"><div class="m-dex-craft-h">👹 怪物掉落</div><div class="m-dex-craft-mats">' + mobs.slice(0, 12).map(esc).join('、') + (mobs.length > 12 ? ' …等 ' + mobs.length + ' 種' : '') + '（機率見掉落查詢）</div></div>') : '';
+    }
+    return head + typeLine + trialLine + body + spdLine + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + tail;
   }
   function openItemPop(id) {
     var pop = document.getElementById('m-dex-itempop'); if (!pop) return;

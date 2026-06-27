@@ -1451,18 +1451,22 @@
     } catch (e) {}
     return true;
   }
-  // 詳情:數值用遊戲 buildItemDescHTML(base 實例 en:0)、取得方式用掉落查詢 API;建一次快取
+  // 詳情:直接重用掉落查詢的完整物品詳情(itemDetailHTML),與掉落查詢一模一樣(類型/數值/攻速/賣價/製作/商店/取得/怪物掉落),只去掉它的名稱列與互動鈕;建一次快取
   var _equipDetail = {};
   function equipDetailHTML(id) {
     if (_equipDetail[id] !== undefined) return _equipDetail[id];
     var html = '';
     try {
-      if (typeof buildItemDescHTML === 'function') {
-        var base = { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false };
-        html += '<div class="m-eq-stats" style="margin-top:4px;line-height:1.8;">' + buildItemDescHTML(base) + '</div>';
+      if (window.AFK_DEX_API && AFK_DEX_API.itemDetailHTML) {
+        html = '<div class="m-eq-stats" style="margin-top:4px;line-height:1.8;">' + AFK_DEX_API.itemDetailHTML(id, { noHead: 1, noSearchBtn: 1 }) + '</div>';
+      } else {   // 降級:API 沒載到才退回最簡版(數值 + 取得方式)
+        if (typeof buildItemDescHTML === 'function') {
+          var base = { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false };
+          html += '<div class="m-eq-stats" style="margin-top:4px;line-height:1.8;">' + buildItemDescHTML(base) + '</div>';
+        }
+        if (window.AFK_DEX_API && AFK_DEX_API.acquireHTML) html += '<div style="margin-top:6px;">' + AFK_DEX_API.acquireHTML(id) + '</div>';
       }
     } catch (e) {}
-    try { if (window.AFK_DEX_API && AFK_DEX_API.acquireHTML) html += '<div style="margin-top:6px;">' + AFK_DEX_API.acquireHTML(id) + '</div>'; } catch (e) {}
     _equipDetail[id] = html;
     return html;
   }

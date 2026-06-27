@@ -1251,7 +1251,7 @@
 
   function renderWeapon() {
     var traits = WEAPON_TRAITS.map(function (t) {
-      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(t.n) + '</div><div class="m-wiki-desc">' + esc(t.d) + '</div></div>';
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(t.n) + '</div><div class="m-wiki-desc">' + t.d + '</div></div>';   // t.d 是本檔手寫描述、含意圖性 <b>/<br>,不可 esc(否則標籤變字面文字)
     }).join('');
     var basics = '<div class="m-wiki-sub">武器數值怎麼看</div>' +
       WEAPON_BASICS.map(function (b) { return '<div class="m-wiki-kv"><b>' + esc(b[0]) + '</b>' + esc(b[1]) + '</div>'; }).join('');

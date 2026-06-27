@@ -746,7 +746,7 @@ function applySherineGrace(idx) {
         && (_mad || state.ticks >= (mapState.graceCdAt || 0))
         && (_mad || !mapState.mobs.some(m => m && m._grace))
         && Math.random() < 0.01) {
-        let _gc = mapState.mobs.filter(m => m && !m._dead && m.curHp > 0 && m.race !== '血盟' && (_mad || !m.boss));   // 一般：排除頭目；瘋狂：含頭目
+        let _gc = mapState.mobs.filter(m => m && !m._dead && m.curHp > 0 && m.race !== '血盟' && !m._grace && (_mad || !m.boss));   // 一般：排除頭目；瘋狂：含頭目；!m._grace：已恩賜的怪不可再被選中（防瘋狂模式對同一隻 boss 重複 ×10 HP 爆炸）
         if (_gc.length) {
             let g = _gc[Math.floor(Math.random() * _gc.length)];
             g._grace = true;

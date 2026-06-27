@@ -883,6 +883,7 @@
     { k: 'ally', n: '傭兵' },
     { k: 'quest', n: '任務' },
     { k: 'set', n: '套裝' },
+    { k: 'card', n: '卡片' },
     { k: 'equip', n: '裝備' },
     { k: 'enhance', n: '強化' },
     { k: 'craft', n: '製作' },
@@ -1030,6 +1031,7 @@
     if (key === 'pets') return renderPets();
     if (key === 'ally') return renderAlly();
     if (key === 'set') return renderSet();
+    if (key === 'card') return renderCard();
     if (key === 'equip') return renderEquip();
     if (key === 'enhance') return renderEnhance();
     if (key === 'craft') return renderCraft();
@@ -1074,6 +1076,7 @@
     { key: 'ally', cls: false, label: '傭兵' },
     { key: 'quest', cls: true, label: '任務' },
     { key: 'set', cls: false, label: '套裝' },
+    { key: 'card', cls: false, label: '卡片' },
     { key: 'equip', cls: false, label: '裝備' },
     { key: 'enhance', cls: false, label: '強化' },
     { key: 'craft', cls: false, label: '製作' },
@@ -1359,6 +1362,35 @@
       '</div>';
     }).join('');
     return note + cards;
+  }
+
+  // 卡片收集:動態讀遊戲 CARD_TIERS(售價)/CARD_REGIONS(地區完成加成)/CARD_STAT_LABEL;掉率與解鎖資訊以 js/15-cards.js 的 rollCardDrops/renderCardBook 為準。
+  function renderCard() {
+    var out = '<div class="m-wiki-note">「卡片收集」：每隻怪（<b>血盟與建築類除外</b>）極低機率掉「怪物卡片」，<b>使用</b>卡片在「收集冊」登錄該怪、解鎖牠的資料；把一個地區的怪收齊還有<b>屬性加成</b>。收集冊是創角自帶、唯一、不能賣也不能存倉的道具，使用即翻開。</div>';
+
+    var tiers = (typeof CARD_TIERS !== 'undefined') ? CARD_TIERS : [];
+    var price = function (t) { var c = tiers[t - 1]; return c ? Number(c.price).toLocaleString() : '?'; };
+    out += wCard('🎴 三階卡片',
+      wTbl(['卡片', '掉落機率', '解鎖的怪物資料', '重複收錄時'], [
+        ['普卡', '0.01%', '怪名、等級', '自動賣 ' + price(1) + ' 金'],
+        ['銀卡', '0.001%', '＋ HP、屬性', '自動賣 ' + price(2) + ' 金'],
+        ['金卡', '0.0001%', '＋ 防禦(AC)、魔防、出沒地圖', '自動賣 ' + price(3) + ' 金']
+      ]) +
+      wDesc('三階<b>各自獨立判定</b>（同一隻可能只掉普卡、也可能直接掉金卡）。機率<b>不受經典模式 ×1/10 影響</b>（一般／經典同機率）。') +
+      wDesc('撿到卡片要<b>使用</b>才會登錄；<b>已收錄該階（或更高階）後再掉同階 → 自動賣成金幣</b>、不佔背包。高階含低階資訊（金卡看得到全部）。')
+    );
+
+    var regs = (typeof CARD_REGIONS !== 'undefined') ? CARD_REGIONS : [];
+    var lbl = (typeof CARD_STAT_LABEL !== 'undefined') ? CARD_STAT_LABEL : {};
+    var rows = regs.map(function (r) {
+      return [esc(r.name), esc(lbl[r.stat] || r.stat), '+' + r.vals[0], '+' + r.vals[1], '+' + r.vals[2]];
+    });
+    out += wCard('🏅 地區完成加成（把一個地區的怪收齊）',
+      wDesc('把某地區<b>所有怪</b>都收到同一階，就拿到該地區加成（<b>取已達到的最高階</b>：全金 > 全銀 > 全普）。加成不大但確實有——和遊戲更新情報寫的「當作沒有」不同，這裡以實際程式為準：') +
+      wTbl(['地區', '加成', '全普卡', '全銀卡', '全金卡'], rows) +
+      wDesc('提醒：<b>之後同地區新增怪物，原本收滿的地區會變成沒收滿</b>（加成跟著消失，要把新怪也收齊才會回來）。')
+    );
+    return out;
   }
 
   // 裝備總覽:直接讀遊戲 DB.items 依部位分組。數值用遊戲自己的 buildItemDescHTML(永遠與遊戲一致、作者新增自動跟上),

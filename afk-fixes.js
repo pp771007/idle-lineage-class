@@ -251,6 +251,21 @@
       return s;
     }
 
+    // 少數安卓瀏覽器支援 File System Access:exportSave 會改走 window.showSaveFilePicker、不經 downloadSaveFile,
+    //   那條的 suggestedName 仍是含中文檔名 → 一併包起來淨化(只安卓;桌機不包、保留中文名)。
+    if (isAndroidMobile && typeof window.showSaveFilePicker === 'function' && !window.showSaveFilePicker.__afkAscii) {
+      try {
+        var _origPicker = window.showSaveFilePicker.bind(window);
+        var _wrapPicker = function (opts) {
+          try { if (opts && opts.suggestedName) opts = Object.assign({}, opts, { suggestedName: asciiName(opts.suggestedName) }); } catch (e) {}
+          return _origPicker(opts);
+        };
+        _wrapPicker.__afkAscii = true;
+        window.showSaveFilePicker = _wrapPicker;
+        console.log('[AFK-fixes] 安卓 showSaveFilePicker 檔名 ASCII 淨化已掛上');
+      } catch (e) {}
+    }
+
     function install() {
       if (!isAndroidMobile) return true;
       if (typeof window.downloadSaveFile !== 'function' || window.downloadSaveFile.__androidShareDl) return false;

@@ -163,29 +163,7 @@
     console.log('[AFK-fixes] 關閉前自動存檔 已掛上');
   })();
 
-  /* --------------------------------------------------------------------------
-   * 修正#4:補上網站圖示(favicon)
-   *
-   * 問題:原版 <head> 沒宣告任何 icon,瀏覽器載入時自動探測網域根的 /favicon.ico,要不到
-   *   就在 console 留一條 404(原作者官方站台也有,無害但礙眼),分頁標籤也沒圖示。
-   * 解法:注入一個 <link rel="icon"> 指到我們自己的圖示(骷髏),分頁就有圖示。
-   *   href 用「相對路徑」——本機(server 根=repo 根)與線上(GitHub Pages 子路徑)都指得對;
-   *   用 /assets 絕對路徑線上會打到網域根而指錯。
-   * 注意:外掛跑在 </body> 前、晚於瀏覽器的 favicon 探測,能否擋掉那條 404 視瀏覽器時序而定;
-   *   設定分頁圖示則一定生效。已有 icon(原作者哪天自己加了)就不覆蓋。
-   * 何時可移除:原作者自行在 <head> 宣告 favicon 時,本段即多餘,可整段刪。
-   * ------------------------------------------------------------------------ */
-  (function () {
-    try {
-      if (document.querySelector('link[rel~="icon"]')) return;   // 已有就不覆蓋
-      var link = document.createElement('link');
-      link.rel = 'icon';
-      link.type = 'image/png';
-      link.href = 'favicon.png';
-      (document.head || document.documentElement).appendChild(link);
-      console.log('[AFK-fixes] favicon 已注入(骷髏)');
-    } catch (e) { console.warn('[AFK-fixes] favicon 注入失敗,已略過:', e); }
-  })();
+  // 修正#4(favicon 注入)已移除:原作者 V2.32 起已在 index.html <head> 自宣告 favicon(assets/favicon.png,1.63 天堂圖),本段多餘。
 
   /* --------------------------------------------------------------------------
    * 修正#5:saveGame 空白角色防呆 — 攔下「未載入角色就存檔」避免覆蓋真實存檔

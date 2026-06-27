@@ -85,18 +85,94 @@
   }
 
   var _layer = null;
-  function openModal() {
+  function openModal(title, bodyHTML, afterRender) {
     var m = document.getElementById('m-stg-modal'); if (!m) return;
-    document.getElementById('m-stg-body').innerHTML = renderBody();
+    document.getElementById('m-stg-title').textContent = title || '📦 存檔空間用量';
+    document.getElementById('m-stg-body').innerHTML = (bodyHTML != null) ? bodyHTML : renderBody();
+    if (afterRender) afterRender();
     m.classList.add('open');
     _layer = window.AFK_UI ? AFK_UI.openLayer(hideModal) : null;   // 手機返回鍵 / ESC 可關
   }
   function hideModal() { var m = document.getElementById('m-stg-modal'); if (m) m.classList.remove('open'); _layer = null; }   // 實際收起,不自行動歷史
   function closeModal() { if (_layer && window.AFK_UI) AFK_UI.closeLayer(_layer); else hideModal(); }   // 主動關(✕ / 點背景)
 
-  // 將來要加別的設定項,往這裡加一筆 { label, onClick } 即可
+  // ===== 匯入／匯出整包存檔(全部 localStorage;只在網址帶 ?test=1 時於選單顯示) =====
+  //   格式:純 JSON 文字 { app, ts, data:{key:value} }——不壓縮、不 base64(純文字最小且零跨瀏覽器問題)。
+  //   匯入:解析→驗證 app 標記→自製確認(顯示匯出時間)→localStorage.clear()+逐筆還原→reload。不呼叫 saveGame、不碰遊戲狀態。
+  var IO_APP = 'afk-idle-lineage';   // 備份標記:匯入時擋「貼錯東西」
+  function isTest() { try { return new URLSearchParams(location.search).get('test') === '1'; } catch (e) { return false; } }
+  function ioMsg(html, color) { var el = document.getElementById('m-io-msg'); if (el) { el.innerHTML = html; el.style.color = color || '#94a3b8'; } }
+  function ioBody() {
+    return '<div class="m-io-desc">把整包瀏覽器存檔（所有 localStorage）匯出成一段文字（自動複製到剪貼簿）；或把先前匯出的字串貼進來按「匯入」，會<b style="color:#fca5a5">清空目前全部存檔並還原</b>成那份（完成後自動重整）。</div>' +
+      '<div class="m-io-btns">' +
+        '<button id="m-io-export" type="button" class="m-io-btn m-io-exp">📤 匯出（複製）</button>' +
+        '<button id="m-io-import" type="button" class="m-io-btn m-io-imp">📥 匯入</button>' +
+      '</div>' +
+      '<textarea id="m-io-text" class="m-io-ta" spellcheck="false" placeholder="匯出的備份字串會出現在這；或把先前匯出的字串貼進來，再按「匯入」。"></textarea>' +
+      '<div id="m-io-msg" class="m-io-msg"></div>';
+  }
+  function openIO(keepText) {
+    openModal('💾 匯入 / 匯出存檔', ioBody(), function () {
+      document.getElementById('m-io-export').addEventListener('click', ioExport);
+      document.getElementById('m-io-import').addEventListener('click', ioImport);
+      if (keepText) { var t = document.getElementById('m-io-text'); if (t) t.value = keepText; }
+    });
+  }
+  function ioExport() {
+    var data = {};
+    for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); data[k] = localStorage.getItem(k); }
+    var str = JSON.stringify({ app: IO_APP, ts: Date.now(), data: data });
+    var ta = document.getElementById('m-io-text'); ta.value = str; ta.focus(); ta.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(str).then(
+        function () { ioMsg('✅ 已匯出並複製到剪貼簿（' + fmtKB(str.length) + '）。貼到安全的地方保存。', '#86efac'); },
+        function () { ioMsg('已匯出（' + fmtKB(str.length) + '）。剪貼簿不可用，請手動全選複製上面文字。', '#fcd34d'); }
+      );
+    } else { ioMsg('已匯出（' + fmtKB(str.length) + '）。請手動全選複製上面文字。', '#fcd34d'); }
+  }
+  function ioImport() {
+    var raw = (document.getElementById('m-io-text').value || '').trim();
+    if (!raw) { ioMsg('⚠ 上面是空的，請先貼上備份字串。', '#fcd34d'); return; }
+    var obj;
+    try { obj = JSON.parse(raw); } catch (e) { ioMsg('❌ 這不是有效的備份字串（解析失敗）。', '#fca5a5'); return; }
+    if (!obj || typeof obj !== 'object' || obj.app !== IO_APP || !obj.data || typeof obj.data !== 'object') { ioMsg('❌ 這不是有效的備份字串（缺少正確標記）。', '#fca5a5'); return; }
+    ioConfirm(obj, raw);
+  }
+  function fmtTs(ts) {
+    try { var d = new Date(ts), p = function (x) { return (x < 10 ? '0' : '') + x; }; return d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+    catch (e) { return '（時間不明）'; }
+  }
+  function ioConfirm(obj, raw) {
+    var when = (typeof obj.ts === 'number') ? fmtTs(obj.ts) : '（時間不明）';
+    document.getElementById('m-stg-title').textContent = '💾 匯入 / 匯出存檔';
+    document.getElementById('m-stg-body').innerHTML =
+      '<div class="m-io-confirm">' +
+        '<div class="m-io-warn">⚠ 確定要匯入嗎？</div>' +
+        '<div class="m-io-cdesc">這份備份是 <b>' + esc(when) + '</b> 匯出的。<br>匯入會<b style="color:#fca5a5">清空目前瀏覽器內全部存檔</b>並還原成這份，<b>無法復原</b>。</div>' +
+        '<div class="m-io-btns">' +
+          '<button id="m-io-cancel" type="button" class="m-io-btn">取消</button>' +
+          '<button id="m-io-go" type="button" class="m-io-btn m-io-danger">確定覆蓋並重整</button>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('m-io-cancel').addEventListener('click', function () { openIO(raw); });   // 回匯入頁,文字保留
+    document.getElementById('m-io-go').addEventListener('click', function () { ioApply(obj); });
+  }
+  function ioApply(obj) {
+    try {
+      localStorage.clear();
+      Object.keys(obj.data).forEach(function (k) { localStorage.setItem(k, obj.data[k]); });
+    } catch (e) {
+      document.getElementById('m-stg-body').innerHTML = '<div class="m-io-msg" style="color:#fca5a5;padding:20px;line-height:1.7;">❌ 寫入失敗：' + esc(e.message) + '<br>（可能空間不足）建議重整後檢查存檔。</div>';
+      return;
+    }
+    document.getElementById('m-stg-body').innerHTML = '<div style="color:#86efac;padding:28px;text-align:center;font-size:15px;">✅ 匯入完成，正在重新整理…</div>';
+    setTimeout(function () { location.reload(); }, 700);   // 寫完立即重載:讓還原好的 localStorage 生效(不留記憶體舊狀態)
+  }
+
+  // 將來要加別的設定項,往這裡加一筆 { label, onClick, visible? } 即可
   var MENU_ITEMS = [
-    { label: '🔍 檢查存檔大小', onClick: openModal }
+    { label: '🔍 檢查存檔大小', onClick: function () { openModal('📦 存檔空間用量', renderBody()); } },
+    { label: '💾 匯入／匯出存檔', onClick: function () { openIO(); }, visible: isTest }
   ];
 
   function buildModal() {
@@ -156,7 +232,23 @@
       '.m-stg-bar-fill{height:100%;background:#38bdf8;}',
       '.m-stg-share{font-size:11.5px;color:#64748b;}',
       '.m-stg-empty{color:#94a3b8;text-align:center;padding:20px 8px;font-size:14px;}',
-      '.m-stg-foot{color:#64748b;font-size:12px;text-align:center;margin-top:14px;line-height:1.6;}'
+      '.m-stg-foot{color:#64748b;font-size:12px;text-align:center;margin-top:14px;line-height:1.6;}',
+      /* 匯入／匯出 */
+      '.m-io-desc{color:#cbd5e1;font-size:13.5px;line-height:1.7;margin-bottom:12px;}',
+      '.m-io-btns{display:flex;gap:10px;margin-bottom:10px;}',
+      '.m-io-btn{flex:1;padding:10px;font-size:14px;font-weight:bold;border-radius:9px;cursor:pointer;font-family:inherit;border:1px solid #334155;background:#1e293b;color:#e2e8f0;}',
+      '.m-io-btn:hover{background:#273449;}',
+      '.m-io-exp{background:#155e3a;border-color:#16a34a;color:#bbf7d0;}',
+      '.m-io-exp:hover{background:#166e44;}',
+      '.m-io-imp{background:#1e3a5f;border-color:#3b82f6;color:#bfdbfe;}',
+      '.m-io-imp:hover{background:#234670;}',
+      '.m-io-ta{width:100%;box-sizing:border-box;height:160px;resize:vertical;background:#0b1220;border:1px solid #334155;border-radius:9px;color:#cbd5e1;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;padding:9px;line-height:1.5;}',
+      '.m-io-msg{font-size:13px;margin-top:9px;min-height:18px;line-height:1.6;}',
+      '.m-io-confirm{padding:6px 2px;}',
+      '.m-io-warn{font-size:17px;font-weight:bold;color:#fcd34d;margin-bottom:10px;}',
+      '.m-io-cdesc{color:#cbd5e1;font-size:14px;line-height:1.8;margin-bottom:16px;}',
+      '.m-io-danger{background:#7f1d1d;border-color:#b91c1c;color:#fecaca;}',
+      '.m-io-danger:hover{background:#991b1b;}'
     ].join('');
     document.head.appendChild(s);
   }

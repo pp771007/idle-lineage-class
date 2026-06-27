@@ -912,6 +912,7 @@
     { k: 'mastery', n: '職業專精' },
     { k: 'weapon', n: '武器特性' },
     { k: 'combat', n: '戰鬥機制' },
+    { k: 'mode', n: '遊戲模式' },
     { k: 'map', n: '地圖' },
     { k: 'stats', n: '能力值' },
     { k: 'magic', n: '職業魔法' },
@@ -1058,6 +1059,7 @@
     if (key === 'mastery') return renderMastery(cls);
     if (key === 'weapon') return renderWeapon();
     if (key === 'combat') return renderCombat();
+    if (key === 'mode') return renderMode();
     if (key === 'map') return renderMap();
     if (key === 'stats') return renderStats();
     if (key === 'magic') return renderMagic();
@@ -1101,6 +1103,7 @@
     { key: 'mastery', cls: true, label: '職業專精' },
     { key: 'weapon', cls: false, label: '武器特性' },
     { key: 'combat', cls: false, label: '戰鬥機制' },
+    { key: 'mode', cls: false, label: '遊戲模式' },
     { key: 'map', cls: false, label: '地圖' },
     { key: 'stats', cls: false, label: '能力值' },
     { key: 'magic', cls: false, label: '職業魔法' },
@@ -1593,6 +1596,58 @@
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }).join('');
     return note + secs;
+  }
+
+  // ===== 遊戲模式(本檔手動維護;一般/經典/傳統 差異比較;以遊戲程式實際邏輯為準) ============
+  //   何時要更新:原作者改了經典/傳統的數值或停用清單(grep js/ 的 classicMode / traditionalMode)時,回來改這裡。
+  function renderMode() {
+    var th = 'style="text-align:left;padding:5px 8px;border-bottom:1px solid #475569;color:#e2e8f0;font-weight:bold;"';
+    var thc = 'style="text-align:center;padding:5px 8px;border-bottom:1px solid #475569;color:#e2e8f0;font-weight:bold;"';
+    var td = 'style="padding:5px 8px;border-bottom:1px solid #1e293b;color:#cbd5e1;"';
+    var tdc = 'style="text-align:center;padding:5px 8px;border-bottom:1px solid #1e293b;color:#cbd5e1;"';
+    var OK = '<span style="color:#4ade80;font-weight:bold;">✓</span>';
+    var NO = '<span style="color:#f87171;font-weight:bold;">✗</span>';
+    function tbl(rows) {
+      return '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;"><thead><tr>' +
+        '<th ' + th + '>項目</th><th ' + thc + '>一般</th><th ' + thc + '>經典</th><th ' + thc + '>傳統</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+    function r(item, a, b, c) { return '<tr><td ' + td + '>' + item + '</td><td ' + tdc + '>' + a + '</td><td ' + tdc + '>' + b + '</td><td ' + tdc + '>' + c + '</td></tr>'; }
+    function card(title, inner) { return '<div class="m-wiki-card"><div class="m-wiki-name">' + title + '</div>' + inner + '</div>'; }
+
+    var note = '<div class="m-wiki-note">三種模式在<b>創角時決定、之後永久不能改</b>。<b>傳統</b>是<b>經典</b>的子模式（創角要先勾經典，才能再勾傳統）。下面只列「和一般模式不一樣」的地方；資料以遊戲程式實際邏輯為準。</div>';
+
+    var c1 = card('📉 經驗 · 金幣 · 掉率 · 死亡', tbl(
+      r('經驗值', '100%', '<b style="color:#fca5a5">50%</b>', '<b style="color:#fca5a5">50%</b>') +
+      r('撿到金幣', '100%', '<b style="color:#fca5a5">50%</b>', '<b style="color:#fca5a5">50%</b>') +
+      r('掉寶率', '100%', '<b style="color:#fca5a5">10%（1/10）</b>', '<b style="color:#fca5a5">10%</b>') +
+      r('死亡懲罰', '無', '損失該等級 <b>10% 最大經驗</b>（不降等）', '同經典')
+    ) + '<div class="m-wiki-desc" style="margin-top:6px;">・掉寶率 ×1/10 <b>不影響「職業試煉／任務道具」</b>，那些照原本機率掉。</div>');
+
+    var c2 = card('🛠️ 強化 · 裝備', tbl(
+      r('自己手動強化（快速強化）', OK, OK, NO + '（隱藏）') +
+      r('裝備的強化值怎麼來', '自己強化', '自己強化', '掉落／兌換／製作的裝備<b>自帶隨機強化值</b>') +
+      r('施法卷軸（怪物·黑市掉落）', OK, OK, NO + '（改出祝福／詛咒卷軸）') +
+      r('歐西里斯寶箱開出施法卷軸', OK, OK, NO + '（改抽其他獎品）')
+    ));
+
+    var c3 = card('⚔️ 停用的戰鬥特性／被動（經典與傳統相同）', tbl(
+      r('武器特性：穿透·切割·出血·鈍擊·連射·反擊·居合·共鳴·魔擊·魔爆', OK, NO, NO) +
+      r('騎士被動：看破·殺戮（普攻機率倍傷）', OK, NO, NO) +
+      r('盾牌格檔（受傷減免）', OK, NO, NO) +
+      r('敵人對你「看破」造成雙倍傷害', '會', '<b style="color:#86efac">不會</b>', '<b style="color:#86efac">不會</b>')
+    ));
+
+    var c4 = card('🏛️ 系統 · NPC · 其他', tbl(
+      r('席琳神殿（進入·世界排名）', OK, NO, NO) +
+      r('席琳結晶兌換套裝效果', OK, NO, NO) +
+      r('碧恩：賦予祝福卷軸（屬性／遠古）', OK, NO, NO) +
+      r('漢：職業精通', OK, NO, NO) +
+      r('肯特城兌換 NPC（伊賽馬利）', OK, OK, NO) +
+      r('共用倉庫', '一般專用', '經典專用', '傳統專用') +
+      r('傭兵（招募你其他存檔角色）', '只能招一般', '只能招經典', '只能招傳統')
+    ));
+
+    return note + c1 + c2 + c3 + c4;
   }
 
   function renderCombat() {

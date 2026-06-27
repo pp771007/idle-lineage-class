@@ -1429,14 +1429,15 @@
   // 取得方式接掉落查詢的 AFK_DEX_API.acquireHTML。每件「詳情」常駐 DOM(display:none)→ 連完整數值/特效都進統一搜尋;
   // 詳情與整頁 HTML 都建一次就快取(_equipDetail/_equipHtml)→ 搜尋每次重渲染 441 件也不卡。
   var EQUIP_FILTERS = [['all', '全部'], ['royal', '王族'], ['knight', '騎士'], ['mage', '法師'], ['elf', '妖精'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士'], ['warrior', '戰士']];   // 順序＝全部＋創角職業序(同 CLASSES)
-  var EQUIP_GROUPS = [
-    { k: 'wpn', n: '⚔️ 武器' }, { k: 'helm', n: '🪖 頭部' }, { k: 'armor', n: '🛡 身體' },
+  // 武器部位依「裝備圖鑑」細分(作者 EQUIP_CATEGORIES,分類用 equipCatKey/EQUIP_ITEM_CAT);防具/飾品維持原本粗分。
+  var EQUIP_GROUPS = (typeof EQUIP_CATEGORIES !== 'undefined' ? EQUIP_CATEGORIES.filter(function (c) { return c.group === '武器'; }).map(function (c) { return { k: c.key, n: '⚔️ ' + c.name }; }) : [{ k: 'wpn', n: '⚔️ 武器' }]).concat([
+    { k: 'helm', n: '🪖 頭部' }, { k: 'armor', n: '🛡 身體' },
     { k: 'shield', n: '🔰 盾牌／副手' }, { k: 'cloak', n: '🧥 斗篷' }, { k: 'gloves', n: '🧤 手套' },
     { k: 'boots', n: '🥾 鞋子' }, { k: 'belt', n: '🎗️ 腰帶' }, { k: 'ring', n: '💍 戒指' },
     { k: 'amulet', n: '📿 項鍊' }, { k: 'ear', n: '👂 耳環' }, { k: 'tshirt', n: '👕 內衣' }, { k: 'pet', n: '🐾 寵物裝備' }
-  ];
+  ]);
   var EQUIP_REQ_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
-  function equipGroupKey(d) { return (d.type === 'wpn') ? 'wpn' : (d.slot || 'other'); }
+  function equipGroupKey(id, d) { return (d.type === 'wpn') ? ((typeof EQUIP_ITEM_CAT !== 'undefined' && EQUIP_ITEM_CAT[id]) || 'wpn_other') : (d.slot || 'other'); }
   // 某職業能否裝備:用遊戲真實規則(與遊戲顯示一致),非單看 req
   function classCanEquip(d, id, cls) {
     if (cls === 'all') return true;
@@ -1492,7 +1493,7 @@
       if (!d || !d.n) return;
       if (d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc') return;
       if (!classCanEquip(d, id, cls)) return;
-      var gk = equipGroupKey(d);
+      var gk = equipGroupKey(id, d);
       if (slot !== 'all' && gk !== slot) return;   // 只看選定部位
       (buckets[gk] = buckets[gk] || []).push({ id: id, d: d });
     });

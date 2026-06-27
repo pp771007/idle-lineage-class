@@ -107,6 +107,43 @@
     });
   }
 
+  // ----- 背景節拍器(Worker)----------------------------------------------
+  // 分頁切到背景時,瀏覽器把 rAF / setTimeout 嚴重降速(背景 setTimeout 最低約 1 秒)→ 補跑幾乎停住、
+  // 切走就不算。用一個 Web Worker 當「不被降速的計時器」在背景催補跑繼續。只動「催下一段」這層,
+  // 不碰戰鬥/存檔邏輯,結算結果與前景完全一致。
+  //   - 前景(可見):仍走 rAF(順、快、與原本行為一致,零回歸)。
+  //   - 背景(隱藏):走 Worker,且「算一段留一段空隙」(約 6 成工作週期=溫和),單分頁不吃滿一核、
+  //     多隻角色多分頁同時背景跑也不會把 CPU 榨乾。
+  //   - Worker 起不來(CSP / 本機 file://)→ 自動退回 setTimeout(最壞=跟以前一樣會被降速,不會更糟)。
+  var _ticker = null, _tickerBad = false;
+  function ticker() {
+    if (_ticker || _tickerBad) return _ticker;
+    try {
+      var src = 'onmessage=function(e){setTimeout(function(){postMessage(1)},(e.data&&e.data.gap)||0)}';
+      _ticker = new Worker(URL.createObjectURL(new Blob([src], { type: 'application/javascript' })));
+    } catch (e) { _tickerBad = true; _ticker = null; }
+    return _ticker;
+  }
+  function killTicker() { try { if (_ticker) _ticker.terminate(); } catch (e) {} _ticker = null; }
+  function workerGap(gap) {
+    return new Promise(function (resolve) {
+      var w = ticker(), done = false;
+      var fin = function () { if (done) return; done = true; resolve(); };
+      if (!w) { setTimeout(fin, gap); return; }   // Worker 不可用 → 退回 setTimeout
+      var on = function () { try { w.removeEventListener('message', on); } catch (e) {} fin(); };
+      w.addEventListener('message', on);
+      setTimeout(fin, gap + 2000);                 // 保險:Worker 沒回(被凍/出錯)也不會卡死
+      try { w.postMessage({ gap: gap }); } catch (e) { fin(); }
+    });
+  }
+  // 補跑每段之間的「讓出」:前景 rAF(順、快);背景 Worker 溫和節拍(續跑不卡、不榨乾 CPU)。
+  function pace(sliceMs) {
+    var hidden = (typeof document !== 'undefined' && document.visibilityState === 'hidden');
+    if (!hidden) return raf();
+    var gap = Math.max(16, Math.round((sliceMs || 60) * 0.6));   // 背景空隙≈算一段的 0.6 倍 → 約 6 成工作週期(溫和)
+    return workerGap(gap);
+  }
+
   // ----- 進度遮罩 ---------------------------------------------------------
   var overlayEl = null, overlayBar = null, overlayTxt = null;
   function showOverlay(totalTicks) {
@@ -382,11 +419,12 @@
           }
         }
         if (withOverlay) updateOverlay(done / totalTicks, done, totalTicks);
-        await raf();
+        await pace(sliceMs);   // 前景 rAF / 背景 Worker 溫和節拍(切走也續算)
       }
     } catch (e) {
       console.error('[AFK] 離線補跑發生例外，已中止:', e);
     } finally {
+      killTicker();   // 補跑結束(完成/死亡/例外)→ 關掉背景節拍器 Worker,不殘留
       settleDeadMobs();
     }
 

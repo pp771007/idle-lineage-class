@@ -140,14 +140,15 @@
   var STAT_LABEL = {
     ac: '防禦', mr: '魔防', dr: '傷害減免', er: '迴避', str: '力量', dex: '敏捷',
     con: '體質', int: '智力', wis: '精神', cha: '魅力', mhp: 'HP上限', mmp: 'MP上限',
-    hpR: 'HP回復', mpR: 'MP回復', extraDmg: '額外傷害', extraHit: '額外命中',
+    hpR: 'HP回復', mpR: 'MP回復', extraDmg: '額外傷害', extraHit: '額外命中', magicDmg: '魔法傷害',
     meleeDmg: '近距離傷害', meleeHit: '近距離命中', rangedDmg: '遠距離傷害', rangedHit: '遠距離命中',
     resFire: '火抗性', resWater: '水抗性', resWind: '風抗性', resEarth: '地抗性'
   };
   var STATUS_LABEL = {
     poison: '中毒', blind: '盲目', broken: '破壞(易碎)', slow: '緩速', stone: '石化',
     weaken: '弱化', disease: '疾病', sleep: '沉睡', stun: '暈眩', freeze: '凍結',
-    vacuum: '封印', magicseal: '封印', mrhalf: '魔防減半', armorbreak: '盔甲破壞'
+    vacuum: '封印', magicseal: '封印', mrhalf: '魔防減半', armorbreak: '盔甲破壞',
+    confuse: '混亂', panic: '恐慌'
   };
   // 少數效果不在數值欄位裡(隱身、解除、傳送、暗系被動等),這裡用白話補上
   // 法術白話補充已搬到 afk-extradata.js 的 AFK_EXTRA.skillNote(掉落查詢/小百科共用);skillEffect 於呼叫時即時讀,不依賴載入順序

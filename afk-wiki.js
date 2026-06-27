@@ -1583,6 +1583,7 @@
         // 每筆都附「在哪做」:搜尋會只抓到這一列(抓不到上面的 NPC 標題),所以 NPC 要寫進每列才查得到在哪做
         return '<div class="m-wiki-kv"><b>' + nmHtml + '</b>在 ' + where + ' 製作　材料：' + mats + '</div>';
       }).join('');
+      if (npcId === 'npc_kororanz') html += '<div class="m-wiki-desc" style="margin-top:4px;">・🏛️ <b>聖地遺物</b>（上面拉斯塔巴德五件傳說武器各需 ×100）取得：持有「<b>死亡騎士之印記</b>」時，在<b>拉斯塔巴德區域</b>擊敗<b>任何</b>怪有 <b>0.1%</b> 機率掉落（經典模式 ×1/10）；它不在任何怪的固定掉落表內，掉落查詢要直接搜「聖地遺物」。「死亡騎士之印記」由拉斯塔巴德地監的「長老．X」系列怪掉（各約 3%，唯一、不佔倉、可賣）。</div>';   // 聖地遺物是條件式掉落,在此(它的用途旁)解釋取得
     }
     // 👑 惡魔王武器:炎魔之影客製製作(消耗 +11 以上指定惡魔武器 + 素材,不在 CRAFT_RECIPES 裡)
     if (typeof DEMONKING_RECIPES !== 'undefined' && DEMONKING_RECIPES) {

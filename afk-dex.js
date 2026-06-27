@@ -115,6 +115,20 @@
   // 地圖 id → 中文名：統一委派 afk-extradata 的共用解析(唯一一份,涵蓋隱藏區/攀登/遺忘之島/攻城/村莊…)
   // 出沒地圖帶「領域」前綴(地圖改版後新人找圖用):「領域·地圖名」;委派共用解析,讀不到 helper 才退回純名
   function mapNameOf(id) { try { return (window.AFK_EXTRA && AFK_EXTRA.mapNameWithRegion) ? AFK_EXTRA.mapNameWithRegion(id) : ((window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(id) : id); } catch (e) { return id; } }
+  // 隱藏地圖(hidden_*)→ 進入方式說明:這些圖不在地圖選單,要在母樓層手動施放傳送術/用瞬間移動卷軸進入。key 用 mapNameOf(與 h.maps 同一套解析,確保對得上)。lazy 建一次。
+  var _hiddenEntry = null;
+  function hiddenEntryOf(mapName) {
+    if (_hiddenEntry === null) {
+      _hiddenEntry = {};
+      try {
+        if (typeof HIDDEN_AREA_NAMES !== 'undefined' && typeof HIDDEN_AREA_PARENT !== 'undefined') {
+          var h2p = {}; for (var z in HIDDEN_AREA_PARENT) h2p[HIDDEN_AREA_PARENT[z]] = z;   // hidden_id → 母樓層 zone id
+          for (var hid in HIDDEN_AREA_NAMES) { var pz = h2p[hid]; _hiddenEntry[mapNameOf(hid)] = pz ? ('隱藏區域：在「' + mapNameOf(pz) + '」手動施放傳送術／用瞬間移動卷軸進入') : '隱藏區域'; }
+        }
+      } catch (e) {}
+    }
+    return _hiddenEntry[mapName] || '';
+  }
   function itemNameOf(id) { return (DB.items[id] && DB.items[id].n) ? DB.items[id].n : id; }
   // 職業限定掉落附註:試煉/兌換道具(TRIAL_ITEM_CLASS)僅該職業擊殺才掉,標「🔒僅X」讓所有職業都看得到是誰限定;非限定道具(書板/鎖鏈劍/印記等全職可掉)不在表內→回 null 不附註。
   var _CLS_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
@@ -555,7 +569,11 @@
       st('AC', m.ac != null ? m.ac : '-') + st('魔防', m.mr != null ? m.mr : '-') +
       st('經驗', fmt(m.exp)) + st('金幣', gold) + '</div>';
     var mapsHTML = h.maps.length
-      ? h.maps.map(function (nm) { return '<span class="m-dex-maplink" data-map="' + esc(nm) + '">' + hl(nm, q) + '</span>'; }).join('、')
+      ? h.maps.map(function (nm) {
+          var link = '<span class="m-dex-maplink" data-map="' + esc(nm) + '">' + hl(nm, q) + '</span>';
+          var ent = hiddenEntryOf(nm);   // 隱藏地圖:後面附進入方式
+          return link + (ent ? '<span class="m-dex-hidden-entry">（' + esc(ent) + '）</span>' : '');
+        }).join('、')
       : '—';
     var dropsHTML = h.drops.length
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
@@ -808,6 +826,7 @@
       '.m-dex-maps{font-size:13px;color:#e2e8f0;line-height:1.6;}',
       '.m-dex-droptag{font-size:11px;color:#fca5a5;background:#3b1d2a;border:1px solid #7f3a4a;border-radius:4px;padding:0 5px;margin-left:2px;white-space:nowrap;}',
       '.m-dex-maplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
+      '.m-dex-hidden-entry{color:#94a3b8;font-size:11px;}',   // 隱藏地圖進入方式註記(暗色小字)
       '.m-dex-maplink:active{color:#38bdf8;}',
       /* 掉落物:點名稱=看詳情(慣例:點物品就是看它);查掉落來源的按鈕收進詳情卡裡。 */
       '.m-dex-iname{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',

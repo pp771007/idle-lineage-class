@@ -134,12 +134,14 @@
   };
 
   // ---- 木人場固定背景：包住 applyAreaBackground（它在每次 UI 更新都會跑，會洗掉 inline 背景） ----
+  //   TRAIN_BG 是 1920×580 條狀圖 → 比照作者 area-fit 地圖：backgroundSize:contain + 加 area-fit class，
+  //   怪物才會用「現在版本」的尺寸(填滿戰鬥區、腳齊底)。少了 area-fit 會退回舊的固定 224px 尺寸。
   if (typeof window.applyAreaBackground === 'function') {
     var _origApplyBg = window.applyAreaBackground;
     window.applyAreaBackground = function () {
       if (inTrain()) {
         var bv = document.getElementById('battle-view');
-        if (bv) { bv.style.backgroundImage = 'url("' + TRAIN_BG + '")'; bv.style.backgroundSize = ''; bv.classList.remove('area-fit'); bv.classList.add('has-bg'); }
+        if (bv) { bv.style.backgroundImage = 'url("' + TRAIN_BG + '")'; bv.style.backgroundSize = 'contain'; bv.classList.add('area-fit'); bv.classList.add('has-bg'); }
         return;
       }
       return _origApplyBg.apply(this, arguments);

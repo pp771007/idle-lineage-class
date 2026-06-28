@@ -26,8 +26,13 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
-const CODE_VERSION = 'code-3f4a287b9a96';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-1215'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+<<<<<<< HEAD
+const CODE_VERSION = 'code-2fdb9a1747ab';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0628-1221'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+=======
+const CODE_VERSION = 'code-4131e7b14ff4';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0628-1221'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+>>>>>>> b38a9fb (木人場怪物尺寸修正:背景 wrapper 改加 area-fit+contain(原本 remove area-fit→退回舊固定224px尺寸))
 =======
 const CODE_VERSION = 'code-1e1a7ae6cd45';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
 const BUILD_ID     = '0628-0353'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)

@@ -296,5 +296,21 @@
     console.log('[AFK-fixes] 適用職業 logo 點擊 tip 已掛上');
   })();
 
+  // 🐉 修正#: 邊緣格的頭目(boss-zoom)被畫面裁切。作者讓頭目圖 scale 1.78× 由「bottom center」放大,
+  //   落在最左/最右那格時放大後會脹出戰鬥框(overflow:hidden)被裁掉(任何地圖都會,木人場放多隻時最明顯)。
+  //   通用修正:最左那隻改由「bottom left」放大(只往右脹)、最右那隻由「bottom right」放大(只往左脹)→ 不超出畫面、不被裁;中間維持中心。
+  //   作者若日後改成不裁(或頭目不再落邊格),這段選擇器不命中即回原樣,留著無害。
+  (function () {
+    try {
+      var st = document.createElement('style');
+      st.id = 'afk-fix-bosszoom-edge';
+      st.textContent =
+        '#battle-view.area-fit .boss-zoom:first-child .mob-img-inner{transform-origin:bottom left !important;}\n' +
+        '#battle-view.area-fit .boss-zoom:last-child .mob-img-inner{transform-origin:bottom right !important;}';
+      (document.head || document.documentElement).appendChild(st);
+      console.log('[AFK-fixes] 邊緣頭目放大裁切修正已套用');
+    } catch (e) {}
+  })();
+
   console.log('[AFK-fixes] hooks OK — 通用修正外掛已啟用。');
 })();

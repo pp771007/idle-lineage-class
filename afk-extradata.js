@@ -22,6 +22,7 @@
     mapName: function (id) {
       try {
         if (!id || typeof id !== 'string') return id || '?';
+        if (id === 'afk_dummy') return '木人場';   // 🥊 木人場(afk-training 外掛假地圖):選角畫面/離線摘要等顯示中文,不露 afk_dummy
         if (id === 'windwood_dungeon') return '風木地監';
         if (id === 'oblivion_island') return '遺忘之島';
         if (id === 'oblivion_travel') return '遺忘之島途中';

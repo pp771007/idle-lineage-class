@@ -139,12 +139,11 @@
   if (typeof window.applyAreaBackground === 'function') {
     var _origApplyBg = window.applyAreaBackground;
     window.applyAreaBackground = function () {
-      var bv = document.getElementById('battle-view');
       if (inTrain()) {
-        if (bv) { bv.style.backgroundImage = 'url("' + TRAIN_BG + '")'; bv.style.backgroundSize = 'contain'; bv.classList.add('area-fit'); bv.classList.add('has-bg'); bv.classList.add('afk-train-view'); }
+        var bv = document.getElementById('battle-view');
+        if (bv) { bv.style.backgroundImage = 'url("' + TRAIN_BG + '")'; bv.style.backgroundSize = 'contain'; bv.classList.add('area-fit'); bv.classList.add('has-bg'); }   // area-fit→怪物用現在尺寸;boss 邊緣不裁的修正改放全域 afk-fixes(通用,非木人場特例)
         return;
       }
-      if (bv) bv.classList.remove('afk-train-view');   // 離開木人場:移除標記 → boss 渲染回作者原樣
       return _origApplyBg.apply(this, arguments);
     };
   }
@@ -549,11 +548,7 @@
       '.m-train-pfilter{flex:1;min-width:0;background:#1e293b;border:1px solid #475569;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:13px;outline:none;}',
       '.m-train-pselect{flex:1.4;min-width:0;background:#1e293b;border:1px solid #475569;border-radius:6px;color:#e2e8f0;padding:6px 4px;font-size:13px;outline:none;}',
       '.m-train-modal-btns{display:flex;gap:8px;padding:12px 14px;}',
-      '@media (max-width:640px){#m-train-hud{top:auto;bottom:74px;right:6px;left:6px;width:auto;}.m-train-list{max-height:120px;}}',
-      // 🐉 木人場可同時放多隻寬型 boss(龍):作者的 boss-slot 圖會 300% 寬向左右溢出(單隻很霸氣),但多隻並排或最邊那隻會互蓋/被畫面邊緣切掉(手機尤其明顯)。
-      //   木人場內(afk-train-view)改成每隻 boss 圖「填滿自己這格、不溢出」→ 不切不蓋、每隻都看得完整(DPS 用得到的就是看清楚每隻)。
-      '#battle-view.afk-train-view .mob-target.boss-slot > .mob-img-wrap{position:absolute;left:0;right:0;width:auto;transform:none;}',
-      '#battle-view.afk-train-view .mob-target.boss-slot > .mob-img-wrap .mob-img-inner{justify-content:center;}'
+      '@media (max-width:640px){#m-train-hud{top:auto;bottom:74px;right:6px;left:6px;width:auto;}.m-train-list{max-height:120px;}}'
     ].join('\n');
     document.head.appendChild(st);
   }

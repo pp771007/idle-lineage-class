@@ -1039,7 +1039,7 @@ function _quickEnhanceUnit(d, startEn, goal, scrollStacks, keyBase) {
 function buildQuickEnhanceHeader(type) {
     let st = quickEnh[type];
     let hdr = document.createElement('div');
-    hdr.className = 'sticky top-0 z-10 mb-1 bg-slate-900 pb-1';
+    hdr.className = 'sticky top-0 z-10 bg-slate-900 pb-2';   // 🔧 移除 mb-1 透明間隙、pb 加大為不透明：滾動時物品不會從按鈕底部下方透出
     if (!st.active) {
         hdr.innerHTML = `<button onclick="toggleQuickEnhance('${type}')" class="w-full btn border-blue-700 bg-blue-900/70 hover:bg-blue-800 py-1.5 text-sm font-bold text-blue-200 rounded shadow">⚡ 快速強化</button>`;
         return hdr;
@@ -1135,7 +1135,7 @@ function buildQuickHeader(type) {
     let jnk = quickJunk[type];
     if (jnk.active) _qjSync(type);   // 🔧 渲染前先同步新掉落物品到面板狀態（新廢品預先勾選），確認時才不會誤取消其標記
     let hdr = document.createElement('div');
-    hdr.className = 'sticky top-0 z-10 mb-1 bg-slate-900 pb-1';
+    hdr.className = 'sticky top-0 z-10 bg-slate-900 pb-2';   // 🔧 移除 mb-1 透明間隙、pb 加大為不透明：滾動時物品不會從按鈕底部下方透出
     if (jnk.active) {   // 快速廢品進行中：取消／確認／全選（無數值選擇）
         let eligible = _qjEligibleItems(type);
         let allSel = eligible.length > 0 && eligible.every(i => jnk.sel[i.uid]);

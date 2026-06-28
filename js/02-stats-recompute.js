@@ -1,5 +1,6 @@
 function recomputeStats() {
     let p = player, d = p.d, b = p.base, a = p.alloc;
+    if (typeof p.lv === 'number') p.lv = Math.max(1, Math.min(100, Math.floor(p.lv) || 1));   // 🛡️ 等級硬夾 [1,100]：即時中和「改 player.lv」的外掛，避免職業成長值被放大
 
     // 先把「上一輪由裝備授予的技能」從技能欄移除（卸下裝備時生效）；sk_helm_* 玩家無法學習，不會誤刪已學技能
     if (player.grantedSkills && player.grantedSkills.length) {
@@ -71,6 +72,14 @@ function recomputeStats() {
           if (_eqHas('acc_curse_green')) { d.dex += 2; d.cha -= 2; }
       }
     }
+
+    // 🎯 六維屬性效果上限 80：效果表(getStr/Dex/Int/Con/Wis... 系列)最高只設定到 80，超過 80 無對應能力。
+    //    故在此(Phase 1 加總完、Phase 2 換算前)把最終屬性夾擠至 ≤80：
+    //    ① 讓 HP/MP 線性成長(getConGrowth/getWisGrowth·原本無上限)亦止於 80；② 資訊欄(讀 d.str)顯示不超過 80，避免玩家誤會配更高有加成。
+    //    註：只夾「衍生最終值 d.*」，不動 player.base/alloc/panacea(原始配點保留、可回憶蠟燭退還)；各效果自身更低的內部上限(ER封60/MpReduce封45/MR封60)不受影響。
+    { let _ATTR_CAP = 80;
+      d.str = Math.min(_ATTR_CAP, d.str); d.dex = Math.min(_ATTR_CAP, d.dex); d.int = Math.min(_ATTR_CAP, d.int);
+      d.con = Math.min(_ATTR_CAP, d.con); d.wis = Math.min(_ATTR_CAP, d.wis); d.cha = Math.min(_ATTR_CAP, d.cha); }
 
     // ===== Phase 2：依「最終屬性」一次性換算所有衍生戰鬥數值 =====
     // 職業基礎 MR 與 等級成長
@@ -252,6 +261,9 @@ d.mr += (baseMr + bonusMr);
         if(ed.rangedDmg) d.rangedDmg += ed.rangedDmg;
         if(ed.extraHit)  d.extraHit  += ed.extraHit;          // 🐉 裝備額外命中（龍鱗臂甲 +2）
         if(ed.extraDmg)  d.extraDmg  += ed.extraDmg;          // 🐉 裝備額外傷害
+        if(ed.magicHit)  d.magicHit  += ed.magicHit;          // 🪆 裝備固定魔法命中（魔法娃娃：墮落/巴風特）
+        if(ed.er)        d.er         += ed.er;                // 🪆 裝備固定 ER（魔法娃娃：飛龍/吸血鬼/林德拜爾）
+        if(ed.extraMp)   d.extraMp    += ed.extraMp;          // 🪆 裝備固定額外魔法點數（魔法娃娃：思克巴女皇）
         if(ed.extraAtk)  d.equipExtraAtk += ed.extraAtk;      // 🐉 裝備額外一般攻擊次數（龍鱗臂甲 +1）
         if(ed.immStone) d.immStone = true;                    // 紅騎士盾牌：免疫石化
         if(ed.immPoison) d.immPoison = true;                  // 潔尼斯戒指：免疫中毒/猛毒/麻痺
@@ -499,6 +511,21 @@ function calcStats() {   // 🔧 架構#4：對外介面不變（重算 + UI 刷
     recomputeStats();
     applyElfBorder();
     updateUI();
+    applyDollCursor();   // 🪆 魔法娃娃：依 eq.doll 更新滑鼠游標（裝/卸/載入都會經過 calcStats）
+}
+// 🪆 魔法娃娃：裝備 slot:doll 時把滑鼠游標換成 assets/doll/<物品名稱>.png（可用 d.dollImg 自訂圖名）；未裝則回預設。游標圖需 ≤32×32 否則瀏覽器忽略→fallback auto
+function applyDollCursor() {
+    if (typeof document === 'undefined' || !document.body) return;
+    let e = player && player.eq && player.eq.doll;
+    let ed = e ? DB.items[e.id] : null;
+    if (ed) {
+        let img = ed.dollImg || ed.n;
+        document.body.style.cursor = "url('assets/doll/" + img + ".png') 4 4, auto";
+        document.body.classList.add('has-doll-cursor');     // 🪆 連可點擊處也套娃娃游標（見 css：body.has-doll-cursor *）
+    } else {
+        document.body.style.cursor = '';   // 未裝魔法娃娃 → 回預設游標
+        document.body.classList.remove('has-doll-cursor');  // 卸下娃娃：必須移除 class，否則全頁強制 inherit 'auto' 會失去手指提示
+    }
 }
 
 // ===== 變形卷軸：變身資料（依規格文件） =====
@@ -656,10 +683,10 @@ function enterHiddenArea(hiddenId) {
 function playerTeleport() {
     if (player.skills && player.skills.includes('sk_teleport')) {
         let _sk = DB.skills.sk_teleport;
-        if (player.mp >= player.d.getMpCost(_sk.mp, _sk.tier)) { manualCast('sk_teleport'); return; }
+        if (player.mp >= player.d.getMpCost(_sk.mp, _sk.tier)) { state._manualTpUntil = (state.ticks || 0) + 50; manualCast('sk_teleport'); return; }   // 🕒 手動瞬移後 5 秒內抑制自動瞬移/自動購買
     }
     let _it = player.inv.find(i => i.id === 'scroll_teleport' && (i.cnt || 1) >= 1);
-    if (_it) { useItem(_it.uid, false); return; }
+    if (_it) { state._manualTpUntil = (state.ticks || 0) + 50; useItem(_it.uid, false); return; }   // 🕒 手動瞬移後 5 秒內抑制自動瞬移/自動購買
     logSys('<span class="text-slate-400">你尚未學會傳送術，也沒有瞬間移動卷軸。</span>');
 }
 

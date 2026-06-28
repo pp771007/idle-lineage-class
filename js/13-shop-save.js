@@ -261,13 +261,14 @@ function migrateSaves(){
 function anySaveExists(){ return ['1','2','3','4','5','6','7','8'].some(n => localStorage.getItem('lineage_idle_save_' + n)); }
 function _summaryFromRaw(s){
     if(!s) return null;
+    s = _saveUnwrap(s).payload;   // 🛡️ 先解存檔簽章（摘要顯示不驗章、僅取 payload；舊明文檔原樣回傳）
     try { let d = JSON.parse(s); let p = d.p;
         let clsName = { knight:'騎士', mage:'法師', elf:'妖精', dark:'黑暗妖精', illusion:'幻術士', dragon:'龍騎士', warrior:'戰士', royal:'王族' }[p.cls] || p.cls;
         return { name: p.name || '', cls: clsName, lv: p.lv || 1, gold: p.gold || 0, classic: !!p.classicMode, traditional: !!p.traditionalMode, avatar: p.avatar || null };   // 🎮 經典／🏛️ 傳統模式旗標：供存檔位顯示與傭兵同模式招募限制；avatar＝職業性別頭像名（assets/character/<avatar>.png）；name 未命名時留空字串（顯示端自行省略）
     } catch(e){ return null; }
 }
-function slotSummary(n){ return _summaryFromRaw(localStorage.getItem('lineage_idle_save_' + n)); }
-function slotBackupSummary(n){ return _summaryFromRaw(localStorage.getItem('lineage_idle_save_' + n + '_bak')); }   // 匯入前自動備份的摘要
+function slotSummary(n){ return _summaryFromRaw(_lzGet('lineage_idle_save_' + n)); }
+function slotBackupSummary(n){ return _summaryFromRaw(_lzGet('lineage_idle_save_' + n + '_bak')); }   // 匯入前自動備份的摘要
 let _slotMode = 'new';
 function openSlotSelect(mode){
     _slotMode = mode;
@@ -318,15 +319,16 @@ function slotBackToMenu(){
 //       不支援時退回瀏覽器下載（落在預設下載資料夾）。
 async function exportSave(){
     saveGame();   // 先儲存，確保匯出的是最新進度
-    let data = localStorage.getItem('lineage_idle_save_' + currentSlot);
+    let data = _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot)).payload;   // 💾 解壓並解簽 → 取出明文 JSON payload
     if(!data){ alert('目前沒有可匯出的存檔。'); return; }
     // 🔧 一併收錄共用倉庫（依角色的經典/非經典模式取對應倉庫）；匯入時可選擇是否還原
     try {
         let _obj = JSON.parse(data);
-        let _whRaw = localStorage.getItem(whKey());   // 🎮 目前角色（經典/非經典）對應的倉庫
+        let _whRaw = _lzGet(whKey());   // 🎮 目前角色（經典/非經典）對應的倉庫（💾 解壓成明文）
         if(_whRaw) _obj.wh = JSON.parse(_whRaw);
         data = JSON.stringify(_obj);
     } catch(e){}
+    data = _saveWrap(data);   // 🛡️ 匯出檔加完整性簽章（前綴 'SIG1:'，匯入時驗章；payload 仍為明文 JSON）
     let sum = slotSummary(currentSlot);
     let cname = (sum && sum.name) ? sum.name : ('slot' + currentSlot);   // 未命名 → 用 slotN 當檔名
     let fname = `fable5_save_${currentSlot}_${cname}.json`;
@@ -368,7 +370,11 @@ function importSave(n){
         if(!file) return;
         let reader = new FileReader();
         reader.onload = function(){
-            let text = String(reader.result || '');
+            let _raw = String(reader.result || '');
+            let _u = _saveUnwrap(_raw);   // 🛡️ 解存檔簽章（相容舊版無簽章明文匯出檔）
+            if(_u.signed && !_u.ok){ alert('匯入失敗：檔案完整性校驗未通過，可能已被竄改。'); return; }   // 🛡️ 簽章不符＝被改過：拒絕匯入
+            if(!_u.signed && !confirm('此存檔檔案沒有完整性簽章（可能來自舊版本，或被外部修改/移除簽章）。\n仍要匯入嗎？')) return;   // 🛡️ 未簽章檔（含被剝掉 SIG1 前綴後竄改者）：明示警告＋需確認，避免簽章被「刪前綴」無聲繞過
+            let text = _u.payload;
             let d;
             try { d = JSON.parse(text); }
             catch(e){ alert('匯入失敗：檔案不是有效的存檔（JSON 解析錯誤）。'); return; }
@@ -383,14 +389,14 @@ function importSave(n){
             if(whData !== undefined){ let _c = {}; for(let k in d){ if(k !== 'wh') _c[k] = d[k]; } saveText = JSON.stringify(_c); }
             let cur = localStorage.getItem('lineage_idle_save_' + n);
             if(cur) localStorage.setItem('lineage_idle_save_' + n + '_bak', cur);   // 匯入前自動備份原存檔
-            localStorage.setItem('lineage_idle_save_' + n, saveText);
+            _lzSet('lineage_idle_save_' + n, _saveWrap(saveText));   // 💾 匯入 → 以本機簽章重新封裝後壓縮存入（之後讀檔即可驗章）
             // 🔧 詢問是否一併還原共用倉庫（會覆蓋現有倉庫，四個存檔位共用）
             let whMsg = '';
             if(whData !== undefined){
                 let _cnt = (whData.items && whData.items.length) || 0;
                 let _gold = whData.gold || 0;
                 if(confirm(`此匯入檔包含倉庫資料（物品 ${_cnt} 項、金幣 ${_gold.toLocaleString()}）。\n是否一併還原倉庫？\n⚠ 會覆蓋該角色所屬模式（${(d.p && d.p.classicMode) ? '經典' : '非經典'}）的共用倉庫。`)){
-                    localStorage.setItem(whKey(d.p), JSON.stringify({ items: whData.items || [], gold: whData.gold || 0 }));   // 🎮 依匯入角色的經典/非經典模式寫入對應倉庫
+                    _lzSet(whKey(d.p), JSON.stringify({ items: whData.items || [], gold: whData.gold || 0 }));   // 🎮 依匯入角色的經典/非經典模式寫入對應倉庫（💾 壓縮）
                     whMsg = '\n倉庫已一併還原。';
                 } else {
                     whMsg = '\n（倉庫維持原狀，未還原）';
@@ -543,7 +549,8 @@ function startGame() {
     player.classicMode = !!(document.getElementById('create-classic-toggle') && document.getElementById('create-classic-toggle').checked);   // 🎮 經典模式：依創角開關決定（此角色永久生效）
     player.traditionalMode = player.classicMode && !!(document.getElementById('create-traditional-toggle') && document.getElementById('create-traditional-toggle').checked);   // 🏛️ 傳統模式：經典之上的子模式（須經典亦開啟才生效・永久）
     player.name = null;   // 預設未取名，狀態欄顯示「點擊取名」，玩家可點擊命名
-    
+    player.enSeed = 'es' + uid() + uid();   // 🎲 強化決定論種子（創角產生一次、存進存檔永久固定）：讓強化成敗由種子決定、不可用 save/load 刷
+
     let b = createBase[curCreate.cls];
     player.base = { str: b.str+curCreate.str, dex: b.dex+curCreate.dex, con: b.con+curCreate.con, int: b.int+curCreate.int, wis: b.wis+curCreate.wis, cha: b.cha+curCreate.cha };
     player.lv = 1; player.exp = 0; player.gold = 1000;
@@ -660,6 +667,7 @@ function saveGame() {
     // 死亡狀態不寫檔：避免把 player.dead=true 存進去，導致下次讀檔卡在死亡狀態而不出怪。
     // 死亡期間沒有可保存的進度，保留上一份「存活」存檔即可。
     if (player && player.dead) return;
+    if (typeof sanitizeState === 'function') sanitizeState();   // 🛡️ 寫檔前合理性夾擠：把 runtime(Console)改出的不可能數值夾回合法範圍，連同簽章一起固化、不讓作弊值被存檔/匯出
     // 收集目前的自動化設定 UI 狀態
     player.config = {
         setPot: document.getElementById('set-pot').value,
@@ -697,7 +705,7 @@ function saveGame() {
         if (chk) player.config.autoBuffSkills[sid] = chk.checked;
     });
 
-    localStorage.setItem('lineage_idle_save_' + currentSlot, JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks }));   // 🔧 架構#6：寫入存檔版本   // 🔧 一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準（迷魅重新計時 1 小時）
+    _lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })));   // 🔧 架構#6：寫入存檔版本（🛡️ 加完整性簽章後 💾 LZString 壓縮）   // 🔧 一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準（迷魅重新計時 1 小時）
     logSys(`遊戲進度已儲存。`);
 }
 
@@ -725,10 +733,14 @@ function consolidateInventory() {
 }
 
 function loadGame() {
-    let s = localStorage.getItem('lineage_idle_save_' + currentSlot);
+    let _u = _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot));   // 🛡️ 解存檔簽章（舊明文存檔 signed:false 照常載入）
+    if (_u.signed && !_u.ok) { alert('此存檔的完整性校驗未通過，可能已被外部修改，無法載入。\n可在載入畫面點「復原備份」還原，或改用未被修改的存檔。'); return; }   // 🛡️ 簽章不符＝被竄改：拒絕載入
+    let s = _u.payload;
     if (s) {
-        let d = JSON.parse(s);
+        let d; try { d = JSON.parse(s); } catch(e){ alert('此存檔位的資料已毀損，無法載入。若先前有匯入過，可在載入畫面點「復原備份」還原。'); return; }   // 🛡️ 與其他讀檔點一致：毀損時乾淨報錯而非拋例外卡死
         player = d.p; mapState = d.ms;
+        if (!player.enSeed) player.enSeed = 'es' + _seedHash((player.name || '') + '|' + (player.cls || '') + '|lz').toString(36);   // 🎲 舊存檔無強化種子：由角色名+職業決定論衍生（重匯入同一份舊檔也得相同種子→不能靠重匯入重洗強化）
+        if (typeof sanitizeState === 'function') sanitizeState();   // 🛡️ 讀檔後合理性夾擠（抓改過/竄改的存檔：等級>100、強化值超上限、負金幣等）
         state.ticks = d.ticks || 0;   // 🔧 還原 tick 計數：讓召喚物/迷魅以絕對 tick 記錄的 endTick 在重載後仍然有效
         // 修復：自動存檔可能在「死亡放置」期間把 player.dead=true 寫入存檔。
         // 讀檔一律以「在村莊甦醒、存活」載入，否則 tick() 會因 player.dead 提早 return，

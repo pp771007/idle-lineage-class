@@ -32,7 +32,7 @@ function renderTabs(force) {
 
     let eDiv = document.getElementById('tab-equip'); eDiv.innerHTML = '';
     { let _wd = player.d || {}; let _t = _wd.loadTier || 0; let _hdr = document.createElement('div'); _hdr.className = 'text-center py-0.5 mb-1 rounded bg-slate-900/60 border border-slate-700 text-sm font-bold leading-tight' + (_t >= 1 ? ' cursor-help' : ''); if (_t >= 1) { _hdr.title = _t === 1 ? '負重50%↑：HP/MP不自然恢復' : (_t === 2 ? '負重82%↑：HP/MP不自然恢復、停自動施法、攻速變慢' : '負重100%↑：HP/MP不自然恢復、停自動施法、攻速大幅變慢'); } _hdr.innerHTML = `<span class="text-slate-400">負重 </span><span class="${getLoadColor(_t)}">${_wd.weightPct||0}%</span>`; eDiv.appendChild(_hdr); }
-    const slots = [{k:'wpn',n:'武器'}, ...((player.cls === 'warrior' && (player.skills.includes('sk_warrior_dualaxe') || player.eq.offwpn)) ? [{k:'offwpn',n:'副手武器'}] : []), {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'pet',n:'寵物裝備'},{k:'arrow',n:'箭矢'}];   // ⚔️ offwpn：戰士學會迅猛雙斧後顯示副手武器欄
+    const slots = [{k:'wpn',n:'武器'}, ...((player.cls === 'warrior' && (player.skills.includes('sk_warrior_dualaxe') || player.eq.offwpn)) ? [{k:'offwpn',n:'副手武器'}] : []), {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'pet',n:'寵物裝備'},{k:'doll',n:'魔法娃娃'},{k:'arrow',n:'箭矢'}];   // ⚔️ offwpn：戰士學會迅猛雙斧後顯示副手武器欄
     
     let setCheck = {}, _setSeen = {};
     for (let k in player.eq) {
@@ -174,7 +174,7 @@ player.inv.forEach(i => {
 });
     
     let sDiv = document.getElementById('tab-skill'); sDiv.innerHTML = '';
-    let sortedSkills = [...player.skills].sort((a,b) => (DB.skills[a].tier||0) - (DB.skills[b].tier||0));
+    let sortedSkills = [...player.skills].filter(s => DB.skills[s] && !DB.skills[s].procOnly).sort((a,b) => (DB.skills[a].tier||0) - (DB.skills[b].tier||0));   // 🏛️ 過濾 procOnly（純武器proc技能如惡魔之吻：不顯示於技能格）
 
     // 🎨 已學技能：固定大小 ICON 排版；階級文字置左、4 欄格(至少 4×2)置右
     // 🔮 依「學習來源」分區：魔法書／技術書／精靈水晶／黑暗精靈水晶 各自獨立，即使同階也分開；裝備授予(sk_helm_*)歸「裝備授予」
@@ -295,8 +295,45 @@ function onAwakenToggle(sid) {
         ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].forEach(id => {
             if (id !== sid) { let o = document.getElementById('auto-sk-' + id); if (o) o.checked = false; }
         });
+    } else if (c && !c.checked) {
+        endAutoBuffNow(sid);   // 🔧 取消打勾：該覺醒立即結束（不等自然倒數；HP/MP 消耗也隨之停止）
     }
     renderSkillSelects();
+}
+// 🔧 取消打勾即「立即結束」對應的自動輔助增益（不等自然倒數）。回傳是否真的結束了某效果。供 buff 技能 / HoT 治癒 / 覺醒 共用。
+function endAutoBuffNow(sid) {
+    let sk = DB.skills[sid]; if (!sk) return false;
+    let ended = false;
+    if (sk.type === 'heal' && sk.autoBuff) {   // HoT 治癒（體力回復術/生命的祝福）：清掉持續回復
+        if (player.hot && (player.hot.skId === sid || player.hot.skId == null)) { player.hot = null; ended = true; }
+    } else {   // 一般 buff 技能（立方/火牢/冰雪颶風/日光/暗隱/力盔敏盔/覺醒…）：歸零該增益計時
+        if ((player.buffs[sid] || 0) > 0) { player.buffs[sid] = 0; ended = true; }
+    }
+    if (ended) { if (typeof calcStats === 'function') calcStats(); if (typeof renderStatusEffects === 'function') renderStatusEffects(); if (typeof updateUI === 'function') updateUI(); }
+    return ended;
+}
+// 一般 buff/HoT 勾選框（auto-sk-*，非召喚/覺醒/淨化）的 onchange：取消打勾即立即結束
+function onAutoBuffToggle(sid) {
+    let c = document.getElementById('auto-sk-' + sid);
+    if (c && !c.checked) endAutoBuffNow(sid);
+}
+// 🔧 藥水/卷軸類維持型增益（靜態勾選框 set-*）：取消打勾即立即結束對應 buff（不等自然倒數）。於 window.onload 掛一次（勾選框是靜態 DOM、持久存在）。
+const POTION_BUFF_ENDERS = [['set-haste','haste'],['set-brave','brave'],['set-blue','blue'],['set-cautious','cautious'],['set-elfcookie','elfcookie'],['set-poly','poly'],['set-magicbarrier','sk_magic_shield']];
+function wireBuffEnders() {
+    POTION_BUFF_ENDERS.forEach(function(pair){
+        let el = document.getElementById(pair[0]);
+        if (el && !el._buffEnderWired) {
+            el._buffEnderWired = true;
+            el.addEventListener('change', function(){
+                if (!el.checked && player.buffs && (player.buffs[pair[1]] || 0) > 0) {
+                    player.buffs[pair[1]] = 0;   // 🔧 取消打勾：加速/勇敢/慎重/精靈餅乾/變身/魔法護盾立即失效（變身會在 calcStats 還原原形）
+                    if (typeof calcStats === 'function') calcStats();
+                    if (typeof renderStatusEffects === 'function') renderStatusEffects();
+                    if (typeof updateUI === 'function') updateUI();
+                }
+            });
+        }
+    });
 }
 
 function renderSkillSelects() {
@@ -306,7 +343,7 @@ function renderSkillSelects() {
     let prevConvert = document.getElementById('sel-convert-skill') ? document.getElementById('sel-convert-skill').value : '';
     let aHtml = '<option value="">無</option>', hHtml = '<option value="">無</option>', cHtml = '<option value="">無</option>';
     let buffHtml = '';
-    let sortedSkills = [...player.skills].sort((a,b) => DB.skills[a].tier - DB.skills[b].tier);
+    let sortedSkills = [...player.skills].filter(s => DB.skills[s] && !DB.skills[s].procOnly).sort((a,b) => DB.skills[a].tier - DB.skills[b].tier);   // 🏛️ 過濾 procOnly（惡魔之吻等純武器proc：不顯示於施放下拉/勾選）
     
     sortedSkills.forEach(sid => {
         let sk = DB.skills[sid];
@@ -333,9 +370,11 @@ function renderSkillSelects() {
             let __awakenAttr = sk.awaken ? ` onchange="onAwakenToggle('${sid}')"` : '';
             let __dis = (!isAvail || __locked || __awakenLocked) ? 'disabled' : '';
             let __purAttr = (sid === 'sk_cancel') ? ` onchange="renderSkillSelects()"` : '';
+            // 🔧 一般 buff / HoT 治癒（非召喚/覺醒/淨化）：取消打勾即立即結束（召喚/覺醒已各自有 onchange；淨化為反應式無常駐增益）
+            let __autoBuffAttr = (!__isPurify && !sk.summon && !sk.awaken && (sk.type === 'buff' || (sk.type === 'heal' && sk.autoBuff))) ? ` onchange="onAutoBuffToggle('${sid}')"` : '';
             let __span = __isPurify ? 'text-teal-300' : 'text-purple-300';
             let __ttl = __locked ? ' title="魔法相消術已涵蓋此效果"' : (__awakenLocked ? ' title="同時只能使用一種覺醒（需「覺醒精通」才能三種並用）"' : '');
-            buffHtml += `<label class="cursor-pointer flex items-center gap-2 ${(isAvail && !__locked && !__awakenLocked)?'':'opacity-50'}"${__ttl}><input type="checkbox" id="auto-sk-${sid}" ${checked} ${__dis}${sumAttr}${__awakenAttr}${__purAttr}> <span class="${__span}">${sk.n}</span></label>`;
+            buffHtml += `<label class="cursor-pointer flex items-center gap-2 ${(isAvail && !__locked && !__awakenLocked)?'':'opacity-50'}"${__ttl}><input type="checkbox" id="auto-sk-${sid}" ${checked} ${__dis}${sumAttr}${__awakenAttr}${__purAttr}${__autoBuffAttr}> <span class="${__span}">${sk.n}</span></label>`;
         }
         if(sk.type === 'convert') {
             if (needLv !== undefined) cHtml += `<option value="${sid}" ${dis}>${sk.n}</option>`;   // 🔧 該職業無法學習的轉換技直接不顯示（如法師的心靈轉換/魂體轉換）；等級未達者仍顯示為灰字
@@ -358,6 +397,7 @@ function renderSkillSelects() {
     if(_convRow) _convRow.classList.toggle('hidden', player.cls !== 'elf' && player.cls !== 'mage' && !(player.cls === 'royal' && hasMastery('k_royal_magic')));   // 🔧 轉換技能設置開放給法師/妖精；👑 王族（魔法精通）也開放以使用魔力奪取
     document.getElementById('auto-buff-skills').innerHTML = buffHtml;
     updateSummonLock();
+    if (typeof wireBuffEnders === 'function') wireBuffEnders();   // 🔧 確保藥水/卷軸維持型增益勾選框已掛「取消打勾即結束」監聽（_buffEnderWired 守衛→重複呼叫零成本）
 }
 
 // 1. 定義輔助函數 (請確保它在 openModal 外面或上方)
@@ -451,7 +491,7 @@ function buildItemDescHTML(item) {
         if(d.dmgBonus !== undefined) desc += ` / ${dmgLabel}: ${formatBonus(d.dmgBonus)}`; // 加上 !== undefined 避免 0 被漏掉
         
         if(d.mdmg) desc += ` / 魔法傷害: ${formatBonus(d.mdmg)}`;
-        if((item.en || 0) >= 11) desc += `<br><span class="text-amber-300">強化最終傷害 ×${enhanceWpnFinalMult(item.en).toFixed(1)}</span>`;   // 🔧 武器強化最終傷害倍率
+        if((item.en || 0) >= 1) desc += `<br><span class="text-amber-300">強化最終傷害 ×${enhanceWpnFinalMult(item.en).toFixed(2)}</span>`;   // 🔧 武器強化最終傷害倍率（+1 起·×1.02~×2.50）
 
         // 瑪那魔杖等「命中恢復MP」武器：依此物品的強化等級(+N)動態顯示恢復量
         if(d.eff === 'mp_drain' || d.mpOnHit) {
@@ -891,7 +931,7 @@ function executeAutoSafeEnhance(targetUid, isEq, scrollId, goal) {
             } else {                                      // 防具：安定值6（其餘安定值防呆比照）
                 rate = en === safe ? 0.30 : 0.20;
             }
-            if (Math.random() < rate) {
+            if (enRandomUid(target.uid, en, '') < rate) {   // 🎲 決定論：與單抽 doEnhance 同一套 (enSeed,uid,en) → 一鍵/單抽結果一致、不可 save/load 刷
                 target.en += 1;   // 成功
             } else {
                 destroyed = true; // 失敗即爆裝，過程視為失敗
@@ -970,7 +1010,7 @@ function _enhanceRate(d, en, safe) {
 // 該分頁可被批次強化的背包裝備（未鎖定；武器分頁＝武器(非箭矢)，防具分頁＝防具/飾品）
 function _qeEligibleItems(type) {
     return player.inv.filter(i => {
-        let d = DB.items[i.id]; if (!d || i.lock) return false;
+        let d = DB.items[i.id]; if (!d || i.lock || d.noEnhance) return false;   // 🪆 無法強化(古老系列/魔法娃娃)不列入快速強化
         if (type === 'wpn') return d.type === 'wpn' && !d.isArrow;
         return d.type === 'arm' || d.type === 'acc';
     });
@@ -978,7 +1018,7 @@ function _qeEligibleItems(type) {
 
 // 模擬單一件裝備從 startEn 強化到 goal：每階消耗對應卷軸，安定值前必成功、安定值起依機率，失敗即爆裝。
 // scrollStacks 為 {scrollId:{cnt}} 的可變計數器（多件共用同一池），回傳 {en, destroyed, used}
-function _quickEnhanceUnit(d, startEn, goal, scrollStacks) {
+function _quickEnhanceUnit(d, startEn, goal, scrollStacks, keyBase) {
     let en = startEn, used = 0, destroyed = false;
     let safe = d.safe || 0;
     goal = Math.min(goal, enhanceCap(d));   // 🔧 批次強化亦不超過各裝備的強化上限（淬鍊）
@@ -988,7 +1028,7 @@ function _quickEnhanceUnit(d, startEn, goal, scrollStacks) {
         if (!st || st.cnt <= 0) break;   // 卷軸用盡：停在目前等級（不爆裝）
         st.cnt -= 1; used += 1;
         if (en < safe) { en += 1; continue; }   // 安定值前必定成功
-        if (Math.random() < _enhanceRate(d, en, safe)) en += 1;   // 安定值起：依機率
+        if (enRandomUid(keyBase, en, '') < _enhanceRate(d, en, safe)) en += 1;   // 🎲 決定論：keyBase=堆疊uid:副本序，每副本獨立且跨 re-import 穩定（不可 save/load 刷）
         else { destroyed = true; break; }                         // 失敗即爆裝
     }
     return { en, destroyed, used };
@@ -1049,7 +1089,7 @@ function runQuickEnhance(type) {
         removeUids.add(entry.uid);
         for (let u = 0; u < cnt; u++) {
             if ((entry.en || 0) >= Math.min(goal, enhanceCap(d))) { skipped++; survivors.push({ ...entry, cnt: 1, uid: uid() }); continue; }   // 已達/超過目標（或已達淬鍊上限）：原樣保留
-            let r = _quickEnhanceUnit(d, entry.en || 0, goal, scrollStacks);
+            let r = _quickEnhanceUnit(d, entry.en || 0, goal, scrollStacks, entry.uid + ':' + u);   // 🎲 keyBase=堆疊uid:副本序 → 決定論、每副本獨立
             usedTotal += r.used;
             if (r.destroyed) { destroyed++; continue; }   // 爆裝：不保留
             if (r.en >= goal) reached++; else partial++;  // 抵達 or 卷軸不足停在中途

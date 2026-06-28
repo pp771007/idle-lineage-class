@@ -29,7 +29,7 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="css/style.css?v=d6538b094d">
+    <link rel="stylesheet" href="css/style.css?v=64c3dc2ff5">
 </head>
 <body class="h-screen w-screen flex items-center justify-center p-4">
 
@@ -119,6 +119,9 @@
             </div>
             
         </div>
+
+        <!-- 🏷️ 版本號（由 js/14 window.onload 依 GAME_VERSION 填入；此處 v2.4.0 僅為 JS 失效時的後備文字） -->
+        <div id="login-version" class="text-center text-xs text-slate-600 select-none mt-1">v2.4.0</div>
     </div>
 
     <!-- 遊戲主畫面 -->
@@ -385,23 +388,23 @@
         </div>
     </div>
 
-<script src="js/00-data.js?v=9070bb8659"></script>
-<script src="js/01-drops-config.js?v=c3f0f1e978"></script>
-<script src="js/02-stats-recompute.js?v=f5961f5591"></script>
-<script src="js/03-combat-core.js?v=ed8057f824"></script>
-<script src="js/04-combat-attack.js?v=08cd2941ba"></script>
-<script src="js/05-kill-progression.js?v=9a613af674"></script>
-<script src="js/06-status-allies.js?v=4f594f29ee"></script>
-<script src="js/07-skills-cast.js?v=78a3958125"></script>
-<script src="js/08-items-equip.js?v=2eaf18edfd"></script>
+<script src="js/00-data.js?v=eda5e2c205"></script>
+<script src="js/01-drops-config.js?v=61fcac54eb"></script>
+<script src="js/02-stats-recompute.js?v=8802ac6fcd"></script>
+<script src="js/03-combat-core.js?v=c65fa29292"></script>
+<script src="js/04-combat-attack.js?v=87c55c66e2"></script>
+<script src="js/05-kill-progression.js?v=af5e2cc96c"></script>
+<script src="js/06-status-allies.js?v=d20a3bbe37"></script>
+<script src="js/07-skills-cast.js?v=a3f52e03b1"></script>
+<script src="js/08-items-equip.js?v=7f65a6227b"></script>
 <script src="js/09-vfx-render.js?v=0c33516c4e"></script>
-<script src="js/10-ui-tabs.js?v=a8998ebb6d"></script>
-<script src="js/11-world-map.js?v=e0c28aa6dc"></script>
-<script src="js/12-npc-quests.js?v=af84ed8237"></script>
-<script src="js/13-shop-save.js?v=167cd39430"></script>
-<script src="js/14-craft-pandora.js?v=6cf1de71a5"></script>
-<script src="js/15-cards.js?v=ab37099e07"></script>
-<script src="js/16-equip-book.js?v=da7ddfa39f"></script>
+<script src="js/10-ui-tabs.js?v=c1068a3bc5"></script>
+<script src="js/11-world-map.js?v=1f30289335"></script>
+<script src="js/12-npc-quests.js?v=f477a5dc58"></script>
+<script src="js/13-shop-save.js?v=7a904bcf13"></script>
+<script src="js/14-craft-pandora.js?v=e0731cc2bc"></script>
+<script src="js/15-cards.js?v=36e2d83b2a"></script>
+<script src="js/16-equip-book.js?v=c8709ddc9b"></script>
 <!-- 離線掛機外掛(包 saveGame/loadGame;建議讓 afk-fixes 的存檔防呆排在此之後最乾淨;可獨立維護,原作者更新後重新加回此行即可) -->
 <script src="afk-offline.js?v=20260628a"></script>
 <!-- 手機版介面外掛(可獨立維護;原作者更新後重新加回此行即可) -->

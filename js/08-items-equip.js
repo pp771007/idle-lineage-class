@@ -236,6 +236,7 @@ function useItem(u, silent = false) {
     if (d.eff === 'cardbook') { if (silent) return; if (typeof openCardBook === 'function') openCardBook(); return; }
     if (d.eff === 'equipbook') { if (silent) return; if (typeof openEquipBook === 'function') openEquipBook(); return; }   // 🗡️ 裝備收集冊
     if (d.eff === 'card') { if (silent) return; if (typeof useCardItem === 'function') useCardItem(item); return; }
+    if (d.eff === 'doll_bag') { if (silent) return; if (typeof openDollBag === 'function') openDollBag(item, false); return; }   // 🪆 開啟魔法娃娃的袋子
 
     // 🗼 封印的傲慢之塔傳送符：使用後解封，獲得對應的 傲慢之塔傳送符（消耗 1 個）
     if (d.eff === 'pride_unseal') {
@@ -316,7 +317,7 @@ function useItem(u, silent = false) {
         }
         if (item.id.includes('potion_heal') || item.id === 'potion_strong' || item.id === 'potion_ult') {
             if (player.cds.pot > 0) return;
-            let h = Math.floor(d.val * (1 + getConPotionPct(player.d.con) / 100));
+            let h = Math.floor(d.val * (1 + (getConPotionPct(player.d.con) + dollFieldVal('potionBonus')) / 100));   // 🪆 魔法娃娃 potionBonus%（吸血鬼）
             if (hasMastery('k_survive')) h = Math.floor(h * 1.25);   // 🏅 生存精通：治癒藥水恢復 +25%
             if (hasMastery('k_tough') && player.hp < player.mhp * 0.4) h = Math.floor(h * 1.5);   // ⚔️ 堅韌精通：HP<40% 時藥水治癒量 +50%
             if (hasMastery('k_dragonblood')) h = Math.floor(h * 1.15);   // 🐉 龍血精通：治癒藥水恢復 +15%
@@ -895,13 +896,13 @@ function doEnhance(targetUid, isEq = true) {
         } else {                                      // 防具：安定值6（其餘安定值防呆比照）
             rate = en === safe ? 0.30 : 0.20;
         }
-        if (Math.random() < rate) success = true;
+        if (enRandom(target) < rate) success = true;  // 🎲 決定論：成敗由 (enSeed,uid,en) 決定，讀檔/匯入舊檔回到強化前算出相同結果（不可 save/load 刷）
         else destroy = true;                          // 失敗即爆裝
     }
     
     let fn = getItemFullName(target);
     if (success) {
-        let add = (DB.items[scroll.id] && DB.items[scroll.id].isB) ? roll(1, 3) : 1;
+        let add = (DB.items[scroll.id] && DB.items[scroll.id].isB) ? (1 + Math.floor(enRandom(target, 'amt') * 3)) : 1;   // 🎲 祝福加值也決定論化（防 save/load 重洗 +2/+3）
         target.en = Math.min(_cap, target.en + add);   // 🔧 祝福卷軸跳級不超過上限
         let prefix = (target.en > (d.safe||0)) ? "持續" : "";
         let _enTxt = '+' + capEn(target.en, d);   // 🔧 顯示 +N（夾擠至強化上限）

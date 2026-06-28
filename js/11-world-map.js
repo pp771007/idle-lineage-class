@@ -1282,6 +1282,7 @@ function renderTownNPCs(townId) {
         else if(npc.type === 'castleguard') typeIcon = "🛡️";
         else if(npc.type === 'petstore') typeIcon = "🐾";
         else if(npc.type === 'travel') typeIcon = "⛵";
+        else if(npc.type === 'synth') typeIcon = "🎴";
 
         el.innerHTML = `
             <div class="flex items-start justify-between mb-2">
@@ -1431,6 +1432,8 @@ function interactNPC(npcId, townId) {
         renderPetStorageNPC(contentDiv);
     } else if (npc.id === 'npc_isba') {
         renderIsbaTravel(contentDiv);
+    } else if (npc.id === 'npc_doll_merchant') {
+        renderCardSynth(contentDiv);
     } else {
         // 未來要擴充的 製作 / 交換 / 任務 預留版面
         contentDiv.innerHTML = `

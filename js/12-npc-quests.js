@@ -20,17 +20,36 @@ function whCategory(id){
 }
 function whSetFilter(v){ _whFilter = v; renderWarehouseNPC(document.getElementById('interaction-content')); }
 function loadWarehouse(){
-    try { let s = localStorage.getItem(whKey()); if(s){ let w = JSON.parse(s); return { items: w.items || [], gold: w.gold || 0 }; } } catch(e){}
+    try { let s = _lzGet(whKey()); if(s){ let w = JSON.parse(s); return { items: w.items || [], gold: w.gold || 0 }; } } catch(e){}
     return { items: [], gold: 0 };
 }
-function saveWarehouse(w){ localStorage.setItem(whKey(), JSON.stringify({ items: w.items, gold: w.gold })); }
+function saveWarehouse(w){ _lzSet(whKey(), JSON.stringify({ items: w.items, gold: w.gold })); }
 // ===== 🎴🗡️ 共用收集圖鑑（卡片 cardDex／裝備 equipDex）：同模式角色共用，獨立於存檔位的 localStorage 鍵（概念同共用倉庫）=====
 const CARDDEX_KEY = 'lineage_idle_carddex';
 const EQUIPDEX_KEY = 'lineage_idle_equipdex';
 function _dexKey(base, p){ let _p = (p !== undefined) ? p : player; return (_p && _p.traditionalMode) ? (base + '_trad') : (_p && _p.classicMode) ? (base + '_classic') : base; }   // 🏛️ 傳統／🎮 經典 各自獨立桶（同倉庫規則）
-function _readDex(base){ try { let s = localStorage.getItem(_dexKey(base)); if (s) { let o = JSON.parse(s); if (o && typeof o === 'object') return o; } } catch(e){} return {}; }
-function saveCardDex(){ if (player && player.cardDex) { try { localStorage.setItem(_dexKey(CARDDEX_KEY), JSON.stringify(Object.assign({ _v: 2 }, player.cardDex))); } catch(e){} } }   // 🎴 _v:2＝積分制（區分舊階級桶）
-function saveEquipDex(){ if (player && player.equipDex) { try { localStorage.setItem(_dexKey(EQUIPDEX_KEY), JSON.stringify(player.equipDex)); } catch(e){} } }
+function _readDex(base){ try { let s = _lzGet(_dexKey(base)); if (s) { let o = JSON.parse(s); if (o && typeof o === 'object') return o; } } catch(e){} return {}; }
+// 🔄 多開同步：回寫前先讀桶現值並合併（卡片取較高分、_v:2＝積分制；裝備布林聯集），避免用本分頁快照覆蓋其他分頁的進度（lost-update）
+function saveCardDex(){
+    if (!player || !player.cardDex) return;
+    try {
+        let cur = _readDex(CARDDEX_KEY);
+        let _mig = (typeof cardTierToScore === 'function') ? cardTierToScore : function(v){ return v || 0; };
+        let _old = (cur && cur._v !== 2);   // 桶為舊階級制→遷移
+        let out = { _v: 2 };
+        for (let k in cur) { if (k === '_v') continue; out[k] = _old ? _mig(cur[k]) : (cur[k] || 0); }   // 桶現值（其他分頁可能剛寫入）
+        for (let k in player.cardDex) { let v = player.cardDex[k] || 0; if (v > (out[k] || 0)) out[k] = v; }   // 取較高分（只增不減）
+        _lzSet(_dexKey(CARDDEX_KEY), JSON.stringify(out));
+    } catch(e){}
+}
+function saveEquipDex(){
+    if (!player || !player.equipDex) return;
+    try {
+        let out = Object.assign({}, _readDex(EQUIPDEX_KEY));   // 桶現值（其他分頁可能剛寫入）
+        for (let k in player.equipDex) if (player.equipDex[k]) out[k] = true;   // 布林聯集（只增不減）
+        _lzSet(_dexKey(EQUIPDEX_KEY), JSON.stringify(out));
+    } catch(e){}
+}
 // 讀檔／創角時呼叫：把共用桶併進 player.cardDex/equipDex（卡片取較高分·裝備取聯集·只增不減），並回寫共用桶（種子化＋遷移舊存檔 per-character 資料·不丟失）
 function loadSharedCollections(){
     if (!player) return;
@@ -47,6 +66,38 @@ function loadSharedCollections(){
     player.equipDex = Object.assign({}, shEquip, player.equipDex || {});   // 🗡️ 裝備：布林聯集
     saveCardDex(); saveEquipDex();
 }
+// 🔄 多開同步：把「同模式」共用桶併回本分頁 player.cardDex/equipDex（只增不減）；回傳是否有變更。不回寫桶（避免分頁間 ping-pong）。which: 'card'|'equip'|undefined(兩者)
+function mergeSharedIntoPlayer(which){
+    if (!player) return false;
+    let changed = false;
+    if (which !== 'equip') {
+        if (!player.cardDex) player.cardDex = {};
+        let cur = _readDex(CARDDEX_KEY), _old = (cur && cur._v !== 2);
+        let _mig = (typeof cardTierToScore === 'function') ? cardTierToScore : function(v){ return v || 0; };
+        for (let k in cur) { if (k === '_v') continue; let v = _old ? _mig(cur[k]) : (cur[k] || 0); if (v > (player.cardDex[k] || 0)) { player.cardDex[k] = v; changed = true; } }
+    }
+    if (which !== 'card') {
+        if (!player.equipDex) player.equipDex = {};
+        let cur = _readDex(EQUIPDEX_KEY);
+        for (let k in cur) if (cur[k] && !player.equipDex[k]) { player.equipDex[k] = true; changed = true; }
+    }
+    return changed;
+}
+function _refreshAfterDexSync(){
+    if (typeof calcStats === 'function') calcStats();   // 重算地區完成加成並刷新角色面板（calcStats=recompute+updateUI）
+    // ⚠️ 不呼叫 renderTabs：dex 不在 renderTabs._sig 簽章內、分頁內容不因 dex 改變；且 renderTabs(true) 會繞過 _tabPointerDown 延後保護→外部 storage 事件若落在玩家按住分頁鈕時會把按鈕重繪掉而吃掉點擊
+    if (typeof _cardBookOpen !== 'undefined' && _cardBookOpen && typeof renderCardBook === 'function') renderCardBook();
+    if (typeof _equipBookOpen !== 'undefined' && _equipBookOpen && typeof renderEquipBook === 'function') renderEquipBook();
+}
+// storage 事件：其他分頁更新了「同模式」桶 → 立即併回並刷新（一般/經典_classic/傳統_trad 各自獨立，互不同步）。
+//  ⚠️ file:// 跨分頁不保證觸發 storage 事件→另在 openCardBook/openEquipBook 開頭 re-merge 作兜底。
+function _syncSharedFromStorage(ev){
+    if (!ev || !player || !player.cls) return;   // player 在標題/載入畫面是 cls:null 的 stub（js/01 createBase 前）→尚未開始遊戲，不對空 player 跑 merge/recompute/render
+    let ck = _dexKey(CARDDEX_KEY), ek = _dexKey(EQUIPDEX_KEY);
+    if (ev.key !== ck && ev.key !== ek) return;
+    if (mergeSharedIntoPlayer(ev.key === ck ? 'card' : 'equip')) _refreshAfterDexSync();
+}
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('storage', _syncSharedFromStorage);
 function _whStackFind(arr, it){ return ((it.en||0)===0 && !it.lock) ? arr.find(x => !x.lock && (x.en||0)===0 && sameItemSig(x, it)) : null; }   // 🔧 架構#3：統一簽章比對
 // 物品完整簽章：名字(id)+強化值(en)+詞綴(祝福/遠古/屬性)；一鍵存入用來比對「完全相同」
 function whSig(it){ return itemSig(it); }   // 🔧 架構#3：委派給單一事實來源 itemSig

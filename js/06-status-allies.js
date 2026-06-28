@@ -41,7 +41,7 @@ function applyMobStatus(m, st, skillName) {
     let k = st.kind;
     if(k === 'poison') {
         m.st.poison = dur; m.st.poisonTick = (st.tick || 3) * 10;
-        m.st.poisonDmg = roll(st.dmg[0], st.dmg[1]);
+        m.st.poisonDmg = Math.max(1, Math.floor(roll(st.dmg[0], st.dmg[1]) * wpnEnFinalMult(player && player.eq && player.eq.wpn)));   // 🔧 武器強化 +1~+20 最終倍率：毒咒等技能固定 DoT 也吃（applyMobStatus 內部 player＝施法者：玩家或暫換身的傭兵）
         m.st.poisonStacks = 1; m.st.poisonUnit = m.st.poisonDmg;   // 技能類中毒：單層（不疊加），仍顯示層數符號
     } else if(k === 'blind') {
         m.st.blind = dur; m.st.blindVal = st.hit || 4;
@@ -238,7 +238,7 @@ function allyName(a) {
 }
 function buildAlly(slotN) {
     slotN = String(slotN);
-    let raw = localStorage.getItem('lineage_idle_save_' + slotN);
+    let raw = _saveUnwrap(_lzGet('lineage_idle_save_' + slotN)).payload;   // 🛡️ 先解存檔簽章（招募傭兵讀別的存檔位；不驗章、僅取 payload）
     if (!raw) return null;
     let p; try { p = JSON.parse(raw).p; } catch(e) { return null; }
     if (!p || !p.cls) return null;
@@ -690,7 +690,7 @@ function allyProcLightArrow(ally, t) {
     let mrFactor = allyHasMastery(ally, 'm_resonance') ? 1 : mrMult(effMr);   // 🏅 共鳴精通（傭兵）：光箭無視魔抗
     let isCrit = Math.random()*100 < (d.magicCrit||0);
     let tier = sk.tier || 1;
-    let spCoef = (1 + 3*(d.magicDmg||0)/16) * (1 + tier/3);
+    let spCoef = (1 + 3*(d.magicDmg||0)/16);   // 🔧 武器特效：不吃法師技能階級係數(1+tier/3)（與 mageMult 一同移除）
     let mageMult = 1.0;   // 🔧 傭兵共鳴(光箭)為武器特效，不再吃法師「法術階級加成」(1.5+階/20)
     let critMult = isCrit ? (1 + (d.magicCritDmg||0)/100) : 1;
     let core = roll(sk.dmgDice[0], sk.dmgDice[1]) * spCoef * critMult;
@@ -716,7 +716,7 @@ function allyWitchIceLance(ally) {
     let mrFactor = mrMult(effMr);
     let isCrit = Math.random() * 100 < (d.magicCrit || 0);
     let tier = sk.tier || 1;
-    let spCoef = (1 + 3 * (d.magicDmg || 0) / 16) * (1 + tier / 3);
+    let spCoef = (1 + 3 * (d.magicDmg || 0) / 16);   // 🔧 武器特效：不吃法師技能階級係數(1+tier/3)（與 mageMult 一同移除）
     let mageMult = 1.0;   // 🔧 傭兵魔女5/5(共鳴觸發)為武器特效，不再吃法師「法術階級加成」(1.5+階/20)
     let critMult = isCrit ? (1 + (d.magicCritDmg || 0) / 100) : 1;
     let core = roll(sk.dmgDice[0], sk.dmgDice[1]) * spCoef * critMult;
@@ -782,7 +782,7 @@ function allyProcFreeMagicSkill(ally, t, skId, en) {
     let mrFactor = mrMult(effMr);
     let isCrit = Math.random() * 100 < (d.magicCrit || 0);
     let tier = sk.tier || 1;
-    let spCoef = (1 + (3 * (d.magicDmg || 0) / 16)) * (1 + (tier / 3));
+    let spCoef = (1 + (3 * (d.magicDmg || 0) / 16));   // 🔧 武器特效：不吃法師技能階級係數(1+tier/3)（與 mageMult 一同移除）
     let mageDmgMult = 1.0;   // 🔧 傭兵武器免費施法(冰之女王魔杖等)為武器特效，不再吃法師「法術階級加成」(1.5+階/20)
     let critMult = isCrit ? (1 + (d.magicCritDmg || 0) / 100) : 1.0;
     let dmgArray = sk.multiDmg || (sk.dmgDice ? [[sk.dmgDice[0], sk.dmgDice[1]]] : []);
@@ -816,8 +816,7 @@ function allyLaiaWandHitProc(ally, t) {
     if (!w || !w.meleeHitSpell || !t || t.curHp <= 0) return;
     let d = ally.d || {};
     let sp = w.meleeHitSpell; let en = capWpnEn(inst.en);
-    let _spTier = 8;   // 🔧 冰裂術改套「法師 8 階法術傷害公式」(同玩家)
-    let core = roll(sp.dice[0], sp.dice[1]) * (1 + 3 * (d.magicDmg || 0) / 16) * (1 + _spTier / 3);   // 🔧 強化改吃 +11 最終倍率（見下方，原 ×(1+強化/10) 移除）
+    let core = roll(sp.dice[0], sp.dice[1]) * (1 + 3 * (d.magicDmg || 0) / 16);   // 🔧 武器特效(傭兵蕾雅魔杖冰裂術)：不吃法師階級係數(原 ×(1+8/3) 已移除)；強化改吃 +11 最終倍率
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
     let fixed = (sp.ele && sp.ele !== 'none' && isElementCounter(sp.ele, t.e)) ? 6 : 0;
@@ -838,8 +837,8 @@ function allyWeaponProcs(ally, target, hitInfo) {
     if (!wpnInst) return;
     let wpn = DB.items[wpnInst.id];
     if (!wpn) return;
-    if (wpn.procPoison) applyWeaponProcPoison(target, wpn.procPoison);   // 🔧 死亡之指：傭兵攻擊時毒咒（與玩家一致）
-    if (wpn.procBurstPoison) applyWeaponBurstPoison(target, wpn.procBurstPoison, capWpnEn(wpnInst.en));   // 💥 破壞雙刀/鋼爪：傭兵攻擊時猛爆劇毒（與玩家一致）
+    if (wpn.procPoison) applyWeaponProcPoison(target, wpn.procPoison, wpnEnFinalMult(wpnInst));   // 🔧 死亡之指：傭兵攻擊時毒咒（與玩家一致·吃武器強化最終倍率）
+    if (wpn.procBurstPoison) applyWeaponBurstPoison(target, wpn.procBurstPoison, capWpnEn(wpnInst.en), wpnEnFinalMult(wpnInst));   // 💥 破壞雙刀/鋼爪：傭兵攻擊時猛爆劇毒（與玩家一致·吃武器強化最終倍率）
     if (wpn.procStatusSkill) { let _sv = player; player = ally; try { applyWeaponProcStatusSkill(target, wpn.procStatusSkill); } finally { player = _sv; } }   // 🌑 惡魔王武器：傭兵攻擊時施放疾病術（以傭兵自身魔法命中判定）
     let d = ally.d || {};
     // 👹 隱藏的魔族武器（傭兵）：紅惡靈逆襲(4D10水魔傷·吸10%HP) / 藍惡靈奪魔(回3D6 MP)，4% + 每強化 +1%（與玩家一致；經典模式亦可觸發）

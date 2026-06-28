@@ -864,7 +864,7 @@ function procLightArrow(t) {
     let mrFactor = hasMastery('m_resonance') ? 1 : mrMult(effMr);   // 🏅 共鳴精通：光箭無視魔抗
     let isCrit = Math.random() * 100 < player.d.magicCrit;
     let skillTier = sk.tier || 1;
-    let spCoef = (1 + (3 * player.d.magicDmg / 16)) * (1 + (skillTier / 3));
+    let spCoef = (1 + (3 * player.d.magicDmg / 16));   // 🔧 武器特效(共鳴光箭)：不吃法師技能階級係數(1+階/3)（與 mageMult 一同移除）
     let mageDmgMult = 1.0;   // 🔧 共鳴(光箭)為武器觸發特效，不再吃法師「法術階級加成」(1.5+階/20)；僅限法師自己消耗 MP 施放的法術
     let magicCritMult = isCrit ? (1 + player.d.magicCritDmg / 100) : 1.0;
     let baseMagicDmg = roll(sk.dmgDice[0], sk.dmgDice[1]);
@@ -1221,7 +1221,7 @@ function witchIceLance() {
     let mrFactor = mrMult(effMr);
     let isCrit = Math.random()*100 < player.d.magicCrit;
     let tier = sk.tier || 1;
-    let spCoef = (1 + 3*player.d.magicDmg/16) * (1 + tier/3);
+    let spCoef = (1 + 3*player.d.magicDmg/16);   // 🔧 武器特效：不吃法師技能階級係數(1+tier/3)（與 mageMult 一同移除）
     let mageMult = 1.0;   // 🔧 魔女5/5(共鳴觸發)為武器特效，不再吃法師「法術階級加成」(1.5+階/20)
     let critMult = isCrit ? (1 + player.d.magicCritDmg/100) : 1;
     let core = roll(sk.dmgDice[0], sk.dmgDice[1]) * spCoef * critMult;
@@ -1230,6 +1230,7 @@ function witchIceLance() {
     dmg = Math.floor(dmg * mageMult);
     if (player._setRedLion5) dmg = Math.floor(dmg * 1.2);   // 🔮 紅獅 5/5 同樣適用（攻擊技能）
     dmg = Math.max(1, Math.floor(dmg * fragileMult(t)));
+    dmg = Math.max(1, Math.floor(dmg * wpnEnFinalMult(player.eq.wpn)));   // 🔧 武器強化 +11~+20 最終倍率：補上（與共鳴光箭/傭兵魔女冰矛一致·統一武器特效公式）
     t.curHp -= dmg;
     t.justHit = 'water';
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;

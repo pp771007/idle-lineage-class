@@ -329,8 +329,8 @@ function castSkillInner(skId) {
         if(sk.hot) {
             if(player.hot && player.hot.ticksLeft > 0) return false;  // 已在持續中，不重複施放
             player.mp -= cost;
-            player.hot = { valDice: sk.valDice, healDice: sk.healDice, healBase: sk.healBase, tier: sk.tier, interval: sk.hot.interval, ticksLeft: sk.hot.ticks,
-                           cd: sk.hot.interval, skName: sk.n, msg: sk.msg };
+            player.hot = { skId: skId, valDice: sk.valDice, healDice: sk.healDice, healBase: sk.healBase, tier: sk.tier, interval: sk.hot.interval, ticksLeft: sk.hot.ticks,
+                           cd: sk.hot.interval, skName: sk.n, msg: sk.msg };   // 🔧 skId：供「取消打勾立即結束」精準比對是哪個 HoT
             player.cds.healSk = getAutoCastInterval();  // 🔧 HoT 不再把共用治癒冷卻鎖到結束：重複施放已由上方 player.hot 守衛擋住；長鎖會餓死其他自動治癒（高級治癒術/生命之泉等）
             logCombat(`施放 ${sk.n}，開始持續回復 HP。`, 'heal');
             return true;
@@ -736,7 +736,7 @@ function autoActions() {
     // 瞬間移動卷軸：戰鬥中出現 BOSS 時自動使用（自動使用必定為未裝備傳送控制戒指的傳送術效果）
     {
         let tChk = document.getElementById('set-teleport');
-        if (tChk && tChk.checked && mapState.mobs.some(m => m && m.boss && !m.noAutoTeleport) && !isSiegeArea(mapState.current) && !PURE_BOSS_MAPS.includes(mapState.current) && !state.prideClimb && !state.oblivion && !state.riftRun) {   // 攻城區與純BOSS房(安塔瑞斯/法利昂/巴拉卡斯)：BOSS為目標，不自動瞬移；🔧 卡瑞(noAutoTeleport)不觸發自動瞬移；🗼 傲慢之塔攀登中不自動瞬移；🌀 時空裂痕不自動瞬移逃離頭目
+        if (tChk && tChk.checked && mapState.mobs.some(m => m && m.boss && !m.noAutoTeleport) && !isSiegeArea(mapState.current) && !PURE_BOSS_MAPS.includes(mapState.current) && !state.prideClimb && !state.oblivion && !state.riftRun && (state._manualTpUntil == null || (state.ticks || 0) >= state._manualTpUntil)) {   // 🕒 手動瞬移後 5 秒內不自動瞬移/自動購買；攻城區與純BOSS房(安塔瑞斯/法利昂/巴拉卡斯)：BOSS為目標，不自動瞬移；🔧 卡瑞(noAutoTeleport)不觸發自動瞬移；🗼 傲慢之塔攀登中不自動瞬移；🌀 時空裂痕不自動瞬移逃離頭目
             let item = player.inv.find(i => i.id === 'scroll_teleport');
             if (!item) {
                 let buyChk = document.getElementById('set-auto-buy-teleport');
@@ -759,6 +759,7 @@ function autoActions() {
             if(sk.darkStealth && player._darkStealthCd > state.ticks) return;   // 🔧 暗隱術：冷卻中不自動施放（須身上無暗隱術且冷卻結束才再施放）
             if(sk.awaken && player.mastery !== 'k_awaken' && ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].some(a => (player.buffs[a]||0) > 0)) return;   // 🐉 覺醒互斥：已有一種覺醒生效時不自動施放其他覺醒（避免互相清除而反覆耗HP/MP）；覺醒精通可同時三種
             if(sk.cube && mapState.current.startsWith('town_')) return;   // 🔮 立方：安全區(村莊)不自動施放，進入狩獵區(非 town_)才展開
+            if(sk.stormInterval && mapState.current.startsWith('town_')) return;   // 🌨️🔥 火牢/冰雪颶風等持續傷害增益(STORM_BUFF_SKILLS)：安全區(村莊)無敵人→不自動施放(免空耗 MP/洗版)，與立方/轉換魔法一致
             // 👑 力盔/敏盔版同效果已生效：跳過自動施放對應的法師/王族魔法版（recomputeStats@4037 會把同名 buff 歸零；若仍自動施放會每 tick 被歸零後反覆重施＝無限洗版）
             if((sid === 'sk_ench_wpn' && (player.buffs.sk_helm_str1||0) > 0) || (sid === 'sk_dex_up' && (player.buffs.sk_helm_dex1||0) > 0) || (sid === 'sk_reveal' && (player.buffs.sk_helm_str2||0) > 0)) return;
             let chk = document.getElementById(`auto-sk-${sid}`);

@@ -38,7 +38,8 @@ const EQUIP_CATEGORIES = [
     { key: 'ring',   name: '戒指',     group: '飾品' },
     { key: 'belt',   name: '腰帶',     group: '飾品' },
     { key: 'ear',    name: '耳環',     group: '飾品' },
-    { key: 'pet',    name: '寵物裝備', group: '飾品' }
+    { key: 'pet',    name: '寵物裝備', group: '飾品' },
+    { key: 'doll',   name: '魔法娃娃', group: '飾品' }
 ];
 
 // ---- 各部位「全收集完成」加成（蒐集該部位全部裝備 → 永久加成；mhp/mmp→玩家 p，其餘→衍生值 d；ac 越低越好故 d.ac -= val；weight 延後到負重段；petHit 經 player._equipPetHit 餵給 petGearBonus）----
@@ -118,6 +119,7 @@ function equipCatKey(id, d) {
         if (d.slot === 'belt') return 'belt';
         if (d.slot === 'ear1' || d.slot === 'ear2' || d.slot === 'ear') return 'ear';
         if (d.slot === 'pet') return 'pet';
+        if (d.slot === 'doll') return 'doll';
         return null;
     }
     return null;
@@ -191,6 +193,7 @@ let _equipBookOpen = false;
 let _equipBookCat = EQUIP_CATEGORIES[0].key;
 function openEquipBook() {
     if (!player.equipDex) player.equipDex = {};
+    if (typeof mergeSharedIntoPlayer === 'function') mergeSharedIntoPlayer('equip');   // 🔄 多開兜底：開書前先併入其他分頁的裝備進度（裝備冊無加成，免重算）
     if (typeof closeModal === 'function') closeModal();   // 先關物品操作彈窗(z-50)，避免書頁(z-45)開在後方
     _equipBookOpen = true;
     let el = document.getElementById('equip-book'); if (!el) return;

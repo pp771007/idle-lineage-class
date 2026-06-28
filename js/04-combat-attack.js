@@ -300,13 +300,13 @@ function stormBuffTick(sk) {
 // 機率 = (1 + 武器強化值)%；必定命中；基礎傷害 = 骰值 ×(1+強化/20)，受魔法傷害(magicDmg)影響，再經怪物魔防(MR)折減與屬性剋制(+6)。
 const ELE_CN = { fire: '火', water: '水', wind: '風', earth: '地', none: '無' };
 // 🔧 武器毒咒 proc（死亡之指）：攻擊時 rate% 對目標施加中毒 DoT（每 tick 秒受到 dmg 點，持續 dur 秒）；玩家與傭兵共用
-function applyWeaponProcPoison(target, pp) {
+function applyWeaponProcPoison(target, pp, finalMult) {
     if (!pp) return;
     if (Math.random() * 100 >= (pp.rate || 2)) return;
     let t = (target && target.curHp > 0) ? target : null;
     if (!t) { let alive = mapState.mobs.filter(m => m && m.curHp > 0); if (!alive.length) return; t = alive[Math.floor(Math.random() * alive.length)]; }
     if (!t.st) t.st = newMobStatus();
-    let _pd = Math.max(1, roll(pp.dmg[0], pp.dmg[1]));
+    let _pd = Math.max(1, Math.floor(roll(pp.dmg[0], pp.dmg[1]) * (finalMult || 1)));   // 🔧 武器強化 +1~+20 最終倍率：固定中毒 DoT 也吃（由呼叫端傳入施法者武器倍率）
     t.st.poison = (pp.dur || 15) * 10;
     t.st.poisonTick = (pp.tick || 3) * 10;
     t.st.poisonStacks = Math.max(1, t.st.poisonStacks || 0);
@@ -316,15 +316,16 @@ function applyWeaponProcPoison(target, pp) {
     // 🔧 死亡之指毒咒：不再輸出「敵人中毒」套用訊息（只保留每秒中毒傷害日誌）
 }
 // 💥 猛爆劇毒（破壞雙刀/破壞鋼爪）：依 (rateBase + ratePerEn×強化)% 機率對目標附加；每秒固定 100 真傷、持續 5 秒、最多 1 層（覆蓋刷新）。獨立 m._burstPoison 欄位（不與一般中毒 s.poison 衝突）。玩家與傭兵共用
-function applyWeaponBurstPoison(target, cfg, en) {
+function applyWeaponBurstPoison(target, cfg, en, finalMult) {
     if (!cfg) return;
     let rate = (cfg.rateBase != null ? cfg.rateBase : 1) + (cfg.ratePerEn != null ? cfg.ratePerEn : 1) * (en || 0);
     if (Math.random() * 100 >= rate) return;
     let t = (target && target.curHp > 0) ? target : null;
     if (!t) { let alive = mapState.mobs.filter(m => m && m.curHp > 0); if (!alive.length) return; t = alive[Math.floor(Math.random() * alive.length)]; }
-    t._burstPoison = { dmg: 100, left: 50 };   // 100/秒 × 5 秒(50 ticks)，最多 1 層→覆蓋刷新
+    let _bd = Math.max(1, Math.floor(100 * (finalMult || 1)));   // 🔧 武器強化 +1~+20 最終倍率：固定 100/秒 真傷也吃（由呼叫端傳入施法者武器倍率）
+    t._burstPoison = { dmg: _bd, left: 50 };   // (100×最終倍率)/秒 × 5 秒(50 ticks)，最多 1 層→覆蓋刷新
     mobWake(t);
-    logCombat(`<span class="font-bold" style="color:#a3e635;text-shadow:0 0 6px #65a30d;">【猛爆劇毒】</span><span class="${getMobColor(t.lv)}">${t.n}</span> 陷入猛爆劇毒（每秒 100 真傷，5 秒）。`, 'player');
+    logCombat(`<span class="font-bold" style="color:#a3e635;text-shadow:0 0 6px #65a30d;">【猛爆劇毒】</span><span class="${getMobColor(t.lv)}">${t.n}</span> 陷入猛爆劇毒（每秒 ${_bd} 真傷，5 秒）。`, 'player');
 }
 // 🌑 武器附帶狀態技能 proc（惡魔王武器・疾病術）：攻擊時 rate% 對目標施放指定技能的異常狀態（走 applyMobStatus，含魔法命中抵抗）；玩家與傭兵共用
 function applyWeaponProcStatusSkill(target, cfg) {
@@ -337,11 +338,30 @@ function applyWeaponProcStatusSkill(target, cfg) {
     applyMobStatus(t, sk.status, sk.n);
 }
 function weaponSpellProc(target) {
+    // 🪆 魔法娃娃 proc（玩家專用·攻擊時觸發；置於武器判定之前→無武器也生效；經典模式亦正常生效）
+    {
+        let _dl = player.eq.doll ? DB.items[player.eq.doll.id] : null;
+        if (_dl) {
+            if (_dl.procBonusDmg && target && target.curHp > 0 && Math.random() * 100 < _dl.procBonusDmg.rate) {
+                let _add = _dl.procBonusDmg.dmg;
+                target.curHp -= _add; target.justHit = target.justHit || 'phys'; mobWake(target);
+                logCombat(`<span class="font-bold text-amber-300">【${_dl.n}】</span>額外造成 ${_add} 點傷害。`, 'player-special');
+                let _ri = mapState.mobs.findIndex(m => m && m.uid === target.uid);
+                if (target.curHp <= 0) { if (_ri !== -1) killMob(_ri); } else if (!state.ff) renderMobs();
+            }
+            if (_dl.procPoisonRate) applyWeaponProcPoison(target, { rate: _dl.procPoisonRate, dmg: [2, 5], dur: 10, tick: 3 }, wpnEnFinalMult(player.eq.wpn));
+            if (_dl.procSkill && Math.random() * 100 < (_dl.procRateBase || 1)) {
+                let _t2 = (target && target.curHp > 0) ? target : null;
+                if (!_t2) { let _al = mapState.mobs.filter(m => m && m.curHp > 0); if (_al.length) _t2 = _al[Math.floor(Math.random() * _al.length)]; }
+                if (_t2) procFreeMagicSkill(_t2, _dl.procSkill, 0);
+            }
+        }
+    }
     let inst = player.eq.wpn;
     let wpn = inst ? DB.items[inst.id] : null;
     if (!wpn) return;
-    if (wpn.procPoison) applyWeaponProcPoison(target, wpn.procPoison);   // 🔧 死亡之指：攻擊時毒咒
-    if (wpn.procBurstPoison) applyWeaponBurstPoison(target, wpn.procBurstPoison, capWpnEn(inst.en));   // 💥 破壞雙刀/鋼爪：攻擊時猛爆劇毒
+    if (wpn.procPoison) applyWeaponProcPoison(target, wpn.procPoison, wpnEnFinalMult(inst));   // 🔧 死亡之指：攻擊時毒咒（吃武器強化最終倍率）
+    if (wpn.procBurstPoison) applyWeaponBurstPoison(target, wpn.procBurstPoison, capWpnEn(inst.en), wpnEnFinalMult(inst));   // 💥 破壞雙刀/鋼爪：攻擊時猛爆劇毒（吃武器強化最終倍率）
     if (wpn.procStatusSkill) applyWeaponProcStatusSkill(target, wpn.procStatusSkill);   // 🌑 惡魔王武器：攻擊時 10% 施放疾病術
     // 👹 隱藏的魔族武器：紅惡靈逆襲(4D10水魔傷·受魔法傷害公式·吸10%HP) / 藍惡靈奪魔(回3D6 MP)，4% + 每強化 +1%（經典模式亦可觸發）
     if (wpn.redSpecter || wpn.blueSpecter) {
@@ -392,7 +412,7 @@ function procFreeMagicSkill(t, skId, en) {
     let mrFactor = mrMult(effMr);
     let isCrit = Math.random() * 100 < player.d.magicCrit;
     let tier = sk.tier || 1;
-    let spCoef = (1 + (3 * player.d.magicDmg / 16)) * (1 + (tier / 3));
+    let spCoef = (1 + (3 * player.d.magicDmg / 16));   // 🔧 武器特效：不吃法師技能階級係數(1+tier/3)（與 mageMult 一同移除）
     let mageDmgMult = 1.0;   // 🔧 武器觸發特效不再吃法師「法術階級加成」(1.5+階/20)；該加成僅限法師自己消耗 MP 施放的法術
     let critMult = isCrit ? (1 + player.d.magicCritDmg / 100) : 1.0;
     let dmgArray = sk.multiDmg || (sk.dmgDice ? [[sk.dmgDice[0], sk.dmgDice[1]]] : []);
@@ -435,6 +455,31 @@ function playerEquipStatusResist(field) {
     let pct = 0;
     WEIGHT_COUNT_SLOTS.forEach(k => { let e = player.eq[k]; if (e && DB.items[e.id] && DB.items[e.id][field]) pct = Math.max(pct, DB.items[e.id][field]); });
     return pct > 0 && Math.random() * 100 < pct;
+}
+// 🪆 統一玩家狀態抵抗/免疫（含魔法娃娃 freezeResist/stunResist/immParalyze/immSlow/abnormalResist…）：
+//    kind ∈ freeze|stun|paralyze|sleep|slow|poison；掃 WEIGHT_COUNT_SLOTS（含 doll 槽）取免疫旗標/抵抗%＋通用 abnormalResist，回傳 true=本次抵抗/免疫。
+function playerStatusResisted(kind) {
+    let immF = { freeze: 'immFreeze', stun: 'immStun', paralyze: 'immParalyze', sleep: 'immSleep', slow: 'immSlow', poison: 'immPoison' }[kind];
+    let resF = { freeze: 'freezeResist', stun: 'stunResist', paralyze: 'paralyzeResist', sleep: 'sleepResist', slow: 'slowResist', poison: 'poisonResist' }[kind];
+    let pct = 0;
+    WEIGHT_COUNT_SLOTS.forEach(k => {
+        let e = player.eq[k]; if (!e) return; let dd = DB.items[e.id]; if (!dd) return;
+        if (immF && dd[immF]) pct = 100;
+        if (resF && dd[resF]) pct = Math.max(pct, dd[resF]);
+        if (dd.abnormalResist) pct = Math.max(pct, dd.abnormalResist);
+    });
+    if (kind === 'stun' && player.skills && player.skills.includes('sk_royal_kingguard')) pct = Math.max(pct, 20);   // 👑 王者加護
+    if (kind === 'poison' && player.d && player.d.immPoison) return true;   // 潔尼斯戒指/龍騎士覺醒/娃娃 immPoison（recompute 已併入 d.immPoison）
+    return pct > 0 && Math.random() * 100 < pct;
+}
+// 🪆 受傷時機率傷害減免（魔法娃娃：史巴托/巫妖 procDmgReduce{rate,amount}）：回傳減免後傷害；經典模式停用
+function dollDamageReduced(dmg) {
+    let e = player.eq.doll; let dd = e ? DB.items[e.id] : null;   // 🪆 經典模式亦正常生效
+    if (dd && dd.procDmgReduce && Math.random() * 100 < dd.procDmgReduce.rate) {
+        let _r = Math.min(dmg, dd.procDmgReduce.amount);
+        if (_r > 0) { dmg = Math.max(0, dmg - _r); logCombat(`<span class="text-sky-300">【${dd.n}】減免了 ${_r} 點傷害。</span>`, 'magic'); }
+    }
+    return dmg;
 }
 // 單體：對 t 計算並套用一次附魔施放傷害（不負責 render；回傳是否擊殺）。aoe 由 procWeaponSpell 統一在外層迴圈處理。
 function _procWeaponSpellHit(t, sp, en) {
@@ -484,8 +529,7 @@ function laiaWandHitProc(t) {
     let inst = player.eq.wpn; let w = inst ? DB.items[inst.id] : null;
     if (!w || !w.meleeHitSpell || !t || t.curHp <= 0) return;
     let sp = w.meleeHitSpell; let en = capWpnEn(inst.en);
-    let _spTier = 8;   // 🔧 冰裂術改套「法師 8 階法術傷害公式」：階級係數 (1+階/3) ＋ 最終倍率 (1.5+階/20)
-    let core = roll(sp.dice[0], sp.dice[1]) * (1 + 3 * (player.d.magicDmg || 0) / 16) * (1 + _spTier / 3);   // 🔧 基礎×魔攻係數×8階階級係數（強化改吃 +11 最終倍率·見下方，原 ×(1+強化/10) 移除）
+    let core = roll(sp.dice[0], sp.dice[1]) * (1 + 3 * (player.d.magicDmg || 0) / 16);   // 🔧 武器特效(蕾雅魔杖冰裂術)：基礎×魔攻係數，不吃法師階級係數(原 ×(1+8/3) 已移除)；強化改吃 +11 最終倍率
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
     let fixed = (sp.ele && sp.ele !== 'none' && isElementCounter(sp.ele, t.e)) ? 6 : 0;
@@ -645,6 +689,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
         totalDmg = Math.max(1, totalDmg);
         totalDmg = castleGuardAbsorb(totalDmg, 'phys');   // 🏰 肯特城護衛：承擔 10% 一般攻擊
         totalDmg = Math.floor(totalDmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +20% 怪物攻擊力
+        totalDmg = dollDamageReduced(totalDmg);   // 🪆 魔法娃娃：受傷機率傷害減免（史巴托/巫妖）
         player.hp -= totalDmg;
         try { vfxPlayerHit(totalDmg); } catch(e){}   // ✨ VFX：較大一擊→戰場震動＋HP條紅閃
         if(player.buffs.sk_illu_pain > 0 && mob && mob.curHp > 0 && totalDmg > 0) {   // 🔮 疼痛的歡愉：受傷時對攻擊者反射等量（損失HP）的無屬性魔法傷害
@@ -675,7 +720,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
 
         if (player.hp <= 0) killPlayer();
         else if (stunChance > 0 && Math.random() * 100 < stunChance) {   // 衝擊之暈：命中後依機率附加暈眩
-            if (playerStunResisted()) { logCombat('<span class="text-sky-300 font-bold">你抵抗了暈眩！</span>', 'magic'); updateUI(); }
+            if (playerStatusResisted('stun')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了暈眩！</span>', 'magic'); updateUI(); }
             else { player.statuses.stun = 60; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 的衝擊使你暈眩了！`, 'enemy'); }
         }
         else updateUI();
@@ -838,7 +883,7 @@ function applyMobMagic(mob, sk) {
     if(sk.type === 'paralyze') {
         if(player.d.immPoison) return; // 潔尼斯戒指：免疫麻痺
         let chance = Math.max(0, ((sk.pbase !== undefined ? sk.pbase : 50) - player.d.mr) / 2);
-        if(Math.random() * 100 < chance && !player.dead) { player.statuses.paralyze = 60; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，你被麻痺了！`, 'enemy'); }
+        if(Math.random() * 100 < chance && !player.dead) { if(playerStatusResisted('paralyze')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了麻痺！</span>', 'magic'); } else { player.statuses.paralyze = 60; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，你被麻痺了！`, 'enemy'); } }
         return;
     }
     if(sk.type === 'silence') {
@@ -855,12 +900,13 @@ function applyMobMagic(mob, sk) {
     }
     if(sk.type === 'freeze') {
         let chance = Math.max(0, ((sk.pbase !== undefined ? sk.pbase : 200) - player.d.mr) / 2);
-        if(Math.random() * 100 < chance && !player.dead) { if(playerEquipStatusResist('freezeResist')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了冰凍！</span>', 'magic'); } else { player.statuses.freeze = 60; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，你被冰凍了！`, 'enemy'); } }
+        if(Math.random() * 100 < chance && !player.dead) { if(playerStatusResisted('freeze')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了冰凍！</span>', 'magic'); } else { player.statuses.freeze = 60; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，你被冰凍了！`, 'enemy'); } }
         return;
     }
     if(sk.type === 'scald') {
         let chance = Math.max(0, ((sk.pbase !== undefined ? sk.pbase : 200) - player.d.mr) / 2);
         if(Math.random() * 100 < chance && !player.dead) {
+            if(playerStatusResisted('scald')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了燙傷！</span>', 'magic'); return; }   // 🪆 抵抗異常（娃娃 abnormalResist）涵蓋 DoT
             let _scD = ((mob._sherine ? (mob._sherineMad ? 3 : 2) : 1) * (mob._grace ? 2 : 1)) * (sk.d||100);   // 🔮 席琳的世界：持續傷害×2
             player.statuses.scald = (sk.dur||15) * 10; player.statuses.scaldDmg = _scD; player.statuses.scaldTick = (sk.tick||3) * 10;
             logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，你被燙傷了！每 ${sk.tick||3} 秒受到 ${_scD} 點固定傷害。`, 'enemy');
@@ -870,7 +916,7 @@ function applyMobMagic(mob, sk) {
     if(sk.type === 'stun') {
         let chance = Math.max(0, ((sk.pbase !== undefined ? sk.pbase : 150) - player.d.mr) / 2);
         if(Math.random() * 100 < chance && !player.dead) {
-            if(playerStunResisted()) { logCombat('<span class="text-sky-300 font-bold">你抵抗了暈眩！</span>', 'magic'); }
+            if(playerStatusResisted('stun')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了暈眩！</span>', 'magic'); }
             else { player.statuses.stun = 60; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，你被暈眩了！`, 'enemy'); }
         }
         return;
@@ -880,10 +926,14 @@ function applyMobMagic(mob, sk) {
         if(player.dead) return;
         let chance = Math.max(0, ((sk.pbase !== undefined ? sk.pbase : 150) - player.d.mr) / 2);
         if(Math.random() * 100 < chance) {
-            player.statuses.slowAtk = (sk.dur || 8) * 10;
-            calcStats();
-            logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '緩速'}，使你的攻擊速度大幅減慢！（持續 ${sk.dur || 8} 秒）`, 'enemy');
-            updateUI();
+            if (playerStatusResisted('slow')) {
+                logCombat('<span class="text-sky-300 font-bold">你抵抗了緩速！</span>', 'magic');
+            } else {
+                player.statuses.slowAtk = (sk.dur || 8) * 10;
+                calcStats();
+                logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '緩速'}，使你的攻擊速度大幅減慢！（持續 ${sk.dur || 8} 秒）`, 'enemy');
+                updateUI();
+            }
         }
         return;
     }
@@ -901,7 +951,8 @@ function applyMobMagic(mob, sk) {
         let base = (sk.pbase !== undefined ? sk.pbase : 100);
         if(sk.pbase === undefined && (mob.n === "妖魔殭屍" || mob.n === "蟑螂人")) base = 60;
         let chance = Math.max(0, (base - player.d.mr) / 2);
-        if(Math.random() * 100 < chance && !player.dead) { 
+        if(Math.random() * 100 < chance && !player.dead) {
+            if(playerStatusResisted('poison')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了中毒！</span>', 'magic'); return; }   // 🪆 抵抗異常（娃娃 abnormalResist）涵蓋 DoT；immPoison 已於上方早退
             let _poD = ((mob._sherine ? (mob._sherineMad ? 3 : 2) : 1) * (mob._grace ? 2 : 1)) * sk.d;   // 🔮 席琳的世界：持續傷害×2
             player.statuses.poison = sk.dur * 10;
             player.statuses.poisonDmg = _poD;
@@ -912,6 +963,7 @@ function applyMobMagic(mob, sk) {
     }
     
     if(sk.type === 'burn') {
+        if(playerStatusResisted('burn')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了灼燒！</span>', 'magic'); return; }   // 🪆 抵抗異常（娃娃 abnormalResist）涵蓋 DoT
         let _buD = ((mob._sherine ? (mob._sherineMad ? 3 : 2) : 1) * (mob._grace ? 2 : 1)) * sk.d;   // 🔮 席琳的世界：持續傷害×2
         player.statuses.burn = sk.dur * 10;
         player.statuses.burnDmg = _buD;
@@ -931,9 +983,11 @@ function applyMobMagic(mob, sk) {
                 if(k === 'sk_charm' || k === 'taming' || k === 'poly' || (skd && skd.summon)) kept[k] = player.buffs[k];
             }
             player.buffs = kept;
-            player.statuses.slowAtk = (sk.dur || 8) * 10;
+            let _frostSlowed = !playerStatusResisted('slow');   // 🪆 寒冰吐息：驅散增益必發生；緩速可被免疫/抵抗
+            if (_frostSlowed) player.statuses.slowAtk = (sk.dur || 8) * 10;
+            else logCombat('<span class="text-sky-300 font-bold">你抵抗了緩速！</span>', 'magic');
             calcStats();
-            logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '寒冰吐息'}，驅散了你的增益狀態，並使你的攻擊速度大幅減慢！（持續 ${sk.dur || 8} 秒）`, 'enemy');
+            logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '寒冰吐息'}，驅散了你的增益狀態${_frostSlowed ? '，並使你的攻擊速度大幅減慢！（持續 ' + (sk.dur || 8) + ' 秒）' : '。'}`, 'enemy');
             updateUI();
         }
         return;
@@ -1011,6 +1065,7 @@ function applyMobMagic(mob, sk) {
         dmg = castleGuardAbsorb(dmg, 'magic');   // 🏰 風木城護衛：承擔 10% 魔法攻擊
         dmg = Math.floor(dmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +20% 怪物技能傷害
 
+        dmg = dollDamageReduced(dmg);   // 🪆 魔法娃娃：受傷機率傷害減免（史巴托/巫妖）
         player.hp -= dmg;
         logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，對你造成 ${dmg} 點魔法傷害。`, 'enemy');
         if (_asleepM && player.statuses.sleep > 0) { player.statuses.sleep = 0; logCombat('<span class="text-sky-200">你從沉睡中驚醒！</span>', 'magic'); }   // 🗼 沉睡：受到魔法攻擊即醒
@@ -1024,54 +1079,62 @@ function applyMobMagic(mob, sk) {
         if(sk.sec) {
             if(sk.sec.type === 'freeze') {
                 let chance = Math.max(0, ((sk.sec.pbase !== undefined ? sk.sec.pbase : 200) - player.d.mr) / 2);
-                if(Math.random() * 100 < chance && !player.dead) { if(playerEquipStatusResist('freezeResist')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了冰凍！</span>', 'magic'); } else { player.statuses.freeze = 60; logCombat(`你被冰凍了！`, 'enemy'); } }
+                if(Math.random() * 100 < chance && !player.dead) { if(playerStatusResisted('freeze')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了冰凍！</span>', 'magic'); } else { player.statuses.freeze = 60; logCombat(`你被冰凍了！`, 'enemy'); } }
             }
             if(sk.sec.type === 'burn') {
                 let chance = Math.max(0, ((sk.sec.pbase !== undefined ? sk.sec.pbase : 100) - player.d.mr) / 2);
                 if(Math.random() * 100 < chance && !player.dead) {
+                    if(playerStatusResisted('burn')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了灼燒！</span>', 'magic'); } else {   // 🪆 抵抗異常（娃娃 abnormalResist）涵蓋 DoT
                     let _sbD = ((mob._sherine ? (mob._sherineMad ? 3 : 2) : 1) * (mob._grace ? 2 : 1)) * sk.sec.d;   // 🔮 席琳的世界：持續傷害×2
                     player.statuses.burn = sk.sec.dur * 10; player.statuses.burnDmg = _sbD; player.statuses.burnTick = sk.sec.tick * 10;
                     logCombat(`你陷入了灼燒！每 ${sk.sec.tick} 秒受到 ${_sbD} 點固定傷害。`, 'enemy');
+                    }
                 }
             }
             if(sk.sec.type === 'scald') {
                 let chance = Math.max(0, ((sk.sec.pbase !== undefined ? sk.sec.pbase : 200) - player.d.mr) / 2);
                 if(Math.random() * 100 < chance && !player.dead) {
+                    if(playerStatusResisted('scald')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了燙傷！</span>', 'magic'); } else {   // 🪆 抵抗異常（娃娃 abnormalResist）涵蓋 DoT
                     let _ssD = ((mob._sherine ? (mob._sherineMad ? 3 : 2) : 1) * (mob._grace ? 2 : 1)) * sk.sec.d;   // 🔮 席琳的世界：持續傷害×2
                     player.statuses.scald = sk.sec.dur * 10; player.statuses.scaldDmg = _ssD; player.statuses.scaldTick = sk.sec.tick * 10;
                     logCombat(`你被燙傷了！每 ${sk.sec.tick} 秒受到 ${_ssD} 點固定傷害。`, 'enemy');
+                    }
                 }
             }
             if(sk.sec.type === 'bleed') {
                 let chance = Math.max(0, ((sk.sec.pbase !== undefined ? sk.sec.pbase : 200) - player.d.mr) / 2);
                 if(Math.random() * 100 < chance && !player.dead) {
+                    if(playerStatusResisted('bleed')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了出血！</span>', 'magic'); } else {   // 🪆 抵抗異常（娃娃 abnormalResist）涵蓋 DoT
                     let _sbD = ((mob._sherine ? (mob._sherineMad ? 3 : 2) : 1) * (mob._grace ? 2 : 1)) * sk.sec.d;   // 🔮 席琳的世界：持續傷害×2
                     player.statuses.bleed = sk.sec.dur * 10; player.statuses.bleedDmg = _sbD; player.statuses.bleedTick = sk.sec.tick * 10;
                     logCombat(`你陷入了出血！每 ${sk.sec.tick} 秒受到 ${_sbD} 點固定傷害。`, 'enemy');
+                    }
                 }
             }
             if(sk.sec.type === 'poison' && !player.d.immPoison) {   // 潔尼斯戒指免疫中毒
                 let chance = Math.max(0, ((sk.sec.pbase !== undefined ? sk.sec.pbase : 100) - player.d.mr) / 2);
                 if(Math.random() * 100 < chance && !player.dead) {
+                    if(playerStatusResisted('poison')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了中毒！</span>', 'magic'); } else {   // 🪆 抵抗異常（娃娃 abnormalResist）涵蓋 DoT
                     let _spD = ((mob._sherine ? (mob._sherineMad ? 3 : 2) : 1) * (mob._grace ? 2 : 1)) * sk.sec.d;   // 🔮 席琳的世界：持續傷害×2
                     player.statuses.poison = sk.sec.dur * 10; player.statuses.poisonDmg = _spD; player.statuses.poisonTick = sk.sec.tick * 10;
                     logCombat(`你中毒了！每 ${sk.sec.tick} 秒受到 ${_spD} 點固定傷害。`, 'enemy');
+                    }
                 }
             }
             if(sk.sec.type === 'stun') {
                 let chance = Math.max(0, ((sk.sec.pbase !== undefined ? sk.sec.pbase : 150) - player.d.mr) / 2);
                 if(Math.random() * 100 < chance && !player.dead) {
-                    if(playerStunResisted()) { logCombat('<span class="text-sky-300 font-bold">你抵抗了暈眩！</span>', 'magic'); }
+                    if(playerStatusResisted('stun')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了暈眩！</span>', 'magic'); }
                     else { player.statuses.stun = (sk.sec.dur || 6) * 10; logCombat(`你被暈眩了！`, 'enemy'); }
                 }
             }
             if(sk.sec.type === 'sleep') {
                 let chance = Math.max(0, ((sk.sec.pbase !== undefined ? sk.sec.pbase : 150) - player.d.mr) / 2);
-                if(Math.random() * 100 < chance && !player.dead) { if(playerEquipStatusResist('sleepResist')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了沉睡！</span>', 'magic'); } else { player.statuses.sleep = (sk.sec.dur || 6) * 10; logCombat(`你陷入了沉睡！`, 'enemy'); } }
+                if(Math.random() * 100 < chance && !player.dead) { if(playerStatusResisted('sleep')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了沉睡！</span>', 'magic'); } else { player.statuses.sleep = (sk.sec.dur || 6) * 10; logCombat(`你陷入了沉睡！`, 'enemy'); } }
             }
             if(sk.sec.type === 'paralyze' && !player.d.immPoison) {   // 潔尼斯戒指：免疫麻痺（與主 paralyze 分支一致）
                 let chance = Math.max(0, ((sk.sec.pbase !== undefined ? sk.sec.pbase : 50) - player.d.mr) / 2);
-                if(Math.random() * 100 < chance && !player.dead) { player.statuses.paralyze = (sk.sec.dur || 6) * 10; logCombat(`你被麻痺了！`, 'enemy'); }
+                if(Math.random() * 100 < chance && !player.dead) { if(playerStatusResisted('paralyze')) { logCombat('<span class="text-sky-300 font-bold">你抵抗了麻痺！</span>', 'magic'); } else { player.statuses.paralyze = (sk.sec.dur || 6) * 10; logCombat(`你被麻痺了！`, 'enemy'); } }
             }
         }
 

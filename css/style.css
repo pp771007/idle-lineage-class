@@ -35,6 +35,11 @@
         .set-active { background: #451a03 !important; border: 1px solid #b45309 !important; }   /* 🔧 舊套裝改琥珀金（綠色讓給席琳套裝） */
         .mob-target { padding: 0.75rem; border: 2px solid #334155; border-radius: 0.5rem; background: #0f172a; cursor: pointer; flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; transition: all 0.2s; height: 224px; overflow: hidden;}
         .mob-target.active { border-color: #ef4444; background: #450a0a; }
+        /* 🪆 魔法娃娃游標：裝備娃娃時(body.has-doll-cursor 由 applyDollCursor 切換)，連可點擊處(.btn/.list-item/.mob-target/.cf-pill/Tailwind cursor-pointer 等)也維持娃娃游標、不變回手指箭頭。* 繼承 body 的內聯娃娃游標；專案無任何 cursor !important 故此 !important 必勝。 */
+        body.has-doll-cursor * { cursor: inherit !important; }
+        /* 例外：文字輸入框保留打字游標(text)、停用元素保留禁用提示(not-allowed)——皆非「手指箭頭」、保留其辨識度 */
+        body.has-doll-cursor input:not([type=checkbox]):not([type=radio]), body.has-doll-cursor textarea { cursor: text !important; }
+        body.has-doll-cursor [disabled], body.has-doll-cursor .cursor-not-allowed { cursor: not-allowed !important; }
         .mob-target:hover:not(.active) { background: #1e293b; }
         /* 🔮 席琳的世界：深黑底色＋黑紅怪物框（透明度結構與原樣式一致） */
         body.sherine-world, body.game-bg-dim.sherine-world { background-image: linear-gradient(rgba(8,8,10,0.88), rgba(0,0,0,0.94)), url('../assets/background/background.png'); }

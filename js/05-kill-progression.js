@@ -158,7 +158,7 @@ function killMob(idx) {
     // 🔧 轉場建築（往上層的樓梯 / 遺忘之島傳送門）：擊敗即進入下一層/島，不顯示「擊敗了…」戰鬥訊息（race 建築且 noAutoTeleport，排除攻城塔/城門）
     let _hideKillMsg = (mob.race === '建築' && mob.noAutoTeleport);
     if(!_hideKillMsg) logCombat(`擊敗了 <span class="${getMobColor(mob.lv)}">${mob.n}</span>！`, 'player-heavy');  // 👈 新增
-    player.exp += Math.floor(mob.exp * getExpGainMult(player.lv) * (player.classicMode ? 0.5 : 1));   // 🎮 經典模式：經驗值減半
+    player.exp += Math.floor(mob.exp * getExpGainMult(player.lv) * (player.classicMode ? 0.5 : 1) * (1 + dollFieldVal('expBonus') / 100));   // 🎮 經典模式：經驗值減半；🪆 魔法娃娃 expBonus%
     checkLvUp();
     // 精神(WIS)：擊殺敵人時立即額外恢復 MP
     { let mpKill = getWisMpOnKill(player.d.wis); if (mpKill > 0 && player.mp < player.mmp) player.mp = Math.min(player.mmp, player.mp + mpKill); }
@@ -168,6 +168,7 @@ function killMob(idx) {
         let gMax = mob.goldMax || (mob.lv * 10);
         let g = gMin + Math.floor(Math.random() * (gMax - gMin + 1));
         if (player.classicMode) g = Math.floor(g / 2);   // 🎮 經典模式：怪物金幣僅剩一般模式的 1/2（歷次：×1/10 → ×1/3 → ×1/2）
+        g = Math.floor(g * (1 + dollFieldVal('goldBonus') / 100));   // 🪆 魔法娃娃 goldBonus%（莫提斯）
         player.gold += g;
         // 🔧 金幣不再逐殺輸出於系統日誌；改由 gameLoop 累積、flushAwaySummary 以「掛機期間獲得總金幣」統一顯示。
 
@@ -305,7 +306,7 @@ function killMob(idx) {
     // 🔮 記憶水晶掉落（幻術士法術書·全職可掉，獨立 roll·與 MOB_DROPS 並存）
     { let _memd = (typeof MEM_DROPS !== 'undefined') ? MEM_DROPS[mob.n] : null;
       if (_memd) _memd.forEach(e => { if (DB.items[e[0]] && Math.random() < (e[1] * _dropMult) / 100) gainItem(e[0], 1); }); }
-    // 🎴 卡片掉落（血盟標籤以外·一般＝經典機率·不乘 classicDropMult·內部判定自動賣出）
+    // 🎴 卡片掉落（血盟標籤以外·一般＝經典機率·不乘 classicDropMult·一律進背包不自動賣）
     if (typeof rollCardDrops === 'function') rollCardDrops(mob);
 
     // === 40等以上 BOSS（夢幻之島 + 攻城區/siegeEnemy 除外）：賦予祝福卷軸稀有掉落，各自獨立判定 ===

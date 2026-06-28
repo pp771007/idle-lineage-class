@@ -464,7 +464,7 @@ function buildDemonKingCraftHTML() {
     DEMONKING_RECIPES.forEach((r, idx) => {
         let resItem = DB.items[r.result];
         let imgUrl = getIconUrl(resItem);
-        let matsOk = DEMONKING_MATS.every(m => invCountId(m.id) >= m.cnt);
+        let matsOk = DEMONKING_MATS.every(m => materialObtainable(m.id, m.cnt));   // 🔧 含「可遞迴合成」：黑色米索莉金屬板等中間物可自底層材料自動補製，不必先手動製作（與通用製作 doCraft 一致）
         let src = findDemonKingSource(r.src);
         let canMake = matsOk && !!src;
         let srcColor = src ? 'text-green-400' : 'text-red-400';
@@ -492,10 +492,12 @@ function buildDemonKingCraftHTML() {
 function doDemonKingCraft(idx) {
     let r = DEMONKING_RECIPES[idx];
     if (!r) return;
-    let lack = DEMONKING_MATS.filter(m => invCountId(m.id) < m.cnt).map(m => `${DB.items[m.id].n} ${m.cnt - invCountId(m.id)}`);
+    if (!RECIPE_BY_RESULT) buildRecipeIndex();
+    let lack = DEMONKING_MATS.filter(m => !materialObtainable(m.id, m.cnt)).map(m => `${DB.items[m.id].n} ${Math.max(0, m.cnt - invCountId(m.id))}`);   // 🔧 可遞迴合成者不算缺
     let src = findDemonKingSource(r.src);
     if (!src) lack.push(`+11以上 ${r.srcName} ×1`);
     if (lack.length) { logSys(`<span class="text-red-400 font-bold">材料不足，無法製作。</span><span class="text-red-300">（尚缺：${lack.join('、')}）</span>`); return; }
+    DEMONKING_MATS.forEach(m => ensureMaterial(m.id, m.cnt, 0));   // 🔧 先自動補製可合成的中間物（黑色米索莉金屬板等），玩家不需先手動製作金屬板
     DEMONKING_MATS.forEach(m => consumeMaterialById(m.id, m.cnt));
     let inherit = { en: src.en || 0, attr: src.attr || false, bless: src.bless || false, anc: src.anc || false, seteff: src.seteff || false };
     if (src._whSource) { whRemoveStackByUid(src.uid, 1); }   // 🔧 來源武器在倉庫：自倉庫精準消耗該實例
@@ -524,7 +526,7 @@ function buildLumielCraftHTML() {
     LUMIEL_RECIPES.forEach((r, idx) => {
         let resItem = DB.items[r.result];
         let imgUrl = getIconUrl(resItem);
-        let matsOk = r.mats.every(m => invCountId(m.id) >= m.cnt);
+        let matsOk = r.mats.every(m => materialObtainable(m.id, m.cnt));   // 🔧 含可遞迴合成（與惡魔王武器/通用製作 doCraft 一致）
         let src = findLumielSource(r.src);
         let canMake = matsOk && !!src;
         let srcColor = src ? 'text-green-400' : 'text-red-400';
@@ -552,10 +554,12 @@ function buildLumielCraftHTML() {
 function doLumielCraft(idx) {
     let r = LUMIEL_RECIPES[idx];
     if (!r) return;
-    let lack = r.mats.filter(m => invCountId(m.id) < m.cnt).map(m => `${DB.items[m.id].n} ${m.cnt - invCountId(m.id)}`);
+    if (!RECIPE_BY_RESULT) buildRecipeIndex();
+    let lack = r.mats.filter(m => !materialObtainable(m.id, m.cnt)).map(m => `${DB.items[m.id].n} ${Math.max(0, m.cnt - invCountId(m.id))}`);   // 🔧 可遞迴合成者不算缺
     let src = findLumielSource(r.src);
     if (!src) lack.push(`+7以上 ${r.srcName} ×1`);
     if (lack.length) { logSys(`<span class="text-red-400 font-bold">材料不足，無法製作。</span><span class="text-red-300">（尚缺：${lack.join('、')}）</span>`); return; }
+    r.mats.forEach(m => ensureMaterial(m.id, m.cnt, 0));   // 🔧 先自動補製可合成的中間物，玩家不需先手動製作
     r.mats.forEach(m => consumeMaterialById(m.id, m.cnt));
     let inherit = { en: src.en || 0, attr: src.attr || false, bless: src.bless || false, anc: src.anc || false, seteff: src.seteff || false };
     if (src._whSource) { whRemoveStackByUid(src.uid, 1); }   // 來源裝備在倉庫：自倉庫精準消耗
@@ -1565,6 +1569,8 @@ window.onload = () => {
     migrateSaves();
     if (anySaveExists()) document.getElementById('btn-load').classList.remove('hidden');
     try { _applyVfxPref(); } catch (e) {}   // 🎚️ 套用標題畫面的「戰鬥特效開關」偏好（持久化於 localStorage）
+    try { let _v = document.getElementById('login-version'); if (_v && typeof GAME_VERSION !== 'undefined') _v.textContent = GAME_VERSION; } catch (e) {}   // 🏷️ 登入頁面版本號：以 GAME_VERSION 為單一真相來源
+    try { if (typeof wireBuffEnders === 'function') wireBuffEnders(); } catch (e) {}   // 🔧 藥水/卷軸維持型增益勾選框：取消打勾即立即結束
 };
 
 /* ===== 城鎮商店/製作介面：游標移到物品圖片上顯示物品資訊（tooltip） ===== */

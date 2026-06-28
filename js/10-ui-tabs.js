@@ -931,7 +931,7 @@ function executeAutoSafeEnhance(targetUid, isEq, scrollId, goal) {
             } else {                                      // 防具：安定值6（其餘安定值防呆比照）
                 rate = en === safe ? 0.30 : 0.20;
             }
-            if (enRandomUid(target.uid, en, '') < rate) {   // 🎲 決定論：與單抽 doEnhance 同一套 (enSeed,uid,en) → 一鍵/單抽結果一致、不可 save/load 刷
+            if (enRandomUid(enIdUid(target), en, '') < rate) {   // 🎲 決定論：與單抽 doEnhance 同一套 (enSeed,強化身份,en) → 一鍵/單抽結果一致、不可 save/load 刷（enIdUid 含詛咒退階重骰）
                 target.en += 1;   // 成功
             } else {
                 destroyed = true; // 失敗即爆裝，過程視為失敗
@@ -988,6 +988,8 @@ function executeCurseDeEnhance(targetUid, isEq, scrollId) {
     scrollItem.cnt -= 1;
     if (scrollItem.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== scrollItem.uid);
 
+    if (player.enReSeq == null) player.enReSeq = 0;
+    target.enNonce = ++player.enReSeq;   // 🔁 退階＝付費重骰：賦予由存檔計數器決定的新強化身份→重爬時各階成敗重置（仍 committed·讀檔/匯入不能重骰·只有再花一張卷軸才換命運·見 enIdUid）
     target.en -= 1;   // 100% 成功降 1 階
     logSys(`消耗了 1 個 <span class="c-cursed">${scrollName}</span>，<span class="text-red-300 font-bold">+${target.en} ${d.n} 散發出黯淡的光芒。</span>`);
 
@@ -1089,7 +1091,7 @@ function runQuickEnhance(type) {
         removeUids.add(entry.uid);
         for (let u = 0; u < cnt; u++) {
             if ((entry.en || 0) >= Math.min(goal, enhanceCap(d))) { skipped++; survivors.push({ ...entry, cnt: 1, uid: uid() }); continue; }   // 已達/超過目標（或已達淬鍊上限）：原樣保留
-            let r = _quickEnhanceUnit(d, entry.en || 0, goal, scrollStacks, entry.uid + ':' + u);   // 🎲 keyBase=堆疊uid:副本序 → 決定論、每副本獨立
+            let r = _quickEnhanceUnit(d, entry.en || 0, goal, scrollStacks, enIdUid(entry) + ':' + u);   // 🎲 keyBase=強化身份(含詛咒退階重骰):副本序 → 決定論、每副本獨立
             usedTotal += r.used;
             if (r.destroyed) { destroyed++; continue; }   // 爆裝：不保留
             if (r.en >= goal) reached++; else partial++;  // 抵達 or 卷軸不足停在中途

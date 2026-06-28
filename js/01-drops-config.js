@@ -461,7 +461,7 @@ function sameItemSig(a, b) { return itemSig(a) === itemSig(b); }
 // 【日後新增 player 欄位時：只需在 SAVE_DEFAULTS 加一行；除非涉及格式轉換，不必再到 loadGame 寫 if(undefined)。】
 const SAVE_VERSION = 2;   // v1 = 未標版本的舊存檔
 const SAVE_DEFAULTS = {
-    name: null, bonus: 0, panaceaUsed: 0, bloodPledge: null, lootSeq: 0,
+    name: null, bonus: 0, panaceaUsed: 0, bloodPledge: null, lootSeq: 0, enReSeq: 0,
     magicShieldCd: 0, reviveScrollCd: 0, lastMapByCat: {}, lastBattleMap: null, tracking: null, ismaelAccUsed: false, sherineWorld: false, sherineMad: false, classicMode: false, traditionalMode: false,
     masteryQuest: null, mastery: null, masteryChangeCnt: 0,
     prideBeatJenis: false, demonTempleOpen: false, flameAffinity: 0, trialStage: 0, prideRank: { best: null, last: null, isNew: false }, prideRankSherine: { best: null, last: null, isNew: false },

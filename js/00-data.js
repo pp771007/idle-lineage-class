@@ -124,7 +124,11 @@ function enRandomUid(itUid, en, tag) {
   let seed = (typeof player !== 'undefined' && player && player.enSeed) || 'nseed';
   return _seededFloat(seed + '|' + itUid + '|' + (Number(en) || 0) + '|' + (tag || ''));
 }
-function enRandom(item, tag) { return enRandomUid(item && item.uid, item && item.en, tag); }
+// 🔁 強化身份 uid：詛咒卷軸退階後，裝備被賦予一個「由存檔內計數器 player.enReSeq 決定的新身份」(item.enNonce)，
+//    使重新爬階時各階成敗重置（＝付費重骰該階）。仍 committed：enNonce 取自存檔計數器→讀檔/匯入重現同值→不能 save/load 刷；
+//    只有「再花一張詛咒卷軸」(enNonce 換新)才換命運。未退階過的裝備 enNonce 為空→沿用 uid（既有裝備命運不變·向後相容）。
+function enIdUid(item) { return (item && item.enNonce) ? ('re' + item.enNonce) : (item && item.uid); }
+function enRandom(item, tag) { return enRandomUid(enIdUid(item), item && item.en, tag); }
 
 // 🎲 「獲得/抽取瞬間」決定論亂數（committed RNG·防 SL 存讀檔重抽）：把掉落/製作/兌換/潘朵拉/開箱/裂痕領取/碧恩賦予 等
 //   在行動當下擲出、且會 baked 進存檔的隨機（自帶強化值／詞綴／席琳套裝效果／抽到哪一件…）改由「存檔內遞增序號 player.lootSeq」決定。

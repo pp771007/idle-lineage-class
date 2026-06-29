@@ -23,43 +23,8 @@
  *
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-const CODE_VERSION = 'code-52a94d64d15d';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0629-1100'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
-=======
-const CODE_VERSION = 'code-055f3290797f';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-1343'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
->>>>>>> 69802e5 (多隻頭目重疊層次(z-index 全域,使用者定案順序) + 木人場改自動瞄中央)
-=======
-const CODE_VERSION = 'code-09a2ed484a8c';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-1305'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
->>>>>>> 56166e8 (邊緣頭目放大被裁→全域修正(afk-fixes) + 選角掛機地圖 afk_dummy 顯示中文「木人場」)
-=======
-const CODE_VERSION = 'code-fa0c3a9f4243';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-1241'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
->>>>>>> 7ea461f (木人場:多隻寬boss不再被切/互蓋(fit該格) + 手機從設定進場自動切到戰鬥畫面)
-=======
-const CODE_VERSION = 'code-4131e7b14ff4';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-1221'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
->>>>>>> b38a9fb (木人場怪物尺寸修正:背景 wrapper 改加 area-fit+contain(原本 remove area-fit→退回舊固定224px尺寸))
-=======
-const CODE_VERSION = 'code-1e1a7ae6cd45';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-0353'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
->>>>>>> e6f9db4 (小百科裝備:列表每件加圖示(getIconUrl) + 武器標單手/雙手(isTwoHandedWpn,列表+詳情+掉落查詢))
-=======
-const CODE_VERSION = 'code-25bd76a2e50e';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-0015'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
->>>>>>> 3ce7315 (小百科:新增「裝備圖鑑」分頁(裝備收集冊 js/16) + 補漏的藍海賊套裝)
-=======
-const CODE_VERSION = 'code-5b85c02549fa';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0627-1854'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
->>>>>>> 716245d (小百科:幻術士技能說明殘留英文翻成中文(confuse/panic/magicDmg))
+const CODE_VERSION = 'code-b60ca73db15e';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0629-1345'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;

@@ -837,8 +837,8 @@
     menu.appendChild(row);
   }
 
-  // ----- 自動化設定面板「🔌 外掛 · 查詢」列:遊戲中也能開小百科/掉落查詢 ------
-  // 與 afk-dex 共用同一列(id=m-afk-navrow),各自注入自己的鈕、呼叫各自 openModal,零耦合;誰先載入誰建列。
+  // ----- 自動化設定面板「🔌 外掛」列:遊戲中也能開小百科/掉落查詢/木人場 ------
+  // 與 afk-dex/afk-training 共用同一列(id=m-afk-navrow),各自注入自己的鈕、零耦合;誰先載入誰建列。標題統一「🔌 外掛」。
   function injectAutoNav(btnId, label, onClick) {
     var panel = document.getElementById('automation-panel');
     if (!panel) return;
@@ -848,7 +848,7 @@
       row = document.createElement('div');
       row.id = 'm-afk-navrow';
       row.className = 'bg-slate-800 p-3 rounded-lg border border-slate-700';
-      row.innerHTML = '<div class="text-sm text-amber-400 mb-2 border-b border-slate-700 pb-1 font-bold">🔌 外掛 · 查詢</div>' +
+      row.innerHTML = '<div class="text-sm text-amber-400 mb-2 border-b border-slate-700 pb-1 font-bold">🔌 外掛</div>' +
         '<div id="m-afk-navrow-btns" style="display:flex;gap:8px;"></div>';
       scroll.appendChild(row);
     }

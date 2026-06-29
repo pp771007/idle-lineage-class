@@ -43,7 +43,6 @@
   var MOB_OPTS = null;               // [{id,n,lv}] 排序後的怪清單
 
   function tickMs() { return (typeof TICK_MS !== 'undefined') ? TICK_MS : 100; }
-  function testMode() { try { return new URLSearchParams(location.search).get('test') === '1'; } catch (e) { return false; } }
 
   // ---- 怪物選項清單（依等級、名稱排序） -----------------------------------
   function buildMobOpts() {
@@ -166,7 +165,9 @@
   // ---- 造訓練怪 -----------------------------------------------------------
   function spawnTrainingMobs() {
     mapState.mobs = [null, null, null, null, null];
-    var slot = 0;
+    // 選怪格 #1~#5 直接對應「畫面左→右」第 1~5 個位置:畫面渲染序是 [0,3,1,4,2](五怪前後排,見 js renderMobs),
+    // 故把第 i 格的怪擺進 mobs[RENDER_ORDER[i]]。這樣 #2 不會跑到正中、選格編號=畫面位置、不跳來跳去。
+    var RENDER_ORDER = [0, 3, 1, 4, 2];
     for (var i = 0; i < slots.length; i++) {
       var id = slots[i];
       if (!id || !DB.mobs[id]) continue;
@@ -177,8 +178,7 @@
         _train: true, _slotLabel: i
       });
       if (base.hard && typeof window.initHardSkin === 'function') window.initHardSkin(inst);
-      mapState.mobs[slot] = inst;
-      slot++;
+      mapState.mobs[RENDER_ORDER[i]] = inst;
     }
     mapState.targetIdx = -1;   // 不硬鎖最左:設 -1 讓遊戲 getTarget() 自動瞄(優先序中央→左→右,同一般地圖)→ 木人場也是一開始瞄中間
     if (typeof window.renderMobs === 'function') window.renderMobs();
@@ -372,12 +372,13 @@
       '<div class="m-train-total-inst">即時 <b>' + fmt(instTotal) + '</b> <span>/秒</span></div>' +
       '<div class="m-train-total-avg">平均 ' + fmt(avgTotal) + ' /秒　·　' + elapsedSec.toFixed(0) + ' 秒</div>';
 
-    // 每隻 DPS（依場上順序）
+    // 每隻 DPS（依選怪格 #1~#5 順序列 = 畫面左→右順序，與 spawnTrainingMobs 的擺位一致、不跳）
     var rows = '';
-    var mobs = mapState.mobs;
-    for (var i = 0; i < mobs.length; i++) {
-      var m = mobs[i];
-      if (!m || !m._train) continue;
+    var list = [];
+    for (var i = 0; i < mapState.mobs.length; i++) { if (mapState.mobs[i] && mapState.mobs[i]._train) list.push(mapState.mobs[i]); }
+    list.sort(function (a, b) { return (a._slotLabel || 0) - (b._slotLabel || 0); });
+    for (var j = 0; j < list.length; j++) {
+      var m = list[j];
       var d = dps.perUid[m.uid] || 0;
       var avg = elapsedSec > 0 ? d / elapsedSec : 0;
       rows += '<div class="m-train-row"><span class="m-train-row-name">' + esc(m.n) + ' <span class="m-train-lv">Lv.' + (m.lv || 0) + '</span></span>' +
@@ -449,6 +450,7 @@
         '<span class="m-train-pnum">#' + (i + 1) + '</span>' +
         '<input class="m-train-pfilter" type="text" placeholder="搜尋怪名…" data-idx="' + i + '">' +
         '<select class="m-train-pselect" data-idx="' + i + '">' + buildSelectOptions('', slots[i]) + '</select>' +
+        '<button type="button" class="m-train-pclear" data-idx="' + i + '" title="清除這格">✖</button>' +
         '</div>';
     }
     box.innerHTML = html;
@@ -465,6 +467,17 @@
       sel.addEventListener('change', function () {
         var idx = +sel.getAttribute('data-idx');
         slots[idx] = sel.value || null;
+      });
+    });
+    // ✖ 快速清除這格：清掉選擇與搜尋字、下拉回「（空）」
+    box.querySelectorAll('.m-train-pclear').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var idx = +btn.getAttribute('data-idx');
+        slots[idx] = null;
+        var inp = box.querySelector('.m-train-pfilter[data-idx="' + idx + '"]');
+        var sel = box.querySelector('.m-train-pselect[data-idx="' + idx + '"]');
+        if (inp) inp.value = '';
+        if (sel) sel.innerHTML = buildSelectOptions('', null);
       });
     });
   }
@@ -504,7 +517,7 @@
         '<div id="m-afk-navrow-btns" style="display:flex;gap:8px;flex-wrap:wrap;"></div>';
       scroll.appendChild(row);
     }
-    var hdr = row.querySelector('.text-amber-400');   // 統一改名「外掛 · 查詢」→「外掛」(防舊快取的 dex/wiki 殘留舊字)
+    var hdr = row.querySelector('.text-amber-400');   // 防呆:dex/wiki/training 現在建列都用「🔌 外掛」,此改名只為兜「舊快取的 dex/wiki 還寫『外掛 · 查詢』」的情況
     if (hdr) hdr.textContent = '🔌 外掛';
     var b = document.createElement('button');
     b.id = 'm-afk-nav-train'; b.type = 'button';
@@ -551,6 +564,7 @@
       '.m-train-pnum{color:#64748b;font-size:13px;width:24px;flex:none;}',
       '.m-train-pfilter{flex:1;min-width:0;background:#1e293b;border:1px solid #475569;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:13px;outline:none;}',
       '.m-train-pselect{flex:1.4;min-width:0;background:#1e293b;border:1px solid #475569;border-radius:6px;color:#e2e8f0;padding:6px 4px;font-size:13px;outline:none;}',
+      '.m-train-pclear{flex:none;width:30px;height:30px;border-radius:6px;background:#3f1d1d;border:1px solid #7f1d1d;color:#fca5a5;font-size:13px;line-height:1;cursor:pointer;padding:0;touch-action:manipulation;}.m-train-pclear:hover{background:#7f1d1d;color:#fee2e2;}',
       '.m-train-modal-btns{display:flex;gap:8px;padding:12px 14px;}',
       '@media (max-width:640px){#m-train-hud{top:auto;bottom:74px;right:6px;left:6px;width:auto;}.m-train-list{max-height:120px;}}'
     ].join('\n');
@@ -564,8 +578,6 @@
     injectCss();
     // 核心 hook（tick/killMob/killPlayer 的包裝）在載入時即已安裝 → 此處即可視為就緒
     console.log('[AFK-training] hooks OK');
-    // 🔒 隱藏功能：只有網址帶 ?test=1 才掛入口按鈕；一般玩家看不到、進不去（核心包裝雖在但 inTrain 永不成立）
-    if (!testMode()) return;
     // 入口按鈕：自動化面板可能晚於外掛才建立 → 重試注入（best-effort，不影響核心功能）
     var tries = 0;
     (function tryInject() {

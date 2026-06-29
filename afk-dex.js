@@ -4,7 +4,7 @@
  * 首頁(#main-menu)加一顆「📖 怪物 / 掉落查詢」按鈕,開搜尋面板。
  *   - 單一搜尋框:可同時搜 怪物名 / 地圖名 / 掉落物名;有輸入才顯示結果(空的不渲染,不卡)。
  *   - 每筆結果是「怪物卡」:數值 + 出沒地圖 + 掉落清單(物品名 + 機率%)。
- *   - 「掉落率模式」下拉(一般/席琳的世界 ×3/經典模式 ×1/10):重算怪卡掉落率顯示(席琳上限 100%)。
+ *   - 「掉落率模式」下拉(一般/席琳的世界 ×3/瘋狂的席琳世界 ×5/經典模式 ×1/10):重算怪卡掉落率顯示(席琳上限 100%)。
  *   - 純讀取遊戲全域資料(DB.mobs / DB.maps / MOB_DROPS / DB.items),不改遊戲;桌機手機共用。
  *
  * 掛接:在 index.html 的 </body> 前加一行 <script src="afk-dex.js"></script>
@@ -558,7 +558,7 @@
   });
 
   function cardHTML(h, mult, q) {
-    var modeLabel = mult > 1 ? '（席琳的世界 ×3）' : (mult < 1 ? '（經典模式 ×1/10）' : '');
+    var modeLabel = mult >= 5 ? '（瘋狂的席琳世界 ×5）' : (mult > 1 ? '（席琳的世界 ×3）' : (mult < 1 ? '（經典模式 ×1/10）' : ''));
     var m = h.mob;
     var tags = '';
     if (m.boss) tags += '<span class="m-dex-tag tag-boss">BOSS</span>';
@@ -648,9 +648,9 @@
   // 所以不會出現在上面的怪物卡掉落清單。整理成一個預設收合的面板,點開才展開,不佔主版面。
   // 全域特殊掉落規則:每條一個可摺疊區塊(預設收合,面板保持精簡);搜到該條關鍵字會自動展開+高亮+捲到它
   var SPECIAL_BLOCKS = [
-    { id: 'dropmult', title: '🔮 掉落倍率：席琳的世界 ×3、恩賜怪 ×10、經典 ×1/10', keys: ['掉落倍率', '倍率', '席琳的世界', '經典模式', '恩賜怪', '恩賜'], lines: [
+    { id: 'dropmult', title: '🔮 掉落倍率：席琳的世界 ×3、瘋狂的席琳世界 ×5、恩賜怪 ×10、經典 ×1/10', keys: ['掉落倍率', '倍率', '席琳的世界', '瘋狂的席琳世界', '經典模式', '恩賜怪', '恩賜'], lines: [
       '<b>怪物卡上顯示的是「一般」掉落機率</b>，下列狀態會整體放大／縮小：',
-      '<b>席琳的世界</b>：被席琳化的怪掉落機率 <b>×3</b>；其中「恩賜怪」更高，<b>×10</b>',
+      '<b>席琳的世界</b>：被席琳化的怪掉落機率 <b>×3</b>（<b>瘋狂的席琳世界</b> <b>×5</b>）；其中「恩賜怪」更高，<b>×10</b>',
       '<b>經典模式</b>：所有物品掉落機率 <b>×1/10</b>',
       '<b>固定、不受倍率影響的例外</b>：席琳結晶、萬能藥（屬性藥）、黑魔石、銀礦石、進化果實（各條另有標註）；其餘怪卡掉落都會被倍率放大／縮小',
       '上方的「<b>掉落率模式</b>」下拉可把席琳／經典倍率直接套到怪卡的掉落數字'
@@ -745,7 +745,7 @@
           '<button id="m-dex-close" type="button" title="關閉">✕</button>' +
         '</div>' +
         '<div id="m-dex-sherine-row"><label for="m-dex-mode">掉落率模式</label>' +
-          '<select id="m-dex-mode"><option value="1">一般模式</option><option value="3">席琳的世界（×3）</option><option value="0.1">經典模式（×1/10）</option></select></div>' +
+          '<select id="m-dex-mode"><option value="1">一般模式</option><option value="3">席琳的世界（×3）</option><option value="5">瘋狂的席琳世界（×5）</option><option value="0.1">經典模式（×1/10）</option></select></div>' +
         '<div id="m-dex-results"><div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜物品名可直接點看詳情</div></div>' +
         specialPanelHTML() +
       '</div>' +

@@ -203,6 +203,16 @@ writeFileSync('last-sync.json', JSON.stringify({ syncedAt: new Date().toISOStrin
 // 從 <title> 動態抓遊戲名(原作者改名也會自動正確),給 release 標題/說明用
 const titleMatch = merged.match(/<title>([^<]*)<\/title>/);
 const gameTitle = (titleMatch ? titleMatch[1] : '放置天堂').trim();
+// 抓原作者遊戲版本號(單一真相來源 GAME_VERSION,在 js/00-data.js;作者搬檔也容錯掃整個 js/),給 release 標題用;抓不到回空字串
+let gameVersion = '';
+try {
+  const jsFiles = existsSync('js') ? readdirSync('js').filter((f) => f.endsWith('.js')).map((f) => 'js/' + f) : [];
+  for (const f of ['js/00-data.js', ...jsFiles]) {
+    if (!existsSync(f)) continue;
+    const vm = readFileSync(f, 'utf8').match(/GAME_VERSION\s*=\s*['"]([^'"]+)['"]/);
+    if (vm) { gameVersion = vm[1].trim(); break; }
+  }
+} catch (e) {}
 setOutput('changed', changed ? 'true' : 'false');
 setOutput('html_changed', htmlChanged ? 'true' : 'false');
 setOutput('assets_added', String(assetsAdded.length));
@@ -213,6 +223,7 @@ setOutput('code_added', String(subAdded.length));            // 作者外部 js/
 setOutput('code_changed', String(subChanged.length));        // 作者外部 js/css 內容被換(玩家端靠引用 ?v=內容hash 自動重抓)
 setOutput('code_removed', String(subRemoved.length));        // 作者移除的孤兒 js/css(已從本地刪)
 setOutput('game_title', gameTitle);
+setOutput('game_version', gameVersion);                      // 原作者遊戲版本號(GAME_VERSION,如 v2.4.15),給 release 標題用
 console.log(`index.html 變更: ${htmlChanged} | 程式/樣式: +${subAdded.length}/~${subChanged.length}/-${subRemoved.length} | 新增圖檔: ${assetsAdded.length} | 更新既有圖: ${assetsChanged.length} | 移除孤兒圖: ${assetsRemoved.length}`);
 if (subAdded.length) console.log('新增 js/css:\n' + subAdded.join('\n'));
 if (subChanged.length) console.log('更新 js/css:\n' + subChanged.join('\n'));

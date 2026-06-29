@@ -142,6 +142,8 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 ## 📚 小百科(afk-wiki.js)維護準則
 
+> **🛠️ 此 SOP 已包成 `/update-wiki` skill(`.claude/skills/update-wiki/`)。** 使用者說「更新小百科 / 同步小百科」時**直接跑 `/update-wiki`**——它把「git pull → 讀 checkpoint → 逐檔 diff → 檔→頁對照 → render 實測 → 更新 checkpoint」整套固化好了。本節是同一套 SOP 的詳述背景;**操作層的鐵則(尤其新踩的雷)優先寫進 skill**,本節保留為原理/細則參考。(push 前準備另有 `/prepush` skill,見下「每次 push 前的檢查清單」。)
+>
 > **🔴 鐵則:更新小百科資料前,第一件事一定要先 `git pull`(`git fetch origin && git pull --rebase origin main`)。**
 > 每小時自動同步會在背景把作者新版推上來,本機落後就會拿舊的去比、漏掉剛進來的改版(席琳套裝改版踩過)。沒 pull 不准動手。
 
@@ -211,6 +213,8 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 - **手機**:不要為了標示加會被內容撐高的元素——席琳世界用「狀態列染紅」標示;怪物卡固定高 + 名稱兩行截斷(別隨怪/名稱長短抖動)。
 
 ## 🚨 每次 push 前的檢查清單
+
+> **🛠️ 這份清單已包成 `/prepush` skill(`.claude/skills/prepush/`):自動偵測改動的外掛→bump `?v=`→`stamp-sw-version`→smoke→掃衝突標記。準備 push 時跑 `/prepush` 即可。另有 `.claude/` 兩個 hook 兜底:`git push` 前自動擋衝突標記/漏引用/sw 版本過時(prepush-guard)、改 `afk-*.js` 後提醒 bump(bump-reminder)。** 下面是清單本體(skill/hook 即據此):
 
 1. **確認所有外掛 JS 都已在 `index.html` 補上 `<script>` 引用**(在 `</body>` 前)。目前應有:
    ```html

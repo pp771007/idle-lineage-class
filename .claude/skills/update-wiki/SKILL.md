@@ -13,6 +13,7 @@ disable-model-invocation: true
 - 🔴 **先 `git fetch origin && git pull --rebase origin main`** 才動手。每小時自動同步會在背景推作者新版，不 pull 會拿舊的比、漏掉剛進來的改版。
 - 🔴 **diff 要整段逐項勾過**，即使覺得做過了也要看完。
 - 🔴 **diff 不只看「新增的資料定義」，更要看「既有公式/機制被改」**——機制改動不會以新 `sk_`/`item` 出現，純掃新增一定漏。重點讀 `js/02-stats`、`js/04-combat`、`js/01-drops`、`js/05-kill` 裡**被修改的成對 `-`/`+` 行**。
+- 🔴 **同一主題的 wiki 內容可能同時存在兩處：「資料陣列」(如 `COMBAT_SECTIONS`) 和「自寫 render 函式」(如 `renderMode` 自己 inline 建表、有自己的 `note`/表格、不吃任何 sections 陣列)。改了 grep 命中的那處 ≠ 改完。** 判準：改完**一定要 render 實測那一頁**(步驟 5)看畫面實際輸出，不能只靠 Edit 成功就當完成(踩過 2026-06-29:模式四組合只改了 `COMBAT_SECTIONS` 的卡、漏了獨立的 `renderMode` 頁,靠實測才抓到)。
 
 ## 步驟
 

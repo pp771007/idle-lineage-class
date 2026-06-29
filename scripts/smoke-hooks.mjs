@@ -39,6 +39,24 @@ const logs = [];
 page.on('console', (m) => logs.push(m.text()));
 await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
+
+// 🗺️ 地圖名翻譯覆蓋檢查:掉落查詢的「出沒地圖」來源＝DB.maps 的 key,經 AFK_EXTRA.mapName 解析。
+//   mapName 查不到任一中文來源時會原樣回傳英文 id(name === id),這就是「漏翻」的精準訊號。
+//   作者新增「不在 MAP_CATEGORIES/MAP_REGIONS/DB.towns…」的地圖結構時會被這裡擋下 → 提醒補進 mapName。
+const untranslatedMaps = await page.evaluate(() => {
+  const out = [];
+  try {
+    const mn = (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName : null;
+    if (mn && typeof DB !== 'undefined' && DB.maps) {
+      for (const id of Object.keys(DB.maps)) {
+        const nm = String(mn(id));
+        if (nm === id || /[A-Za-z]/.test(nm)) out.push([id, nm]);   // 原樣回傳 id 或仍含英文字母 = 漏翻
+      }
+    }
+  } catch (e) {}
+  return out;
+});
+
 await browser.close();
 server.close();
 
@@ -53,4 +71,11 @@ if (!allOK) {
   console.error('冒煙測試失敗:有外掛沒有成功 hook(原作者可能改了 DOM / id)。');
   process.exit(1);
 }
-console.log('冒煙測試通過:五支外掛都 hooks OK。');
+
+if (untranslatedMaps.length) {
+  console.error('冒煙測試失敗:掉落查詢有地圖名未翻譯(會顯示英文 id),請補進 afk-extradata.js 的 AFK_EXTRA.mapName:');
+  for (const [id, nm] of untranslatedMaps) console.error(`  ${id}  ->  ${nm}`);
+  process.exit(1);
+}
+
+console.log('冒煙測試通過:外掛 hooks OK,且掉落查詢地圖名全部已翻譯。');

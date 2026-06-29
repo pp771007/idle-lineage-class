@@ -91,6 +91,10 @@
         var drain = base - m.curHp;
         if (drain > 0) { dps.perUid[m.uid] = (dps.perUid[m.uid] || 0) + drain; tickTotal += drain; }
         m.curHp = TRAIN_HP; m._dead = false;
+        // 傷害飄字(09-vfx-render 的 _vfxQueueDmg)是「tick 結束後 flushTickRender 才取樣 curHp、用跨幀差反推傷害」。
+        // 木人場已在這裡把 curHp 補回 TRAIN_HP→若不處理,flush 取樣到的差是 0、永遠不飄字(DPS 仍準,那是上面自己量的)。
+        // 解法:把特效層基準 _vfxHp 墊成「補滿值＋這拍傷害」→ flush 取樣時 差值=這拍真實傷害 → 每拍跳一個總傷數字。
+        m._vfxHp = TRAIN_HP + drain;
       }
     }
     dps.window.push(tickTotal);

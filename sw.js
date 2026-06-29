@@ -23,8 +23,13 @@
  *
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
-const CODE_VERSION = 'code-63dba8b2ba9f';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0629-2015'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+<<<<<<< HEAD
+const CODE_VERSION = 'code-6c455c0bcf96';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0629-2052'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+=======
+const CODE_VERSION = 'code-70bc86575feb';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0629-2051'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+>>>>>>> cb64ca8 (木人場:讓傷害飄字正常顯示)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;

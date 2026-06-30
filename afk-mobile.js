@@ -627,6 +627,13 @@
       'body.m-mobile #automation-panel > div:last-child{max-height:none !important;}',   /* 解除原生 220px 內捲上限,讓內容隨欄高自然捲動 */
 
       'body.m-mobile{padding:0 !important;}',
+      /* 🖥️→📱 中和作者 2026-06 新增的「1920×1080 固定設計舞台」#app-stage:它用 fitStage() 對舞台
+         下 transform:scale(min(vw/1920,vh/1080)) 等比縮小整個桌機版面——手機上會把我們自建的版面
+         一起縮成中央一小塊(0.2~0.8×),且 transform/will-change 會讓我們 fixed 的 #game-screen 改以
+         舞台為定位基準(被一起縮放/位移)。手機把舞台還原成「正常文件流、零縮放」,fixed 子層才會貼回視窗。
+         CSS !important 壓得過 fitStage 寫的 inline transform/left/top(它們無 !important),resize 時它再寫
+         也蓋不掉,故不必攔 fitStage 本身。⏏️ 作者哪天不再用 #app-stage/fitStage 縮放,可整段刪。 */
+      'body.m-mobile #app-stage{position:static !important;transform:none !important;will-change:auto !important;left:auto !important;top:auto !important;width:100vw !important;height:auto !important;overflow:visible !important;}',
       /* game-screen 用 fixed 釘在左上角:脫離原作者 body 的 flex 置中流,
          避免它比 body 矮時被垂直置中(→ 上方空白、底部 nav 被工具列遮住)。
          只動 game-screen,不動 body 對齊 → 開始選單/創角畫面照樣置中。

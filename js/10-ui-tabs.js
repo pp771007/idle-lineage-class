@@ -1425,7 +1425,7 @@ function _allySkillOptions(ally, kind, cur) {
 function renderSquadPanel() {
     let panel = document.getElementById('squad-panel');
     if (!panel) return;
-    if (!_autoCollapseInit) { _autoCollapseInit = true; try { if (_lsGet('fb5_automation_collapsed') === '1') _applyAutomationCollapse(true); } catch (e) {} }   // 首次套用收合偏好
+    if (!_autoCollapseInit) { _autoCollapseInit = true; try { if (_lsGet('fb5_automation_collapsed') === '1') _applyAutomationCollapse(true); } catch (e) {} try { if (_lsGet('fb5_squad_collapsed') === '1') _applySquadCollapse(true); } catch (e) {} }   // 首次套用收合偏好（自動化設定＋傭兵隊伍）
     let allies = (player && player.allies) ? player.allies.filter(Boolean) : [];
     if (!allies.length) { panel.style.display = 'none'; _squadSig = ''; return; }
     panel.style.display = '';
@@ -1454,11 +1454,13 @@ function renderSquadPanel() {
         document.getElementById('squad-tab-skill').innerHTML = allies.map(a => {
             let s = a._slot;
             let hpPct = (a._healHpPct != null) ? a._healHpPct : 70;
+            let safePct = (a._hpSafePct != null) ? a._hpSafePct : 0;
             return `<div class="bg-slate-800/60 border border-slate-600 rounded p-2 flex flex-col gap-1">
                 <div class="text-sm font-bold text-amber-200">${a._allyName} <span class="text-slate-500 text-xs">Lv.${a.lv || 1}</span></div>
                 <div class="flex items-center gap-1 text-xs"><span class="text-cyan-400 font-bold shrink-0" style="width:3rem;">攻擊技能</span><select class="flex-1 bg-slate-900 border border-slate-600 text-cyan-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyAtkSkill('${s}', this.value)">${_allySkillOptions(a, 'atk', a._atkSkill || '')}</select></div>
                 <div class="flex items-center gap-1 text-xs"><span class="text-green-400 font-bold shrink-0" style="width:3rem;">治癒魔法</span><select class="flex-1 bg-slate-900 border border-slate-600 text-green-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyHealSkill('${s}', this.value)">${_allySkillOptions(a, 'heal', a._healSkill || '')}</select></div>
                 <div class="flex items-center justify-end gap-1 text-xs text-slate-400">HP &lt; <input type="number" min="0" max="100" value="${hpPct}" class="w-12 bg-slate-900 border border-slate-600 text-center text-white rounded" onchange="setAllyHealHp('${s}', this.value)">% 施放治癒</div>
+                <div class="flex items-center justify-end gap-1 text-xs text-amber-400" title="HP 安全線：低於此％時，喝隊長設定的藥水回血，並暫停施放消耗 HP 的技能（退回普攻）。0 = 關閉。">HP &lt; <input type="number" min="0" max="100" value="${safePct}" class="w-12 bg-slate-900 border border-amber-700 text-center text-white rounded" onchange="setAllyHpSafe('${s}', this.value)">% 喝藥水/停耗HP技</div>
             </div>`;
         }).join('');
         switchSquadTab(_squadTab);   // 重建後還原目前分頁與按鈕高亮
@@ -1527,6 +1529,7 @@ function _findAlly(slot) { return (player.allies || []).find(a => a && String(a.
 function setAllyAtkSkill(slot, val) { let a = _findAlly(slot); if (a) { a._atkSkill = val || ''; saveGame(); } }   // _atkSkill 即時生效（傭兵攻擊路徑直接讀 ally._atkSkill）
 function setAllyHealSkill(slot, val) { let a = _findAlly(slot); if (a) { a._healSkill = val || ''; saveGame(); } }   // _healSkill 儲存待 Phase 3 傭兵自動補血讀取
 function setAllyHealHp(slot, val) { let a = _findAlly(slot); if (a) { a._healHpPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }
+function setAllyHpSafe(slot, val) { let a = _findAlly(slot); if (a) { a._hpSafePct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }   // 🍶🛡️ HP 安全線：低於此%→喝隊長藥水＋暫停耗HP技能；0=關閉
 
 // 自動化設定面板收合（只留標題）：收合時去掉 flex-1 改 0 0 auto，body 隱藏
 function _applyAutomationCollapse(collapsed) {
@@ -1541,4 +1544,17 @@ function toggleAutomationCollapse() {
     let collapsed = !(body && body.classList.contains('hidden'));
     _applyAutomationCollapse(collapsed);
     try { _lsSet('fb5_automation_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
+// 🤝 協力傭兵隊伍面板收合（只留標題）：比照自動化設定。#squad-panel 無 flex-1（內容高度）→ 收合 body 即縮成標題列。
+function _applySquadCollapse(collapsed) {
+    let body = document.getElementById('squad-body'), arrow = document.getElementById('squad-collapse-arrow');
+    if (!body) return;
+    body.classList.toggle('hidden', collapsed);
+    if (arrow) arrow.textContent = collapsed ? '▶' : '▼';
+}
+function toggleSquadCollapse() {
+    let body = document.getElementById('squad-body');
+    let collapsed = !(body && body.classList.contains('hidden'));
+    _applySquadCollapse(collapsed);
+    try { _lsSet('fb5_squad_collapsed', collapsed ? '1' : '0'); } catch (e) {}
 }

@@ -410,9 +410,10 @@
 .card-silhouette { filter: brightness(0) saturate(0); opacity: .55; }
 
 /* ===== 🖥️ 1920×1080 固定設計舞台 + 版面比例（戰鬥/村莊最大化、日誌約佔 1/3~1/2） ===== */
-/* 舞台：固定設計尺寸，由 fitStage() 以 transform:scale 等比縮放並置中（見 index.html 底部 inline script）。
-   VFX/提示/游標光點掛在 body（舞台外）→ getBoundingClientRect 取得縮放後視窗座標，定位自動相容、不需改 VFX。 */
-#app-stage { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: top left; will-change: transform; }
+/* 🖥️ v2.5.8 改：流動式版面（填滿整個視窗、元素自然撐開）——移除固定 1920×1080 舞台與 transform 縮放。
+   舞台直接 position:fixed;inset:0 填滿視窗；內層 #game-screen(absolute inset:0) 與三欄 flex(左 340 / 中 flex-1 / 右 380)隨視窗大小自然伸縮，無 letterbox、無縮放。
+   VFX/提示/游標光點掛在 body（舞台外）→ getBoundingClientRect 取真實視窗座標，定位天生相容、不需改 VFX。fitStage() 已改為清空殘留 transform 的 no-op。 */
+#app-stage { position: fixed; inset: 0; }
 #game-screen { position: absolute; inset: 0; padding: 16px; }   /* 吃滿整個舞台（取代舊 max-w-[1600px] 置中→改用滿版 1920） */
 /* 中央欄：地圖/戰鬥面板吃滿剩餘高度（最大化戰鬥與村莊畫面）；兩個日誌改「並排一列」(戰鬥日誌左、系統日誌右)、各佔一半寬 */
 #map-view-panel { flex: 1 1 0; min-height: 0; }

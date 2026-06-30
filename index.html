@@ -28,12 +28,12 @@
     <title>放置天堂 - 以血為盟</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <link rel="stylesheet" href="css/style.css?v=d8fcc81cfd">
+    <link rel="stylesheet" href="css/style.css?v=1d91fbe4fc">
     <link rel="stylesheet" href="css/tailwind-built.css?v=c0926cfba4"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
 <body class="h-screen w-screen overflow-hidden">
 
-    <!-- 🖥️ 固定 1920×1080 設計舞台：整個 UI 置於此舞台內，由 fitStage() 依視窗大小等比 scale-to-fit（1080p=1×、1440p≈1.33×、4K=2×），大解析度全螢幕等比放大、版面不重排。VFX/提示/游標光點掛在 body（舞台外）→ 維持視窗座標、與舞台縮放相容。 -->
+    <!-- 🖥️ v2.5.8 流動式版面：#app-stage 由 CSS position:fixed;inset:0 填滿整個視窗，內層三欄 flex 隨視窗大小自然撐開（無固定 1920×1080、無 transform 縮放、無 letterbox）。VFX/提示/游標光點掛在 body（舞台外）→ getBoundingClientRect 取真實視窗座標、天生相容。 -->
     <div id="app-stage">
 
     <!-- 創角畫面 -->
@@ -159,14 +159,14 @@
 
             <!-- 🤝 協力傭兵隊伍面板（Phase 1：隊伍/技能設定分頁；無傭兵時自動隱藏，不佔版面） -->
             <div id="squad-panel" class="panel" style="display:none;">
-                <div class="panel-header text-center">協力傭兵隊伍</div>
-                <div class="p-3 flex flex-col gap-2">
+                <div class="panel-header flex items-center justify-between" style="cursor:pointer;user-select:none;" onclick="toggleSquadCollapse()"><span class="flex-1 text-center">協力傭兵隊伍</span><span id="squad-collapse-arrow" class="text-sm" style="padding:0 0.25rem;">▼</span></div>
+                <div id="squad-body" class="p-3 flex flex-col gap-2">
                     <div class="flex gap-2">
                         <button id="squad-tab-btn-team" class="flex-1 py-1 text-sm font-bold rounded border" style="background:#334155;border-color:#475569;color:#cbd5e1;" onclick="switchSquadTab('team')">隊伍</button>
                         <button id="squad-tab-btn-skill" class="flex-1 py-1 text-sm font-bold rounded border" style="background:#334155;border-color:#475569;color:#cbd5e1;" onclick="switchSquadTab('skill')">技能設定</button>
                     </div>
-                    <div id="squad-tab-team" class="flex flex-col gap-2" style="max-height:260px;overflow-y:auto;"></div>
-                    <div id="squad-tab-skill" class="hidden flex flex-col gap-2" style="max-height:260px;overflow-y:auto;"></div>
+                    <div id="squad-tab-team" class="flex flex-col gap-2"></div>
+                    <div id="squad-tab-skill" class="hidden flex flex-col gap-2"></div>
                 </div>
             </div>
 
@@ -448,16 +448,11 @@
     </div><!-- /#app-stage -->
 
     <script>
-    /* 🖥️ 等比縮放：固定 1920×1080 設計舞台依視窗大小 scale-to-fit（保持 16:9 等比、置中、超寬/超高處 letterbox）。1080p=1×、1440p≈1.33×、4K=2×→大解析度全螢幕等比放大、版面零重排。 */
+    /* 🖥️ v2.5.8 流動式版面：移除固定 1920×1080 舞台與縮放，改由 CSS #app-stage{position:fixed;inset:0} 填滿視窗、三欄 flex 隨視窗自然伸縮。fitStage() 保留為 no-op（清掉任何殘留的 transform/left/top，相容舊存的 inline 樣式），仍掛在 resize/load 不報錯。 */
     (function () {
-      var DW = 1920, DH = 1080;
       function fitStage() {
         var st = document.getElementById('app-stage'); if (!st) return;
-        var vw = window.innerWidth, vh = window.innerHeight;
-        var s = Math.min(vw / DW, vh / DH);
-        st.style.transform = 'scale(' + s + ')';
-        st.style.left = ((vw - DW * s) / 2) + 'px';
-        st.style.top = ((vh - DH * s) / 2) + 'px';
+        st.style.transform = ''; st.style.left = ''; st.style.top = '';   // 流動版面：不縮放、不偏移，全交給 CSS
       }
       window.fitStage = fitStage;
       window.addEventListener('resize', fitStage);
@@ -468,20 +463,20 @@
     })();
     </script>
 
-<script src="js/00-data.js?v=024d682b86"></script>
+<script src="js/00-data.js?v=10489d3d7d"></script>
 <script src="js/01-drops-config.js?v=ac1438ac8f"></script>
 <script src="js/02-stats-recompute.js?v=1dda2fc2b9"></script>
-<script src="js/03-combat-core.js?v=160133e61b"></script>
+<script src="js/03-combat-core.js?v=e4b4b4e76e"></script>
 <script src="js/04-combat-attack.js?v=2e696f24f2"></script>
 <script src="js/05-kill-progression.js?v=1783f55eaf"></script>
-<script src="js/06-status-allies.js?v=e3bc3192e0"></script>
+<script src="js/06-status-allies.js?v=21e0a829c3"></script>
 <script src="js/07-skills-cast.js?v=89d30b95e5"></script>
 <script src="js/08-items-equip.js?v=6a8d4c6a5e"></script>
 <script src="js/09-vfx-render.js?v=1146541fc5"></script>
-<script src="js/10-ui-tabs.js?v=3199c5a171"></script>
+<script src="js/10-ui-tabs.js?v=fa245e60b8"></script>
 <script src="js/11-world-map.js?v=cdad7b986d"></script>
 <script src="js/12-npc-quests.js?v=7b9a4503d7"></script>
-<script src="js/13-shop-save.js?v=6068f67d0c"></script>
+<script src="js/13-shop-save.js?v=0f965dc644"></script>
 <script src="js/14-craft-pandora.js?v=86a08e2a17"></script>
 <script src="js/15-cards.js?v=6bbbcd0762"></script>
 <script src="js/16-equip-book.js?v=efb39e48df"></script>

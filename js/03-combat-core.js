@@ -422,6 +422,7 @@ function tick() {
                     let r = roll(1, 20);
                     if (r === 20 || (r !== 1 && hv >= r) || (r === 19 && hasSummonCtrlRing())) {
                         let dmg = Math.max(1, roll(1, Math.max(1, player.lv + pd.diceOff)) + Math.floor(cha * ((pd.chaMult || 1) * (hasMastery('k_royal_pet') ? 1.2 : 1))) + pg.dmg - (target.dr || 0));   // 👑 夥伴精通：魅力傷害係數×1.2
+                        dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：項圈夥伴造成傷害 ×(1+魅力/100)（非王族＝×1）
                         target.curHp -= dmg; target.justHit = pd.ele; mobWake(target);
                         logCombat(`夥伴 [${nm}] 撕咬 <span class="${getMobColor(target.lv)}">${target.n}</span>，造成 ${dmg} 點${pd.eleName}屬性傷害！`, 'player-special');
                     } else {
@@ -437,6 +438,7 @@ function tick() {
                             _pts.forEach(_pm => {
                                 let _pdmg = petProcSpellDamage(pd.proc, _pm);
                                 if (_pdmg > 0) {
+                                    _pdmg = Math.max(1, Math.floor(_pdmg * royalAllyMult()));   // 👑 王族魅力加成：夥伴 proc 法術傷害 ×(1+魅力/100)
                                     _pm.curHp -= _pdmg; _pm.justHit = _ps.ele || pd.ele; mobWake(_pm);
                                     _ptexts.push(`<span class="${getMobColor(_pm.lv)}">${_pm.n}</span> ${_pdmg}`);
                                 }

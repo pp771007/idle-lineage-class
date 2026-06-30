@@ -160,6 +160,11 @@
     // 戰鬥日誌 / 系統日誌:手機上做成「底部浮動面板」(從導覽列開,浮在畫面上,不擠壓戰鬥畫面)
     var combatLog = document.getElementById('combat-log-panel');
     var sysPanel = (function () { var s = document.getElementById('sys-log'); return s && s.closest ? s.closest('.panel') : null; })();
+    // 🔧 桌機還原日誌時要放回「原本的家」,不能硬塞中欄。作者 2026-06 大改版把兩個日誌包進 #log-row(中欄的子層),
+    //   舊碼的 logsToColumn 把它們 append 到 colCenter(中欄本身)→ 變成中欄直接子層、脫離 #log-row → 桌機中欄
+    //   排版壞掉(地圖框被擠扁、日誌跑回舊位置=使用者說的「中間那欄還是舊的」)。改成記住各自的原始父層,還原放回去。
+    var combatLogHome = combatLog ? combatLog.parentNode : null;   // 新版＝#log-row;舊版＝中欄。記載入當下的家
+    var sysPanelHome = sysPanel ? sysPanel.parentNode : null;
     var logSheet = null;
     if (combatLog && sysPanel) {
       sysPanel.classList.add('m-syslog');
@@ -171,7 +176,10 @@
     var logBody = logSheet ? logSheet.querySelector('#m-log-body') : null;
     // 手機:把兩個日誌面板移進浮動面板;桌機:移回中欄原位(最後兩個子元素,順序還原)
     function logsIntoSheet() { if (logBody && combatLog && sysPanel) { logBody.appendChild(combatLog); logBody.appendChild(sysPanel); } }
-    function logsToColumn() { if (combatLog) colCenter.appendChild(combatLog); if (sysPanel) colCenter.appendChild(sysPanel); }
+    function logsToColumn() {   // 桌機:把兩個日誌放回原始父層(新版#log-row/舊版中欄),不要硬塞中欄
+      if (combatLog && combatLogHome) combatLogHome.appendChild(combatLog);
+      if (sysPanel && sysPanelHome) sysPanelHome.appendChild(sysPanel);
+    }
 
     // 手機上拿掉「冒險地圖」標題文字(騰空間 + 控制項靠左不撐開);保留 status-alerts/siege-timer
     (function () {
@@ -787,6 +795,16 @@
       /* 地圖標題列:手機隱藏「冒險地圖」文字,控制項靠左不撐開 */
       'body.m-mobile .m-maptitle{display:none !important;}',
       'body.m-mobile .m-maphdr{justify-content:flex-start !important;gap:6px !important;flex-wrap:wrap !important;}',
+      /* 🔧 作者大改版把控制鈕(瞬移/回村/出發/分類·地圖下拉)包進一個 inner flex 容器(index.html:「新增一個 flex 容器」),
+         該容器自己 nowrap → 手機窄寬下整排往右溢出、回村鈕被擠出畫面點不到。讓這個 inner 容器也換行、下拉可縮。
+         以 :has(> #map-select) 精準命中那個容器(不誤中標題 span)。作者哪天不再包這層 inner div 即自動失效。 */
+      'body.m-mobile .m-maphdr div:has(> #map-select){flex-wrap:wrap !important;justify-content:flex-start !important;gap:6px !important;min-width:0 !important;}',
+      'body.m-mobile .m-maphdr #map-category,body.m-mobile .m-maphdr #map-select{flex:1 1 40% !important;min-width:0 !important;max-width:100% !important;}',
+      /* 🔧 作者大改版新增 #log-row(戰鬥/系統日誌並排,固定 flex:0 0 340px)夾在 #map-view-panel 下方。手機已把兩個
+         日誌移進浮動日誌面板(logsIntoSheet),#log-row 變空殼卻仍佔 340px → 戰鬥區下方一大塊空白、且把
+         #map-view-panel(flex:1)壓到只剩一小條 → 怪物格被擠到超小/溢出。手機直接收掉空的 #log-row,
+         戰鬥區即吃滿整個中欄高度。作者哪天不再用 #log-row 即自動失效。 */
+      'body.m-mobile #log-row{display:none !important;}',
 
       /* 細節:縮一點字與間距讓內容更好塞 */
       'body.m-mobile #game-screen .panel-header{padding-top:6px !important;padding-bottom:6px !important;}',

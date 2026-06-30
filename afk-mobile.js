@@ -720,35 +720,23 @@
          被裁掉 → 底部內容看不見。手機改成「固定 252px(容得下兩行名稱)+ 名稱最多兩行截斷」:
          高度永遠一致 → 不會隨怪物換人/名稱長短抖動。此段給「非 area-fit」版面(如三格純BOSS房);
          有 area-fit 條狀背景的一般狩獵圖走下方緊湊版。原作改掉固定高即自動失效。 */
-      'body.m-mobile #mob-list .mob-target{height:252px !important;overflow:hidden !important;}',
-      'body.m-mobile #mob-list .mob-target > div:first-child > span{display:-webkit-box !important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.15;}',
+      'body.m-mobile #battle-view:not(.area-fit) #mob-list .mob-target{height:252px !important;overflow:hidden !important;}',
+      'body.m-mobile #battle-view:not(.area-fit) #mob-list .mob-target > div:first-child > span{display:-webkit-box !important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.15;}',
       /* 原作把怪名改成預設 opacity:0、靠滑鼠 hover(或被點到的那隻 .name-show)才顯示(index.html .mob-name)。
          手機無 hover→所有怪名全程隱形。手機改成「只顯示選取目標(.active)那隻」的怪名(5 隻全顯太擠、窄卡硬塞會被截到剩一字),
          且不截斷(見下方 .mob-name 規則:單行不換行、比卡寬時往左右溢出)。原作哪天改回怪名常顯,本段即多餘、無害。 */
       'body.m-mobile #battle-view .mob-target.active .mob-name{opacity:1 !important;}',
-      /* 🏜️ 原作「狩獵區條狀背景」#battle-view.area-fit：把戰鬥框鎖成 aspect-ratio:1920/580 + overflow:hidden、
-         怪物卡 height:100%。手機窄寬下這條只剩 ~120px、怪被壓成一條矮帶且超小(實測移掉本段就是這樣)。
-         手機改成「文字疊圖」緊湊版型:解除短比例、框高隨卡(背景仍 cover 鋪滿、不留黑塊);怪物卡 158px,
-         怪物圖絕對定位鋪滿卡(z0)、上留 48px(容名字+徽章)下留 24px→怪落中間;名字/徽章/狀態列疊在圖上(z2)。
-         🆕 原作改版(五格前後排景深、移除每隻怪的血條、怪名改 hover 才顯示):本段只負責「撐高矮帶+疊字」,
-         景深(mob-img-inner 的 translate/scale)交給原作自己跑、血條已不存在故不再處理、怪名常顯見上方規則。
-         原作哪天不再用 area-fit 時整段自動失效、無害。 */
-      'body.m-mobile #battle-view.area-fit{aspect-ratio:auto !important;overflow:hidden !important;background-size:cover !important;background-position:center !important;}',   /* 框高隨怪物卡;背景 cover 鋪滿(原作 JS inline 設 contain→下方露黑塊,!important 蓋過) */
-      'body.m-mobile #battle-view.area-fit #mob-list{height:auto !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target{height:158px !important;min-height:0 !important;position:relative !important;display:flex !important;flex-direction:column !important;justify-content:flex-start !important;padding:1px 11px 2px !important;overflow:visible !important;}',   /* overflow:visible→選取目標的長名可溢出卡邊不被截;怪物圖改由 .mob-img-wrap 自己 overflow:hidden 裁切、不靠卡片裁 */
-      'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap{position:absolute !important;inset:0 !important;z-index:0 !important;margin:0 !important;padding:48px 2px 24px !important;box-sizing:border-box !important;align-items:center !important;overflow:hidden !important;}',   /* overflow:hidden:把怪物圖裁在卡範圍內(原本靠卡片裁,卡改 visible 後改這裡裁) */
-      'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap .mob-img-inner{height:100% !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap img{height:100% !important;width:auto !important;max-width:100% !important;padding:0 !important;}',
-      /* 👑 一般頭目(boss-zoom)圖被原作放大 1.78×→比手機卡寬,上面的 .mob-img-wrap{overflow:hidden} 會把頭目左右裁掉。
-         這裡讓 boss-zoom 的圖 wrap 改 overflow:visible(放大圖往左右溢出卡邊,改由戰鬥框 overflow:hidden 收邊,與桌機行為一致);
-         圖 wrap z-index:0 在名稱/徽章(z3/z2)之下,溢出不會蓋住文字。max-width:none 解除「不可比卡寬」限制,放大才完整。
-         原作改掉 boss-zoom 的 1.78× 放大時此段失效、無害。 */
-      'body.m-mobile #battle-view.area-fit .mob-target.boss-zoom > .mob-img-wrap{overflow:visible !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target.boss-zoom > .mob-img-wrap img{max-width:none !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target > .mob-name{position:relative !important;z-index:3 !important;margin:0 !important;overflow:visible !important;justify-content:center !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target > .mob-name span{font-size:12px !important;line-height:1.1 !important;white-space:nowrap !important;overflow:visible !important;max-width:none !important;}',   /* 只顯示選取目標:單行不截斷;名字比卡寬時靠 flex 置中往左右等量溢出(卡 overflow:visible 讓它露出) */
-      'body.m-mobile #battle-view.area-fit .mob-target > div[style*="height:18px"]{position:relative !important;z-index:2 !important;margin:0 !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target > div[style*="height:16px"]{position:relative !important;z-index:2 !important;margin-top:auto !important;margin-bottom:7px !important;}',   /* 圖下狀態列(🩸💥🛡)用 margin-top:auto 沉到卡底 */
+      /* 🏜️ 戰鬥區比例(2026-07-01 重訂):作者大改版把狩獵區背景全換成 16:9(2560×1440)滿版圖,戰鬥框由 flex
+         吃滿地圖面板——桌機面板≈16:9,故怪物的前後排景深/大小/站位全部正確(已對比作者官方站:桌機 battle-view
+         1132×627≈16:9、怪物大小與作者完全一致)。手機若讓戰鬥框吃滿整個「直式中欄」→ 框變直立(約 354×514),
+         16:9 背景被 cover 裁成中央放大一塊、怪物比例也跟著跑掉(使用者回報「比例怪」)。
+         解法:手機把戰鬥框鎖成 16:9(＝背景圖實際比例),背景 cover 就不變形;怪物交回「原作 area-fit 的
+         grid＋景深 CSS」自己排(等同桌機等比縮小),不再套舊版「條狀矮帶＋絕對定位疊圖」的整套覆寫(那是上一代
+         strip 背景時代的,新版會打架)。背景對齊底部讓怪物站在地面。⏏️ 作者哪天改背景比例,把 16/9 換成新值即可。 */
+      'body.m-mobile #battle-view.area-fit{aspect-ratio:16/9 !important;flex:0 0 auto !important;height:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
+      'body.m-mobile #battle-view.area-fit .mob-name{opacity:1 !important;}',   /* 手機無 hover:area-fit 怪名常顯(原作預設 opacity:0 靠 hover) */
+      /* 喝水/狀態列沉到中欄底部(拇指好按);16:9 戰鬥場景在上,中間留白即「天空/場景上方」,不再是破版空殼 */
+      'body.m-mobile.mview-battle #m-heal-bar{margin-top:auto !important;}',
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',

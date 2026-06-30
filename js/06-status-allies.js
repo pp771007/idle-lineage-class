@@ -1496,21 +1496,38 @@ function allyTryHeal(ally) {
     return true;
 }
 // 🤝 Phase 3：原地復活倒地傭兵（隊伍面板按鈕）。限定使用「復活卷軸」(scroll_revive·與玩家原地復活同物品)；倒地後 15 秒冷卻內不可用；無卷軸只能回村免費復活。復活至 HP 50%、滿魔。
-function reviveMercenary(slotN) {
+// 傭兵原地復活：玩家可選「返生術」(消耗 MP·無冷卻·死亡後立即可用) 或「復活卷軸」(消耗1張·須死亡 15 秒後 _reviveCd 歸零才能用)。
+// method='rez' → 返生術；'scroll'(或省略) → 復活卷軸。效果相同：HP 50%、MP 滿、清異常、留原地。
+function reviveMercenary(slotN, method) {
     slotN = String(slotN);
     let ally = (player.allies || []).find(a => a && String(a._slot) === slotN);
     if (!ally) return;
     if (!ally._downed) { logSys(`<span class="text-slate-400">${ally._allyName} 並未倒地。</span>`); return; }
-    if ((ally._reviveCd || 0) > 0) { logSys(`<span class="text-slate-400">${ally._allyName} 復活冷卻中，還需 ${Math.ceil(ally._reviveCd / 10)} 秒。</span>`); return; }
+    if (method === 'rez') {
+        // 🪄 返生術：消耗玩家 MP、無冷卻、死亡後可馬上使用
+        if (player.dead) { logSys(`<span class="text-red-400">你已死亡，無法施放 返生術。</span>`); return; }
+        if (!player.skills || !player.skills.includes('sk_resurrection')) { logSys(`<span class="text-red-400">尚未學會 返生術，無法立即復活（可改用復活卷軸·死亡 15 秒後）。</span>`); return; }
+        let rk = DB.skills.sk_resurrection;
+        let cost = rk ? player.d.getMpCost(rk.mp, rk.tier) : Infinity;
+        if ((player.mp || 0) < cost) { logSys(`<span class="text-red-400">MP 不足以施放 返生術（需 ${cost}）。</span>`); return; }
+        player.mp -= cost;
+        _reviveAllyDone(ally, '返生術');
+        return;
+    }
+    // 🎫 復活卷軸：須死亡 15 秒後（_reviveCd 歸零）
+    if ((ally._reviveCd || 0) > 0) { logSys(`<span class="text-slate-400">復活卷軸須死亡 15 秒後才能使用，${ally._allyName} 還需 ${Math.ceil(ally._reviveCd / 10)} 秒（或用返生術立即復活）。</span>`); return; }
     let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive');
-    if (!sc || (sc.cnt || 0) <= 0) { logSys(`<span class="text-red-400">需要「復活卷軸」才能於原地復活 ${ally._allyName}（或回村免費復活全體倒地傭兵）。</span>`); return; }
+    if (!sc || (sc.cnt || 0) <= 0) { logSys(`<span class="text-red-400">需要「復活卷軸」才能於原地復活 ${ally._allyName}（或用返生術、或回村免費復活全體倒地傭兵）。</span>`); return; }
     sc.cnt--; player.inv = player.inv.filter(i => i.cnt > 0);   // 消耗 1 張復活卷軸
+    _reviveAllyDone(ally, '復活卷軸');
+}
+function _reviveAllyDone(ally, via) {
     ally._downed = false;
     ally.curHp = Math.max(1, Math.floor((ally.mhp || 1) * 0.5));
     ally.mp = ally.mmp || 0;
     ally._reviveCd = 0;
     ally.statuses = {};   // 🤝 Phase4：復活清空所有異常狀態
-    logSys(`<span class="text-emerald-300 font-bold">使用 復活卷軸，協力傭兵 ${ally._allyName} 原地復活（HP 50%）！</span>`);
+    logSys(`<span class="text-emerald-300 font-bold">使用 ${via}，協力傭兵 ${ally._allyName} 原地復活（HP 50%）！</span>`);
     saveGame(); updateUI();
     try { renderSquadPanel(); } catch (e) {}
 }

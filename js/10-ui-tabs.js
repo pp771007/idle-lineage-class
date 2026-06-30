@@ -1434,10 +1434,13 @@ function renderSquadPanel() {
         _squadSig = sig;
         document.getElementById('squad-tab-team').innerHTML = allies.map(a => {
             let s = a._slot;
-            if (a._downed) {   // 🤝 Phase 3：倒地→灰顯卡片＋復活鈕（復活卷軸·15秒冷卻；無卷軸只能回村免費復活。鈕文字每幀更新）
+            if (a._downed) {   // 🤝 Phase 3：倒地→灰顯卡片＋兩種復活鈕（返生術：消耗MP·無冷卻立即；復活卷軸：死亡15秒後。鈕文字/可用狀態每幀更新）
                 return `<div class="bg-slate-900/70 border border-red-900 rounded p-2 flex items-center justify-between gap-2" style="opacity:0.85;">
                     <div class="text-sm"><span class="font-bold text-slate-400">${a._allyName}</span> <span class="text-slate-600 text-xs">Lv.${a.lv || 1}</span> <span class="text-red-400 font-bold">【倒地】</span></div>
-                    <button id="squad-revive-${s}" class="py-1 px-2 text-xs font-bold rounded border whitespace-nowrap" style="background:#7f1d1d;border-color:#b91c1c;color:#fecaca;" onclick="reviveMercenary('${s}')">復活</button>
+                    <div class="flex gap-1 shrink-0">
+                        <button id="squad-rez-${s}" class="py-1 px-2 text-xs font-bold rounded border whitespace-nowrap" style="background:#1e3a8a;border-color:#3b82f6;color:#bfdbfe;" onclick="reviveMercenary('${s}','rez')">返生術</button>
+                        <button id="squad-revive-${s}" class="py-1 px-2 text-xs font-bold rounded border whitespace-nowrap" style="background:#7f1d1d;border-color:#b91c1c;color:#fecaca;" onclick="reviveMercenary('${s}','scroll')">卷軸</button>
+                    </div>
                 </div>`;
             }
             return `<div class="bg-slate-800/60 border border-slate-600 rounded p-2 flex flex-col gap-1">
@@ -1463,12 +1466,22 @@ function renderSquadPanel() {
     // 每幀更新血/魔/經驗條（不重建 DOM）
     allies.forEach(a => {
         let s = a._slot, el;
-        if (a._downed) {   // 🤝 倒地卡：更新復活鈕文字（冷卻倒數→卷軸數量→需卷軸）
+        if (a._downed) {   // 🤝 倒地卡：更新兩種復活鈕（返生術=學會+MP夠即可立即；卷軸=死亡15秒後+持有）
+            let rb = document.getElementById('squad-rez-' + s);
+            if (rb) {
+                let learned = !!(player.skills && player.skills.includes('sk_resurrection'));
+                let rk = DB.skills.sk_resurrection;
+                let cost = rk ? player.d.getMpCost(rk.mp, rk.tier) : Infinity;
+                let ok = learned && !player.dead && (player.mp || 0) >= cost;
+                rb.style.display = learned ? '' : 'none';   // 未學會返生術→不顯示此鈕
+                rb.style.opacity = ok ? '1' : '0.45';
+                rb.title = !learned ? '尚未學會返生術' : (player.dead ? '你已死亡' : ((player.mp || 0) >= cost ? ('立即復活（消耗 ' + cost + ' MP·無冷卻）') : ('MP 不足（需 ' + cost + '）')));
+            }
             let b = document.getElementById('squad-revive-' + s);
             if (b) {
                 let cd = a._reviveCd || 0;
-                if (cd > 0) { b.textContent = '復活 ' + Math.ceil(cd / 10) + 's'; b.style.opacity = '0.45'; }
-                else { let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive'); let n = sc ? (sc.cnt || 0) : 0; b.textContent = n > 0 ? ('復活(卷軸×' + n + ')') : '需復活卷軸'; b.style.opacity = n > 0 ? '1' : '0.6'; }
+                if (cd > 0) { b.textContent = '卷軸 ' + Math.ceil(cd / 10) + 's'; b.style.opacity = '0.45'; b.title = '復活卷軸須死亡 15 秒後才能使用'; }
+                else { let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive'); let n = sc ? (sc.cnt || 0) : 0; b.textContent = n > 0 ? ('卷軸×' + n) : '無卷軸'; b.style.opacity = n > 0 ? '1' : '0.6'; b.title = n > 0 ? '使用復活卷軸復活' : '沒有復活卷軸'; }
             }
             return;   // 倒地卡無血條，跳過下面 hp/mp/exp 更新
         }

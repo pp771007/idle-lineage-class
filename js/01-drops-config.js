@@ -461,13 +461,13 @@ function sameItemSig(a, b) { return itemSig(a) === itemSig(b); }
 // 【日後新增 player 欄位時：只需在 SAVE_DEFAULTS 加一行；除非涉及格式轉換，不必再到 loadGame 寫 if(undefined)。】
 const SAVE_VERSION = 2;   // v1 = 未標版本的舊存檔
 const SAVE_DEFAULTS = {
-    name: null, bonus: 0, panaceaUsed: 0, bloodPledge: null, lootSeq: 0, enReSeq: 0,
+    name: null, bonus: 0, panaceaUsed: 0, bloodPledge: null, lootSeq: 0,
     magicShieldCd: 0, reviveScrollCd: 0, lastMapByCat: {}, lastBattleMap: null, tracking: null, ismaelAccUsed: false, sherineWorld: false, sherineMad: false, classicMode: false, traditionalMode: false,
     masteryQuest: null, mastery: null, masteryChangeCnt: 0,
     prideBeatJenis: false, demonTempleOpen: false, flameAffinity: 0, trialStage: 0, prideRank: { best: null, last: null, isNew: false }, prideRankSherine: { best: null, last: null, isNew: false },
     riftRank: { best: null, last: null, isNew: false }, riftRankSherine: { best: null, last: null, isNew: false }, riftRewardMs: null,
     elfEle: null, poly: null, summon: null, charmed: null, hot: null,
-    manualCd: {}, blessings: {}, cardDex: {}, cardDexV: 0, equipDex: {},
+    manualCd: {}, blessings: {}, cardDex: {}, cardDexV: 0, equipDex: {}, miscDex: {},
     alloc:   { str:0, dex:0, con:0, int:0, wis:0, cha:0 },
     panacea: { str:0, dex:0, con:0, int:0, wis:0, cha:0 },
     cds:     { pot:0, atkSk:0, healSk:0, purifySk:0 },
@@ -537,7 +537,7 @@ const SHERINE_SET_TEXT = {
 function sherineSetEligible(d) {
     return !!(d && (
         (d.type === 'wpn' && !d.isArrow)
-        || (d.type === 'arm' && ['helm','armor','gloves','boots','cloak'].includes(d.slot))
+        || (d.type === 'arm' && ['helm','armor','gloves','boots','cloak','shield'].includes(d.slot))   // 🛡️ shield 槽＝盾牌＋臂甲（副手）：可附席琳套裝詞綴
         || ((d.type === 'acc' || d.type === 'arm') && d.slot === 'belt')
     ));
 }

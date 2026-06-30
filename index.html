@@ -302,7 +302,7 @@
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('items', this)">道具</button>
                 <button class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #565d68 0%, #6b7280 26%, #3f4651 48%, #5a6270 72%, #313740 100%); color: #f1f5f9; border-color: #6b7280;" onclick="switchTab('audit', this)">統計</button>
                 <button id="btn-sort-inv" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" onclick="sortInventory()">一鍵排列</button>
-                <button id="btn-sell-junk" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #6b2a10 0%, #b3490e 28%, #5a230e 52%, #9a3e0c 76%, #4a1d0c 100%); color: #fed7aa; border-color: #c2410c;" onclick="sellAllJunk()">賣出廢品</button>
+                <button id="btn-collection" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #4a2f0c 0%, #b3850e 28%, #3f2a0c 52%, #9a720c 76%, #2e2008 100%); color: #fde68a; border-color: #d4a017;" onclick="openCollectionPanel()">收藏</button>
             </div>
 
             <div id="tab-content-panel" class="panel flex-1 flex flex-col overflow-hidden relative">
@@ -398,24 +398,52 @@
         </div>
     </div>
 
-<script src="js/00-data.js?v=19fc010204"></script>
-<script src="js/01-drops-config.js?v=9735aaa849"></script>
-<script src="js/02-stats-recompute.js?v=564f8d5a57"></script>
-<script src="js/03-combat-core.js?v=0afb9f3e11"></script>
+    <!-- 🧰 道具收集冊 全螢幕書頁 -->
+    <div id="misc-book" class="hidden fixed inset-0 z-[45] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3" onclick="miscBookBackdrop(event)">
+        <div class="w-full max-w-5xl max-h-[92vh] flex flex-col bg-slate-900/95 rounded-2xl border-2 border-amber-900/60 shadow-[0_0_60px_rgba(0,0,0,0.85)] overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-slate-700 bg-gradient-to-b from-[#3a2f12] to-[#241c0c]">
+                <h2 class="text-2xl font-bold text-amber-300 tracking-wide">🧰 道具收集冊</h2>
+                <button onclick="closeMiscBook()" class="btn px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border-slate-500 text-slate-200 font-bold">✕ 關閉</button>
+            </div>
+            <div id="misc-book-tabs" class="flex flex-wrap gap-1.5 px-4 py-2.5 border-b border-slate-700 bg-slate-900/80"></div>
+            <div id="misc-book-body" class="flex-1 overflow-y-auto p-4"></div>
+        </div>
+    </div>
+
+    <!-- 📦 收藏面板（裝備 / 道具 / 怪物 三大入口）-->
+    <div id="collection-panel" class="hidden fixed inset-0 z-[46] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onclick="collectionPanelBackdrop(event)">
+        <div class="w-full max-w-sm flex flex-col bg-slate-900/95 rounded-2xl border-2 border-amber-700/60 shadow-[0_0_60px_rgba(0,0,0,0.85)] overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-slate-700 bg-gradient-to-b from-[#3a2f12] to-[#241c0c]">
+                <h2 class="text-2xl font-bold text-amber-300 tracking-wide">📦 收藏</h2>
+                <button onclick="closeCollectionPanel()" class="btn px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border-slate-500 text-slate-200 font-bold">✕</button>
+            </div>
+            <div class="flex flex-col gap-3 p-5">
+                <button onclick="collectionOpenEquip()" class="btn py-5 text-xl font-bold" style="background: linear-gradient(135deg, #10283a, #1d4ed8); color: #bfdbfe; border-color: #3b82f6;">🗡️ 裝備</button>
+                <button onclick="collectionOpenMisc()" class="btn py-5 text-xl font-bold" style="background: linear-gradient(135deg, #3a2f12, #b3850e); color: #fde68a; border-color: #d4a017;">🧰 道具</button>
+                <button onclick="collectionOpenCard()" class="btn py-5 text-xl font-bold" style="background: linear-gradient(135deg, #3a1230, #a21caf); color: #f5d0fe; border-color: #c026d3;">🎴 怪物</button>
+            </div>
+        </div>
+    </div>
+
+<script src="js/00-data.js?v=d1f4f0cf9b"></script>
+<script src="js/01-drops-config.js?v=d9bca19033"></script>
+<script src="js/02-stats-recompute.js?v=1dda2fc2b9"></script>
+<script src="js/03-combat-core.js?v=0ac2502d65"></script>
 <script src="js/04-combat-attack.js?v=7f9644e826"></script>
-<script src="js/05-kill-progression.js?v=50ba2fc15a"></script>
+<script src="js/05-kill-progression.js?v=510086ae1c"></script>
 <script src="js/06-status-allies.js?v=7adf27183e"></script>
-<script src="js/07-skills-cast.js?v=7ec4861e8f"></script>
-<script src="js/08-items-equip.js?v=d095d80410"></script>
+<script src="js/07-skills-cast.js?v=3655277535"></script>
+<script src="js/08-items-equip.js?v=d524ee6503"></script>
 <script src="js/09-vfx-render.js?v=7e60e8d6e6"></script>
-<script src="js/10-ui-tabs.js?v=61bfa76fc4"></script>
-<script src="js/11-world-map.js?v=ba4b54eb26"></script>
-<script src="js/12-npc-quests.js?v=ce3ce519b8"></script>
-<script src="js/13-shop-save.js?v=922242fb37"></script>
-<script src="js/14-craft-pandora.js?v=259e9f7a9b"></script>
-<script src="js/15-cards.js?v=b86c2cb923"></script>
-<script src="js/16-equip-book.js?v=9924f3ff6d"></script>
-<script src="js/17-audio.js?v=458112877a"></script>
+<script src="js/10-ui-tabs.js?v=cc8be023ed"></script>
+<script src="js/11-world-map.js?v=0d21726909"></script>
+<script src="js/12-npc-quests.js?v=db17f6449f"></script>
+<script src="js/13-shop-save.js?v=0575a68329"></script>
+<script src="js/14-craft-pandora.js?v=86a08e2a17"></script>
+<script src="js/15-cards.js?v=6bbbcd0762"></script>
+<script src="js/16-equip-book.js?v=efb39e48df"></script>
+<script src="js/18-misc-book.js?v=e0138e0e87"></script>
+<script src="js/17-audio.js?v=8c1841e1e4"></script>
 <!-- 離線掛機外掛(包 saveGame/loadGame;建議讓 afk-fixes 的存檔防呆排在此之後最乾淨;可獨立維護,原作者更新後重新加回此行即可) -->
 <script src="afk-offline.js?v=20260628a"></script>
 <!-- 手機版介面外掛(可獨立維護;原作者更新後重新加回此行即可) -->

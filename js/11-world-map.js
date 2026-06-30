@@ -395,49 +395,72 @@ function syncMapSelectors() { setMapSelectors(mapState.current); }
 //   與「關閉時顯示的選中值」(自動同步·零成本)，只攔截 mousedown 阻止原生彈出、改顯示自訂彈出層(.cdd-pop)。
 //   作用於打包版「所有」單選 <select>（地圖／藥水／自動技能…全部一致）；網頁版(無 pkg-build)維持原生。
 var _cddSel = null;
+var _cddOpenTs = 0;
+// 🔧 開啟後 300ms 內＝「開啟手勢冷卻窗」：忽略一切自動關閉/誤選來源（blur／resize／捲動出界／外部click／選項click）。
+//   打包版 Electron 對原生 <select> 的焦點/blur 殘響，會在「mousedown 開啟」後緊接著噴一個 blur/click 把剛開的彈出層秒關
+//   （瀏覽器版用合成事件測不出來，故僅打包版重現）。此窗只擋「剛開那一瞬間」的殘留事件，之後一切行為照常。
+//   只有「再次點同一個 select」(mousedown 委派的 toggle·走 openCustomSelectPopup) 例外，仍可在窗內收合。
+function _cddFresh() { return (Date.now() - _cddOpenTs) < 300; }
 function _cddClose() {
     var p = document.getElementById('cdd-pop'); if (p) p.remove();
     _cddSel = null;
     document.removeEventListener('click', _cddOutside, true);
     document.removeEventListener('keydown', _cddKey, true);
-    document.removeEventListener('scroll', _cddClose, true);
+    document.removeEventListener('scroll', _cddScroll, true);
 }
 function _cddOutside(e) {
+    if (_cddFresh()) return;                                                // 🔧 開啟手勢殘留的 click（打包版可能 target 落在 body 而非 select）→ 冷卻窗內一律忽略
     var p = document.getElementById('cdd-pop'); if (!p) return;
     if (p.contains(e.target)) return;                                       // 點在彈出層內 → 由選項自己處理，不關
     if (_cddSel && (e.target === _cddSel || _cddSel.contains(e.target))) return;   // 🔧 點在觸發的 <select> 上 → 忽略（否則「開啟手勢」的 click 會立刻把剛開的選單關掉）；再次開合由 mousedown 委派的 toggle 處理
     _cddClose();
 }
 function _cddKey(e) { if (e.key === 'Escape') _cddClose(); }
+// 🔧 捲動時「不關閉、改跟著觸發 <select> 重新定位」：戰鬥日誌/系統日誌持續自動捲動、
+//    或倉庫面板自身(interaction-content=overflow-y-auto·是 select 的祖先)捲動，都不再誤關下拉，
+//    彈出層只是黏著 select 移動。只有 select 被移除(面板重繪)或整個捲出畫面時才關閉。
+function _cddPositionPop(pop, r) {
+    pop.style.left = r.left + 'px'; pop.style.top = (r.bottom + 2) + 'px'; pop.style.minWidth = r.width + 'px';
+    var pr = pop.getBoundingClientRect();
+    if (pr.bottom > window.innerHeight - 4) pop.style.top = Math.max(4, r.top - pr.height - 2) + 'px';   // 下方不足→往上開
+    if (pr.right > window.innerWidth - 4) pop.style.left = Math.max(4, window.innerWidth - pr.width - 4) + 'px';   // 右側超出→靠右
+}
+function _cddScroll() {
+    if (!_cddSel) return;
+    var pop = document.getElementById('cdd-pop'); if (!pop) return;
+    if (!document.body.contains(_cddSel)) { _cddClose(); return; }   // 觸發的 select 已被移除（面板重繪）→ 關閉
+    var r = _cddSel.getBoundingClientRect();
+    if (!_cddFresh() && (r.bottom <= 0 || r.top >= window.innerHeight || (r.width === 0 && r.height === 0))) { _cddClose(); return; }   // select 已捲出畫面→關閉（冷卻窗內不關·避免開啟瞬間版面微調誤判）
+    _cddPositionPop(pop, r);   // 否則黏著 select 重新定位
+}
 function openCustomSelectPopup(sel) {
     if (_cddSel === sel) { _cddClose(); return; }   // 再點同一個 → 收合
     _cddClose();
     if (!sel.options || !sel.options.length) return;
     _cddSel = sel;
+    _cddOpenTs = Date.now();   // 🔧 啟動開啟手勢冷卻窗
     var r = sel.getBoundingClientRect();
     var pop = document.createElement('div');
     pop.id = 'cdd-pop'; pop.className = 'cdd-pop';
-    pop.style.left = r.left + 'px'; pop.style.top = (r.bottom + 2) + 'px'; pop.style.minWidth = r.width + 'px';
+    pop.style.minWidth = r.width + 'px';
     Array.prototype.forEach.call(sel.options, function (o, idx) {
         var row = document.createElement('div');
         row.className = 'cdd-opt' + (o.disabled ? ' cdd-disabled' : '') + (idx === sel.selectedIndex ? ' cdd-sel' : '');
         row.textContent = o.textContent;
         if (o.style && o.style.color) row.style.color = o.style.color;
         if (!o.disabled) row.addEventListener('click', function () {
+            if (_cddFresh()) return;   // 🔧 開啟手勢殘留 click 落在彈出層選項上（彈出層蓋住點擊點時）→ 冷卻窗內不誤選
             if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); }
             _cddClose();
         });
         pop.appendChild(row);
     });
     document.body.appendChild(pop);
-    // 視窗邊界夾擠：下方空間不足 → 往上開；右側超出 → 靠右
-    var pr = pop.getBoundingClientRect();
-    if (pr.bottom > window.innerHeight - 4) pop.style.top = Math.max(4, r.top - pr.height - 2) + 'px';
-    if (pr.right > window.innerWidth - 4) pop.style.left = Math.max(4, window.innerWidth - pr.width - 4) + 'px';
+    _cddPositionPop(pop, r);   // 定位＋視窗邊界夾擠（下方不足往上開／右側超出靠右）
     setTimeout(function () {
         document.addEventListener('click', _cddOutside, true);
         document.addEventListener('keydown', _cddKey, true);
-        document.addEventListener('scroll', _cddClose, true);
+        document.addEventListener('scroll', _cddScroll, true);
     }, 0);
 }
 document.addEventListener('mousedown', function (e) {
@@ -449,8 +472,9 @@ document.addEventListener('mousedown', function (e) {
         openCustomSelectPopup(s);
     }
 }, true);
-window.addEventListener('resize', _cddClose);
-window.addEventListener('blur', _cddClose);
+function _cddWinClose() { if (_cddFresh()) return; _cddClose(); }   // 🔧 blur/resize 在「開啟手勢冷卻窗」內不關（打包版 Electron 原生 select 焦點殘響會在開啟瞬間噴 blur）
+window.addEventListener('resize', _cddWinClose);
+window.addEventListener('blur', _cddWinClose);
 // 🗼 攀登/排名模式：右上角原本空白的地圖選單改顯示「傲慢之塔 X 樓」（與系統日誌的樓層資訊同色 text-rose-200）
 function updatePrideFloorIndicator() {
     let ind = document.getElementById('pride-floor-indicator');
@@ -697,13 +721,22 @@ function startPanelRefresh() {
         }
     }, 60000);
 }
+// 🔍 魔物追蹤可指定地圖：野外/地監/特殊＋底比斯(rift)＋海賊島(pirate_island) 三類掃 MAP_CATEGORIES（濾掉村莊與純BOSS房），
+//    再補上「不在 MAP_CATEGORIES」的遺忘之島(途中/島)＋風木地監。
+//    刻意排除：村莊(town_)、純BOSS房(PURE_BOSS_MAPS)、攻城內外城(siege_* 限時活動)、傲慢之塔攀登樓層(pride_* 攀登模式·非固定地圖)、
+//    🚫 隱藏狩獵區域(hidden_*·象牙塔密室/巨蟻女皇·用戶要求不開放追蹤·維持只能由母圖傳送進入)。
+const OBEL_EXTRA_MAPS = [
+    { v: 'oblivion_travel', t: '遺忘之島途中' }, { v: 'oblivion_island', t: '遺忘之島' },
+    { v: 'windwood_dungeon', t: '風木地監' }
+];
 function obelMapList() {
     let out = [];
-    ['wild', 'dungeon', 'special'].forEach(cat => {
+    ['wild', 'dungeon', 'special', 'rift', 'pirate_island'].forEach(cat => {
         (MAP_CATEGORIES[cat] || []).forEach(e => {
-            if(DB.maps[e.v] && !PURE_BOSS_MAPS.includes(e.v)) out.push({ v: e.v, t: e.t });
+            if(DB.maps[e.v] && !PURE_BOSS_MAPS.includes(e.v) && e.v.indexOf('town_') !== 0) out.push({ v: e.v, t: e.t });
         });
     });
+    OBEL_EXTRA_MAPS.forEach(e => { if(DB.maps[e.v]) out.push({ v: e.v, t: e.t }); });
     return out;
 }
 function renderObelNPC(div) {

@@ -183,8 +183,8 @@ function registerEquipObtained(id) {   // gainItem 呼叫：獲得任何裝備�
 function ensureEquipBook() {
     if (!player || !Array.isArray(player.inv)) return;
     if (!player.equipDex) player.equipDex = {};
-    if (!player.inv.some(i => i.id === 'item_equip_book')) gainItem('item_equip_book', 1, true, true);
-    let _bk = player.inv.find(i => i.id === 'item_equip_book'); if (_bk && _bk.junk) _bk.junk = false;
+    // 🗡️ 裝備收集冊改由「收藏」面板開啟→不再放在道具欄；移除舊存檔殘留的收集冊本體（資料在 player.equipDex·與本體無關）
+    if (player.inv.some(i => i.id === 'item_equip_book')) player.inv = player.inv.filter(i => i.id !== 'item_equip_book');
     player.inv.forEach(i => { if (EQUIP_ITEM_CAT[i.id]) player.equipDex[i.id] = true; });
     if (player.eq) for (let s in player.eq) { let e = player.eq[s]; if (e && e.id && EQUIP_ITEM_CAT[e.id]) player.equipDex[e.id] = true; }
     if (typeof saveEquipDex === 'function') saveEquipDex();   // 🗡️ 補登錄後回寫共用桶（把該角色現有裝備併入共用收集）

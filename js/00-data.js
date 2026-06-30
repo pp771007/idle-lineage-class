@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v2.4.49';
+const GAME_VERSION = 'v2.4.65';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -143,21 +143,13 @@ function _seededFloat(str) {
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
-// 強化專用決定論亂數：由（角色 player.enSeed＋裝備 uid＋當前強化值[＋標籤]）決定 0~1 的值。
-// 三項輸入全在存檔內 → 匯出/讀檔/匯入舊檔回到強化前，輸入全部還原 → 算出一模一樣的成敗，save/load 刷不到。
-function enRandomUid(itUid, en, tag) {
-  let seed = (typeof player !== 'undefined' && player && player.enSeed) || 'nseed';
-  return _seededFloat(seed + '|' + itUid + '|' + (Number(en) || 0) + '|' + (tag || ''));
-}
-// 🔁 強化身份 uid：詛咒卷軸退階後，裝備被賦予一個「由存檔內計數器 player.enReSeq 決定的新身份」(item.enNonce)，
-//    使重新爬階時各階成敗重置（＝付費重骰該階）。仍 committed：enNonce 取自存檔計數器→讀檔/匯入重現同值→不能 save/load 刷；
-//    只有「再花一張詛咒卷軸」(enNonce 換新)才換命運。未退階過的裝備 enNonce 為空→沿用 uid（既有裝備命運不變·向後相容）。
-function enIdUid(item) { return (item && item.enNonce) ? ('re' + item.enNonce) : (item && item.uid); }
-function enRandom(item, tag) { return enRandomUid(enIdUid(item), item && item.en, tag); }
+// 🎲 強化成敗＝即時 Math.random()（每次嘗試獨立擲骰）：2026-06 用戶要求改回純機率
+//    （「物品強化值由種子預先決定」違背賭博本意）。強化已不再走 committed RNG，可被 save/load 重抽。
+//    player.enSeed 改僅供 lootRng（掉落）與娃娃 _dollRng 使用，與強化無關。
 
 // 🎲 「獲得/抽取瞬間」決定論亂數（committed RNG·防 SL 存讀檔重抽）：把掉落/製作/兌換/潘朵拉/開箱/裂痕領取/碧恩賦予 等
 //   在行動當下擲出、且會 baked 進存檔的隨機（自帶強化值／詞綴／席琳套裝效果／抽到哪一件…）改由「存檔內遞增序號 player.lootSeq」決定。
-//   序號入存檔且受 SIG1 簽章 → 讀檔或重匯入舊檔回到行動前 → 相同序號 → 算出完全相同結果 → 重抽無效。比照娃娃 dollSeq、強化 enRandom。
+//   序號入存檔且受 SIG1 簽章 → 讀檔或重匯入舊檔回到行動前 → 相同序號 → 算出完全相同結果 → 重抽無效。比照娃娃 dollSeq。
 //   ⚠️標題/載入畫面（尚無 player）退回 Math.random（該情境無存檔可 SL，不影響玩家）。每呼叫一次消耗一個序號。
 function lootRng(tag) {
     if (typeof player === 'undefined' || !player) return Math.random();
@@ -2359,7 +2351,7 @@ const DB = {
         "zone_39": ["nm_025", "nm_026", "nm_027", "nm_033"],
         "zone_40": ["nm_025", "nm_026", "nm_027", "nm_033"],
         "zone_41": ["nm_025", "nm_026", "nm_027", "nm_033"],
-        // ===== 🏛️ 隱藏狩獵區域出怪池（僅能由對應地圖手動傳送進入；不列於地圖選單、魔物追蹤亦無法指定） =====
+        // ===== 🏛️ 隱藏狩獵區域出怪池（僅能由對應地圖手動傳送進入；不列於地圖選單、魔物追蹤亦無法指定·見 obelMapList 排除） =====
         "hidden_lab_nolife": ["iv_paper", "iv_stone_golem", "iv_iron_golem", "iv_jelly", "iv_armor", "iv_deathsword", "iv_lightball", "iv_mimi"],
         "hidden_lab_darkmagic": ["iv_elder", "iv_blackelder", "iv_chimera", "iv_lamia", "iv_blackmage"],
         "hidden_seal_spirit": ["iv_blackmage", "iv_reaper", "iv_shadow", "iv_spirit", "iv_baless", "iv_karuta", "iv_hatin"],

@@ -391,7 +391,7 @@ function settleDeadMobs() {
     }
     if (changed) renderMobs();
     // 🔧 軍王之室：擊敗頭目（掉落已於 killMob 發放）後處理；補跑期間延後到回到即時再執行。
-    //   身上仍有「軍王的鑰匙」→ 留在室內，清空全部怪物，15 秒後消耗 1 把鑰匙從頭復活軍王；
+    //   身上仍有「軍王的鑰匙」→ 留在室內，清空全部怪物，5 秒後消耗 1 把鑰匙從頭復活軍王；
     //   無鑰匙 → 傳送回村/回城（原行為）。
     if (state._kbVictory) {   // 🔧 背景/離線補跑(ff)時也照常結算，達成掛機自動刷新
         state._kbVictory = false;
@@ -403,9 +403,9 @@ function settleDeadMobs() {
             mapState.mobs = [null, null, null, null, null];
             mapState.spawnAt = [null, null, null, null, null];
             mapState.targetIdx = -1;
-            state._kbRespawnAt = state.ticks + 150;   // 15 秒（150 tick）後復活
+            state._kbRespawnAt = state.ticks + 50;   // 5 秒（50 tick）後復活（2026-06 用戶調整 15 秒→5 秒）
             if (!state.ff) { renderMobs(); updateUI(); }   // 補跑期間不逐次刷新，跑完由 gameLoop 統一刷新
-            logSys(`<span class="text-amber-300 font-bold">⚔ ${_krm.dual ? '兩位神祇' : '軍王'}已倒下！室內怪物盡數消散…</span> 15 秒後將消耗 <span class="text-amber-300">1 把${_keyNm}</span>，${_krm.dual ? '神祇' : '軍王'}再度甦醒。`);
+            logSys(`<span class="text-amber-300 font-bold">⚔ ${_krm.dual ? '兩位神祇' : '軍王'}已倒下！室內怪物盡數消散…</span> 5 秒後將消耗 <span class="text-amber-300">1 把${_keyNm}</span>，${_krm.dual ? '神祇' : '軍王'}再度甦醒。`);
         } else {
             kbVictoryTeleport();
         }
@@ -431,7 +431,7 @@ function kbVictoryTeleport() {
     player.lastMapByCat.special = 'training';
     saveGame();        // 傳送後存檔，使重新載入時人物位於村莊（而非已清空的BOSS房）
 }
-// 🔧 軍王之室：等待 15 秒後消耗 1 把「軍王的鑰匙」，從頭重生中央軍王與兩側小怪；沒鑰匙則保險傳送回村/回城
+// 🔧 軍王之室：等待 5 秒後消耗 1 把「軍王的鑰匙」，從頭重生中央軍王與兩側小怪；沒鑰匙則保險傳送回村/回城
 function kbRoomRespawn() {
     let _kr = KING_ROOMS[mapState.current];
     if (!_kr) { state._kbRespawnAt = null; return; }

@@ -728,14 +728,17 @@
          等比縮放)。⚠️ 之前鎖 16:9(217px)時格子只剩 ~93px→原作「名字/徽章/狀態」三條固定列(flex-shrink:0)
          吃光高度、怪物圖被擠到只剩 ~12px(使用者回報「看不到怪物」);吃滿高度後格子夠高、怪物圖就回來了。
          不套舊版「條狀矮帶＋絕對定位疊圖」覆寫(上一代 strip 背景時代的,新版 grid 會打架)。 */
-      'body.m-mobile #battle-view.area-fit{flex:1 1 auto !important;aspect-ratio:auto !important;height:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
-      /* 怪名手機一律不顯示(使用者指定:連「鎖定/被打的目標」也不要顯示名字)→ 蓋過原作 hover/.name-show 的 opacity:1 */
-      'body.m-mobile #battle-view .mob-name{opacity:0 !important;}',
-      /* 🔍 手機怪物圖放大(使用者校到這個大小):原作 area-fit grid 後排 scale 1.25、前排 1.5。
-         卡片/圖框改 overflow:visible 讓放大的怪溢出格子不被裁(整個戰鬥框仍 overflow:hidden 收邊)。 */
+      /* 戰鬥框＝背景圖比例(16:9):高度＝寬×9/16=圖片自然高度→背景 cover 剛好貼齊、不放大裁切(顆粒原尺寸);
+         flex:0 0 auto 不再吃滿整欄→多的高度留白在下方(使用者指定「最大高度=圖片高度」)。 */
+      'body.m-mobile #battle-view.area-fit{flex:0 0 auto !important;height:56.25vw !important;aspect-ratio:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
+      /* 怪名手機一律不顯示(使用者指定):連鎖定/被打的目標也不顯示 */
+      'body.m-mobile #battle-view .mob-name{display:none !important;}',
+      /* 🔍 矮戰鬥框(=圖片高度)裡格子很小、怪物圖只剩 ~19px→放大 grid 景深倍率讓怪物大顆一點(使用者指定「單獨放大、
+         但不要超出背景」)。卡片/圖框 overflow:visible 讓放大的圖露出;整個戰鬥框 overflow:hidden 在圖片高度處收邊,
+         故倍率取「放大後仍落在 219px 內」(含散佈位移)的保守值→不會被切、不超出背景。 */
       'body.m-mobile #battle-view.area-fit .mob-target,body.m-mobile #battle-view.area-fit .mob-img-wrap{overflow:visible !important;}',
-      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner{transform:scale(calc(1.6 * var(--jit-scale,1))) !important;}',
-      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner{transform:scale(calc(1.9 * var(--jit-scale,1))) !important;}',
+      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner{transform:scale(calc(3.5 * var(--jit-scale,1))) !important;}',
+      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner{transform:scale(calc(4 * var(--jit-scale,1))) !important;}',
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',

@@ -1845,64 +1845,122 @@
     return out;
   }
 
-  // ===== 傭兵（協力存檔；本檔維護，內容以 index.html 的 buildAlly/toggleAlly/alliesTick 等為準）=====
-  var MERC_SECTIONS = [
-    { t: '傭兵是什麼、去哪招募', lines: [
-      '傭兵＝召喚你<b>其他存檔位的角色</b>一起作戰（自己一人多開、並肩而戰）。到城鎮的 <b>傭兵公會</b> NPC 對話招募——<b>肯特城／海音／歐瑞村莊</b> 三處都有。',
-      '共 <b>8 個存檔格</b>，可招募「目前所在格<b>以外</b>」的角色；空的存檔格不能招。',
-      '<b>費用＝該角色等級 × 10000 金幣</b>（從你當下金幣扣）。解除或「全員退出」時<b>費用不退還</b>，之後想再帶要重新付費招募。',
-      '<b>分遊戲模式</b>：一般／經典／傳統／經典＋傳統<b>四種組合各自獨立</b>，<b>只能招募與自己同一種組合的存檔</b>，不能跨組合招募。'
-    ]},
-    { t: '同時能帶幾名', lines: [
-      '<b>所有職業一律最多同時上場 3 名</b>（就算你有 8 格存檔也一樣）。',
-      '👑 <b>王族</b>同樣是 3 名——王族的優勢改成「<b>幫傭兵／夥伴加成</b>」（見下方「王族的傭兵加成」），不是多帶幾名。'
-    ]},
-    { t: '傭兵的戰力＝招募快照，但受雇會跟你一起升級', lines: [
-      '傭兵直接用<b>那名存檔角色自己的</b>職業、裝備、技能、精通、套裝、配點來結算戰力，跟你主角無關（<b>不吃你主角的精通</b>，吃他自己存檔的）。',
-      '出手方式照各自職業（依你幫該角色設定的攻擊技能）：法師<b>施法</b>（約 2 秒一次）、妖精用<b>弓／三重矢</b>、幻術士用<b>奇古獸／魔劍</b>（且會自動常駐展開已學的立方技能、施放冰雪颶風／火牢，見下）、龍騎士放<b>吃 HP 的龍魔法</b>、黑暗妖精物理並自動掛劇毒、騎士純物理（含看破／殺戮被動）、<b>戰士</b>純物理或放<b>咆哮</b>（對全體固定傷害）、<b>王族</b>純物理或放<b>呼喚盟友</b>（號召所有上場傭兵各補一刀）；攻擊速度依各自武器。',
-      '⚙️ <b>裝備／技能／精通是招募當下定型的快照</b>：事後幫那名角色換裝、改精通，傭兵<b>不會自動跟著變</b>——要在傭兵公會<b>「解除→重新招募」</b>才會更新（也要再付一次費用）。',
-      '⭐ <b>但等級會跟著你一起升</b>：每次擊殺，<b>每名在場傭兵各拿「自己等級的 50%」經驗</b>（不扣你主角的份、你照拿滿額；經典模式一樣打對折）。傭兵升級後<b>即時重算戰力</b>變強。',
-      '💾 <b>解雇時把累積的經驗「無損還給」那個存檔角色</b>：受雇期間打到的經驗會回存進該角色（可能一口氣幫它升好幾級），所以借去當傭兵不算白練。'
-    ]},
-    { t: '傭兵會被攻擊、會倒地（不是永久死）', lines: [
-      '怪的<b>一般攻擊</b>和<b>單體攻擊魔法</b>會在「你＋在場傭兵」之間<b>依仇恨挑一個</b>打；<b>全體技</b>（闇黑波動、毒霧…約 49 種）則<b>同時打你和全部傭兵</b>。',
-      '仇恨權重（數字越大越容易被挑中，你自己也照這張表算）：<table style="width:100%;border-collapse:collapse;margin:4px 0;font-size:13px;color:#cbd5e1;"><thead><tr><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #475569;">類型</th><th style="text-align:center;padding:4px 6px;border-bottom:1px solid #475569;">被鎖定權重</th></tr></thead><tbody><tr><td style="padding:4px 6px;">法師／幻術士／持弓遠程</td><td style="text-align:center;padding:4px 6px;">1</td></tr><tr><td style="padding:4px 6px;">妖精／黑暗妖精／王族（近戰輕裝）</td><td style="text-align:center;padding:4px 6px;">2</td></tr><tr><td style="padding:4px 6px;">騎士／戰士／龍騎士（近戰重裝）</td><td style="text-align:center;padding:4px 6px;">3</td></tr></tbody></table>帶幾個近戰重裝傭兵在前面，就能幫脆皮施法傭兵（和你）分擔挨打。',
-      '傭兵 HP 被打到 0 →<b>倒地</b>（停止行動，等復活），不是永久消失。傭兵也會像你一樣中<b>異常狀態</b>：中毒／灼燒／燙傷／出血會持續扣血、甚至扣到倒地；暈眩／冰凍／石化／麻痺／沉睡會完全不能動；沉默／魔法封印只能普攻、不能放技能；緩速攻速砍半。',
-      '<b>你自己死亡</b>後（回城或原地復活），傭兵都<b>留在你身邊</b>；存檔、讀檔、離線掛機回來也都還在。<b>只有</b>在傭兵公會點「解除／全員退出」才會解散。',
-      '資源條：龍騎士傭兵技能吃 <b>HP</b>、其餘有魔力的職業顯示 <b>MP</b>（騎士／戰士純物理不顯示）。MP 每 16 秒回一次（依該角色自身的恢復量）、龍騎士 HP 也每 16 秒回一些，避免永久沒資源。',
-      '<b>擊殺的金幣、掉落全算你主角</b>；經驗你也照拿滿額，傭兵只是額外各自累積自己那 50%。'
-    ]},
-    { t: '倒地了怎麼救回來', lines: [
-      '在「傭兵隊伍」面板上，倒地傭兵的卡片會出現復活鈕。三種救法：',
-      '<table style="width:100%;border-collapse:collapse;margin:4px 0;font-size:13px;color:#cbd5e1;"><thead><tr><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #475569;">方式</th><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #475569;">條件</th><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #475569;">效果</th></tr></thead><tbody><tr><td style="padding:4px 6px;">🔵 返生術</td><td style="padding:4px 6px;">你學會「返生術」且 MP 足夠</td><td style="padding:4px 6px;"><b>立即</b>復活、無冷卻</td></tr><tr><td style="padding:4px 6px;">🎫 復活卷軸</td><td style="padding:4px 6px;">持有復活卷軸，且該傭兵<b>倒地滿 15 秒</b></td><td style="padding:4px 6px;">消耗 1 張復活</td></tr><tr><td style="padding:4px 6px;">🏠 回城／回村</td><td style="padding:4px 6px;">走進任何城鎮</td><td style="padding:4px 6px;"><b>免費</b>復活<b>全部</b>倒地傭兵</td></tr></tbody></table>',
-      '復活後 HP 回<b>一半</b>、MP <b>回滿</b>、所有異常狀態清掉。'
-    ]},
-    { t: '傭兵的自動補血／喝藥（隊伍面板逐一設定）', lines: [
-      '「傭兵隊伍」面板可幫每名傭兵各自設定：',
-      '<table style="width:100%;border-collapse:collapse;margin:4px 0;font-size:13px;color:#cbd5e1;"><thead><tr><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #475569;">設定</th><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #475569;">作用</th></tr></thead><tbody><tr><td style="padding:4px 6px;">攻擊技能</td><td style="padding:4px 6px;">選一個牠學過的攻擊技當主要輸出</td></tr><tr><td style="padding:4px 6px;">治癒魔法＋HP&lt;門檻%</td><td style="padding:4px 6px;">隊伍（你＋傭兵們）有人 HP 低於門檻（預設 <b>70%</b>）→ 牠改放治癒，補血量最低的那個</td></tr><tr><td style="padding:4px 6px;">HP&lt;安全線% 喝藥水</td><td style="padding:4px 6px;">傭兵自己 HP 低於安全線→<b>喝你道具欄的藥水</b>（扣 1 瓶）並暫停施放「消耗 HP 的技能」（龍騎士等退回普攻）；填 <b>0＝關閉</b></td></tr></tbody></table>',
-      '自動喝藥從<b>你（隊長）的道具欄</b>扣藥水，恢復量吃該傭兵自己的體質加成，約 1 秒可喝一次；硬控中也能喝。'
-    ]},
-    { t: '👑 王族的傭兵／夥伴加成', lines: [
-      '你是<b>王族</b>時，帶的<b>傭兵</b>與<b>項圈夥伴</b>的 <b>傷害、HP、MP 全部 ×(1＋魅力÷100)</b>。',
-      '魅力 50 → ×1.5、魅力 80（六維上限）→ <b>×1.8</b>；非王族一律 ×1。這就是王族「不多帶、但帶得更強」的專長。'
-    ]},
-    { t: '幻術士傭兵：立方常駐 + 颶風／火牢自動觸發', lines: [
-      '🔮 <b>立方技能（記憶水晶系列）</b>：幻術士傭兵若學了立方技能，戰鬥期間會<b>常駐展開記憶水晶</b>，每隔固定間隔週期性觸發立方效果，無需手動施放。',
-      '🌀 <b>冰雪颶風 ／ 火牢</b>：幻術士傭兵若學了這兩個技能，戰鬥中<b>自動常駐觸發</b>——冰雪颶風對全體造成冰屬傷害並降速；火牢在地面持續灼傷踏上的敵人。同樣無需手動操作。',
-      '⚠️ 上述自動機制只在「傭兵上場參戰時」生效；傭兵戰力是招募當下快照，改了技能記得「解除→重招」更新。'
-    ]},
-    { t: '兩個和傭兵連動的職業能力', lines: [
-      '👑 <b>呼喚盟友</b>（王族二階魔法，Lv30 可學）：施放時<b>所有傭兵立即多攻擊一次</b>。',
-      '🔮 <b>幻術士・魔力精通</b>：你每次消耗 MP 時，所有<b>有 MP 的傭兵</b>回復「消耗量 10%」的 MP——讓施法型傭兵比較不會斷魔。'
-    ]}
+  // ===== 傭兵（協力存檔；本檔維護，內容以 index.html 的 buildAlly/alliesTick/allyXxxAct/mercAggroWeight 等實際邏輯為準）=====
+  // 各職業傭兵：平常怎麼打（自動）、隊伍面板「攻擊技能」格能指定哪些技能才真的有效、以及免指定就自動觸發的輔助。
+  //   資料源：js/06-status-allies.js 的 allyMageAct/allyElfAct/allyDarkAct/allyKnightAct/allyWarriorAct/allyRoyalAct/allyDragonAct/allyIllusionAct
+  //   + allyCubeTick（立方常駐）+ STORM_BUFF_SKILLS（冰雪颶風/火牢，屬法師魔法 reqM，非幻術士）。改版動到這些函式時回來對齊。
+  var MERC_CLASS_ROWS = [
+    { c: '🔵 法師', auto: '光箭（免費魔法普攻、不耗 MP）',
+      atk: '任一<b>傷害魔法</b>（火球／冰箭／隕石…，享法師階級倍率）；緩速／弱化／疾病／即死等<b>狀態魔法</b>',
+      aura: '學了<b>冰雪颶風</b>(Lv40)／<b>火牢</b>(Lv32)→戰鬥中常駐轟全體（免指定）' },
+    { c: '🍃 妖精', auto: '弓普攻，命中後依機率<b>連射</b>追加箭',
+      atk: '<b>三重矢</b>（需裝弓、3 連發）；學得到的傷害魔法；狀態／即死魔法',
+      aura: '連射（弓）；有劍術精通→近戰也能看破' },
+    { c: '🗡 黑暗妖精', auto: '物理攻擊；學過<b>劇毒</b>就自動常駐掛毒',
+      atk: '<b>破壞盔甲</b>（撕甲增傷）；<b>會心一擊</b>（滿魔爆發）；其他狀態／即死技',
+      aura: '自動劇毒；爆擊精通爆擊時追擊' },
+    { c: '⚔️ 騎士', auto: '純物理，含<b>看破／殺戮</b>被動',
+      atk: '物理技（<b>衝擊之暈</b>…）；學得到的傷害魔法（光箭／冰箭／風刃）',
+      aura: '看破／殺戮；盾＋單手劍格擋必反擊' },
+    { c: '🛡 戰士', auto: '純物理（迅猛雙斧／狂暴等特效）',
+      atk: '<b>只有「咆哮」</b>（對全體固定傷害）真的有效',
+      aura: '狂暴（普攻 5% 傷害×2）；迅猛雙斧副手追擊' },
+    { c: '👑 王族', auto: '純物理',
+      atk: '<b>只有「呼喚盟友」</b>（號召全隊各補一刀）真的有效',
+      aura: '王者加護等被動已算進戰力；<b>其餘王族增益技傭兵不會自動放</b>' },
+    { c: '🐉 龍騎士', auto: '純物理（鎖鏈劍吸血／弱點曝光）；<b>技能吃 HP 不吃 MP</b>',
+      atk: '<b>傷害龍魔法</b>（岩漿噴吐／岩漿之箭／奪命之雷）；<b>屠宰者</b>（物理多段）；控制技（護衛毀滅／恐懼無助／驚悚死神）',
+      aura: '鎖鏈劍吸血、弱點曝光（依武器）' },
+    { c: '🔮 幻術士', auto: '<b>奇古獸／魔劍</b>（魔法傷害，奇古獸無視魔防）',
+      atk: '心靈破壞、粉碎能量、<b>骷髏毀壞</b>（對不死）、混亂／幻想（傷害＋控）、恐慌（純控）',
+      aura: '⭐<b>立方（記憶水晶）</b>學了即<b>常駐光環</b>（全體傷害／緩速／降魔防／回魔）' }
   ];
   function renderAlly() {
-    var note = '<div class="m-wiki-note">「傭兵」是把你<b>其他存檔位的角色</b>請來並肩作戰——等於自己帶自己的分身。到城鎮的<b>傭兵公會</b>招募，戰力吃那名角色自己的裝備與職業。</div>';
-    var secs = MERC_SECTIONS.map(function (s) {
-      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
-      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+    var wrap = 'style="width:100%;border-collapse:collapse;margin:2px 0;font-size:13px;color:#cbd5e1;"';
+    var th = function (t, c) { return '<th style="text-align:' + (c || 'left') + ';padding:5px 6px;border-bottom:1px solid #475569;color:#e2e8f0;font-weight:bold;white-space:nowrap;">' + t + '</th>'; };
+    var td = function (t, c) { return '<td style="padding:5px 6px;border-bottom:1px solid #1e293b;vertical-align:top;' + (c ? 'text-align:' + c + ';' : '') + '">' + t + '</td>'; };
+    var tbl = function (head, body) { return '<table ' + wrap + '><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>'; };
+    var desc = function (t) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + t + '</div>'; };
+    // 段落可用 lines（逐條 ・）或 html（自訂，如表格），兩者可並存
+    function card(title, parts) {
+      var body = (parts.lines || []).map(desc).join('') + (parts.html || '');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(title) + '</div>' + body + '</div>';
+    }
+
+    var note = '<div class="m-wiki-note">「傭兵」＝把你<b>其他存檔位的角色</b>請來並肩作戰（等於帶自己的分身）。到城鎮<b>傭兵公會</b>招募，戰力吃<b>那名角色自己</b>的裝備、技能與職業，跟你主角無關。</div>';
+
+    // 1. 招募規則
+    var c1 = card('怎麼招募 · 基本規則', { lines: [
+      '到城鎮的 <b>傭兵公會</b> 招募——<b>肯特城／海音／歐瑞村莊</b> 三處都有。共 <b>8 個存檔格</b>，可招「目前所在格<b>以外</b>」有角色的格；空格不能招。',
+      '<b>費用＝該角色等級 × 10000 金幣</b>；解除或「全員退出」<b>不退費</b>，之後要再帶得重新付費。',
+      '<b>同時最多上場 3 名</b>（不論你有幾格存檔，王族也一樣 3 名）。',
+      '<b>分遊戲模式</b>：一般／經典／傳統／經典＋傳統四種組合各自獨立，<b>只能招同組合的存檔</b>，不能跨組合。'
+    ]});
+
+    // 2. 快照 + 升級 + 經驗回收
+    var c2 = card('戰力＝招募快照，但會跟你一起升級', { lines: [
+      '傭兵用<b>那名角色招募當下</b>的職業、裝備、技能、精通、套裝、配點結算戰力（<b>吃他自己的精通，不吃你主角的</b>）。',
+      '⚙️ <b>裝備／技能／精通是定型快照</b>：事後幫那角色換裝、改精通，傭兵不會自動跟著變——要在公會<b>「解除→重新招募」</b>才更新（再付一次費）。',
+      '⭐ <b>但等級會跟著你升</b>：每次擊殺，<b>每名在場傭兵各拿「自己等級的 50%」經驗</b>（不扣你的份、你照拿滿額；經典模式一樣打對折）。升級後即時重算戰力。',
+      '💾 <b>解雇時把賺到的經驗「無損還給」那角色</b>（可能一口氣升好幾級），借去當傭兵不算白練。',
+      '<b>擊殺的金幣、掉落全算你主角</b>；傭兵只是額外各自累積自己那 50% 經驗。'
+    ]});
+
+    // 3. ⭐ 各職業能指定哪些招式（主表）
+    var rows = MERC_CLASS_ROWS.map(function (r) {
+      return '<tr>' + td('<b style="color:#fcd34d;white-space:nowrap;">' + r.c + '</b>') + td(r.auto) + td(r.atk) + td(r.aura) + '</tr>';
     }).join('');
-    return note + secs;
+    var c3 = card('⭐ 各職業傭兵：怎麼打、能指定哪些招式', {
+      html:
+        '<div style="overflow-x:auto;">' +
+        tbl(th('職業') + th('平常出手（自動）') + th('隊伍面板可指定的攻擊技能') + th('免指定的自動輔助'), rows) +
+        '</div>' +
+        desc('隊伍面板的<b>「攻擊技能」下拉會列出該傭兵學過的所有攻擊技</b>，但<b>只有上表列的那些對該職業真的有效</b>；選了別的（例如叫戰士放光箭）會自動<b>退回普攻</b>。所以<b>戰士／王族實際上各只有一個</b>攻擊技可指定。') +
+        desc('另有一格<b>「治癒魔法」</b>是缺血時自動補（見下方「隊伍面板」），跟攻擊技能格分開設。')
+    });
+
+    // 4. 隊伍面板設定
+    var panelRows =
+      '<tr>' + td('攻擊技能') + td('選一個牠學過的攻擊技當主要輸出（見上表）') + '</tr>' +
+      '<tr>' + td('治癒魔法 ＋ HP&lt;門檻%') + td('隊伍（你＋傭兵們）有人 HP 低於門檻（預設 <b>70%</b>）→ 牠改放治癒，補最缺血的那個。只要該角色<b>學過治癒術</b>（初／中／高／全部）就能指定。') + '</tr>' +
+      '<tr>' + td('HP&lt;安全線% 喝藥水') + td('傭兵自己 HP 低於安全線→<b>喝你道具欄的藥水</b>（扣 1 瓶）並暫停施放「消耗 HP 的技能」（龍騎士等退回普攻）；填 <b>0＝關閉</b>') + '</tr>';
+    var c4 = card('隊伍面板：每名傭兵各自設定', {
+      html:
+        tbl(th('設定') + th('作用'), panelRows) +
+        desc('自動喝藥從<b>你（隊長）的道具欄</b>扣藥水，恢復量吃該傭兵自己的體質加成，約 1 秒可喝一次、硬控中也能喝。') +
+        desc('資源條：<b>龍騎士</b>技能吃 <b>HP</b>、其餘有魔力的職業顯示 <b>MP</b>（騎士／戰士純物理不顯示）。MP／龍騎士 HP 每 <b>16 秒</b>各回一些（依該角色恢復量），避免永久斷資源。')
+    });
+
+    // 5. 挨打 / 倒地 / 復活
+    var aggroRows =
+      '<tr>' + td('法師／幻術士，或<b>持弓／遠程武器</b>者') + td('1', 'center') + '</tr>' +
+      '<tr>' + td('近戰 妖精／黑暗妖精／王族（輕裝）') + td('2', 'center') + '</tr>' +
+      '<tr>' + td('近戰 騎士／戰士／龍騎士（重裝）') + td('3', 'center') + '</tr>';
+    var reviveRows =
+      '<tr>' + td('🔵 返生術') + td('你學會「返生術」且 MP 足夠') + td('<b>立即</b>復活、無冷卻') + '</tr>' +
+      '<tr>' + td('🎫 復活卷軸') + td('持有復活卷軸，且該傭兵<b>倒地滿 15 秒</b>') + td('消耗 1 張') + '</tr>' +
+      '<tr>' + td('🏠 回城／回村') + td('走進任何城鎮') + td('<b>免費</b>復活<b>全部</b>倒地傭兵') + '</tr>';
+    var c5 = card('會挨打、會倒地（不是永久死）', {
+      html:
+        desc('怪的<b>一般攻擊</b>和<b>單體攻擊魔法</b>會在「你＋在場傭兵」之間<b>依仇恨權重挑一個</b>打；<b>全體技</b>（闇黑波動、毒霧等）則<b>同時打你和所有傭兵</b>。') +
+        desc('仇恨權重（數字越大越容易被挑中，你自己也照這張表算；<b>持弓／遠程武器一律算 1</b>）：') +
+        tbl(th('類型') + th('被鎖定權重', 'center'), aggroRows) +
+        desc('👉 帶幾個<b>近戰重裝</b>傭兵在前面，就能幫脆皮施法傭兵（和你）分擔挨打。') +
+        desc('HP 被打到 0 →<b>倒地</b>（停止行動、不被鎖定，等復活），不是永久消失。也會像你一樣中<b>異常狀態</b>：中毒／灼燒／燙傷／出血持續扣血；暈眩／冰凍／石化／麻痺／沉睡完全不能動；沉默／魔法封印只能普攻；緩速攻速砍半。') +
+        desc('<b>你自己死亡</b>後傭兵都<b>留在你身邊</b>（回城、讀檔、離線掛機回來都還在）；<b>只有</b>在公會點「解除／全員退出」才會解散。') +
+        '<div class="m-wiki-desc" style="margin-top:6px;"><b>倒地了怎麼救回來</b>（隊伍面板倒地卡上有復活鈕）：</div>' +
+        tbl(th('方式') + th('條件') + th('效果'), reviveRows) +
+        desc('復活後 HP 回<b>一半</b>、MP <b>回滿</b>、清掉所有異常狀態。')
+    });
+
+    // 6. 王族加成 + 連動能力
+    var c6 = card('👑 王族加成 · 其他和傭兵連動的能力', { lines: [
+      '👑 <b>王族魅力加成</b>：你是<b>王族</b>時，帶的<b>傭兵</b>與<b>項圈夥伴</b>的 <b>傷害、HP、MP 全部 ×(1＋魅力÷100)</b>。魅力 50→×1.5、魅力 80（六維上限）→<b>×1.8</b>；非王族一律 ×1。這就是王族「不多帶、但帶得更強」的專長。',
+      '👑 <b>呼喚盟友</b>（王族專屬魔法，Lv30 可學）：指定給王族傭兵當攻擊技，施放時<b>所有上場傭兵立即各多攻擊一次</b>。',
+      '🔮 <b>幻術士・魔力精通</b>：你每次消耗 MP 時，所有<b>有 MP 的傭兵</b>回復「消耗量 10%」的 MP——讓施法型傭兵比較不會斷魔。'
+    ]});
+
+    return note + c1 + c2 + c3 + c4 + c5 + c6;
   }
 
   // ===== 遊戲模式(本檔手動維護;一般/經典/傳統 差異比較;以遊戲程式實際邏輯為準) ============

@@ -645,6 +645,14 @@
       'body.m-mobile #automation-panel{flex:1 1 auto !important;}',   /* 設定欄:原生 flex:none 害填不滿 → 還原撐滿 */
       'body.m-mobile #automation-panel > div:last-child{max-height:none !important;}',   /* 解除原生 220px 內捲上限,讓內容隨欄高自然捲動 */
 
+      /* 設定頁改「整欄單一捲動」:左欄由上到下是 角色狀態→傭兵隊伍面板→自動化設定。原本左欄 overflow:hidden、
+         只靠自動化設定自己內部捲,傭兵面板沒有捲動 → 養到 3 個傭兵時面板變高、第三張卡被擠出可視區又捲不到,
+         點不到它的補血/技能設定(踩過 2026-07-01)。改成讓 .m-col-left 自己捲(overflow-y:auto),並把自動化設定
+         改回內容高(flex:0 0 auto·overflow:visible)不再搶空間/不自成內捲 → 三塊全在同一條捲動裡,滑下去就到得了。
+         單一外層捲動也避開 iOS 巢狀捲動手勢打架(同倉庫的解法)。只 scope 在手機設定頁,戰鬥/背包/桌機不受影響。 */
+      'body.m-mobile.mview-config .m-col-left{overflow-y:auto !important;-webkit-overflow-scrolling:touch;padding-bottom:12px;}',
+      'body.m-mobile.mview-config #automation-panel{flex:0 0 auto !important;overflow:visible !important;}',
+
       'body.m-mobile{padding:0 !important;}',
       /* 🖥️→📱 中和作者 2026-06 新增的「1920×1080 固定設計舞台」#app-stage:它用 fitStage() 對舞台
          下 transform:scale(min(vw/1920,vh/1080)) 等比縮小整個桌機版面——手機上會把我們自建的版面

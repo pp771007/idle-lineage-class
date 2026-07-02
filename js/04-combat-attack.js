@@ -159,6 +159,7 @@ function playerAttack() {
         else if(result.crit) { tag = 'player-crit'; ext = ' (爆擊!)'; }
         else if(result.heavy) { tag = 'player-heavy'; ext = result.crush ? ' (粉碎!)' : ' (重擊!)'; }
         else if(result.graze) { tag = 'player-graze'; ext = ' (擦傷!)'; }
+        if(result.dualx2) ext += ' (雙刃×2!)';   // ⚔️ 雙刀內建特性：5% 傷害×2（可與爆擊/重擊並發）
 
         // 切割：雙手劍重擊時觸發，自身攻速+20%持續2秒（與其他加速相乘疊加）
         let _cleaveProc = false;

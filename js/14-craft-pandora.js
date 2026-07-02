@@ -1690,6 +1690,8 @@ window.onload = () => {
                 if(_tg.includes('單手劍'))   _eff.push('反擊');
                 if(_tg.includes('武士刀'))   _eff.push('居合');
                 if(_tg.includes('單手鈍器')) _eff.push('鈍擊');
+                if(_tg.includes('雙刀'))     _eff.push('雙刃 5%（傷害×2）');   // ⚔️ 雙刀內建特性
+                if(_tg.includes('鋼爪'))     _eff.push('重擊 +5%');   // ⚔️ 鋼爪內建特性：一般攻擊額外 5% 重擊
             }
             _eff = filterClassicEffLabels(_eff);   // 🎮 經典模式：移除已停用特效字樣
             if(_eff.length) parts.push(`<div class="text-rose-300 font-bold" style="font-size:12px;">特效：${_eff.join(' / ')}</div>`);

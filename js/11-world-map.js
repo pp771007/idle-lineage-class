@@ -813,6 +813,8 @@ function renderIsmaelExchange(el) {
     el.innerHTML = `
         <div class="flex flex-col gap-3 p-1">
             <div class="text-slate-300 text-sm leading-relaxed">伊賽馬利：需要稀有的卷軸嗎？我這裡能交換（背包與倉庫的卷軸皆可使用）。</div>
+            ${(typeof trialQtyBar === 'function') ? trialQtyBar() : ''}
+            <div class="text-xs text-slate-400 -mt-2">🆕 兌換數量共用上方數量列，並自動以「可負擔上限」為準（飾品卷軸購買除外）。</div>
             <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-600 rounded p-3">
                 <div class="text-sm text-slate-200 leading-relaxed">100 張 <span class="text-sky-300">對武器施法的卷軸</span> → 1 張 <span class="text-amber-300 font-bold">祝福的 對武器施法的卷軸</span><br><span class="text-xs text-slate-400">持有：${sw} 張（無次數限制）</span></div>
                 <button class="btn bg-blue-700 hover:bg-blue-600 border-blue-500 py-2 px-4 font-bold shrink-0" onclick="ismaelExchange('weapon')">兌換</button>
@@ -844,42 +846,48 @@ function renderIsmaelExchange(el) {
             </div>
         </div>`;
 }
-function ismaelExchange(kind) {
+function ismaelExchange(kind) {   // 🆕 v2.6.84 可選兌換數量（共用 trial-qty 數量列·自動以可負擔上限為準）
     let id = kind === 'weapon' ? 'scroll_weapon' : 'scroll_armor';
     let outId = kind === 'weapon' ? 'scroll_weapon_b' : 'scroll_armor_b';
     let nm = kind === 'weapon' ? '對武器施法的卷軸' : '對盔甲施法的卷軸';
-    if (invCountId(id) < 100) { alert(`${nm} 不足 100 張（背包＋倉庫共 ${invCountId(id)} 張）。`); return; }
-    consumeMaterialById(id, 100);   // 🔧 背包優先、不足自動扣倉庫
-    gainItem(outId, 1, true, true);
+    let have = invCountId(id), maxAff = Math.floor(have / 100);
+    if (maxAff < 1) { alert(`${nm} 不足 100 張（背包＋倉庫共 ${have} 張）。`); return; }
+    let n = Math.min((typeof trialQtyVal === 'function') ? trialQtyVal() : 1, maxAff);
+    consumeMaterialById(id, 100 * n);   // 🔧 背包優先、不足自動扣倉庫
+    gainItem(outId, n, true, true);
     renderTabs();
-    logSys(`以 100 張 ${nm} 兌換了 1 張 <span class="text-amber-300 font-bold">祝福的 ${nm}</span>。`);
-    updateUI();
+    logSys(`以 ${100 * n} 張 ${nm} 兌換了 ${n} 張 <span class="text-amber-300 font-bold">祝福的 ${nm}</span>。`);
+    updateUI(); saveGame();
     let el = document.getElementById('interaction-content'); if (el) renderIsmaelExchange(el);
 }
-// 🏝️ 伊賽馬利：100 張 一般施法卷軸 → 1 張 詛咒的 施法卷軸（無次數限制）
+// 🏝️ 伊賽馬利：100 張 一般施法卷軸 → 1 張 詛咒的 施法卷軸（無次數限制·🆕 可選數量）
 function ismaelMakeCursed(kind) {
     let id = kind === 'weapon' ? 'scroll_weapon' : 'scroll_armor';
     let outId = kind === 'weapon' ? 'scroll_weapon_c' : 'scroll_armor_c';
     let nm = kind === 'weapon' ? '對武器施法的卷軸' : '對盔甲施法的卷軸';
-    if (invCountId(id) < 100) { alert(`${nm} 不足 100 張（背包＋倉庫共 ${invCountId(id)} 張）。`); return; }
-    consumeMaterialById(id, 100);   // 🔧 背包優先、不足自動扣倉庫
-    gainItem(outId, 1, true, true);
+    let have = invCountId(id), maxAff = Math.floor(have / 100);
+    if (maxAff < 1) { alert(`${nm} 不足 100 張（背包＋倉庫共 ${have} 張）。`); return; }
+    let n = Math.min((typeof trialQtyVal === 'function') ? trialQtyVal() : 1, maxAff);
+    consumeMaterialById(id, 100 * n);   // 🔧 背包優先、不足自動扣倉庫
+    gainItem(outId, n, true, true);
     renderTabs();
-    logSys(`以 100 張 ${nm} 兌換了 1 張 <span class="c-cursed">詛咒的 ${nm}</span>。`);
-    updateUI();
+    logSys(`以 ${100 * n} 張 ${nm} 兌換了 ${n} 張 <span class="c-cursed">詛咒的 ${nm}</span>。`);
+    updateUI(); saveGame();
     let el = document.getElementById('interaction-content'); if (el) renderIsmaelExchange(el);
 }
-// 伊賽馬利：3 張 詛咒的 施法卷軸 → 1 張 祝福的 施法卷軸（無次數限制）
+// 伊賽馬利：3 張 詛咒的 施法卷軸 → 1 張 祝福的 施法卷軸（無次數限制·🆕 可選數量）
 function ismaelCursedExchange(kind) {
     let id = kind === 'weapon' ? 'scroll_weapon_c' : 'scroll_armor_c';
     let outId = kind === 'weapon' ? 'scroll_weapon_b' : 'scroll_armor_b';
     let nm = kind === 'weapon' ? '對武器施法的卷軸' : '對盔甲施法的卷軸';
-    if (invCountId(id) < 3) { alert(`詛咒的 ${nm} 不足 3 張（背包＋倉庫共 ${invCountId(id)} 張）。`); return; }
-    consumeMaterialById(id, 3);   // 🔧 背包優先、不足自動扣倉庫
-    gainItem(outId, 1, true, true);
+    let have = invCountId(id), maxAff = Math.floor(have / 3);
+    if (maxAff < 1) { alert(`詛咒的 ${nm} 不足 3 張（背包＋倉庫共 ${have} 張）。`); return; }
+    let n = Math.min((typeof trialQtyVal === 'function') ? trialQtyVal() : 1, maxAff);
+    consumeMaterialById(id, 3 * n);   // 🔧 背包優先、不足自動扣倉庫
+    gainItem(outId, n, true, true);
     renderTabs();
-    logSys(`以 3 張 <span class="c-cursed">詛咒的 ${nm}</span> 兌換了 1 張 <span class="text-amber-300 font-bold">祝福的 ${nm}</span>。`);
-    updateUI();
+    logSys(`以 ${3 * n} 張 <span class="c-cursed">詛咒的 ${nm}</span> 兌換了 ${n} 張 <span class="text-amber-300 font-bold">祝福的 ${nm}</span>。`);
+    updateUI(); saveGame();
     let el = document.getElementById('interaction-content'); if (el) renderIsmaelExchange(el);
 }
 // ===== 克里斯特：施法卷軸 + 金幣 → 賦予祝福卷軸（🆕 可選兌換數量，共用試煉兌換的 trial-qty 數量列；數量取「輸入值」與「可負擔上限」較小者） =====

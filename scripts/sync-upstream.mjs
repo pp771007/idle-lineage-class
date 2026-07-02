@@ -95,7 +95,10 @@ const block = PLUGINS.map((p) => {
 //   → URL 變 → 瀏覽器 / PWA(sw.js 對 .js/.css 走 cache-first 且尊重 query)一定重抓新版,不會讀到舊的;沒變的維持 hash、續用快取。
 //   作者日後新增/改名/移除這些檔都自動跟上(順著 index.html 的引用走 + 清孤兒)。
 const SUBRES_DIRS = ['js', 'css'];
-const SUBRES_RE = new RegExp('(?:src|href)="((?:' + SUBRES_DIRS.join('|') + ')\\/[^"?]+\\.(?:js|css))"', 'g');
+// 引用可能帶作者自己的 ?v= query(如 js/19-equipment-window.js?v=20260702c)——比對要容許 query、只擷取路徑,
+// 否則帶 query 的新檔會被漏抓,站台 404(裝備視窗踩過 2026-07-02)。
+const SUBRES_RE = new RegExp('(?:src|href)="((?:' + SUBRES_DIRS.join('|') + ')\\/[^"?]+\\.(?:js|css))(?:\\?[^"]*)?"', 'g');
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const subFiles = [...new Set([...upstream.matchAll(SUBRES_RE)].map((m) => m[1]))];
 const subAdded = [], subChanged = [], subRemoved = [];
 const subHash = {};
@@ -119,9 +122,14 @@ for (const dir of SUBRES_DIRS) {
     if (/\.(js|css)$/.test(name) && statSync(p).isFile() && !wantedSub.has(p)) { rmSync(p); subRemoved.push(p); }
   }
 }
-// 把 index.html 的 js/css 引用改寫成帶內容 hash 的 ?v=(破快取);沒有引用時 upstreamHtml === upstream(相容舊單檔版)
+// 把 index.html 的 js/css 引用改寫成帶內容 hash 的 ?v=(破快取);作者自帶的 ?v= 一併換成內容 hash。
+// 沒有引用時 upstreamHtml === upstream(相容舊單檔版)
 let upstreamHtml = upstream;
-for (const path of subFiles) upstreamHtml = upstreamHtml.split('"' + path + '"').join('"' + path + '?v=' + subHash[path] + '"');
+for (const path of subFiles) {
+  upstreamHtml = upstreamHtml.replace(
+    new RegExp('"' + escRe(path) + '(?:\\?[^"]*)?"', 'g'),
+    '"' + path + '?v=' + subHash[path] + '"');
+}
 
 const merged = upstreamHtml.replace('</body>', block + '</body>');
 

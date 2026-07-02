@@ -961,7 +961,7 @@
     { k: 'rift', n: '時空裂痕' },
     { k: 'kingroom', n: '軍王之室' }
   ];
-  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', magicChar: '', equipCls: 'all', equipSlot: 'wpn' };
+  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', magicChar: '', collChar: '', equipCls: 'all', equipSlot: 'wpn' };
   // 搜尋打字防抖:每次按鍵只重設計時器,停手這麼久才真的過濾+重渲染(降低逐字輸入的 INP)。
   var SEARCH_DEBOUNCE_MS = 150;
   var _searchTimer = null;
@@ -1052,8 +1052,10 @@
       state.magicChar = '';   // 切職業時重設角色選擇(預設不選)
       render();
     });
-    // 職業魔法分頁「選擇角色」下拉(body innerHTML 重繪後仍有效)
+    // 職業魔法/收藏分頁「選擇角色」下拉(body innerHTML 重繪後仍有效)
     document.getElementById('m-wiki-body').addEventListener('change', function (e) {
+      var cs = e.target.closest ? e.target.closest('[data-collchar]') : null;
+      if (cs) { state.collChar = cs.value; render(); return; }
       var sel = e.target.closest ? e.target.closest('[data-magicchar]') : null;
       if (!sel) return;
       state.magicChar = sel.value;
@@ -1475,6 +1477,8 @@
   // 卡片收集:動態讀遊戲 CARD_TIERS(售價)/CARD_REGIONS(地區完成加成)/CARD_STAT_LABEL;掉率與解鎖資訊以 js/15-cards.js 的 rollCardDrops/renderCardBook 為準。
   function renderCard() {
     var out = '<div class="m-wiki-note">「卡片收集」：每隻怪（<b>血盟與建築類除外</b>）極低機率掉「怪物卡片」；<b>圖鑑還沒開通的怪，撿到卡片會自動登錄</b>、解鎖牠的資料，把一個地區的怪收齊還有<b>屬性加成</b>。<b>怪物收集冊</b>從「<b>收藏</b>」面板（裝備／道具／怪物三本）翻開，不再放在道具欄。<br><b>收集進度和倉庫同規則</b>：同一模式的角色<b>共用</b>一份——依模式組合（一般／經典／傳統／經典＋傳統，共四種）各自獨立一份，互不共通。</div>';
+    out += collCharSelectHTML('選角色後，下方列出各地區收集進度與還缺哪些卡');
+    if (state.collChar) out += cardProgressHTML();
 
     var tiers = (typeof CARD_TIERS !== 'undefined') ? CARD_TIERS : [];
     var price = function (t) { var c = tiers[t - 1]; return c ? Number(c.price).toLocaleString() : '?'; };
@@ -1489,9 +1493,8 @@
     );
 
     var regs = (typeof CARD_REGIONS !== 'undefined') ? CARD_REGIONS : [];
-    var lbl = (typeof CARD_STAT_LABEL !== 'undefined') ? CARD_STAT_LABEL : {};
     var rows = regs.map(function (r) {
-      return [esc(r.name), esc(lbl[r.stat] || r.stat), '+' + r.vals[0], '+' + r.vals[1], '+' + r.vals[2]];
+      return [esc(r.name), esc(cardStatCN(r.stat)), '+' + r.vals[0], '+' + r.vals[1], '+' + r.vals[2]];
     });
     out += wCard('🏅 地區完成加成（把一個地區的怪收齊）',
       wDesc('把某地區<b>所有怪</b>都收到同一階，就拿到該地區加成（<b>取已達到的最高階</b>：全金 > 全銀 > 全普）。加成不大但確實有：') +
@@ -1601,6 +1604,8 @@
     if (typeof EQUIP_CATEGORIES === 'undefined') return '<div class="m-wiki-note">讀不到裝備收集冊資料。</div>';
     var bonus = (typeof EQUIP_CAT_BONUS !== 'undefined') ? EQUIP_CAT_BONUS : {};
     var out = '<div class="m-wiki-note">「裝備收集冊」：<b>獲得任何裝備就自動登錄</b>（只增不減，賣掉／丟掉也保留紀錄），依部位分類。把<b>某部位的全部裝備</b>都收集齊，就拿到該部位的<b>永久加成</b>。三本收集冊（<b>裝備／道具／怪物</b>）都從畫面上的「<b>收藏</b>」面板翻開，不再放在道具欄。<br><b>收集進度和倉庫同規則</b>：同一模式的角色<b>共用</b>一份——依模式組合（一般／經典／傳統／經典＋傳統，共四種）各自獨立一份，互不共通。</div>';
+    out += collCharSelectHTML('選角色後，下方列出各部位／各類收集進度與還缺哪些');
+    if (state.collChar) out += equipProgressHTML();
     var groups = [];
     EQUIP_CATEGORIES.forEach(function (c) { if (groups.indexOf(c.group) < 0) groups.push(c.group); });
     groups.forEach(function (g) {
@@ -2381,7 +2386,7 @@
       if (!raw) return null;
       var d = JSON.parse(_saveUnwrap(raw).payload);
       var p = d && d.p; if (!p || !p.cls) return null;
-      return { slot: n, name: p.name || '', lv: p.lv || 1, cls: p.cls };
+      return { slot: n, name: p.name || '', lv: p.lv || 1, cls: p.cls, classic: !!p.classicMode, trad: !!p.traditionalMode };
     } catch (e) { return null; }
   }
   // 列出某職業的所有存檔角色(8 格)
@@ -2417,6 +2422,108 @@
     }).join('');
     return '<div class="m-wiki-charsel"><label>選擇角色</label><select data-magicchar>' + opts + '</select>' +
       '<span class="m-wiki-charsel-hint">選角色後，已學會的魔法<b style="color:#22c55e">變亮</b>、未學的<b>變暗</b></span></div>';
+  }
+
+  // ---- 收藏(卡片/裝備圖鑑)分頁的「選擇角色」:收集進度依「模式組合」共用桶存放,
+  //      選角色＝看「他所在模式」的那份進度(同模式角色共用一份;全部唯讀,絕不寫桶) ----
+  var COLL_MODE_CN = { '': '一般', '_classic': '經典', '_tradonly': '傳統', '_trad': '經典＋傳統' };
+  function collModeSuffix(c) { return (c.classic && c.trad) ? '_trad' : c.trad ? '_tradonly' : c.classic ? '_classic' : ''; }   // 同原作 modeSuffix 規則
+  function collCharSelectHTML(hint) {
+    var chars = [];
+    for (var n = 1; n <= 8; n++) { var c = readCharSlot(n); if (c) chars.push(c); }
+    if (!chars.length) return '';
+    if (!chars.some(function (c) { return String(c.slot) === String(state.collChar); })) state.collChar = '';
+    var opts = '<option value="">不選（只看說明）</option>' + chars.map(function (c) {
+      var clsName = (CLASSES.filter(function (x) { return x.k === c.cls; })[0] || {}).n || c.cls;
+      var label = 'Lv.' + c.lv + '　' + (c.name || clsName) + '（' + clsName + '・' + COLL_MODE_CN[collModeSuffix(c)] + '）';
+      return '<option value="' + c.slot + '"' + (String(c.slot) === String(state.collChar) ? ' selected' : '') + '>' + esc(label) + '</option>';
+    }).join('');
+    return '<div class="m-wiki-charsel"><label>選擇角色</label><select data-collchar>' + opts + '</select>' +
+      '<span class="m-wiki-charsel-hint">' + hint + '（收集進度是「同模式角色共用」一份，選角色＝看他那份模式的進度）</span></div>';
+  }
+  // 讀選定角色所在模式的三本共用收藏桶;該模式＝目前載入角色的模式時,改用記憶體即時值(較新)
+  function collBuckets() {
+    var c = readCharSlot(state.collChar); if (!c) return null;
+    var suf = collModeSuffix(c);
+    var modeName = COLL_MODE_CN[suf];
+    if (typeof player !== 'undefined' && player && player.cls && typeof modeSuffix === 'function' &&
+        modeSuffix(!!player.classicMode, !!player.traditionalMode) === suf) {
+      return { card: player.cardDex || {}, equip: player.equipDex || {}, misc: player.miscDex || {}, mode: modeName };
+    }
+    function rd(base) { try { var s = _lzGet(base + suf); if (s) { var o = JSON.parse(s); if (o && typeof o === 'object') return o; } } catch (e) {} return {}; }
+    var card = rd(typeof CARDDEX_KEY !== 'undefined' ? CARDDEX_KEY : 'lineage_idle_carddex');
+    if (card._v !== 2 && typeof cardTierToScore === 'function') {   // 舊階級制桶(1/2/3)→積分(1/10/100),僅顯示用轉換、不回寫
+      var mig = {};
+      for (var k in card) { if (k !== '_v') mig[k] = cardTierToScore(card[k]); }
+      card = mig;
+    }
+    return {
+      card: card,
+      equip: rd(typeof EQUIPDEX_KEY !== 'undefined' ? EQUIPDEX_KEY : 'lineage_idle_equipdex'),
+      misc: rd(typeof MISCDEX_KEY !== 'undefined' ? MISCDEX_KEY : 'lineage_idle_miscdex'),
+      mode: modeName
+    };
+  }
+  // 卡片分頁:選定角色的各地區收集進度＋缺卡清單(依目前階分組;點怪名跳掉落查詢看出沒地圖)
+  var CARD_TIER_CN = ['未登錄', '普卡', '銀卡', '金卡'];
+  function cardStatCN(stat) {   // 地區加成屬性中文;遊戲 CARD_STAT_LABEL 的 mr 是英文縮寫,依鐵則翻「魔防」
+    if (stat === 'mr') return '魔防';
+    return (typeof CARD_STAT_LABEL !== 'undefined' && CARD_STAT_LABEL[stat]) || stat;
+  }
+  function cardProgressHTML() {
+    var b = collBuckets(); if (!b) return '';
+    if (typeof CARD_REGIONS === 'undefined' || typeof CARD_REGION_MOBS === 'undefined') return '<div class="m-wiki-note">讀不到卡片地區資料。</div>';
+    function tierOf(nm) { var s = b.card[nm] || 0; return s >= 100 ? 3 : (s >= 10 ? 2 : (s >= 1 ? 1 : 0)); }
+    var rows = [], detail = '';
+    CARD_REGIONS.forEach(function (reg) {
+      var names = CARD_REGION_MOBS[reg.key] || [];
+      var cnt = [0, 0, 0, 0], minT = 3;
+      names.forEach(function (nm) { var t = tierOf(nm); cnt[t]++; if (t < minT) minT = t; });
+      if (!names.length) minT = 0;
+      var lbl = cardStatCN(reg.stat);
+      rows.push([esc(reg.name), String(names.length), String(cnt[3]), String(cnt[2]), String(cnt[1]),
+        cnt[0] ? '<b style="color:#f87171">' + cnt[0] + '</b>' : '0',
+        minT > 0 ? esc(lbl) + ' +' + reg.vals[minT - 1] + '（全' + CARD_TIER_CN[minT] + '）' : '—']);
+      var below = names.length - cnt[3];
+      if (below > 0) {
+        var groups = '';
+        [0, 1, 2].forEach(function (t) {
+          var miss = names.filter(function (nm) { return tierOf(nm) === t; });
+          if (miss.length) groups += '<div class="m-wiki-desc" style="margin-top:4px;"><b>' + (t === 0 ? '❌ 未登錄' : '⬆ 目前' + CARD_TIER_CN[t]) + '（' + miss.length + '）</b>：' + miss.map(wDexLink).join('、') + '</div>';
+        });
+        detail += wCard('📍 ' + esc(reg.name) + '（' + below + '／' + names.length + ' 隻未達金卡）', groups);
+      }
+    });
+    return wCard('🎴 收集進度（' + esc(b.mode) + '模式）',
+      wTbl(['地區', '怪數', '金', '銀', '普', '未登錄', '目前地區加成'], rows) +
+      wDesc('地區加成取「全部怪都達到」的最高階。下面各地區列出還缺的卡，點怪名可跳「掉落查詢」看出沒地圖。')) + detail;
+  }
+  // 裝備圖鑑分頁:選定角色的裝備/道具收集進度＋缺件清單(點名字跳掉落查詢看取得方式)
+  function collBookProgressHTML(title, cats, catItems, dex) {
+    var rows = [], detail = '';
+    cats.forEach(function (c) {
+      var arr = catItems[c.key] || [];
+      var missing = arr.filter(function (id) { return !dex[id]; });
+      rows.push([esc(c.name), (arr.length - missing.length) + '／' + arr.length,
+        missing.length ? '<b style="color:#f87171">缺 ' + missing.length + '</b>' : '<b style="color:#22c55e">✓ 完成</b>']);
+      if (missing.length) {
+        detail += wCard('📍 ' + esc(c.name) + '（缺 ' + missing.length + ' 件）',
+          '<div class="m-wiki-desc">' + missing.map(function (id) { var d = DB.items[id]; return wDexLink((d && d.n) || id); }).join('、') + '</div>');
+      }
+    });
+    return wCard(title, wTbl(['類別', '已收集', '狀態'], rows) +
+      wDesc('點缺的名字可跳「掉落查詢」看怎麼取得。')) + detail;
+  }
+  function equipProgressHTML() {
+    var b = collBuckets(); if (!b) return '';
+    var html = '';
+    if (typeof EQUIP_CATEGORIES !== 'undefined' && typeof EQUIP_CAT_ITEMS !== 'undefined') {
+      html += collBookProgressHTML('🗡️ 裝備收集進度（' + esc(b.mode) + '模式）', EQUIP_CATEGORIES, EQUIP_CAT_ITEMS, b.equip);
+    }
+    if (typeof MISC_CATEGORIES !== 'undefined' && typeof MISC_CAT_ITEMS !== 'undefined') {
+      html += collBookProgressHTML('🧰 道具收集進度（' + esc(b.mode) + '模式）', MISC_CATEGORIES, MISC_CAT_ITEMS, b.misc);
+    }
+    return html;
   }
 
   function magicSpellHTML(id, sk, lvLabel, learnedSet) {

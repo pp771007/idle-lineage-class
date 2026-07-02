@@ -527,6 +527,10 @@
     if (d.type === 'wpn') {
       var spd = (d.spd != null) ? d.spd : 1.0;
       spdLine = '<div style="line-height:1.8;margin:4px 0;"><span class="text-orange-300">攻擊速度: 每 ' + spd + ' 秒一次（數值越低攻擊越快）</span></div>';
+      // 強化最終傷害上限:依稀有度分五檔(讀遊戲 wpnEnCurveMax,作者調整分檔自動跟上);noEnhance 武器不能強化故不顯示
+      if (!d.noEnhance && typeof wpnEnCurveMax === 'function') {
+        spdLine += '<div style="line-height:1.8;margin:4px 0;"><span class="text-amber-300">強化最終傷害: +20 時最高 ×' + wpnEnCurveMax(d).toFixed(2) + '（依稀有度分檔 ×1.50～×2.50，越強化倍率越高）</span></div>';
+      }
     }
     var priceLine = d.p ? '<div class="m-dex-craft-mats" style="color:#cbd5e1;">賣店價：' + Math.floor(d.p * 0.3).toLocaleString() + ' 金幣</div>' : '';
     // 取得方式:手動補(itemAcquire)/ 歐西里斯寶箱 / 中性句;製作、商店、查掉落鈕沿用

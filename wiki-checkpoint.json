@@ -1,6 +1,6 @@
 {
-  "reconciledIndexCommit": "a4d1600",
-  "reconciledIndexBlob": "c544dfb1edac0bc649d0c25536f2c767cf60da23",
-  "reconciledAt": "2026-07-02 07:07 (UTC+8)",
-  "note": "逐檔對過 3c30d5e→HEAD 的 js/ css/ 全段。作者本次更新（v2.6.53→v2.6.57）唯一實質變動：①【00-data.js】全武器 spd（攻擊速度）大規模重新平衡——每把武器攻速值都調整（匕首類 0.8→0.6 變快、雙手劍/斧 0.9→1.0/1.1 變慢，快慢差距拉大）；無新增物品/技能/套裝、無 d 說明變動、無機制改動。②【06-status-allies.js】妖精傭兵召喚優先 bugfix：顯式優先 sk_elf_summon2（上級精靈），避免 .find 先抓到弱版 sk_elf_summon。無小百科內容需改：武器 base spd 不顯示於 buildItemDescHTML（遊戲物品描述本來就不列攻速值），裝備頁/掉落查詢皆走 buildItemDescHTML 故無從顯示、也不會過時；小百科既有『攻速』內容全是加成 %（切割/常駐加速/套裝變身/負重表/裝備 spd% 詞綴），與逐武器 base spd 無關、不受影響。傭兵召喚 bugfix 屬內部行為修正，傭兵頁『自動召喚』已泛述。故本輪僅推進錨點，未動任何外掛。"
+  "reconciledIndexCommit": "fb516ce",
+  "reconciledIndexBlob": "b84f2f1bc054db6f29e1f15c9b592f7d332352c9",
+  "reconciledAt": "2026-07-02 22:35 (UTC+8)",
+  "note": "逐檔對過 a4d1600→fb516ce 的 js/ css/ 全段（作者 v2.6.57→v2.6.67）。①21 個攻擊魔法基礎骰調升（00-data DB.skills，職業魔法頁動態讀→自動跟上）②法師「法術階級加成 ×(1.5+階/20)」整個移除→改寫職業魔法頁公式 note＋重算流星雨/冰雪暴例、武器附魔說明、魔女5件、傭兵法師列 ③妖精魔導精通：同屬性×2 移除、MP -30%→-50%（MASTERY_DATA 作者已改→專精頁自動）④幻術士等級加成 ×(1+lv/50) 移除→刪 SKILL_SOURCE_NOTE.illusion 該段、立方 dmg 描述、extradata 碎顱一擊 note ⑤衝擊之暈：雙手武器限定＋傷害+10＋命中後10%機率才判暈→改 extradata skillNote ⑥魔爆改均分（v2.6.63）→武器特性頁 ⑦席琳世界怪 AC 改固定 −10/頭目−20（瘋狂同值）→席琳頁表格 ⑧武器+20最終傷害上限依稀有度分五檔（v2.6.65/66）→前輪已做（武器卡標檔位＋強化頁五檔表）⑨蕾雅魔杖權重10→1、倉庫改浮動視窗、自動販賣規則（UI/QoL，小百科無需記）。返生術在作者 patch note 有列但 code 無變動（sk_resurrection 資料未改）。"
 }

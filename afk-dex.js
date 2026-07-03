@@ -603,7 +603,9 @@
       : '—';
     var dropsHTML = h.drops.length
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
-          var pct = d[2] * mult; if (pct > 100) pct = 100;
+          // 經典 ×1/10 例外(鏡像遊戲 killMob 的 trialItemDropMult＋卡瑞屠龍劍特判):職業試煉道具與卡瑞的屠龍劍不打折;席琳 ×3/×5 沒有這些例外照乘
+          var effMult = (mult < 1 && ((typeof TRIAL_ITEM_CLASS !== 'undefined' && TRIAL_ITEM_CLASS[d[0]]) || (m.n === '卡瑞' && d[0] === 'wpn_dragonslayer'))) ? 1 : mult;
+          var pct = d[2] * effMult; if (pct > 100) pct = 100;
           var tag = d[3] ? ' <span class="m-dex-droptag">' + esc(d[3]) + '</span>' : '';
           return '<tr>' +
             '<td><span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看詳情">' + hl(d[1], q) + '</span>' + tag + '</td>' +
@@ -677,7 +679,7 @@
     { id: 'dropmult', title: '🔮 掉落倍率：席琳的世界 ×3、瘋狂的席琳世界 ×5、恩賜怪 ×10、經典 ×1/10', keys: ['掉落倍率', '倍率', '席琳的世界', '瘋狂的席琳世界', '經典模式', '恩賜怪', '恩賜'], lines: [
       '<b>怪物卡上顯示的是「一般」掉落機率</b>，下列狀態會整體放大／縮小：',
       '<b>席琳的世界</b>：被席琳化的怪掉落機率 <b>×3</b>（<b>瘋狂的席琳世界</b> <b>×5</b>）；其中「恩賜怪」更高，<b>×10</b>',
-      '<b>經典模式</b>：所有物品掉落機率 <b>×1/10</b>',
+      '<b>經典模式</b>：所有物品掉落機率 <b>×1/10</b>（<b>職業試煉／任務道具</b>與<b>卡瑞的屠龍劍</b>除外，照原機率掉）',
       '<b>固定、不受倍率影響的例外</b>：席琳結晶、萬能藥（屬性藥）、黑魔石、銀礦石、進化果實（各條另有標註）；其餘怪卡掉落都會被倍率放大／縮小',
       '上方的「<b>掉落率模式</b>」下拉可把席琳／經典倍率直接套到怪卡的掉落數字'
     ] },

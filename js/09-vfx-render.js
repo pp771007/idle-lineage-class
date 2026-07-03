@@ -159,11 +159,23 @@ function vfxKill(mob) {
                     gh.style.width = r.width + 'px'; gh.style.height = r.height + 'px';
                     gh.style.transformOrigin = (_anc.hc * 100).toFixed(1) + '% ' + (_anc.vc * 100).toFixed(1) + '%';   // 🎯 v2.6.45 放大自「怪物身體中心」擴散(非方框中心)→白閃由怪身發散
                     layer.appendChild(gh);
-                    gh.animate(
-                        [ { transform: 'translate(-50%,-50%) scale(1)', opacity: .85, filter: 'brightness(2.6) saturate(.25)' },
-                          { transform: 'translate(-50%,-50%) scale(' + (mob.boss ? 1.62 : 1.42) + ')', opacity: 0, filter: 'brightness(3.4) saturate(0)' } ],
-                        { duration: mob.boss ? 520 : 400, easing: 'cubic-bezier(.2,.6,.2,1)' }
-                    ).onfinish = () => gh.remove();
+                    let _da = (typeof _mobAnimCache !== 'undefined') ? _mobAnimCache[mob.n] : null;
+                    let _deathSeq = (_da && _da !== 'probing' && _da.death) ? _da.death : null;
+                    if (_deathSeq) {   // 🎞️ v2.6.86 死亡序列（death_*.png）：殘影原位逐幀播一輪→短淡出（取代白閃；怪卡本體照常移除）
+                        gh.src = _deathSeq[0].src;
+                        let _fi = 0, _fint = setInterval(() => {
+                            _fi++;
+                            if (_fi < _deathSeq.length) gh.src = _deathSeq[_fi].src;
+                            else { clearInterval(_fint); try { gh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-out' }).onfinish = () => gh.remove(); } catch (e) { gh.remove(); } }
+                        }, 1000 / MOB_ANIM_FPS);
+                        setTimeout(() => { try { clearInterval(_fint); if (gh.isConnected) gh.remove(); } catch (e) {} }, _deathSeq.length * (1000 / MOB_ANIM_FPS) + 2000);   // 保險回收
+                    } else {
+                        gh.animate(
+                            [ { transform: 'translate(-50%,-50%) scale(1)', opacity: .85, filter: 'brightness(2.6) saturate(.25)' },
+                              { transform: 'translate(-50%,-50%) scale(' + (mob.boss ? 1.62 : 1.42) + ')', opacity: 0, filter: 'brightness(3.4) saturate(0)' } ],
+                            { duration: mob.boss ? 520 : 400, easing: 'cubic-bezier(.2,.6,.2,1)' }
+                        ).onfinish = () => gh.remove();
+                    }
                 }
             } catch (e) {}
             // 2) 衝擊波環：自死亡點擴張的圓環
@@ -430,7 +442,7 @@ function _renderMobsImpl() {
         let _rowCls = (i >= 3) ? ' mob-back' : (_back ? ' mob-front' : '');   // 後排/前排版位 class（三格模式不加→沿用原版面）
         if (m) {
             let act = (i === mapState.targetIdx) ? 'active' : '';
-            let imgUrl = m.img || `assets/icons/monsters/${m.n}.png`;
+            let _mi = mobStillImg(m.n, m.img, true);   // 🎬 戰鬥初始幀：有動畫→優先 spawn_0（無 spawn 退 idle_0·再退舊靜態）；無動畫→舊靜態
             let hitClass = m.justHit ? (m.justHit === true ? 'anim-hit-normal' : `anim-hit-${m.justHit}`) : '';
             _forceHit[_k] = !!m.justHit;   // 🚀 被擊中→即使字串相同也強制重建該格(重播受擊動畫)
             try { _vfxQueueDmg(m); } catch(e){}   // ✨ VFX：用 HP 差捕捉本幀傷害（須在重設 justHit 前）
@@ -462,7 +474,7 @@ function _renderMobsImpl() {
                         </div>
                         ${badges}
                         <div class="flex justify-center mb-1 mob-img-wrap">
-                            <span class="mob-img-inner"><img src="${imgUrl}" alt="${m.n}" onerror="this.onerror=null; this.src='https://placehold.co/100x100/1e293b/ffffff?text=?';" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}"></span>
+                            <span class="mob-img-inner"><img src="${_mi.src}" data-fb="${_mi.fb.concat(['https://placehold.co/100x100/1e293b/ffffff?text=?']).join('|')}" alt="${m.n}" onerror="_mobImgErr(this)" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}"></span>
                         </div>
                         <div class="flex justify-center items-center gap-2 mb-1" style="height:16px;display:flex;align-items:center;justify-content:center;gap:8px;">${_statRow}</div>
                         ${_hpBar}
@@ -501,9 +513,111 @@ function _renderMobsImpl() {
         // 🖱️ name-show（hover 顯名）不再進 diff 字串、改由 _applyHoverName 單一管理→hover 不再觸發整格重建；
         //    但被重建過的格會丟失 hover class，故只在「有寫入 DOM」時重新套用一次（無重建的幀維持原樣、零成本）。
         if (_wrote) _applyHoverName();
+        if (_wrote) { try { _mobAnimApply(); } catch(e){} }   // 🎞️ 重建過的格子立即補上當前動畫幀（同一同步工作內→不閃回靜態圖）
     }
     try { _vfxFlush(); } catch(e){}   // ✨ VFX：格子重建後生成飄動傷害數字
 }
+
+// ===== 🎞️ 怪物 PNG 序列幀動畫引擎（v2.6.85·v2.6.86 分動作·v2.6.88 登場＋鎖定播放）=====
+// 幀檔約定（assets/anim/<怪物名>/·連續編號·缺號即止·各動作至少 2 幀才啟用·各自獨立可缺）：
+//   待機 idle：`0.png、1.png…` 或 `idle_0.png…`（優先 idle_ 前綴·裸編號為相容舊約定）→ 循環播放
+//   登場 spawn：`spawn_0.png…` → 怪物首次出現在場上時播一輪（🔒 鎖定），播畢回待機
+//   攻擊 attack：`attack_0.png…` → 怪物發動一般攻擊(打玩家或傭兵·含連擊技)時播一輪，播畢回待機
+//   技能 skill：`skill_0.png…` → 怪物施放技能(castMobMagic)時播一輪（🔒 鎖定），播畢回待機
+//   死亡 death：`death_0.png…` → 死亡時在 VFX 殘影上原位播一輪後淡出（取代白閃殘影·怪卡本體照常移除·殘影獨立層必定播完）
+// 🔒 鎖定規則（用戶要求）：登場/技能一旦開播「強制放完」——播放期間的新觸發一律忽略（不打斷·也不排隊重播·
+//    避免視覺與實際傷害脫節），播畢回待機再接之後的觸發；攻擊為非鎖定（可被新攻擊重播、可被技能即時蓋掉）。
+// 原理：待機幀序由「全域時鐘」決定（renderMobs 隨時整格重建也不重置相位）；單次動作 m._animAct={k,t,lock}
+//       存在怪物物件上·跨重建存活·播畢自動清除回待機。ticker 只改 img.src（已預載快取·不進 diff 字串
+//       →不觸發格子重建、不重播受擊動畫）。
+// 效能：8fps interval 掃描場上 ≤5 張卡；分頁背景(document.hidden)自動暫停；探測每怪一次（結果快取）。
+const MOB_ANIM_FPS = 8;            // 全域幀率（動作/秒）
+const MOB_ANIM_MAX_FRAMES = 30;    // 每動作幀數探測上限
+let _mobAnimCache = {};            // 怪名 → {idle,spawn,attack,skill,death:各[Image]|null} ｜ 'probing' ｜ null（全無）
+// 🎬 有序列幀動畫的怪物名單（單一真相·同步判斷用）：戰鬥/圖鑑靜態顯示點與探測皆據此，避免對 1000+ 無動畫怪發 404。
+//    ⚠️ 新增動畫怪：把幀丟進 assets/anim/<怪名>/（跑 spr2png.js）後，把 <怪名> 加進此 Set（一行）。播放幀數由 _mobAnimProbe 自動偵測。
+const MOB_ANIM_NAMES = new Set(['安塔瑞斯']);
+// 怪物「靜態顯示圖」候選：有動畫→戰鬥優先 spawn_0、圖鑑優先 idle_0，退回舊靜態 PNG；無動畫→直接舊靜態。回傳 {src, fb:[後備...]}（fb 走 onerror 逐張退·各呼叫點自行在末端補佔位符）。
+function mobStillImg(name, staticUrl, preferSpawn) {
+    let base = staticUrl || `assets/icons/monsters/${name}.png`;
+    if (!MOB_ANIM_NAMES.has(name)) return { src: base, fb: [] };
+    let list = [];
+    if (preferSpawn) list.push(`assets/anim/${name}/spawn_0.png`);
+    list.push(`assets/anim/${name}/idle_0.png`, base);
+    return { src: list[0], fb: list.slice(1) };
+}
+// 通用 img onerror：依 data-fb（|分隔清單）逐張退回，用盡則停。
+function _mobImgErr(img) {
+    try {
+        let fb = (img.getAttribute('data-fb') || '').split('|').filter(Boolean);
+        if (fb.length) { img.setAttribute('data-fb', fb.slice(1).join('|')); img.src = fb[0]; }
+        else { img.onerror = null; }
+    } catch (e) { img.onerror = null; }
+}
+function _mobAnimProbe(name) {
+    if (_mobAnimCache[name] !== undefined) return;
+    _mobAnimCache[name] = 'probing';
+    let out = { idle: null, spawn: null, attack: null, skill: null, death: null }, pending = 5;
+    let finish = () => { if (--pending > 0) return; _mobAnimCache[name] = (out.idle || out.spawn || out.attack || out.skill || out.death) ? out : null; };
+    let probeSeq = (key, prefixes) => {   // 依前綴逐號載入到缺號為止；idle 先試 idle_ 再退裸編號
+        let frames = [], pi = 0;
+        let done = () => { out[key] = frames.length >= 2 ? frames : null; finish(); };
+        let tryLoad = (i) => {
+            if (i >= MOB_ANIM_MAX_FRAMES) { done(); return; }
+            let im = new Image();
+            im.onload = () => { frames.push(im); tryLoad(i + 1); };
+            im.onerror = () => { if (i === 0 && pi + 1 < prefixes.length) { pi++; tryLoad(0); } else done(); };
+            im.src = `assets/anim/${name}/${prefixes[pi]}${i}.png`;
+        };
+        tryLoad(0);
+    };
+    probeSeq('idle', ['idle_', '']);
+    probeSeq('spawn', ['spawn_']);
+    probeSeq('attack', ['attack_']);
+    probeSeq('skill', ['skill_']);
+    probeSeq('death', ['death_']);
+}
+// 🎬 觸發單次動作（js/04 攻擊/技能掛點呼叫）：鎖定動作（登場/技能）播放中→忽略新觸發（強制放完）
+function _mobAnimTrigger(m, k) {
+    if (!m) return;
+    let cur = m._animAct;
+    if (cur && cur.lock) {   // 鎖定動作播放中？（以快取序列長度判斷是否還沒播完）
+        let a = _mobAnimCache[m.n];
+        let seq = (a && a !== 'probing') ? a[cur.k] : null;
+        if (seq && (Date.now() - cur.t) < seq.length * (1000 / MOB_ANIM_FPS)) return;   // 還在播→不打斷、不排隊
+    }
+    m._animAct = { k: k, t: Date.now(), lock: (k === 'spawn' || k === 'skill') };
+}
+function _mobAnimApply() {
+    let ml = document.getElementById('mob-list'); if (!ml) return;
+    if (typeof mapState === 'undefined' || !mapState.mobs) return;
+    let cards = ml.querySelectorAll('.mob-target[data-uid]');
+    for (let c of cards) {
+        let uid = c.getAttribute('data-uid');
+        let m = mapState.mobs.find(x => x && String(x.uid) === String(uid));
+        if (!m) continue;
+        if (!MOB_ANIM_NAMES.has(m.n)) continue;   // 🎬 非動畫名單→維持靜態圖·不探測（免對 1000+ 無動畫怪發 404）
+        let a = _mobAnimCache[m.n];
+        if (a === undefined) { _mobAnimProbe(m.n); continue; }   // 首次遇到→背景探測幀檔（探測完成前維持靜態圖）
+        if (!a || a === 'probing') continue;
+        if (!m._animSpawned) { m._animSpawned = true; if (a.spawn) _mobAnimTrigger(m, 'spawn'); }   // 🎬 登場：該怪物物件首次被動畫系統看到→播登場一輪（每隻一次）
+        let img = c.querySelector('.mob-img-wrap img'); if (!img) continue;
+        let src = null;
+        if (m._animAct) {   // 🎬 單次動作（登場/攻擊/技能）：自觸發時刻起逐幀播一輪，播畢清除回待機
+            let seq = a[m._animAct.k];
+            if (seq) {
+                let f = Math.floor((Date.now() - m._animAct.t) / (1000 / MOB_ANIM_FPS));
+                if (f < seq.length) src = seq[f].src; else m._animAct = null;
+            } else m._animAct = null;   // 該動作無序列→直接清（維持待機）
+        }
+        if (!src && a.idle) {
+            let _ofs = 0; { let s = String(uid); for (let j = 0; j < s.length; j++) _ofs += s.charCodeAt(j); }   // 同名多隻→依 uid 錯開相位
+            src = a.idle[(Math.floor(Date.now() / (1000 / MOB_ANIM_FPS)) + _ofs) % a.idle.length].src;
+        }
+        if (src && img.src !== src) img.src = src;
+    }
+}
+setInterval(() => { if (!document.hidden) { try { _mobAnimApply(); } catch (e) {} } }, Math.floor(1000 / MOB_ANIM_FPS));
 
 // 🚀 效能：分頁面板重繪保護＋節流。狩獵時扣箭/耗肉/掉寶會每 tick 觸發 renderTabs 重建整個面板，
 //    重建會洗掉按鈕→在 mousedown↔mouseup 間重建使「賣出/強化」點擊失效並造成卡頓。

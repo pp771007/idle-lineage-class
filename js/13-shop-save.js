@@ -654,6 +654,7 @@ function startGame() {
     applySherineTheme();   // 🔮 新角色預設關閉席琳的世界，重置視覺主題
     startGameTimers();
     logSys(`===== 歡迎來到天堂放置冒險 =====`);
+    if (typeof applyGlobalAutoSellSettings === 'function') applyGlobalAutoSellSettings();   // 🔧 v2.6.91 功能5：新角色套用全域自動販賣設定（若已啟用共用）
     saveGame();   // 🔧 創角完成立即存檔：先前要等 5 分鐘自動存檔，期間關閉頁面角色會直接消失
 }
 
@@ -750,6 +751,7 @@ function loadGame() {
     if (s) {
         let d; try { d = JSON.parse(s); } catch(e){ alert('此存檔位的資料已毀損，無法載入。若先前有匯入過，可在載入畫面點「復原備份」還原。'); return; }   // 🛡️ 與其他讀檔點一致：毀損時乾淨報錯而非拋例外卡死
         player = d.p; mapState = d.ms;
+        if (typeof applyGlobalAutoSellSettings === 'function') applyGlobalAutoSellSettings();   // 🔧 v2.6.91 功能5：載入角色時套用全域自動販賣設定（8 角色共用時覆蓋本檔規則）
         if (!player.enSeed) player.enSeed = 'es' + _seedHash((player.name || '') + '|' + (player.cls || '') + '|lz').toString(36);   // 🎲 舊存檔無強化種子：由角色名+職業決定論衍生（重匯入同一份舊檔也得相同種子→不能靠重匯入重洗強化）
         if (typeof sanitizeState === 'function') sanitizeState();   // 🛡️ 讀檔後合理性夾擠（抓改過/竄改的存檔：等級>100、強化值超上限、負金幣等）
         state.ticks = d.ticks || 0;   // 🔧 還原 tick 計數：讓召喚物/迷魅以絕對 tick 記錄的 endTick 在重載後仍然有效
@@ -765,6 +767,8 @@ function loadGame() {
         
         player.inv.forEach(i => { if(i.lock === undefined) i.lock = false; });
         player.inv.forEach(i => { if(i.junk === undefined) i.junk = false; });
+        // 🔧 v2.6.91 功能1：娃娃為系統保護物品——修復舊存檔殘留的廢品標記與規則記憶
+        player.inv.forEach(i => { let _d=DB.items[i.id]; if(_d&&(_d.doll||_d.slot==='doll')){i.junk=false;delete i.junkSince;delete i._autoSellQty;delete i._ruleJunk;delete i._userKeep;} });
         // 修復重複 uid：強化裝備曾因共用 uid 互相覆蓋/消失，載入時確保 inv+eq 所有物品 uid 唯一
         { let _seen = new Set(); let _fix = (it) => { if(!it) return; if(it.uid === undefined || _seen.has(it.uid)) it.uid = uid(); _seen.add(it.uid); }; player.inv.forEach(_fix); if(player.eq) Object.values(player.eq).forEach(_fix); }
         // 廢品記憶（依完整簽章）：舊存檔初始化，並把目前已標記為廢品的物品轉成記憶
@@ -778,6 +782,7 @@ function loadGame() {
             for (let k in player.junkPrefs) { if (player.junkPrefs[k]) _np[k.includes('|') ? k : (k + '|0|0|0||')] = true; }
             player.junkPrefs = _np;
         }
+        player.inv.forEach(i=>{let _d=DB.items[i.id];if(_d&&(_d.doll||_d.slot==='doll'))delete player.junkPrefs[itemSig(i)];});   // 🔧 v2.6.91 功能1：娃娃移出廢品記憶（未來掉落不再自動標記）
         // 相容舊存檔：新增第六屬性 魅力(cha)，起始 8
         if(player.base && player.base.cha === undefined) player.base.cha = (createBase[player.cls] ? createBase[player.cls].cha : 8);
         if(player.alloc && player.alloc.cha === undefined) player.alloc.cha = 0;

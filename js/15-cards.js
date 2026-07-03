@@ -589,7 +589,7 @@ function renderCardBook() {
     let cards = names.map(nm => {
         let info = CARD_MOB_INFO[nm]; let mob = info.mob;
         let tier = cardDexTier(nm);
-        let imgUrl = _cardMobImg(mob, nm);
+        let _mi = (typeof mobStillImg === 'function') ? mobStillImg(nm, mob.img, false) : { src: _cardMobImg(mob, nm), fb: [] };   // 🎬 圖鑑縮圖：有動畫→idle_0（退舊靜態）；無動畫→舊靜態
         let silh = tier <= 0 ? ' card-silhouette' : '';
         let nameHtml = tier >= 1
             ? `<div class="text-sm font-bold text-white truncate" title="${nm}">${nm}</div><div class="text-[11px] text-slate-500">Lv ${mob.lv || '?'}</div>`
@@ -609,7 +609,7 @@ function renderCardBook() {
         let tierBadge = tier > 0 ? `<span class="absolute top-1 right-1 text-[10px] px-1 rounded ${CARD_TIERS[tier - 1].col} bg-black/50 font-bold">${CARD_TIERS[tier - 1].sfx}</span>` : '';
         return `<div class="relative bg-slate-800/70 border ${tier > 0 ? 'border-slate-600' : 'border-slate-700/60'} rounded-lg p-2 flex flex-col items-center gap-1 w-[136px]">
             ${tierBadge}
-            <img src="${imgUrl}" alt="${nm}" class="w-16 h-16 object-contain${silh}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/1e293b/334155?text=%3F';">
+            <img src="${_mi.src}" data-fb="${_mi.fb.concat(['https://placehold.co/64x64/1e293b/334155?text=%3F']).join('|')}" alt="${nm}" class="w-16 h-16 object-contain${silh}" onerror="_mobImgErr(this)">
             <div class="text-center w-full">${nameHtml}${info2}</div>
         </div>`;
     }).join('');

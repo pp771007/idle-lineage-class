@@ -772,6 +772,13 @@
          !important)在手機矮戰鬥框(56.25vw≈219px)裡會把後排怪頂到框頂切頭。改成與前排同款 translateY(2px);
          作者哪天改掉前排的 2px,這裡要跟著對齊。 */
       'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner.mob-anim{transform:translateY(2px) !important;}',
+      /* 🎯 VFX(死亡殘影/法術特效如流星雨)的幾何全以 .mob-img-inner 的 rect 為基準(vfxKill/playSpellFx),
+         而作者 .mob-img-inner{height:100%} 讓它撐滿整格——戰鬥框加高到 300px 後容器比怪物本體高一大截,
+         殘影被拉成容器高、特效落點以容器中心算 → 全部浮在怪物上方(使用者回報「死亡動畫/流星雨沒固定在前排」)。
+         手機改:容器高度貼合圖片(height:auto)→ VFX 基準=怪物實際位置;格子內容改靠底(justify-content:flex-end)
+         補回「怪站地線」(原本是靠 height:100% 把內容撐開才貼底的)。頭目格(.boss-slot 絕對定位 wrap)不動。 */
+      'body.m-mobile #battle-view.area-fit .mob-target:not(.boss-slot){justify-content:flex-end !important;}',
+      'body.m-mobile #battle-view.area-fit .mob-target:not(.boss-slot) .mob-img-inner{height:auto !important;}',
 
       /* 🧿 角色狀態圖示列(作者 #status-icon-bar,錨在戰鬥框右上):桌機 38px 圖示在手機矮戰鬥框裡太佔畫面,
          整組縮成一半(38→19px、間距 5→3px)。右下角剩餘秒數在 19px 小圖上會蓋掉大半張圖 → 手機不顯示

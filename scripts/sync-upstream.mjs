@@ -197,7 +197,11 @@ function walkAssets(dir) {
   return out;
 }
 if (existsSync('assets')) {
-  const manifest = walkAssets('assets').sort().map((p) => [p, gitBlobSha(readFileSync(p))]);
+  // ⚠ 排除 assets/anim/(怪物動畫序列幀,~3 萬檔 / 62MB):這份 manifest 每次開頁都會被 afk-pwa 抓來做圖桶對帳,
+  //   把 3 萬筆塞進去會讓它膨脹到 ~2-3MB、每次載入都多抓一次(踩 GitHub Pages 100GB/月流量)。
+  //   動畫幀走純 on-demand 快取(用到才抓、抓到留著)即可,不必進逐張對帳清單。
+  //   代價:作者若換某張動畫幀,不會被 SW 逐張 evict(玩家沿用舊快取)——但動畫幀幾乎不變,可接受。
+  const manifest = walkAssets('assets').filter((p) => !p.startsWith('assets/anim/')).sort().map((p) => [p, gitBlobSha(readFileSync(p))]);
   writeFileSync('assets-manifest.json', JSON.stringify(manifest) + '\n');
 }
 

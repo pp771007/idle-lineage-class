@@ -27,11 +27,12 @@
 
   var HIST_RE = /^afk_hist_(\d+)$/;
   var CLS_NAME = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
-  var FIELD_DEFS = [{ k: 'exp', label: '經驗' }, { k: 'gold', label: '金錢' }, { k: 'items', label: '道具' }, { k: 'kills', label: '擊殺' }];
+  var FIELD_DEFS = [{ k: 'exp', label: '經驗' }, { k: 'gold', label: '金錢' }, { k: 'items', label: '道具' }, { k: 'kills', label: '擊殺' }, { k: 'sell', label: '廢品' }];
 
-  // ----- 顯示偏好(只存記憶體,維持純唯讀):看哪個存檔位、顯示哪些欄位 -----
+  // ----- 顯示偏好(只存記憶體,維持純唯讀):看哪個存檔位、排序方式、顯示哪些欄位 -----
   var slotFilter = 'all';
-  var fState = { exp: true, gold: true, items: true, kills: true };
+  var sortMode = 'slot';   // 'slot'=依存檔分組(預設);'time'=全部攤平依時間新→舊
+  var fState = { exp: true, gold: true, items: true, kills: true, sell: true };
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   function fmtNum(n) { try { return (n || 0).toLocaleString(); } catch (e) { return '' + (n || 0); } }
@@ -101,8 +102,18 @@
     return '';
   }
 
-  function recordCard(r) {
+  // 依時間排序時,卡片內標出這筆是哪個存檔/角色(依存檔分組時已有區塊標題,不需要)
+  function cardSlotTag(slot) {
+    var info = slotInfo(slot);
+    var t = info
+      ? '存檔 ' + slot + ' · <span class="m-hist-cname">' + esc(info.name) + '</span> <span class="m-hist-cmeta">' + esc(info.cls) + ' Lv.' + info.lv + '</span>'
+      : '存檔 ' + slot;
+    return '<div class="m-hist-cardslot">' + t + '</div>';
+  }
+
+  function recordCard(r, slotTagHTML) {
     var html = '<div class="m-hist-card">';
+    if (slotTagHTML) html += slotTagHTML;   // 時間排序模式:標出來自哪個存檔/角色
     // 時間列(永遠顯示)
     html += '<div class="m-hist-time">🕒 <b>' + fmtClock(r.closeTs) + '</b> → <b>' + fmtClock(r.loginTs) + '</b>'
       + '<span class="m-hist-dur">（共 ' + fmtDur(r.realMs) + '）</span>';
@@ -133,6 +144,8 @@
       }).join('');
       html += '<div class="m-hist-row"><span class="m-hist-rowlbl">擊殺</span><span class="m-hist-rowval">' + ks + '</span></div>';
     }
+    // 🗑️ 廢品:離線期間自動賣掉廢品換得的金幣(沒開自動賣出/沒賣則無此欄)
+    if (fState.sell && r.sellGold > 0) html += '<div class="m-hist-sell">🗑️ 賣廢品 <b>+' + fmtNum(r.sellGold) + '</b> 金幣</div>';
     if (r.keysUsed > 0) html += '<div class="m-hist-keys">🔑 消耗軍王的鑰匙 ' + r.keysUsed + ' 把</div>';
     html += '</div>';
     return html;
@@ -152,11 +165,19 @@
     tb.innerHTML =
       '<div class="m-hist-tb-row"><span class="m-hist-tb-lbl">存檔</span>' +
         '<select id="m-hist-slot-sel" class="m-hist-sel">' + opts + '</select></div>' +
+      '<div class="m-hist-tb-row"><span class="m-hist-tb-lbl">排序</span>' +
+        '<select id="m-hist-sort-sel" class="m-hist-sel">' +
+          '<option value="slot">依存檔分組</option>' +
+          '<option value="time">依時間（新 → 舊）</option>' +
+        '</select></div>' +
       '<div class="m-hist-tb-row"><span class="m-hist-tb-lbl">顯示</span>' +
         '<div class="m-hist-chips">' + chips + '</div></div>';
     var sel = tb.querySelector('#m-hist-slot-sel');
     sel.value = slotFilter;
     sel.addEventListener('change', function () { slotFilter = this.value; renderList(); });
+    var sortSel = tb.querySelector('#m-hist-sort-sel');
+    sortSel.value = sortMode;
+    sortSel.addEventListener('change', function () { sortMode = this.value; renderList(); });
     tb.querySelectorAll('.m-hist-chip').forEach(function (c) {
       c.addEventListener('click', function () {
         var k = this.getAttribute('data-field');
@@ -173,6 +194,17 @@
     var slots = collectSlots().filter(function (s) { return slotFilter === 'all' || s.slot === slotFilter; });
     if (!slots.length) {
       list.innerHTML = '<div class="m-hist-none">目前還沒有任何離線掛機紀錄。<br>離線掛機並重新登入結算後,這裡就會逐筆累積(每個角色保留最近 5 筆)。</div>';
+      return;
+    }
+    if (sortMode === 'time') {
+      // 全部攤平,依「登入(結算)時間」新 → 舊排;跨存檔時每張卡標出來自哪個角色(單一存檔篩選時不必標)
+      var flat = [];
+      slots.forEach(function (s) { s.recs.forEach(function (r) { flat.push({ slot: s.slot, r: r }); }); });
+      flat.sort(function (a, b) { return (b.r.loginTs || b.r.closeTs || 0) - (a.r.loginTs || a.r.closeTs || 0); });
+      var showTag = (slotFilter === 'all');
+      var thtml = '';
+      flat.forEach(function (x) { thtml += recordCard(x.r, showTag ? cardSlotTag(x.slot) : ''); });
+      list.innerHTML = thtml;
       return;
     }
     var html = '';
@@ -245,6 +277,9 @@
       '.m-hist-count{flex:0 0 auto;color:#64748b;font-size:11.5px;font-weight:normal;}',
       '.m-hist-card{background:#111c30;border:1px solid #1e293b;border-radius:9px;padding:10px 11px;margin-bottom:9px;}',
       '.m-hist-card:last-child{margin-bottom:0;}',
+      '.m-hist-cardslot{font-size:12.5px;color:#e2e8f0;font-weight:bold;margin-bottom:7px;padding-bottom:6px;border-bottom:1px dashed #334155;}',
+      '.m-hist-sell{margin-top:7px;font-size:12.5px;color:#fcd34d;}',
+      '.m-hist-sell b{color:#fde047;}',
       '.m-hist-time{font-size:13px;color:#cbd5e1;display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;}',
       '.m-hist-time b{color:#e2e8f0;}',
       '.m-hist-dur{color:#7dd3fc;}',

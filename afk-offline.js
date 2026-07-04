@@ -586,7 +586,8 @@
           items: invDeltaList(before, after),
           kills: hKills,
           died: !!died,
-          keysUsed: (kingInfo && kingInfo.keysUsed) || 0
+          keysUsed: (kingInfo && kingInfo.keysUsed) || 0,
+          sellGold: _catchupSellGold || 0   // 🗑️ 本次離線自動賣廢品所得金幣(0=沒賣/沒開自動賣出;供離線紀錄「廢品」欄顯示)
         });
       }
     } catch (e) { console.warn('[AFK] 寫離線紀錄失敗:', e); }

@@ -144,6 +144,18 @@
     }
     return _hiddenEntry[mapName] || '';
   }
+  // CASTLE_EXTRA 地圖(風木地監):攻城獲勝後才臨時開放的城堡狩獵區,不在地圖選單→出沒地圖後補上進入說明(同 hiddenEntryOf 模式)。key 用 mapNameOf,與 h.maps 同一套解析。lazy 建一次。
+  var _castleCity = { windwood_dungeon: '風木城' };   // 城堡狩獵區→要攻下哪座城(作者新增別的城堡狩獵區時補這裡;小百科 afk-wiki 亦有一份)
+  var _castleEntry = null;
+  function castleEntryOf(mapName) {
+    if (_castleEntry === null) {
+      _castleEntry = {};
+      try {
+        if (typeof CASTLE_EXTRA !== 'undefined') CASTLE_EXTRA.forEach(function (v) { _castleEntry[mapNameOf(v)] = '攻下' + (_castleCity[v] || '對應城池') + '後才開放，勝利後 24 小時內'; });
+      } catch (e) {}
+    }
+    return _castleEntry[mapName] || '';
+  }
   function itemNameOf(id) { return (DB.items[id] && DB.items[id].n) ? DB.items[id].n : id; }
   // 職業限定掉落附註:試煉/兌換道具(TRIAL_ITEM_CLASS)僅該職業擊殺才掉,標「🔒僅X」讓所有職業都看得到是誰限定;非限定道具(書板/鎖鏈劍/印記等全職可掉)不在表內→回 null 不附註。
   var _CLS_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
@@ -597,7 +609,7 @@
     var mapsHTML = h.maps.length
       ? h.maps.map(function (nm) {
           var link = '<span class="m-dex-maplink" data-map="' + esc(nm) + '">' + hl(nm, q) + '</span>';
-          var ent = hiddenEntryOf(nm);   // 隱藏地圖:後面附進入方式
+          var ent = hiddenEntryOf(nm) || castleEntryOf(nm);   // 隱藏地圖/城堡狩獵區(風木地監):後面附進入方式
           return link + (ent ? '<span class="m-dex-hidden-entry">（' + esc(ent) + '）</span>' : '');
         }).join('、')
       : '—';

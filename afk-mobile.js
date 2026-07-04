@@ -779,6 +779,12 @@
          補回「怪站地線」(原本是靠 height:100% 把內容撐開才貼底的)。頭目格(.boss-slot 絕對定位 wrap)不動。 */
       'body.m-mobile #battle-view.area-fit .mob-target:not(.boss-slot){justify-content:flex-end !important;}',
       'body.m-mobile #battle-view.area-fit .mob-target:not(.boss-slot) .mob-img-inner{height:auto !important;}',
+      /* 🐦 過高動畫怪(畫布高於戰鬥框:不死鳥477/林德拜爾497/巴拉卡斯407/龍307…約10隻):作者原生尺寸貼底顯示
+         →超出部分被框頂裁掉;不死鳥更慘——鳥本體畫在畫布「頂端」(下方全透明),貼底後整隻在可視窗外(桌機原版
+         同樣看不見,上游的坑)。手機把超過可視高的等比縮回框內(max-height,寬自動等比);未超高的怪不受影響、
+         維持原生像素。55px≈徽章/血條/狀態列的高度,與戰鬥框高 max(56.25vw,300px) 那條連動。 */
+      'body.m-mobile #battle-view.area-fit .mob-img-inner.mob-anim img{max-height:calc(max(56.25vw,300px) - 55px) !important;max-width:96vw !important;}',
+      'body.m-mobile #battle-view:not(.area-fit) .mob-img-inner.mob-anim img{max-height:185px !important;max-width:96vw !important;}',
 
       /* 🧿 角色狀態圖示列(作者 #status-icon-bar,錨在戰鬥框右上):桌機 38px 圖示在手機矮戰鬥框裡太佔畫面,
          整組縮成一半(38→19px、間距 5→3px)。右下角剩餘秒數在 19px 小圖上會蓋掉大半張圖 → 手機不顯示

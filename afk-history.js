@@ -11,8 +11,8 @@
  * 資料來源:afk-offline.js 結算離線時寫進的 localStorage 鍵 afk_hist_<slot>(陣列)。
  * 角色身分:呼叫遊戲全域 slotSummary(n) 唯讀讀存檔摘要(名稱/職業/等級),讀不到就只顯示存檔位。
  *
- * 🔒 純唯讀:本檔只 getItem,從不寫入任何 localStorage、不呼叫 saveGame、不碰存檔。
- *           (篩選/多選的偏好只存在記憶體,連我們自己的 key 都不寫。)
+ * 🔒 對玩家存檔唯讀:只讀 afk_hist_<slot> 與存檔摘要,絕不寫入遊戲存檔、不呼叫 saveGame、不碰任何遊戲資料。
+ *           (顯示偏好——存檔篩選 / 排序 / 欄位多選——會存進我們自己的 afk_hist_prefs 記住,跨開啟保留;這是外掛自己的 key,與遊戲存檔無關。)
  *
  * 優雅降級:抓不到 #main-menu 就安靜停用,不影響遊戲。
  * 掛接:在 index.html 的 </body> 前加一行 <script src="afk-history.js"></script>
@@ -29,10 +29,24 @@
   var CLS_NAME = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
   var FIELD_DEFS = [{ k: 'exp', label: '經驗' }, { k: 'gold', label: '金錢' }, { k: 'items', label: '道具' }, { k: 'kills', label: '擊殺' }, { k: 'sell', label: '廢品' }];
 
-  // ----- 顯示偏好(只存記憶體,維持純唯讀):看哪個存檔位、排序方式、顯示哪些欄位 -----
+  // ----- 顯示偏好(存進外掛自己的 afk_hist_prefs 記住,不碰遊戲存檔):看哪個存檔位、排序方式、顯示哪些欄位 -----
   var slotFilter = 'all';
   var sortMode = 'slot';   // 'slot'=依存檔分組(預設);'time'=全部攤平依時間新→舊
   var fState = { exp: true, gold: true, items: true, kills: true, sell: true };
+
+  var PREFS_KEY = 'afk_hist_prefs';
+  function loadPrefs() {
+    try {
+      var p = JSON.parse(localStorage.getItem(PREFS_KEY));
+      if (!p || typeof p !== 'object') return;
+      if (typeof p.slotFilter === 'string') slotFilter = p.slotFilter;   // 存檔已無紀錄時 renderToolbar 會自動回退 'all'
+      if (p.sortMode === 'slot' || p.sortMode === 'time') sortMode = p.sortMode;
+      if (p.fState && typeof p.fState === 'object') FIELD_DEFS.forEach(function (f) { if (typeof p.fState[f.k] === 'boolean') fState[f.k] = p.fState[f.k]; });
+    } catch (e) {}
+  }
+  function savePrefs() {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify({ slotFilter: slotFilter, sortMode: sortMode, fState: fState })); } catch (e) {}
+  }
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   function fmtNum(n) { try { return (n || 0).toLocaleString(); } catch (e) { return '' + (n || 0); } }
@@ -174,15 +188,16 @@
         '<div class="m-hist-chips">' + chips + '</div></div>';
     var sel = tb.querySelector('#m-hist-slot-sel');
     sel.value = slotFilter;
-    sel.addEventListener('change', function () { slotFilter = this.value; renderList(); });
+    sel.addEventListener('change', function () { slotFilter = this.value; savePrefs(); renderList(); });
     var sortSel = tb.querySelector('#m-hist-sort-sel');
     sortSel.value = sortMode;
-    sortSel.addEventListener('change', function () { sortMode = this.value; renderList(); });
+    sortSel.addEventListener('change', function () { sortMode = this.value; savePrefs(); renderList(); });
     tb.querySelectorAll('.m-hist-chip').forEach(function (c) {
       c.addEventListener('click', function () {
         var k = this.getAttribute('data-field');
         fState[k] = !fState[k];
         this.classList.toggle('on', fState[k]);
+        savePrefs();
         renderList();
       });
     });
@@ -311,6 +326,7 @@
   function init() {
     var menu = document.getElementById('main-menu');
     if (!menu) { console.warn('[AFK-history] 找不到 #main-menu,離線紀錄停用。'); return; }
+    loadPrefs();   // 還原上次的顯示偏好(存檔篩選/排序/欄位)
     injectCSS();
     buildModal();
     // 註冊進首頁「⚙ 設定」選單(由 afk-storage 渲染合併;此處只負責 add 一項)

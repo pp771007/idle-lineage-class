@@ -957,9 +957,26 @@
       'body.m-mobile #m-tip-card .m-tip-body{font-size:13px;line-height:1.6;}',
       'body.m-mobile .tip-host,body.m-mobile #interaction-content [title]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}',
 
-      /* 創角畫面手機化:外框釘在頂端、用可視高度(--app-h)當上限,避免 94vh 延伸到 Brave 底部
-         工具列後面把「開始冒險」鈕蓋住;內層原本 flex-row + 固定寬高(會爆寬)→ 全改直向堆疊、滿版 */
-      'body.m-mobile #creation-screen{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;margin:0 !important;width:96vw !important;max-width:96vw !important;height:auto !important;max-height:var(--app-h,94vh) !important;overflow-y:auto !important;padding:16px 16px 28px !important;}',
+      /* ── 新版登入首頁(v3.0.40+)手機化 ────────────────────────────────────
+         作者把首頁改成固定 4:3「藝術舞台」#login-art-stage,標題/選單/版號用 % 絕對定位疊在背景圖上。
+         直式手機下 4:3 舞台被壓成中央一條矮 letterbox,三個圖層擠成一團互相重疊、按鈕縮小難點(爆版)。
+         手機改成:舞台還原成滿版直向流,背景圖鋪底(cover·壓暗),標題→選單→版號由上到下堆疊置中、
+         按鈕放大好點;逐幀動畫小圖在直式沒有定位意義故隱藏。載入/創角面板仍是舞台內的絕對置中 modal,
+         舞台維持 position:relative 即照常置中。scope 全在 body.m-mobile,作者哪天改回/移除這些 id,
+         規則不命中自動失效,桌機不受影響。 */
+      'body.m-mobile #creation-screen{position:fixed !important;inset:0 !important;display:block !important;overflow-y:auto !important;padding:0 !important;}',
+      'body.m-mobile #login-art-stage{position:relative !important;width:100vw !important;max-width:100vw !important;aspect-ratio:auto !important;min-height:var(--app-h,100dvh) !important;display:flex !important;flex-direction:column !important;justify-content:center !important;overflow:visible !important;padding:32px 22px 40px !important;box-shadow:none !important;}',
+      'body.m-mobile #login-bg-image{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;object-fit:cover !important;opacity:.35 !important;}',
+      'body.m-mobile #login-anim-image{display:none !important;}',
+      'body.m-mobile #login-title-layer{position:relative !important;left:auto !important;top:auto !important;width:100% !important;text-align:center !important;margin:0 0 6vh !important;z-index:3 !important;}',
+      'body.m-mobile #login-title-layer h1{font-size:26px !important;margin:0 0 8px !important;}',
+      'body.m-mobile #login-title-layer p{font-size:14px !important;}',
+      'body.m-mobile #main-menu{position:relative !important;left:auto !important;top:auto !important;width:100% !important;max-width:330px !important;margin:0 auto !important;gap:12px !important;z-index:4 !important;}',
+      'body.m-mobile #main-menu > button{width:100% !important;font-size:16px !important;padding:14px 12px !important;}',
+      'body.m-mobile #main-menu > p{width:100% !important;margin:8px 0 0 !important;font-size:13px !important;line-height:1.5 !important;}',
+      'body.m-mobile #login-meta-layer{position:relative !important;left:auto !important;top:auto !important;width:100% !important;max-width:330px !important;margin:6vh auto 0 !important;text-align:center !important;z-index:3 !important;}',
+      'body.m-mobile #login-version{font-size:15px !important;}',
+      'body.m-mobile #login-disclaimer{font-size:11px !important;}',
       'body.m-mobile #creation-panel{flex-direction:column !important;gap:12px !important;align-items:stretch !important;}',
       'body.m-mobile .m-cre-avatar{width:100% !important;height:220px !important;}',
       'body.m-mobile .m-cre-right{width:100% !important;height:auto !important;}',

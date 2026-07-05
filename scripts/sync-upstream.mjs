@@ -158,8 +158,13 @@ const assetsChanged = [];
 const assetsRemoved = [];
 try {
   const tree = await fetchRetry(TREE_API, { headers: ghHeaders }).then((r) => r.json());
+  // ⚠ 作者把靜態圖分放兩處:大宗在 assets/,但登入畫面圖(v3.0.40 起首頁改版的 4:3 藝術舞台背景＋逐幀動畫,
+  //   public/assets/login/273~300,310.png)放在 public/ 底下。只抓 assets/ 會漏掉整組登入圖 → 首頁背景/動畫 404、
+  //   手機首頁版型連帶爆掉(踩過 2026-07-06)。故 assets/ 與 public/ 都要抓。
   const wanted = (tree.tree || []).filter(
-    (t) => t.type === 'blob' && t.path.startsWith('assets/') && !t.path.endsWith('desktop.ini')
+    (t) => t.type === 'blob'
+      && (t.path.startsWith('assets/') || t.path.startsWith('public/'))
+      && !t.path.endsWith('desktop.ini')
   );
   for (const item of wanted) {
     let isNew = false;

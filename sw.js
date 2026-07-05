@@ -23,13 +23,8 @@
  *
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
-<<<<<<< HEAD
-const CODE_VERSION = 'code-6e5ca6d1d621';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0705-1403'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
-=======
-const CODE_VERSION = 'code-7d41454bd6b2';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0705-1212'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
->>>>>>> ef801b66 (feat(search): 掉落查詢與小百科統一搜尋——兩邊結果互列對方命中、可點跳轉)
+const CODE_VERSION = 'code-9221043a4f01';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0705-1448'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;

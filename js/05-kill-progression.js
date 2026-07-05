@@ -417,7 +417,7 @@ function killMob(idx) {
 function settleDeadMobs() {
     let changed = false;
     // 🆕 v2.7.47 取消死亡遞補（輸送帶壓實）：怪物死亡→原格清空(null)、存活怪維持原位不移動；空格交回出怪迴圈依格序(0→4)重新排程新怪。
-    //    目標死亡→targetIdx=-1，下一 tick getTarget 依 [0,1,2,3,4]（前排左→右，再後排左→右）自動鎖定下一個活著的位置。存活的目標位置不變（免 uid 重映射）。
+    //    目標死亡→targetIdx=-1，下一 tick getTarget 自動鎖定「最早出生(_born 最小·場上存活最久)」的活怪（v3.0.11 由格位序改為出生序）。存活的目標位置不變（免 uid 重映射）。
     let _tgtDied = mapState.targetIdx >= 0 && mapState.mobs[mapState.targetIdx] && mapState.mobs[mapState.targetIdx]._dead;
     for (let i = 0; i < mapState.mobs.length; i++) {
         if (mapState.mobs[i] && mapState.mobs[i]._dead) { mapState.mobs[i] = null; if (mapState.spawnAt) mapState.spawnAt[i] = null; changed = true; }
@@ -810,7 +810,7 @@ function spawnRiftMob(idx) {
     let mobId = pickRiftMob(isBoss, minLv, maxLv, elapsedSec) || pickRiftMob(!isBoss, minLv, maxLv, elapsedSec);
     if (!mobId) return;
     let base = DB.mobs[mobId];
-    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _magCd: {}, justHit: false, st: newMobStatus() };
+    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _born: ++_mobBornSeq, _magCd: {}, justHit: false, st: newMobStatus() };
     applySherineBuff(idx);   // 🔮 時空裂痕也吃席琳世界：怪物強化＋_sherine（詞綴／×3掉／×2傷由 _sherine 帶動）；須在 initHardSkin 前
     if (mapState.mobs[idx].hard) initHardSkin(mapState.mobs[idx]);
     applySherineGrace(idx);   // 🔮 席琳的恩賜（1% 機率）

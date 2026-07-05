@@ -616,7 +616,7 @@ function spawnMob(idx) {
         if(_kr.dual) { _id = _kr.bosses[idx]; if(!_id) { mapState.mobs[idx] = null; return; } }   // 🏛️ 雙BOSS祭壇：0,1 兩格各一隻BOSS（第三格留空）
         else _id = (idx === 1) ? _kr.boss : _kr.minion;
         let _b = DB.mobs[_id]; if(!_b) return;
-        mapState.mobs[idx] = { ..._b, curHp: _b.hp, uid: uid(), _magCd: {}, justHit: false, st: newMobStatus() };
+        mapState.mobs[idx] = { ..._b, curHp: _b.hp, uid: uid(), _born: ++_mobBornSeq, _magCd: {}, justHit: false, st: newMobStatus() };
         applySherineBuff(idx);   // 🔮 軍王之室／底比斯歐西里斯祭壇也吃「席琳的世界」強化＋_sherine（與一般出怪一致；不含恩賜 grace；須在 initHardSkin 之前）
         if(mapState.mobs[idx].hard) initHardSkin(mapState.mobs[idx]);
         return;
@@ -708,7 +708,7 @@ function spawnMob(idx) {
     }
     let base = DB.mobs[mobId];
     if(!base) return;
-    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _magCd: {}, justHit: false, st: newMobStatus(), _bornMs: Date.now() };   // 🏛️ _bornMs：生成時間（長老之室 BOSS 3 分鐘節流用）
+    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _born: ++_mobBornSeq, _magCd: {}, justHit: false, st: newMobStatus(), _bornMs: Date.now() };   // 🏛️ _bornMs：生成時間（長老之室 BOSS 3 分鐘節流用）；_born：出生序（鎖定最早出生用）
     // 弓：場上原本沒有任何敵人時，第一個出現的敵人不論主動/被動，都強制視為被動（搭配弓攻擊3秒延遲，可先手放風箏）
     if(!base.boss && player.eq.wpn && DB.items[player.eq.wpn.id] && DB.items[player.eq.wpn.id].isBow && !mapState.mobs.some((m, j) => m && j !== idx)) {
         mapState.mobs[idx].beh = '被動';   // 頭目除外，維持主動
@@ -742,14 +742,20 @@ function getMobNameClass(m) {
 function getTarget() {
     let t = mapState.mobs[mapState.targetIdx];
     if (t && t._dead) t = null;   // 🔧 架構#2：已死亡待清算的怪不可作為目標
-    // 當前目標不存在（如剛開局或剛擊殺）時，依照「中央(1) -> 左邊(0) -> 右邊(2)」順序鎖定第一個活著的敵人
+    // 🎯 v3.0.11 當前目標不存在（如剛開局或剛擊殺）時，自動鎖定「最早出生」的活怪（_born 最小＝在場上存活最久）。
+    //    _born＝全域單調出生序（spawnMob/spawnRiftMob/軍王之室 三處生成時戳記）；缺 _born 的怪（理論上不會有）以 Infinity 墊底、再以格位序 tiebreak。
+    //    手動點擊鎖定（setTarget）不受影響：鎖定目標存活期間不會被此邏輯改鎖。
     if(!t) {
-        let priorityOrder = [0, 1, 2, 3, 4];   // 🆕 v2.7.47 前排由左而右(0→1→2)，再後排由左而右(3→4)；死亡不遞補→死亡後自動鎖定序列中下一個活著的位置
-        for(let i of priorityOrder) {
-            if(mapState.mobs[i] && !mapState.mobs[i]._dead) {
-                setTarget(i);
-                return mapState.mobs[i];
-            }
+        let best = -1, bestBorn = Infinity;
+        for(let i = 0; i < mapState.mobs.length; i++) {
+            let m = mapState.mobs[i];
+            if(!m || m._dead) continue;
+            let b = (m._born != null) ? m._born : Infinity;
+            if(b < bestBorn) { bestBorn = b; best = i; }
+        }
+        if(best >= 0) {
+            setTarget(best);
+            return mapState.mobs[best];
         }
     }
     return t;

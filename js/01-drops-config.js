@@ -903,6 +903,7 @@ let player = {
 };
 
 let mapState = { current: "training", mobs: [null, null, null, null, null], targetIdx: 0 };   // 🆕 5 格（前排 0,1,2＋後排 3,4）
+let _mobBornSeq = 0;   // 🎯 全域單調遞增「出生序」（每隻怪生成時 +1；越小＝越早出生／在場上存活越久）→ getTarget 用來「優先打先出生的怪」
 let createBase = { 
     knight: {str:16, dex:12, con:14, int:8, wis:9, cha:8, pts:8}, 
     mage: {str:8, dex:7, con:12, int:12, wis:12, cha:8, pts:16},

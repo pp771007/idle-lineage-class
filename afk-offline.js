@@ -401,12 +401,10 @@
   // ----- 離線補跑(時間切片) ----------------------------------------------
   var catchingUp = false;
   var killTally = null;   // 📜 非 null 時(只在補跑中)累計各怪擊殺數 {怪名:次數};線上遊玩為 null → killMob 包裝零開銷
-  var _catchupSellGold = 0;   // 🗑️ 本次補跑「自動賣出廢品」累計獲得金幣(給離線摘要顯示;每次 runCatchup 起始歸零)
   async function runCatchup(totalTicks, withOverlay, huntMap, prePride, preObl, timing) {
     if (catchingUp) return;
     catchingUp = true;
     killTally = {};   // 📜 本次補跑的擊殺計數歸零
-    _catchupSellGold = 0;   // 🗑️ 本次補跑自動賣廢品金幣歸零
 
     var sliceMs = sliceFor(totalTicks);   // 依補跑長短決定畫面更新間隔:短→順、長→快
     var isClimb = !!(prePride && prePride.climb && !prePride.ranked && typeof enterPrideFloor === 'function');   // 排名挑戰不自動續
@@ -540,11 +538,6 @@
     }
     if (climbSegs && climbSegs.length) summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
     else summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap, kingInfo);   // 遺忘之島:用實際結束地圖顯示地圖名;軍王之室:附帶擊敗輪數/鑰匙消耗摘要
-    // 🗑️ 離線期間有自動賣掉廢品→補一行金幣分解(已含在上方金幣總額內;只是讓玩家知道廢品去哪了)
-    if (_catchupSellGold > 0) {
-      try { logSys('<span class="text-amber-300">🗑️ 離線期間自動賣出廢品，獲得 <span class="text-yellow-400 font-bold">' + fmt(_catchupSellGold) + '</span> 金幣（已計入上方金幣）。</span>'); }
-      catch (e) { console.log('[AFK] 離線自動賣廢品獲得 ' + _catchupSellGold + ' 金幣'); }
-    }
     if (_abortCatchup) {   // 玩家長按放棄:標一句「已略過剩餘」(收益只算到放棄當下,剩餘時間不再結算、不會重算)
       var _skipMin = Math.max(0, Math.round((totalTicks - done) * TICK_MS / 60000));
       try { if (typeof logSys === 'function') logSys('<span style="color:#fca5a5;font-weight:bold;">⏭ 已放棄剩餘約 ' + _skipMin + ' 分鐘的離線收益（你提前結束了結算）。</span>'); } catch (e) {}
@@ -586,8 +579,7 @@
           items: invDeltaList(before, after),
           kills: hKills,
           died: !!died,
-          keysUsed: (kingInfo && kingInfo.keysUsed) || 0,
-          sellGold: _catchupSellGold || 0   // 🗑️ 本次離線自動賣廢品所得金幣(0=沒賣/沒開自動賣出;供離線紀錄「廢品」欄顯示)
+          keysUsed: (kingInfo && kingInfo.keysUsed) || 0
         });
       }
     } catch (e) { console.warn('[AFK] 寫離線紀錄失敗:', e); }
@@ -712,33 +704,6 @@
         try { var m = mapState.mobs[idx]; if (m && !m._dead && m.n) killTally[m.n] = (killTally[m.n] || 0) + 1; } catch (e) {}
       }
       return _killMob.apply(this, arguments);
-    };
-  }
-
-  // ⏳🗑️ 離線補跑時讓「自動賣出廢品」真的會賣(否則背包一路長大拖慢結算)。
-  //   作者 autoSellJunk 的賣出條件是「廢品被標記滿 delaySec 秒」,而那個秒數是用牆鐘 Date.now() 算的(預設 60 秒);
-  //   離線補跑把 24h 壓縮成幾分鐘真實時間重播、牆鐘幾乎不流逝 → 該延遲在補跑裡幾乎不成立 → 廢品整段不賣、背包越掉越多,
-  //   而 gainItem 每掉一件都 O(背包) 掃全背包找可疊加的堆 → 背包越肥每次掉落越慢、結算整體變慢。
-  //   對策:補跑中(catchingUp)呼叫 autoSellJunk 前,把「非鎖定的廢品」junkSince 推到很早以前,讓 tick 內既有的
-  //   「每 10 秒自動賣」在補跑裡真的把廢品賣掉 → 背包保持小、上面那個 find 一直便宜 → 加速結算。
-  //   ⚠ 只在「補跑中 且 玩家沒關自動賣出(autoSellOn!==false·與作者 tick 第157行同一道閘)」時動作:關掉自動賣出的玩家完全不碰其背包。
-  //   只改「賣出時機」、不改「賣什麼」——沿用作者 autoSellJunk 的規則(只賣已標廢品·非鎖定·可販售·尊重數量上限)。
-  //   線上完全不受影響:catchingUp=false 時此包裝是純轉呼叫(no-op),線上那 60 秒反悔緩衝照舊。
-  if (typeof window.autoSellJunk === 'function') {
-    var _autoSell = window.autoSellJunk;
-    window.autoSellJunk = function (manual) {
-      if (catchingUp && !manual && player && player.autoSellOn !== false && Array.isArray(player.inv)) {
-        for (var _i = 0; _i < player.inv.length; _i++) {
-          var _it = player.inv[_i];
-          // 只推「廢品且非鎖定」的 junkSince;用 1(很早以前)而非 0——autoSellJunk 內 `!i.junkSince` 會把 0 當未設而重設成現在,1 則不會
-          if (_it && _it.junk && !_it.lock && _it.junkSince !== 1) _it.junkSince = 1;
-        }
-        var _g0 = (player.gold || 0);
-        var _r = _autoSell.apply(this, arguments);
-        _catchupSellGold += Math.max(0, (player.gold || 0) - _g0);   // 這一刻只有賣出會改金幣,差額=本次賣廢品所得
-        return _r;
-      }
-      return _autoSell.apply(this, arguments);   // 線上(或手動一鍵賣)：原封不動,行為完全不變
     };
   }
 

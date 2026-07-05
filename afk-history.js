@@ -27,12 +27,12 @@
 
   var HIST_RE = /^afk_hist_(\d+)$/;
   var CLS_NAME = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
-  var FIELD_DEFS = [{ k: 'exp', label: '經驗' }, { k: 'gold', label: '金錢' }, { k: 'items', label: '道具' }, { k: 'kills', label: '擊殺' }, { k: 'sell', label: '廢品' }];
+  var FIELD_DEFS = [{ k: 'exp', label: '經驗' }, { k: 'gold', label: '金錢' }, { k: 'items', label: '道具' }, { k: 'kills', label: '擊殺' }];
 
   // ----- 顯示偏好(存進外掛自己的 afk_hist_prefs 記住,不碰遊戲存檔):看哪個存檔位、排序方式、顯示哪些欄位 -----
   var slotFilter = 'all';
   var sortMode = 'slot';   // 'slot'=依存檔分組(預設);'time'=全部攤平依時間新→舊
-  var fState = { exp: true, gold: true, items: true, kills: true, sell: true };
+  var fState = { exp: true, gold: true, items: true, kills: true };
 
   var PREFS_KEY = 'afk_hist_prefs';
   function loadPrefs() {
@@ -158,8 +158,6 @@
       }).join('');
       html += '<div class="m-hist-row"><span class="m-hist-rowlbl">擊殺</span><span class="m-hist-rowval">' + ks + '</span></div>';
     }
-    // 🗑️ 廢品:離線期間自動賣掉廢品換得的金幣(沒開自動賣出/沒賣則無此欄)
-    if (fState.sell && r.sellGold > 0) html += '<div class="m-hist-sell">🗑️ 賣廢品 <b>+' + fmtNum(r.sellGold) + '</b> 金幣</div>';
     if (r.keysUsed > 0) html += '<div class="m-hist-keys">🔑 消耗軍王的鑰匙 ' + r.keysUsed + ' 把</div>';
     html += '</div>';
     return html;
@@ -293,8 +291,6 @@
       '.m-hist-card{background:#111c30;border:1px solid #1e293b;border-radius:9px;padding:10px 11px;margin-bottom:9px;}',
       '.m-hist-card:last-child{margin-bottom:0;}',
       '.m-hist-cardslot{font-size:12.5px;color:#e2e8f0;font-weight:bold;margin-bottom:7px;padding-bottom:6px;border-bottom:1px dashed #334155;}',
-      '.m-hist-sell{margin-top:7px;font-size:12.5px;color:#fcd34d;}',
-      '.m-hist-sell b{color:#fde047;}',
       '.m-hist-time{font-size:13px;color:#cbd5e1;display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;}',
       '.m-hist-time b{color:#e2e8f0;}',
       '.m-hist-dur{color:#7dd3fc;}',

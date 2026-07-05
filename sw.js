@@ -24,7 +24,7 @@
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
 <<<<<<< HEAD
-const CODE_VERSION = 'code-4beaa506bb02';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const CODE_VERSION = 'code-77861d298288';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
 const BUILD_ID     = '0705-1303'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 =======
 const CODE_VERSION = 'code-7d41454bd6b2';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改

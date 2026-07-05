@@ -469,11 +469,17 @@
   // 各種「試煉／兌換設定結構」的成品(讀遊戲全域設定,作者改設定自動跟上)。這些不在 MOB_DROPS/商店/製作,
   //   否則會誤標「沒有固定取得途徑」(瑪那水晶球等踩過)。回傳一句白話來源,沒有則 null。
   var _trialBy = null;   // itemId -> 來源說明
+  // NPC 名 → 所在村莊名(掃 DB.towns,作者搬 NPC 自動跟上);查不到回空字串、顯示端不加括號
+  function npcTownName(npc) {
+    try { for (var tid in DB.towns) { var tw = DB.towns[tid]; if ((tw.npcs || []).some(function (n) { return n && n.n === npc; })) return tw.n || ''; } } catch (e) {}
+    return '';
+  }
+  function npcWithTown(npc) { var t = npcTownName(npc); return (npc || '') + (t ? '（' + t + '）' : ''); }
   function buildTrialBy() {
     _trialBy = {};
     var put = function (id, label) { if (id && !_trialBy[id]) _trialBy[id] = label; };
-    try { for (var c in TRIAL_50_CFG) { var t = TRIAL_50_CFG[c]; (t.rewards || []).forEach(function (r) { put(r.id || r, (t.npc || '') + ' 的 50 級試煉：以「' + (t.exMatNm || '指定材料') + '」兌換'); }); } } catch (e) {}
-    try { for (var k in DARK_TRIAL_CFG) { var c2 = DARK_TRIAL_CFG[k]; put(c2.reward, (c2.npc || '') + '（沉默洞窟）：以「' + (c2.reqName || '指定道具') + '」兌換'); } } catch (e) {}
+    try { for (var c in TRIAL_50_CFG) { var t = TRIAL_50_CFG[c]; (t.rewards || []).forEach(function (r) { put(r.id || r, npcWithTown(t.npc) + ' 的 50 級試煉：以「' + (t.exMatNm || '指定材料') + '」兌換'); }); } } catch (e) {}
+    try { for (var k in DARK_TRIAL_CFG) { var c2 = DARK_TRIAL_CFG[k]; put(c2.reward, npcWithTown(c2.npc) + '：以「' + (c2.reqName || '指定道具') + '」兌換'); } } catch (e) {}
     try { for (var k2 in SHENIEN_EX) (SHENIEN_EX[k2].rewards || []).forEach(function (id) { put(id, '希蓮恩（希培利亞村莊）試煉兌換'); }); } catch (e) {}
     try { for (var k3 in WARRIOR_EX) (WARRIOR_EX[k3].rewards || []).forEach(function (id) { put(id, '多文（海音）戰士試煉兌換'); }); } catch (e) {}
     try { for (var k4 in PROCEL_EX) (PROCEL_EX[k4].rewards || []).forEach(function (id) { put(id, '普洛凱爾（貝希摩斯）龍騎士兌換'); }); } catch (e) {}

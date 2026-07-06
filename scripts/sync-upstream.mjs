@@ -217,10 +217,32 @@ function walkAssets(dir) {
 if (existsSync('assets')) {
   // ⚠ 排除 assets/anim/(怪物動畫序列幀,~3 萬檔 / 62MB):這份 manifest 每次開頁都會被 afk-pwa 抓來做圖桶對帳,
   //   把 3 萬筆塞進去會讓它膨脹到 ~2-3MB、每次載入都多抓一次(踩 GitHub Pages 100GB/月流量)。
-  //   動畫幀走純 on-demand 快取(用到才抓、抓到留著)即可,不必進逐張對帳清單。
-  //   代價:作者若換某張動畫幀,不會被 SW 逐張 evict(玩家沿用舊快取)——但動畫幀幾乎不變,可接受。
+  //   動畫幀改走「一怪一雜湊」的 anim-manifest.json 對帳(見 4c-2)——作者換幀後玩家端會逐「怪」清舊快取、
+  //   下次 on-demand 抓新版,不會像純 on-demand 那樣卡舊動畫。故這裡只把 anim/ 排除在「逐張」清單外。
   const manifest = walkAssets('assets').filter((p) => !p.startsWith('assets/anim/')).sort().map((p) => [p, gitBlobSha(readFileSync(p))]);
   writeFileSync('assets-manifest.json', JSON.stringify(manifest) + '\n');
+}
+
+// 4c-2. anim-manifest.json — 怪物動畫幀「一怪一雜湊」的輕量對帳清單。
+//   assets/anim/ 幀太多(~3 萬)不進 assets-manifest(見 4c);但作者會「換掉」既有幀(踩過:一次同步換 1418 張),
+//   純 on-demand 的舊快取不會被逐張 evict → 玩家會一直卡舊動畫、且無從自我修正(anim/ 不在對帳裡)。
+//   折衷:把每個 assets/anim/<怪>/ 資料夾底下所有幀算一個「合併 sha」,只列 ~425 筆(約 40KB,開頁抓它幾乎零流量)。
+//   玩家端 SW(sw.js reconcileAnim)依資料夾雜湊逐「怪」對帳:某怪的幀一有增/刪/換 → 該怪雜湊變 →
+//   清掉該怪的快取(只清那一隻,不整包 62MB)→ 下次看到該怪時 on-demand 抓新版。每次同步都重算,故日後換幀自動跟上。
+if (existsSync('assets/anim')) {
+  const byFolder = {};
+  for (const p of walkAssets('assets/anim')) {
+    const parts = p.split('/');           // assets/anim/<怪>/<file…>
+    if (parts.length < 4) continue;       // 只收「怪資料夾底下」的幀,anim/ 直屬檔(若有)略過
+    const folder = parts.slice(0, 3).join('/');
+    (byFolder[folder] ||= []).push(p);
+  }
+  const animManifest = Object.keys(byFolder).sort().map((folder) => {
+    // 該資料夾內每個檔的 (path, blobSha) 排序後串起再 sha1 → 幀有增/刪/換,資料夾雜湊就變。
+    const combined = byFolder[folder].sort().map((p) => p + '\0' + gitBlobSha(readFileSync(p))).join('\n');
+    return [folder, createHash('sha1').update(combined).digest('hex')];
+  });
+  writeFileSync('anim-manifest.json', JSON.stringify(animManifest) + '\n');
 }
 
 // 4d. stamp sw.js 的 CODE_VERSION(程式桶版本):依 index.html＋全部外掛 js 內容算 hash。

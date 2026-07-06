@@ -50,7 +50,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A index.html js css assets sw.js last-sync.json assets-manifest.json version.json
+          git add -A index.html js css assets sw.js last-sync.json assets-manifest.json anim-manifest.json version.json
           MSG="chore(sync): 自動同步原作者最新 index.html＋js/css(程式樣式 +${{ steps.merge.outputs.code_added }}/~${{ steps.merge.outputs.code_changed }}/-${{ steps.merge.outputs.code_removed }}、圖 新增 ${{ steps.merge.outputs.assets_added }} 張、更新 ${{ steps.merge.outputs.assets_changed }} 張、移除 ${{ steps.merge.outputs.assets_removed }} 張)"
           if [ "${{ steps.merge.outputs.assets_changed }}" != "0" ]; then
             git commit -m "$MSG" -m "原作者更新了 ${{ steps.merge.outputs.assets_changed }} 張既有圖,玩家端會逐張對帳只重抓變動的圖(不重載整包)。"

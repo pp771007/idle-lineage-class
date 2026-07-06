@@ -23,14 +23,16 @@
  *
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
-const CODE_VERSION = 'code-17c6fc7b2906';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0706-1443'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+const CODE_VERSION = 'code-551c126d5869';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0706-1751'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;
 
 // 圖桶內一個合成 entry,存「path → 已快取版本的 git blob sha」對照表,供逐張對帳判斷哪張該重抓。
 const IMG_HASH_KEY = '/__afk-img-hashes__';
+// 圖桶內另一個合成 entry,存「assets/anim/<怪>資料夾 → 已快取版本的合併 sha」,供動畫幀逐「怪」對帳(見 reconcileAnim)。
+const ANIM_HASH_KEY = '/__afk-anim-hashes__';
 
 // 外部 CDN：離線也要能用,用 cache-first 收進程式桶(opaque 也存)。
 //   placehold.co=怪物圖載入失敗的備援圖。(Tailwind 已由作者改成本機 css/tailwind-built.css,
@@ -63,6 +65,9 @@ self.addEventListener('message', (e) => {
   if (d === 'skip-waiting' || d.type === 'skip-waiting') { self.skipWaiting(); return; }
   if (d.type === 'reconcile-images' && Array.isArray(d.manifest)) {
     e.waitUntil(reconcileImages(d.manifest, e.source));
+  }
+  if (d.type === 'reconcile-anim' && Array.isArray(d.folders)) {
+    e.waitUntil(reconcileAnim(d.folders, e.source));
   }
 });
 
@@ -123,6 +128,58 @@ async function reconcileImages(manifest, client) {
   }
   await writeImgHashes(cache, hashes);
   if (client) client.postMessage({ type: 'reconcile-done', evicted });
+}
+
+async function readAnimHashes(cache) {
+  try {
+    const res = await cache.match(ANIM_HASH_KEY);
+    if (res) return await res.json();
+  } catch (err) { /* 壞了當空表重建 */ }
+  return {};
+}
+async function writeAnimHashes(cache, map) {
+  await cache.put(ANIM_HASH_KEY, new Response(JSON.stringify(map), { headers: { 'content-type': 'application/json' } }));
+}
+
+// 怪物動畫幀逐「怪」對帳:anim/ 幀太多不進逐張 manifest(見檔頭),改用 anim-manifest.json——
+//   每個 assets/anim/<怪>/ 資料夾一個「合併 sha」(幀有增/刪/換該 sha 就變)。SW 記下「自己快取的某怪是哪個 sha」,
+//   比對後只把「sha 對不上的那一隻怪」整包快取清掉(下次看到該怪時 on-demand 抓新版),不碰其他怪、不重載整包 62MB。
+//   ▸ 首次上線(還沒記過任何 anim 雜湊):對「已快取過的怪」一律先清一次再記(因無從得知舊快取是否過期)——
+//     這正是修掉「換過的動畫幀卡舊快取」的一次性代價,清掉的只在玩家下次看到該怪時才 on-demand 重抓。
+//   ▸ 沒快取過的怪:只記雜湊、不動作,日後該怪被換才會觸發清除。
+//   ▸ 作者移除的怪(不在 manifest):連快取帶記錄一起清掉。
+async function reconcileAnim(folders, client) {
+  const wanted = new Map(folders.filter((e) => Array.isArray(e) && e[1]).map((e) => [e[0], e[1]]));
+  const cache = await caches.open(IMG_CACHE);
+  const recorded = await readAnimHashes(cache);
+
+  // 走訪一次圖桶,把已快取的 anim 幀依「怪資料夾」分組,避免每個資料夾各掃一次全桶。
+  const byFolder = new Map();
+  for (const req of await cache.keys()) {
+    let path; try { path = decodeURIComponent(new URL(req.url).pathname); } catch (err) { continue; }  // 中文資料夾名在 URL 是 %XX,要 decode 才對得上 manifest 的原始名
+    const m = path.match(/\/(assets\/anim\/[^/]+)\//);
+    if (!m) continue;
+    if (!byFolder.has(m[1])) byFolder.set(m[1], []);
+    byFolder.get(m[1]).push(req);
+  }
+  async function evictFolder(folder) {
+    const reqs = byFolder.get(folder);
+    if (!reqs) return 0;
+    for (const r of reqs) await cache.delete(r);
+    return reqs.length;
+  }
+
+  let evicted = 0;
+  for (const [folder, sha] of wanted) {
+    if (recorded[folder] === sha) continue;   // 記錄相符 → 該怪是最新,跳過
+    evicted += await evictFolder(folder);     // 換過 / 首次未記過且有快取 → 清該怪快取(下次 on-demand 抓新)
+    recorded[folder] = sha;                    // 記成最新(沒快取的怪也記,日後才偵測得到變動)
+  }
+  for (const folder of Object.keys(recorded)) {  // 作者移除的怪 → 清快取與記錄
+    if (!wanted.has(folder)) { evicted += await evictFolder(folder); delete recorded[folder]; }
+  }
+  await writeAnimHashes(cache, recorded);
+  if (client) client.postMessage({ type: 'reconcile-anim-done', evicted });
 }
 
 // cache-first + 連網補存。只存 status 200 或 opaque(跨網域);206(Range 部分回應,如 <audio> 串流音檔)

@@ -129,26 +129,38 @@
   }
 
   // ----- 圖桶對帳(不下載圖,只清作者換過的舊圖,下次 on-demand 抓新版)-----------
-  // 抓最新 assets-manifest.json(每筆 [path, sha];走網路、永遠最新),交給 cb 用。
-  function withManifest(cb) {
-    fetch('assets-manifest.json', { cache: 'no-cache' })
+  // 抓最新對帳清單(走網路、永遠最新),交給 cb 用。
+  function withJson(url, cb) {
+    fetch(url, { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (manifest) { if (manifest && manifest.length) cb(manifest); })
+      .then(function (data) { if (data && data.length) cb(data); })
       .catch(function () {});
   }
-  // 每次載入把最新 manifest 送給 SW reconcile:只清掉 sha 對不上的舊圖(作者換一張只清那一張,
-  //   下次用到才 on-demand 抓新版),不下載整包。首次安裝尚未接管(無 controller)→ 等接管後再跑。
-  function reconcileImages() {
+  // 首次安裝尚未接管(無 controller)→ 等接管後再把 fn 跑起來。
+  function whenController(fn) {
     var ctrl = navigator.serviceWorker.controller;
-    if (!ctrl) {
-      navigator.serviceWorker.addEventListener('controllerchange', function once() {
-        navigator.serviceWorker.removeEventListener('controllerchange', once);
-        reconcileImages();
+    if (ctrl) { fn(ctrl); return; }
+    navigator.serviceWorker.addEventListener('controllerchange', function once() {
+      navigator.serviceWorker.removeEventListener('controllerchange', once);
+      whenController(fn);
+    });
+  }
+  // 每次載入把最新 assets-manifest 送給 SW reconcile:只清掉 sha 對不上的舊圖(作者換一張只清那一張,
+  //   下次用到才 on-demand 抓新版),不下載整包。
+  function reconcileImages() {
+    whenController(function (ctrl) {
+      withJson('assets-manifest.json', function (manifest) {
+        ctrl.postMessage({ type: 'reconcile-images', manifest: manifest });
       });
-      return;
-    }
-    withManifest(function (manifest) {
-      ctrl.postMessage({ type: 'reconcile-images', manifest: manifest });
+    });
+  }
+  // 怪物動畫幀「一怪一雜湊」對帳:anim/ 幀太多不進 assets-manifest,改用 anim-manifest.json(每個怪資料夾一個合併 sha),
+  //   送給 SW 逐「怪」比對——某怪的幀被作者換過 → 該怪快取整包清掉、下次看到時 on-demand 抓新版。不下載整包。
+  function reconcileAnim() {
+    whenController(function (ctrl) {
+      withJson('anim-manifest.json', function (folders) {
+        ctrl.postMessage({ type: 'reconcile-anim', folders: folders });
+      });
     });
   }
 
@@ -160,6 +172,7 @@
       //   使用者看到的程式碼本來就一律最新,不需頁面端 skip-waiting/強制 reload)。
       reg.update().catch(function () {});
       reconcileImages();   // 每次載入:清掉作者換過的舊圖(下次用到才 on-demand 抓新版)
+      reconcileAnim();     // 同上,但針對怪物動畫幀(逐「怪」對帳,見 reconcileAnim)
     }).catch(function () {});
   }
 

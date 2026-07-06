@@ -112,8 +112,8 @@
     ''
   ].join('');
 
-  // 📢 公告跑馬燈文字(標點已修正:列項用頓號、界面→介面)
-  var MARQUEE_TEXT = '如有介面、離線掛機、小百科、掉落查詢問題，請至巴哈301樓回報，請勿打擾原作者秋玥，謝謝大家配合！';
+  // 📢 公告跑馬燈文字
+  var MARQUEE_TEXT = '伺服器永久開放，但不再跟進原作者版本';
 
   function injectCss() {
     if (document.getElementById('afk-skin-css')) return;

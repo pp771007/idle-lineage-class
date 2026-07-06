@@ -463,7 +463,12 @@
     var fastEligible = !isClimb && !isObl && !isKing && totalTicks >= (FAST_SAMPLE_TICKS + FAST_MIN_REMAIN) && !_forceNoFast;
     _forceNoFast = false;   // 🧪 一次性:用過即歸零,不影響之後的真實離線結算
     var fastMode = false, fastOff = false;   // fastOff = 本次補跑永久退出快速段
-    var ticksPerKill = 0, consumePerKill = null, consumeAcc = null;
+    // 🐲 BOSS 策略(懶驗證):每「種」BOSS(按名字)第一次遇到 → 逐拍真模擬打到倒下,記錄實際耗時與安全度;
+    //   之後同名 BOSS:安全的 → 即殺但時間按「該 BOSS 實測耗時」推進(不是小怪均速);對打時血量掉太深的 → 每次都真打。
+    //   打輸=外層撞死即停;打不動=照實耗完時間。純 BOSS 圖因此自然接近全真模擬。
+    var fastBossUid = null, fastBossName = '', fastBossStart = 0, fastBossMinHp = 1;
+    var bossStats = {};   // {怪名: {ticks:實測耗時, safe:對打全程血量未低於安全線}}
+    var ticksPerKill = 0, consumePerTick = null, consumeAcc = null;
     var sampleFrom = 0, sampleKills0 = 0, sampleCnt0 = null, sampleGain0 = null, sampleMinHp = 1;
     var sampleEnd = fastEligible ? FAST_SAMPLE_TICKS : Infinity, sampleGrew = false;
     var lastLv = player.lv;
@@ -490,20 +495,21 @@
       if (kills < FAST_MIN_KILLS) {
         fastOff = true; console.info('[AFK] 快速結算不啟用:取樣擊殺數太少(' + kills + '),樣本不可信,全程真模擬。'); return;
       }
-      ticksPerKill = (done - sampleFrom) / kills;
+      var winTicks = Math.max(1, done - sampleFrom);
+      ticksPerKill = winTicks / kills;
       var cnt1 = invCntMap(), ids = {}, k;
       for (k in sampleCnt0) ids[k] = 1;
       for (k in cnt1) ids[k] = 1;
-      consumePerKill = {}; consumeAcc = {};
+      consumePerTick = {}; consumeAcc = {};
       for (k in ids) {
         var d = DB.items[k]; if (!d) continue;
         // 只認消耗品(藥水/卷軸/箭/肉):避免把「掉落的裝備被自動賣廢品」誤判成消耗
         if (!(d.type === 'pot' || d.type === 'scroll' || d.isArrow || k === 'new_item_143')) continue;
         var used = (sampleCnt0[k] || 0) + ((gainTally[k] || 0) - (sampleGain0[k] || 0)) - (cnt1[k] || 0);
-        if (used > 0) consumePerKill[k] = used / kills;
+        if (used > 0) consumePerTick[k] = used / winTicks;   // 每「拍」速率:消耗跟時間走(BOSS 一場耗時長、耗得多,按殺算會低估)
       }
       fastMode = true;
-      console.info('[AFK] ⚡ 快速結算啟動:平均 ' + ticksPerKill.toFixed(1) + ' 拍/殺,每殺消耗 ' + JSON.stringify(consumePerKill));
+      console.info('[AFK] ⚡ 快速結算啟動:平均 ' + ticksPerKill.toFixed(1) + ' 拍/殺,每拍消耗 ' + JSON.stringify(consumePerTick));
     }
     function fastRefill(id) {   // 斷貨 → 比照原作 autoActions / 外掛 autobuy 的自動購買;補不了 → false(退回全模擬)
       try {
@@ -543,17 +549,11 @@
         return true;
       } catch (e) { return false; }
     }
-    function fastKillOnce() {   // 快速段的一步:出一隻 → 即殺 → 清算;回 false = 退回全模擬
-      try {
-        spawnMob(0);
-        if (!mapState.mobs[0]) return false;
-        killMob(0);
-        settleDeadMobs();
-      } catch (e) { console.warn('[AFK] 快速結算步驟出錯,退回全模擬:', e); return false; }
-      done += ticksPerKill; if (done > totalTicks) done = totalTicks;
-      state.ticks += Math.round(ticksPerKill);   // 絕對拍計數跟上(召喚/buff 的 endTick、賣廢品排程都依此)
-      for (var id in consumePerKill) {   // 消耗品照取樣速率扣;斷貨且補不上 → 戰局質變,退回全模擬
-        consumeAcc[id] = (consumeAcc[id] || 0) + consumePerKill[id];
+    function fastAdvance(adv) {   // 推進虛擬時間 adv 拍:done / state.ticks / 消耗品(每拍速率) / 自動賣廢品;回 false = 消耗品斷貨補不上
+      done += adv; if (done > totalTicks) done = totalTicks;
+      state.ticks += Math.round(adv);   // 絕對拍計數跟上(召喚/buff 的 endTick、賣廢品排程都依此)
+      for (var id in consumePerTick) {   // 消耗品照取樣「每拍」速率扣;斷貨且補不上 → 戰局質變,退回全模擬
+        consumeAcc[id] = (consumeAcc[id] || 0) + consumePerTick[id] * adv;
         while (consumeAcc[id] >= 1) { consumeAcc[id] -= 1; if (!fastConsumeOne(id)) return false; }
       }
       try {   // 自動賣廢品:照原作 tick 的排程(state._junkSellAt,每 100 拍),避免 24h 掉落塞爆背包/超重
@@ -564,6 +564,27 @@
         }
       } catch (e) {}
       return true;
+    }
+    function fastKillOnce() {   // 快速段的一步:出一隻 → 即殺 → 清算;回 false = 退回全模擬
+      try {
+        spawnMob(0);
+        var _m0 = mapState.mobs[0];
+        if (!_m0) return false;
+        if (_m0.boss) {   // 🐲 BOSS:第一次(或未驗證安全)→ 真模擬對打;已驗證安全 → 即殺但時間按「該 BOSS 實測耗時」推進
+          var _bs = bossStats[_m0.n];
+          if (_bs && _bs.safe) {
+            killMob(0);
+            settleDeadMobs();
+            return fastAdvance(_bs.ticks);
+          }
+          fastBossUid = _m0.uid; fastBossName = _m0.n || '?'; fastBossStart = done; fastBossMinHp = 1;
+          console.info('[AFK] ⚔ 快速結算遇到 BOSS「' + fastBossName + '」(首次)→ 切回真模擬對打,倒下後同名 BOSS 才可快轉。');
+          return true;   // 不推進時間、不扣消耗品——接下來的真模擬拍會照實計
+        }
+        killMob(0);
+        settleDeadMobs();
+      } catch (e) { console.warn('[AFK] 快速結算步驟出錯,退回全模擬:', e); return false; }
+      return fastAdvance(ticksPerKill);
     }
     if (fastEligible) beginSample(0);
     // ═══ 混合快速結算(宣告結束;主迴圈內 fastMode 分支使用) ═════════════════════
@@ -576,6 +597,27 @@
         while (done < totalTicks && !player.dead && state.running && !_abortCatchup &&
                (performance.now() - t0) < (_holdStart ? HOLD_SLICE_MS : sliceMs)) {   // 按住放棄時切片縮小,讓 1.5 秒一到就立刻停
           if (fastMode) {
+            if (fastBossUid != null) {   // 🐲 BOSS 對打中:逐拍真模擬(死亡由外層撞死即停接手;打不動就照實耗完時間)
+              tick();
+              settleDeadMobs();
+              done++;
+              var _hpB = (player.mhp > 0) ? (player.hp / player.mhp) : 1;
+              if (_hpB < fastBossMinHp) fastBossMinHp = _hpB;
+              var _bm = mapState.mobs[0];
+              if (!_bm || _bm._dead || _bm.uid !== fastBossUid) {   // BOSS 倒下(或場面被重置)→ 記錄實測耗時/安全度,回快速段
+                fastBossUid = null;
+                var _durB = Math.max(1, done - fastBossStart);
+                var _safeB = fastBossMinHp >= FAST_MIN_HP_PCT / 100;
+                bossStats[fastBossName] = { ticks: _durB, safe: _safeB };
+                console.info('[AFK] ⚔ BOSS「' + fastBossName + '」倒下:實測 ' + Math.round(_durB) + ' 拍' + (_safeB ? ',之後同名 BOSS 即殺、時間按此推進。' : ',對打時血量偏低(' + Math.round(fastBossMinHp * 100) + '%) → 之後每次都真打。'));
+              }
+              if (fastBossUid == null && player.lv !== lastLv) {   // BOSS 經驗大,常直接升級 → 重新取樣殺速
+                lastLv = player.lv;
+                fastMode = false; sampleGrew = false; sampleEnd = done + FAST_RESAMPLE_TICKS;
+                beginSample(done);
+              }
+              continue;
+            }
             // ⚡ 快速段:一次一殺(真實獎勵管線);失敗(斷貨/出怪異常)→ 退回全模擬跑完剩餘
             if (!fastKillOnce()) { fastMode = false; fastOff = true; console.info('[AFK] ⚡ 快速結算退回全模擬(消耗品斷貨或步驟異常),剩餘時間照真模擬。'); continue; }
             if (player.lv !== lastLv) {   // 升級 → 戰力變了 → 重新取樣殺速

@@ -132,7 +132,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 > 前五支互相低耦合;手機版的離線摘要會自動打開日誌。afk-dex 純讀資料、桌機手機都掛。
 > `afk-sw.js` 註冊 `sw.js`;`sw.js` 自 PWA 改版後是**雙桶分離快取**(cache-first):
-> - **程式桶 `CODE_CACHE`**(版本 `CODE_VERSION`):index.html + 全部外掛 js + manifest + PWA 圖示 + 外部 CDN(Tailwind/placehold,離線也要能用)。
+> - **程式桶 `CODE_CACHE`**(版本 `CODE_VERSION`):index.html + 全部外掛 js + 遊戲 js/css(含本機 `css/tailwind-built.css`,作者已改預編譯、不再走外部 Tailwind CDN)+ manifest + PWA 圖示 + 外部 CDN(`placehold.co`,怪圖載入失敗的備援圖,離線也要能用)。
 >   `CODE_VERSION` 由 `scripts/stamp-sw-version.mjs` 依「index.html＋全部外掛 js 內容 hash」自動覆寫 → **程式一改 hash 就變 → 瀏覽器偵測到新 sw.js → 觸發 PWA 更新流程**。
 >   **改任何外掛 / index.html 後,push 前要跑 `node scripts/stamp-sw-version.mjs` 重算**(自動同步流程已自動跑;手動改外掛時別忘)。
 > - **圖桶 `IMG_VERSION`**(`img-v3`,**固定桶名、不再 bump、不整桶倒掉**):`assets/` 全部圖,on-demand 快取 + 可由 afk-pwa 背景全預抓。
@@ -243,8 +243,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 >  **📌 smoke 只在 sync-upstream workflow 內跑,手動 push 不觸發**——所以「動到外掛掛點/init 條件」的手動 commit,push 前最好本機先 `node scripts/smoke-hooks.mjs` 跑一次(exit 0 才安心),別等自動同步時才發現假性失效擋住作者更新。
 2. **改了任何外掛 JS → 一定要 bump `?v=` 版本號**(GitHub Pages / 瀏覽器會死命快取 JS;
-   只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS。
-   Brave 尤其黏)。版本號規則:日期 + 當天流水字母(如 `20260613a` → `20260613b`)。
+   只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS)。版本號規則:日期 + 當天流水字母(如 `20260613a` → `20260613b`)。
    **沒 bump 的話使用者載到的還是舊外掛,debug 會鬼打牆**(踩過一整輪才發現)。
    - **改完外掛 / index.html 後,push 前再跑一次 `node scripts/stamp-sw-version.mjs`**(從 repo 根目錄)——重算 `sw.js` 的 `CODE_VERSION`,PWA 才偵測得到更新。漏跑的話「已安裝的 app」不會跳更新。
 3. 確認沒有把 `.scratch/`、`node_modules/` 等暫存物混進 commit(見下)。

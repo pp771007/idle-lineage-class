@@ -1919,14 +1919,14 @@
   //        mgd 魔法傷害、sp 額外魔法點數、mpr MP自然恢復、ac 防禦(AC,負值=越強)、er 迴避、mr 魔防。
   //   ⚠ 隨機變形卷軸型態(POLY_TIERS)現在只帶速度、沒有這些加成;spd 為舊存檔套裝變身殘留,保留相容。
   //   AC/ER/MR 一律照小百科鐵則翻成中文(不沿用遊戲 polyFormDesc 的英文縮寫)。
+  // 速度型的四個固定值→秒(公式與遊戲 polyFormDesc 一致)。缺欄回 '—'。
+  var polyAtk  = function (f) { return f.atk  != null ? (Math.round(f.atk * 6000 / 1440) / 100).toFixed(2) : '—'; };
+  var polyCast = function (f) { return f.cast != null ? (f.cast / 10).toFixed(1) : '—'; };
+  var polyStun = function (f) { return f.stun != null ? (f.stun / 10).toFixed(1) : '—'; };
+  var polyWlk  = function (f) { return f.wlk  != null ? (5 * f.wlk / 16).toFixed(1) : '—'; };
+  // 只回「戰鬥加成」(套裝變身用);速度四值已拆成獨立欄,不再併進這串。
   function polyEff(f) {
     var p = [];
-    if (f.atk != null) {   // 速度型:攻擊間隔/施法冷卻/被擊硬直/怪物重生(秒),越小越快
-      p.push('攻擊間隔 ' + (Math.round(f.atk * 6000 / 1440) / 100).toFixed(2) + ' 秒');
-      if (f.cast != null) p.push('施法冷卻 ' + (f.cast / 10).toFixed(1) + ' 秒');
-      if (f.stun != null) p.push('被擊硬直 ' + (f.stun / 10).toFixed(1) + ' 秒');
-      if (f.wlk != null)  p.push('怪物重生 ' + (5 * f.wlk / 16).toFixed(1) + ' 秒');
-    }
     if (f.md)  p.push('近距離傷害+' + f.md);
     if (f.mh)  p.push('近距離命中+' + f.mh);
     if (f.rd)  p.push('遠距離傷害+' + f.rd);
@@ -1955,20 +1955,22 @@
     h += '<div class="m-wiki-kv"><b>速度怎麼算</b>：變身會用<b>該型態自己的</b>攻擊間隔／施法冷卻／被擊硬直<b>取代</b>你原本由「職業＋性別×武器」決定的速度（有的變身反而更慢，看下表數字、越小越快）；取代後<b>仍會</b>再吃加速術／勇敢藥水／精靈餅乾／各精通的<b>相乘</b>加速。移動速度則影響<b>怪物重生（下一批出現）</b>快慢。<br><b>戰鬥加成怎麼疊</b>：只有<b>套裝專屬變身</b>會附帶 額外傷害／命中／魔法傷害／MP… 這類加成，直接<b>加</b>在你原本數值上；<b>隨機的變形卷軸型態現在只改速度、沒有這些加成</b>。</div>';
     h += '<div class="m-wiki-sub">📊 各等級的變形型態與加成</div>';
     h += '<div class="m-wiki-note" style="margin-top:0;">用變形卷軸時依你<b>當下等級</b>落在哪一段，就從那段裡隨機抽一種（持變形控制戒指可指定）。<b>名稱顏色</b>：Lv49 以下白、Lv50~51 淡黃、Lv52 以上金，與遊戲內一致。</div>';
+    h += '<div class="m-wiki-note" style="margin-top:2px;">四個速度值單位皆為<b>秒、越小越快</b>：攻擊間隔＝兩次普攻的間隔、施法冷卻＝放技能的最短間隔、被擊硬直＝被打斷後的僵直、怪物重生＝下一批怪出現的等待。</div>';
     POLY_TIERS.forEach(function (t) {
       var range = (t.min <= 0) ? ('Lv' + t.max + ' 以下') : (t.max >= 9999 ? ('Lv' + t.min + ' 以上') : ('Lv' + t.min + '～' + t.max));
       h += '<div class="m-wiki-sub" style="font-size:13px;">' + range + '</div>';
-      h += wTbl(['型態', '加成'], t.forms.map(function (f) {
-        return ['<span class="' + (t.color || '') + '">' + esc(f.n) + '</span>', polyEff(f)];
+      h += wTbl(['型態', '攻擊間隔', '施法冷卻', '被擊硬直', '怪物重生'], t.forms.map(function (f) {
+        return ['<span class="' + (t.color || '') + '">' + esc(f.n) + '</span>', polyAtk(f), polyCast(f), polyStun(f), polyWlk(f)];
       }));
     });
     if (typeof SET_POLY_FORMS !== 'undefined') {
       h += '<div class="m-wiki-sub">🛡️ 套裝專屬變身</div>';
       var rows = Object.keys(SET_POLY_FORMS).map(function (k) {
         var f = SET_POLY_FORMS[k];
-        return [SET_POLY_LABEL[k] || k, '<span class="' + (f.c || '') + '">' + esc(f.n) + '</span>', polyEff(f)];
+        return [SET_POLY_LABEL[k] || k, '<span class="' + (f.c || '') + '">' + esc(f.n) + '</span>',
+          polyAtk(f), polyCast(f), polyStun(f), polyWlk(f), polyEff(f)];
       });
-      h += wTbl(['套裝（件數）', '變身', '加成'], rows);
+      h += wTbl(['套裝（件數）', '變身', '攻擊間隔', '施法冷卻', '被擊硬直', '怪物重生', '戰鬥加成'], rows);
       h += wDesc('這些型態<b>不會被變形卷軸隨機抽到</b>，只在穿著套裝時出現。套裝本身另有 防禦(AC)、HP/MP 恢復 等加成，詳見「套裝」分頁。');
     }
     return h;

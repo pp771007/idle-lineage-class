@@ -717,6 +717,7 @@ function saveGame() {
     }   // ← _uiConfigReady 閘（審計#1）
 
     _lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })));   // 🔧 架構#6：寫入存檔版本（🛡️ 加完整性簽章後 💾 LZString 壓縮）   // 🔧 一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準（迷魅重新計時 1 小時）
+    if (typeof _dexFlushFf === 'function') _dexFlushFf();   // 🚀 快轉期間延後的收集冊寫入,隨存檔一併補寫（見 js/12 saveCardDex）
     logSys(`遊戲進度已儲存。`);
 }
 

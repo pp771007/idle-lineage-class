@@ -45,8 +45,19 @@
   // 依存檔位分開的設定鍵 / 讀寫(有選到存檔位即有效,不綁格數;currentSlot 由原作設成真實格號)
   function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1; }
   function prefKey(base) { return LS_PREFIX + base + '_' + currentSlot; }
-  function prefOn(base)  { try { return validSlot() && localStorage.getItem(prefKey(base)) === '1'; } catch (e) { return false; } }
-  function prefSet(base, on) { try { if (validSlot()) localStorage.setItem(prefKey(base), on ? '1' : '0'); } catch (e) {} }
+  // 🚀 偏好快取:prefOn 每次查 localStorage(同步 IO)很貴,tick 迴圈裡定期打。本外掛是唯一寫入者
+  //   (prefSet 同步更新快取),快取鍵含存檔位,切角色自然分開。多分頁同開同角極端情境下另一頁改設定
+  //   本頁要重整才吃到——可接受(原本 UI 勾選狀態也不跨頁同步)。
+  var _prefCache = {};
+  function prefOn(base) {
+    if (!validSlot()) return false;
+    var k = base + '_' + currentSlot;
+    if (k in _prefCache) return _prefCache[k];
+    var v; try { v = localStorage.getItem(prefKey(base)) === '1'; } catch (e) { v = false; }
+    _prefCache[k] = v;
+    return v;
+  }
+  function prefSet(base, on) { try { if (validSlot()) { localStorage.setItem(prefKey(base), on ? '1' : '0'); _prefCache[base + '_' + currentSlot] = !!on; } } catch (e) {} }
 
   function invCount(id) {
     var c = 0, inv = (typeof player !== 'undefined' && player && player.inv) ? player.inv : [];
@@ -85,11 +96,14 @@
   }
 
   // ----- 包住 tick:正常與離線(離線=迴圈呼叫 tick)共用 --------------------
+  // 🚀 快轉(state.ff)時降頻 ×10(每 100 拍=遊戲 10 秒檢查一次):肉/卷軸消耗速度慢,10 秒內見底
+  //   再補完全來得及;invCount 每次全背包掃兩趟,離線補跑 86 萬拍時降頻省下 90% 的掃描。
   var _tick = window.tick;
   window.tick = function () {
     var r = _tick.apply(this, arguments);
     try {
-      if (typeof state !== 'undefined' && state && (state.ticks % CHECK_EVERY === 0)) autoBuyCheck();
+      var every = (state.ff ? CHECK_EVERY * 10 : CHECK_EVERY);
+      if (typeof state !== 'undefined' && state && (state.ticks % every === 0)) autoBuyCheck();
     } catch (e) {}
     return r;
   };

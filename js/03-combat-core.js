@@ -6,6 +6,7 @@ let _dps = { player: 0, summon: 0, pet: 0, allies: {} };
 let _dpsAllyTurn = false;   // alliesTick 逐傭兵量測期間為 true：令 _allyDamageMob 不重複計入（回合內輸出已被該傭兵 HP-delta 涵蓋），僅「反擊/居合」等回合外輸出才由 _allyDamageMob 直接歸因
 function _dpsReset() { _dps = { player: 0, summon: 0, pet: 0, allies: {} }; }
 function _dpsSnap() {   // 快照在場（未死）怪物 curHp（依索引；tick 內怪物陣列不位移→索引穩定）
+    if (state.ff) return null;   // 🚀 快轉(離線/背景補跑)：DPS 統計純顯示用,整段跳過（_dpsDealt 對 null 快照回 0）。分母是牆鐘時間,快轉不累積傷害反而避免離線傷害灌爆 DPS 顯示
     if (typeof mapState === 'undefined' || !mapState || !mapState.mobs) return null;
     return mapState.mobs.map(m => (m && !m._dead) ? (m.curHp || 0) : null);
 }

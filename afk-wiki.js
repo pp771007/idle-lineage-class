@@ -134,38 +134,9 @@
   // 🔗 名字 → 點擊跳掉落查詢搜尋(配 afk-dex 全域 [data-dexq] 委派,模態連模態/網址連網址);製作頁/地圖頁等共用
   function wDexLink(name) { return '<span class="m-dexlink" data-dexq="' + esc(name) + '">' + esc(name) + '</span>'; }
 
-  // ===== 共用:時間 / 屬性 / 骰子 → 玩家講法 ==================================
+  // ===== 共用:屬性 → 玩家講法 ==================================
   var ELE = { none: '無屬性', water: '💧 水', wind: '🌪 風', fire: '🔥 火', earth: '🪨 地' };
   var ELE_REQ = { fire: '火', water: '水', wind: '風', earth: '地' };
-  function durTxt(s) { return s ? '，持續 ' + fmtDur(s) : ''; }   // buff/狀態的 dur 以「秒」計
-  function fmtDur(s) {
-    if (s >= 3600) { var h = Math.floor(s / 3600), rm = Math.round((s % 3600) / 60); return rm ? h + ' 小時 ' + rm + ' 分' : h + ' 小時'; }
-    if (s >= 60) { var m = Math.floor(s / 60), ss = s % 60; return ss ? m + ' 分 ' + ss + ' 秒' : m + ' 分鐘'; }
-    return s + ' 秒';
-  }
-  function dice(d) { return d[0] + '~' + (d[0] * d[1]); }   // NdM → 最小~最大,用玩家看得懂的數字範圍取代骰子寫法
-  function powerTxt(sk) {
-    if (sk.multiDmg) return '（威力約 ' + sk.multiDmg.map(dice).join(' ＋ ') + '）';
-    if (sk.dmgDice) return '（威力約 ' + dice(sk.dmgDice) + '）';
-    return '';
-  }
-  // 🔮 幻術士「立方」週期效果(cubeTick 為準):每 iv/10 秒觸發一次
-  function cubeDesc(c) {
-    var s = (c.iv || 0) / 10;
-    if (c.kind === 'mp') return '每 ' + s + ' 秒回復 ' + (c.val || 5) + ' MP';
-    if (c.kind === 'dmg') return '每 ' + s + ' 秒對全體敵人造成 ' + (c.dice ? dice(c.dice) : '') + ' ' + (ELE[c.ele] || '') + '傷害';
-    if (c.kind === 'slow') return '每 ' + s + ' 秒讓全體敵人「緩速」4 秒';
-    if (c.kind === 'mrdown') return '每 ' + s + ' 秒讓當前目標「魔防減半」' + (c.dur || 4) + ' 秒';
-    return '週期效果';
-  }
-  function healTxt(sk) {
-    if (!sk.healDice && !sk.healBase) return '回復 HP';
-    var base = sk.healBase || 0;
-    var lo = base + (sk.healDice ? sk.healDice[0] : 0);
-    var hi = base + (sk.healDice ? sk.healDice[0] * sk.healDice[1] : 0);
-    if (sk.hot) { var iv = sk.hot.interval / 10; return '每 ' + (Number.isInteger(iv) ? iv : iv.toFixed(1)) + ' 秒回復 HP 約 ' + lo + '~' + hi + '、共 ' + sk.hot.ticks + ' 次'; }   // hot.interval 以 tick 計(10 tick=1 秒)
-    return '回復 HP 約 ' + lo + '~' + hi;
-  }
 
   // ===== 魔法:把資料欄位翻成玩家看得懂的效果說明 ============================
   var STAT_LABEL = {
@@ -181,8 +152,6 @@
     vacuum: '封印', magicseal: '封印', mrhalf: '魔防減半', armorbreak: '盔甲破壞',
     confuse: '混亂', panic: '恐慌'
   };
-  // 少數效果不在數值欄位裡(隱身、解除、傳送、暗系被動等),這裡用白話補上
-  // 法術白話補充已搬到 afk-extradata.js 的 AFK_EXTRA.skillNote(掉落查詢/小百科共用);skillEffect 於呼叫時即時讀,不依賴載入順序
   function statDeltaTxt(d) {
     var out = [];
     for (var k in d) {
@@ -192,68 +161,6 @@
       out.push(lbl + ' ' + (v >= 0 ? '+' : '') + v);
     }
     return out.join('、');
-  }
-  // 召喚術(sk_summon)會依等級召喚不同生物。直接探測遊戲的 summonTierByLevel(只吃等級、不依賴 player),
-  // 從可學等級往上逐級問,召喚物名稱一變就記一段 → 永遠跟遊戲同步;讀不到函式時用備援表(僅退路,作者調整後可能過時)。
-  function summonTierLine(sk) {
-    var reqs = [];
-    ['reqM', 'reqE', 'reqD', 'reqK'].forEach(function (k) { if (sk[k] !== undefined) reqs.push(sk[k]); });
-    var start = reqs.length ? Math.min.apply(null, reqs) : 1;
-    var probe = (typeof window !== 'undefined' && typeof window.summonTierByLevel === 'function') ? window.summonTierByLevel : null;
-    var pairs = [];
-    if (probe) {
-      var last = null;
-      for (var L = start; L <= 100; L++) {
-        var t; try { t = probe(L); } catch (e) { t = null; }
-        var nm = t && t.n ? String(t.n).replace(/^召喚[：:]\s*/, '') : '';
-        if (nm && nm !== last) { pairs.push('Lv' + L + ' ' + nm); last = nm; }
-      }
-    }
-    if (!pairs.length) pairs = ['Lv28 哈柏哥布林', 'Lv32 甘地妖魔', 'Lv40 食人妖精', 'Lv52 魔狼', 'Lv60 地獄奴隸', 'Lv64 地獄束縛犬', 'Lv72 黑豹'];
-    return pairs.join('、');
-  }
-  // 🌿🔮🛡️ 改「全隊生效」(玩家＋全體傭兵)的輔助魔法:大地的祝福/鋼鐵防護＋幻覺光環(歐吉/巫妖/鑽石高崙/化身)。
-  //   對應 index.html js/04 的 teamAcBonus()/teamDmgReduceMult()/teamIlluAura()——作者若新增全隊光環技能,補這裡的 id。
-  //   sk_elf_watervital(全隊治癒加倍)另走 skillNote 手動文案,不列此(避免與其自訂描述重複加前綴)。
-  var TEAM_BUFF_SKILLS = { sk_elf_earthbless: 1, sk_elf_steelguard: 1, sk_illu_ogre: 1, sk_illu_lich: 1, sk_illu_golem: 1, sk_illu_avatar: 1 };
-  function skillEffect(id, sk) {
-    var EFFECT_OVERRIDE = (window.AFK_EXTRA && AFK_EXTRA.skillNote) || {};
-    if (EFFECT_OVERRIDE[id]) {
-      var ov = EFFECT_OVERRIDE[id];
-      if (sk.type === 'buff' && sk.dur) ov += durTxt(sk.dur);   // 持續型增益自動補上實際時間
-      if (id === 'sk_summon') ov += '　各等級召喚對象：' + summonTierLine(sk);
-      return ov;
-    }
-    if (sk.type === 'atk') {
-      if (sk.instakill) {
-        var who = sk.instakill.tag === 'undead' ? '不死類' : (sk.instakill.tag === 'element' ? '元素類' : '');
-        return '對' + who + '目標有機率使其即死（最高約 6 成，對王級無效）';
-      }
-      var tgt = sk.target === 'all' ? '全體敵人' : '單體';
-      var seg = '對' + tgt + '造成 ' + (ELE[sk.ele] || '') + '魔法傷害' + powerTxt(sk);
-      if (sk.lifesteal) seg += '，並回復等同造成傷害的 HP';
-      if (sk.status) seg += '，使其' + (STATUS_LABEL[sk.status.kind] || sk.status.kind) + durTxt(sk.status.dur);
-      if (sk.freeze) seg += '，命中後有機率（依異常魔法命中判定）使目標冰凍 6 秒（冰凍中無法行動、對王級無效）';
-      return seg;
-    }
-    if (sk.type === 'heal') return healTxt(sk);
-    if (sk.type === 'convert') return '消耗 HP 轉換成 MP';
-    if (sk.type === 'buff') {
-      var parts = [];
-      if (sk.d) parts.push(statDeltaTxt(sk.d));
-      if (sk.haste) parts.push('攻擊速度 +33%');
-      if (sk.summon) parts.push('召喚 ' + (sk.summon.n || '生物').replace(/^.*：/, '') + ' 協助戰鬥');
-      if (sk.cube) parts.push(cubeDesc(sk.cube));   // 🔮 立方:旋轉立方的週期效果(傷害/緩速/魔防減半/回MP)
-      if (sk.illuSummon) parts.push('搭配「幻術精通」時召喚' + String(sk.n).replace(/^.*：/, '') + '幻象一同攻擊（詳見職業專精）');   // 🔮 幻覺召喚
-      if (sk.teamDmgReducePct) parts.push('受到傷害 −' + sk.teamDmgReducePct + '%');   // 🛡️ 鋼鐵防護(全隊減傷·無 d.ac,不補此會渲染空白)
-      if (sk.dmgTakenReduce) parts.push('受到傷害 −' + sk.dmgTakenReduce + '%');   // 🔮 幻覺：化身
-      if (sk.painReflect) parts.push('期間受到傷害時，對攻擊者反射等量無屬性魔法傷害');
-      var body = parts.join('、') || '提供增益效果';
-      if (TEAM_BUFF_SKILLS[id]) body = '全隊（你＋所有傭兵）' + body;   // 🌿🔮🛡️ 這些輔助魔法改「全隊生效」(大地祝福/鋼鐵防護/幻覺光環·由 index.html teamAcBonus/teamDmgReduceMult/teamIlluAura 讀取)
-      return body + durTxt(sk.dur);
-    }
-    if (sk.desc) return sk.desc;   // ⚔️👑 被動技(戰士印記/王者加護等)直接用遊戲內 desc(精確、隨改版同步)
-    return sk.msg || '特殊效果';
   }
 
   // 魔法真正分類:有 reqM＝法師魔法(本職法術,1~10階);否則依 reqE/reqD/reqK/reqI/reqDk 歸為各職業專屬。
@@ -2856,7 +2763,7 @@
     // ===== 黑暗妖精專屬(reqD) =====
     sk_dark_stealth: ['100% 迴避「一次」物理攻擊，用掉後立即失效並進入 5 秒冷卻'],
     sk_dark_poison: ['一般攻擊命中 50% 機率使目標中毒：每秒造成該次攻擊傷害的 60%、持續 5 秒、最多 1 層(更高的新毒才覆蓋)', '劇毒精通→必定中毒、每秒改為 200%'],
-    sk_dark_refine: ['被動：沉默洞穴周邊黑魔石②掉率 20%→30%、③ 10%→15%；並讓一般野外/地監也能掉②1%/③0.5%/④0.1%(無此被動完全不掉，攻城區不掉)'],
+    sk_dark_refine: ['被動：沉默洞穴周邊二級黑魔石掉率 20%→30%、三級黑魔石 10%→15%；並讓一般野外/地監也能掉二級黑魔石 1%／三級黑魔石 0.5%／四級黑魔石 0.1%(無此被動完全不掉，攻城區不掉)'],
     sk_dark_poisonres: ['自身受到的中毒傷害減半'],
     sk_dark_burn: ['一般攻擊 30% 機率傷害 ×1.5'],
     sk_dark_walkhaste: ['攻擊速度 +15%，可與加速術等相乘疊加'],

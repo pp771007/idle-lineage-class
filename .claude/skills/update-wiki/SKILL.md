@@ -44,7 +44,7 @@ disable-model-invocation: true
 
 4. **補內容(分自動 / 手動)**
    - **自動同步的**(`MASTERY_DATA`、`DB.skills`、`DB.items`、五張掉落表)通常不用改。
-   - **手動維護的**才要補：`WEAPON_TRAITS`/`SETS`/`ENHANCE_SECTIONS`/`LOAD_SECTIONS`/`SHERINE_SECTIONS`/`PLEDGE_SECTIONS`/`TOWER_SECTIONS`/`QUEST_BY_CLASS`/`QUEST_COMMON`/`skillNote`。
+   - **手動維護的**才要補：`WEAPON_TRAITS`/`SETS`/`ENHANCE_SECTIONS`/`LOAD_SECTIONS`/`SHERINE_SECTIONS`/`PLEDGE_SECTIONS`/`TOWER_SECTIONS`/`QUEST_BY_CLASS`/`QUEST_COMMON`/`MAGIC_FACT`（職業魔法「實際數據」金框，在 `afk-wiki.js`）。
    - **⭐ 全域條件式掉落**(`if(條件) gainItem`，不在任一怪 MOB_DROPS)→ 補進 `afk-dex.js` 的 `SPECIAL_BLOCKS`(否則掉落查詢搜不到，聖地遺物踩過)。
    - **⭐ 新掉落表 / 客製製作 / 純兌換成品**→ 比對原作 `_auditMobDrops` 讀哪些表照抄進 `buildIndexes`；客製製作(如 `DEMONKING_RECIPES`)補進 `buildCraftIndex`+`renderCraft`；純兌換補 `afk-extradata.js` 的 `AFK_EXTRA.itemAcquire[id].short`。
    - **⭐ 翻譯**：渲染結果出現連續英文(HP/MP/BOSS/Lv 除外)就是漏翻 → 補對應表(`STATUS_LABEL`/`STAT_LABEL`/`AFK_EXTRA.mapName`)。

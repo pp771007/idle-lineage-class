@@ -401,10 +401,13 @@
   // ----- 離線補跑(時間切片) ----------------------------------------------
   var catchingUp = false;
   var killTally = null;   // 📜 非 null 時(只在補跑中)累計各怪擊殺數 {怪名:次數};線上遊玩為 null → killMob 包裝零開銷
+  var gainTally = null;   // ⚡ 非 null 時(只在補跑中)累計各物品獲得數 {物品id:數量};供快速結算把「淨變化」還原成「真實消耗」(消耗=期初+獲得−期末)
+  var _forceNoFast = false;   // 🧪 debug:forceCatchup(mins, true) 可強制全模擬(A/B 比對快速結算保真度用)
   async function runCatchup(totalTicks, withOverlay, huntMap, prePride, preObl, timing) {
     if (catchingUp) return;
     catchingUp = true;
     killTally = {};   // 📜 本次補跑的擊殺計數歸零
+    gainTally = {};   // ⚡ 本次補跑的獲得計數歸零
 
     var sliceMs = sliceFor(totalTicks);   // 依補跑長短決定畫面更新間隔:短→順、長→快
     var isClimb = !!(prePride && prePride.climb && !prePride.ranked && typeof enterPrideFloor === 'function');   // 排名挑戰不自動續
@@ -444,6 +447,127 @@
     var segStart = isClimb ? before : null;
     var segFloor = isClimb ? (state.prideFloor || 2) : 0;
 
+    // ═══ ⚡ 混合快速結算(2026-07-06,使用者核可) ═══════════════════════════════
+    // 長離線先「真模擬取樣」量出平均殺速與安全度;夠安全就把剩餘時間改成「逐殺走真實獎勵管線」:
+    //   spawnMob → killMob → settleDeadMobs 全走原作 code——掉落表擲骰/經驗/升級/任務/卡片/收集冊/
+    //   誘捕/傭兵經驗一律照真;只有「殺一隻花幾拍」與「消耗品每殺耗率」是取樣平均。
+    // 一律退回全模擬的情況:特殊地圖(攀登/遺忘之島/軍王之室,由 fastEligible 排除)、取樣最低血量過低
+    //   (可能會死→維持撞死即停的忠實性)、殺太少(樣本不可信)、消耗品斷貨且自動購買補不上(戰局質變)。
+    // 升級 → 戰力變了殺速會變 → 退回真模擬重新取樣。HP/MP 軌跡不用模擬:結算存活本就補滿(見下方落點)。
+    var FAST_SAMPLE_TICKS = 3000;     // 首次取樣:5 分鐘(3000 拍)
+    var FAST_RESAMPLE_TICKS = 1200;   // 升級後重取樣:2 分鐘
+    var FAST_MIN_KILLS = 8;           // 取樣至少殺 8 隻,平均殺速才勉強可信(低於此→延長,仍不足→全模擬)
+    var FAST_GOOD_KILLS = 60;         // 樣本殺數低於此 → 平均殺速統計誤差偏大(~±13%),延長取樣一次收斂
+    var FAST_MIN_HP_PCT = 70;         // 取樣期間最低血量 % 低於此 → 有死亡風險,不快轉
+    var FAST_MIN_REMAIN = 6000;       // 取樣後剩不到 10 分鐘 → 全模擬本來就快,不值得切
+    var fastEligible = !isClimb && !isObl && !isKing && totalTicks >= (FAST_SAMPLE_TICKS + FAST_MIN_REMAIN) && !_forceNoFast;
+    _forceNoFast = false;   // 🧪 一次性:用過即歸零,不影響之後的真實離線結算
+    var fastMode = false, fastOff = false;   // fastOff = 本次補跑永久退出快速段
+    var ticksPerKill = 0, consumePerKill = null, consumeAcc = null;
+    var sampleFrom = 0, sampleKills0 = 0, sampleCnt0 = null, sampleGain0 = null, sampleMinHp = 1;
+    var sampleEnd = fastEligible ? FAST_SAMPLE_TICKS : Infinity, sampleGrew = false;
+    var lastLv = player.lv;
+    var _junkEvery = (typeof JUNK_AUTOSELL_TICKS !== 'undefined') ? JUNK_AUTOSELL_TICKS : 100;
+
+    function invCntMap() {   // 全部持有量(背包+裝備欄,箭矢掛在 eq.arrow 的 cnt 上)
+      var m = {};
+      try {
+        (player.inv || []).forEach(function (i) { if (i && i.id) m[i.id] = (m[i.id] || 0) + (i.cnt || 1); });
+        for (var k in player.eq) { var e = player.eq[k]; if (e && e.id && e.cnt) m[e.id] = (m[e.id] || 0) + e.cnt; }
+      } catch (e) {}
+      return m;
+    }
+    function tallySum(t) { var s = 0; for (var k in t) s += t[k]; return s; }
+    function beginSample(from) {
+      sampleFrom = from; sampleKills0 = tallySum(killTally); sampleCnt0 = invCntMap();
+      sampleGain0 = {}; for (var k in gainTally) sampleGain0[k] = gainTally[k];
+      sampleMinHp = 1;
+    }
+    function evalSample() {   // 取樣窗結束:夠安全 → 進快速段;殺數不足 → 延長一次;仍不行/太危險 → 全模擬
+      var kills = tallySum(killTally) - sampleKills0;
+      if (sampleMinHp < FAST_MIN_HP_PCT / 100) { fastOff = true; console.info('[AFK] 快速結算不啟用:取樣最低血量 ' + Math.round(sampleMinHp * 100) + '%(有死亡風險),全程真模擬。'); return; }
+      if (kills < FAST_GOOD_KILLS && !sampleGrew) { sampleGrew = true; sampleEnd = done + FAST_SAMPLE_TICKS * 2; return; }   // 殺數不足以收斂平均殺速 → 延長取樣(再 +10 分鐘)
+      if (kills < FAST_MIN_KILLS) {
+        fastOff = true; console.info('[AFK] 快速結算不啟用:取樣擊殺數太少(' + kills + '),樣本不可信,全程真模擬。'); return;
+      }
+      ticksPerKill = (done - sampleFrom) / kills;
+      var cnt1 = invCntMap(), ids = {}, k;
+      for (k in sampleCnt0) ids[k] = 1;
+      for (k in cnt1) ids[k] = 1;
+      consumePerKill = {}; consumeAcc = {};
+      for (k in ids) {
+        var d = DB.items[k]; if (!d) continue;
+        // 只認消耗品(藥水/卷軸/箭/肉):避免把「掉落的裝備被自動賣廢品」誤判成消耗
+        if (!(d.type === 'pot' || d.type === 'scroll' || d.isArrow || k === 'new_item_143')) continue;
+        var used = (sampleCnt0[k] || 0) + ((gainTally[k] || 0) - (sampleGain0[k] || 0)) - (cnt1[k] || 0);
+        if (used > 0) consumePerKill[k] = used / kills;
+      }
+      fastMode = true;
+      console.info('[AFK] ⚡ 快速結算啟動:平均 ' + ticksPerKill.toFixed(1) + ' 拍/殺,每殺消耗 ' + JSON.stringify(consumePerKill));
+    }
+    function fastRefill(id) {   // 斷貨 → 比照原作 autoActions / 外掛 autobuy 的自動購買;補不了 → false(退回全模擬)
+      try {
+        var on = function (cid) { var el = document.getElementById(cid); return !!(el && el.checked); };
+        var potSel = document.getElementById('set-pot');
+        if (potSel && potSel.value === id && on('set-auto-buy-pot')) {   // 治癒藥水:自動補貨 100 瓶(同 autoActions)
+          var unit = shopPrice(DB.items[id].p);
+          if (player.gold >= 100 * unit) { player.gold -= 100 * unit; gainItem(id, 100, true, true); return true; }
+          return false;
+        }
+        var buyChk = { potion_haste: 'set-auto-buy-haste', potion_brave: 'set-auto-buy-brave', potion_blue: 'set-auto-buy-blue', new_item_140: 'set-auto-buy-cautious', new_item_139: 'set-auto-buy-elfcookie', scroll_poly: 'set-auto-buy-poly', scroll_teleport: 'set-auto-buy-teleport' }[id];
+        if (buyChk && on(buyChk)) {   // 增益藥水/卷軸:買 1 瓶(同 autoActions)
+          var p = shopPrice(DB.items[id].p);
+          if (player.gold >= p) { player.gold -= p; gainItem(id, 1, true, true); return true; }
+          return false;
+        }
+        if (typeof window.__afkAutobuyCheck === 'function') {   // 肉/魔法屏障卷軸:外掛 autobuy(玩家有開才會補)
+          window.__afkAutobuyCheck();
+          for (var i = 0; i < player.inv.length; i++) if (player.inv[i] && player.inv[i].id === id) return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+    function fastConsumeOne(id) {   // 消耗 1 個;箭矢直接走原作 consumeArrow(自動換裝/自動買箭/沙哈之箭不扣,行為 1:1)
+      try {
+        var d = DB.items[id] || {};
+        if (d.isArrow) return (typeof consumeArrow === 'function') ? consumeArrow() !== null : false;
+        var idx = -1, i;
+        for (i = 0; i < player.inv.length; i++) if (player.inv[i] && player.inv[i].id === id) { idx = i; break; }
+        if (idx < 0) {
+          if (!fastRefill(id)) return false;
+          for (i = 0; i < player.inv.length; i++) if (player.inv[i] && player.inv[i].id === id) { idx = i; break; }
+          if (idx < 0) return false;
+        }
+        var it = player.inv[idx];
+        if ((it.cnt || 1) > 1) it.cnt = (it.cnt || 1) - 1; else player.inv.splice(idx, 1);
+        return true;
+      } catch (e) { return false; }
+    }
+    function fastKillOnce() {   // 快速段的一步:出一隻 → 即殺 → 清算;回 false = 退回全模擬
+      try {
+        spawnMob(0);
+        if (!mapState.mobs[0]) return false;
+        killMob(0);
+        settleDeadMobs();
+      } catch (e) { console.warn('[AFK] 快速結算步驟出錯,退回全模擬:', e); return false; }
+      done += ticksPerKill; if (done > totalTicks) done = totalTicks;
+      state.ticks += Math.round(ticksPerKill);   // 絕對拍計數跟上(召喚/buff 的 endTick、賣廢品排程都依此)
+      for (var id in consumePerKill) {   // 消耗品照取樣速率扣;斷貨且補不上 → 戰局質變,退回全模擬
+        consumeAcc[id] = (consumeAcc[id] || 0) + consumePerKill[id];
+        while (consumeAcc[id] >= 1) { consumeAcc[id] -= 1; if (!fastConsumeOne(id)) return false; }
+      }
+      try {   // 自動賣廢品:照原作 tick 的排程(state._junkSellAt,每 100 拍),避免 24h 掉落塞爆背包/超重
+        if (state._junkSellAt == null) state._junkSellAt = state.ticks + _junkEvery;
+        if (state.ticks >= state._junkSellAt) {
+          if (typeof autoSellJunk === 'function' && (!player || player.autoSellOn !== false)) autoSellJunk();
+          state._junkSellAt = state.ticks + _junkEvery;
+        }
+      } catch (e) {}
+      return true;
+    }
+    if (fastEligible) beginSample(0);
+    // ═══ 混合快速結算(宣告結束;主迴圈內 fastMode 分支使用) ═════════════════════
+
     var done = 0, died = false;
     try {
       while (done < totalTicks && !_abortCatchup) {
@@ -451,9 +575,28 @@
         var t0 = performance.now();
         while (done < totalTicks && !player.dead && state.running && !_abortCatchup &&
                (performance.now() - t0) < (_holdStart ? HOLD_SLICE_MS : sliceMs)) {   // 按住放棄時切片縮小,讓 1.5 秒一到就立刻停
+          if (fastMode) {
+            // ⚡ 快速段:一次一殺(真實獎勵管線);失敗(斷貨/出怪異常)→ 退回全模擬跑完剩餘
+            if (!fastKillOnce()) { fastMode = false; fastOff = true; console.info('[AFK] ⚡ 快速結算退回全模擬(消耗品斷貨或步驟異常),剩餘時間照真模擬。'); continue; }
+            if (player.lv !== lastLv) {   // 升級 → 戰力變了 → 重新取樣殺速
+              lastLv = player.lv;
+              fastMode = false; sampleGrew = false; sampleEnd = done + FAST_RESAMPLE_TICKS;
+              beginSample(done);
+            }
+            continue;
+          }
           tick();
           settleDeadMobs();
           done++;
+          if (fastEligible && !fastOff) {   // 取樣段:記錄最低血量,窗滿就評估要不要切快速
+            var _hpP = (player.mhp > 0) ? (player.hp / player.mhp) : 1;
+            if (_hpP < sampleMinHp) sampleMinHp = _hpP;
+            if (player.lv !== lastLv) lastLv = player.lv;   // 取樣中升級:樣本自然涵蓋新戰力,不需特別處理
+            if (done >= sampleEnd) {
+              if (totalTicks - done >= FAST_MIN_REMAIN) evalSample();
+              else fastOff = true;   // 剩太少,全模擬跑完就好
+            }
+          }
           if (isKing && !kingLeftRoom && mapState && mapState.current !== huntMap) kingLeftRoom = true;   // 鑰匙用完→原作已把人傳出軍王之室
           if (climbSegs) {
             var nf = state.prideFloor || 0;
@@ -584,6 +727,7 @@
       }
     } catch (e) { console.warn('[AFK] 寫離線紀錄失敗:', e); }
     killTally = null;   // 📜 補跑結束,回到「線上 killMob 不計數」狀態
+    gainTally = null;   // ⚡ 同上,線上 gainItem 不計數
     try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
     try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
     removeOverlay();
@@ -707,6 +851,16 @@
     };
   }
 
+  // ⚡ 包住 gainItem:只在離線補跑期間(gainTally 非 null)累計各物品「獲得數量」,供混合快速結算
+  //   把取樣窗的「庫存淨變化」還原成「真實消耗」(消耗 = 期初 + 期間獲得 − 期末)。線上 gainTally=null → 零開銷。
+  if (typeof window.gainItem === 'function') {
+    var _gainItem = window.gainItem;
+    window.gainItem = function (id, cnt) {
+      if (gainTally && id) { try { gainTally[id] = (gainTally[id] || 0) + (cnt == null ? 1 : cnt); } catch (e) {} }
+      return _gainItem.apply(this, arguments);
+    };
+  }
+
   // ----- 入口提示:時空裂痕 / 傲慢之塔排名模式 不支援離線掛機 ----------------
   // 這兩個是「時間排名挑戰」,離線一律跳過(見 maybeCatchup 的 ranked/rift 早退);玩家容易誤以為能掛機,
   //   故在各自入口面板補一行醒目提示。包住原作全域 renderRiftEntrance/renderPrideEntrance:
@@ -750,7 +904,7 @@
     readTs: readTs,
     mapName: mapName,   // 對外:地圖 id→中文名(供 afk-mobile 在匯入頁顯示「掛在哪張地圖」)
     histKey: histKey,   // 對外:目前角色的離線紀錄 key(供 afk-history)
-    forceCatchup: function (mins) { runCatchup(Math.floor((mins || 60) * 60000 / TICK_MS), true); }
+    forceCatchup: function (mins, noFast) { _forceNoFast = !!noFast; runCatchup(Math.floor((mins || 60) * 60000 / TICK_MS), true, (typeof mapState !== 'undefined' && mapState && mapState.current) || ''); }   // 帶當前地圖,否則 gotoMap(undefined) 空轉零收益;noFast=true 強制全模擬(A/B 用)
   };
 
   console.log('[AFK] hooks OK — 離線掛機外掛已啟用(上限 ' + CAP_HOURS + ' 小時，撞死即停，存活回原狩獵圖)。');

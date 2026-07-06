@@ -107,6 +107,8 @@
     } catch (e) {}
     return r;
   };
+  // ⚡ 供 afk-offline 的「混合快速結算」在不跑 tick 的快速段呼叫(肉/魔法卷軸見底時補貨,行為與線上一致)
+  window.__afkAutobuyCheck = autoBuyCheck;
 
   // ----- 注入「外掛」框到設定面板「自動買銀箭」卡片下方 -------------------
   function injectUI() {

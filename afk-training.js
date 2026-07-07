@@ -528,7 +528,7 @@
     });
   }
 
-  // 各角色（各存檔位）各記一組：key 帶 currentSlot（1~8）。currentSlot 是 index.html 的 let 全域 → 用裸名
+  // 各角色（各存檔位）各記一組：key 帶 currentSlot。currentSlot 是 index.html 的 let 全域 → 用裸名
   function slotsKey() { return SLOTS_KEY + '_' + ((typeof currentSlot !== 'undefined') ? currentSlot : 1); }
   function modeKey() { return MODE_KEY + '_' + ((typeof currentSlot !== 'undefined') ? currentSlot : 1); }
   function loadSlots() {

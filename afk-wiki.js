@@ -2113,7 +2113,7 @@
     // 1. 招募規則(表)
     var c1 = card('① 怎麼招募', { html: kvTbl([
       ['在哪招', '城鎮的<b>傭兵公會</b>：肯特城／海音／歐瑞村莊 三處都有'],
-      ['招得到誰', '你<b>其他存檔格</b>（共 8 格）有角色的格；目前所在格與空格不能招'],
+      ['招得到誰', '你<b>其他存檔格</b>（共 16 格）有角色的格；目前所在格與空格不能招'],
       ['費用', '<b>角色等級 × 10000 金幣</b>；解除或「全員退出」<b>不退費</b>'],
       ['同時上場', '<b>最多 3 名</b>（王族也是 3）'],
       ['遊戲模式', '一般／經典／傳統／經＋傳<b>四組各自獨立</b>，只能招<b>同組合</b>的存檔']
@@ -2553,10 +2553,11 @@
       return { slot: n, name: p.name || '', lv: p.lv || 1, cls: p.cls };
     } catch (e) { return null; }
   }
-  // 列出某職業的所有存檔角色(8 格)
+  // 列出某職業的所有存檔角色(格數讀遊戲全域 SAVE_SLOT_MAX,讀不到退 8)
   function charsForClass(clsKey) {
     var out = [];
-    for (var n = 1; n <= 8; n++) { var c = readCharSlot(n); if (c && c.cls === clsKey) out.push(c); }
+    var max = (typeof SAVE_SLOT_MAX === 'number') ? SAVE_SLOT_MAX : 8;
+    for (var n = 1; n <= max; n++) { var c = readCharSlot(n); if (c && c.cls === clsKey) out.push(c); }
     return out;
   }
   // 某角色「真的學過的魔法」集合(扣掉裝備臨時授予的 grantedSkills);

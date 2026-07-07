@@ -264,7 +264,8 @@ function migrateSaves(){
     let oldS = _lsGet('lineage_idle_save');
     if(oldS && !_lsGet('lineage_idle_save_1')) _lsSet('lineage_idle_save_1', oldS);
 }
-function anySaveExists(){ return ['1','2','3','4','5','6','7','8'].some(n => _lsGet('lineage_idle_save_' + n)); }
+const SAVE_SLOT_MAX = 16;   // 存檔位總數（選檔清單/anySaveExists/傭兵招募 allySlotList/小百科選角共用；調整格數只改這裡）
+function anySaveExists(){ for(let n = 1; n <= SAVE_SLOT_MAX; n++){ if(_lsGet('lineage_idle_save_' + n)) return true; } return false; }
 function _summaryFromRaw(s){
     if(!s) return null;
     s = _saveUnwrap(s).payload;   // 🛡️ 先解存檔簽章（摘要顯示不驗章、僅取 payload；舊明文檔原樣回傳）
@@ -284,7 +285,7 @@ function openSlotSelect(mode){
     document.getElementById('slot-select-panel').classList.remove('hidden');
     document.getElementById('slot-select-title').innerText = (mode === 'new') ? '選擇存檔位（創建角色）' : '選擇存檔位（載入進度）';
     let list = document.getElementById('slot-list'); list.innerHTML = '';
-    for(let n = 1; n <= 8; n++){
+    for(let n = 1; n <= SAVE_SLOT_MAX; n++){
         let sum = slotSummary(n);
         let _classic = !!(sum && sum.classic);   // 🎮 經典模式存檔：以琥珀金顯示
         let _trad = !!(sum && sum.traditional);  // 🏛️ 傳統模式存檔：以淡紫顯示（傳統角色 classic 亦為 true，故先判 traditional）

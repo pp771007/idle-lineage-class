@@ -409,6 +409,18 @@
     killTally = {};   // 📜 本次補跑的擊殺計數歸零
     gainTally = {};   // ⚡ 本次補跑的獲得計數歸零
 
+    // 🎯 魔物追蹤:until 是牆鐘時間,離線中過期的話補跑時 spawnMob 的「until > Date.now()」整段不成立
+    //   → 明明關遊戲時追蹤還有效,離線收益卻完全吃不到追蹤。使用者決定(2026-07-07):離線當下追蹤仍有效
+    //   → 整段離線時間都視為有效——補跑期間暫時把 until 撐到結算之後,結束時還原原值
+    //   (過期的照樣過期、沒過期的剩餘時數不變,線上行為零影響)。
+    //   offStart=離線起點:真實離線用心跳 closeTs;debug forceCatchup 無 timing → 視同「剛剛過去 totalTicks」。
+    var offStart = (timing && timing.closeTs) || (Date.now() - totalTicks * TICK_MS);
+    var trackUntil0 = null;
+    if (player.tracking && player.tracking.until && player.tracking.until > offStart) {
+      trackUntil0 = player.tracking.until;
+      player.tracking.until = Date.now() + totalTicks * TICK_MS + 3600000;   // 撐過整段補跑(含結算本身的真實耗時)綽綽有餘
+    }
+
     var sliceMs = sliceFor(totalTicks);   // 依補跑長短決定畫面更新間隔:短→順、長→快
     var isClimb = !!(prePride && prePride.climb && !prePride.ranked && typeof enterPrideFloor === 'function');   // 排名挑戰不自動續
     var isObl = !isClimb && !!(preObl && preObl.phase && typeof enterOblivionMap === 'function');   // 🏝️ 遺忘之島旅程:同攀登,還原 state.oblivion 後用 enterOblivionMap 進場(島地圖非選單地圖)
@@ -709,6 +721,7 @@
       gotoMap(homeTown());
     }
     if (state.ff !== prevFf0) { state.ff = prevFf0; state.inTick = prevInTick0; }   // 還原 ff(攀登存活分支上面已還原 → 此處不動作)
+    if (trackUntil0 !== null && player.tracking) player.tracking.until = trackUntil0;   // 🎯 還原魔物追蹤原到期時間(見補跑開頭;一定要在下方 saveGame 之前,免得撐長的假 until 被存進存檔)
 
     // 重啟 live loop(startGameTimers 內含去重,且重設 _loopLast=null → 不會把結算花掉的真實秒數再補一次)
     try { startGameTimers(); } catch (e) {}

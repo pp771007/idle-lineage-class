@@ -1,11 +1,11 @@
 /* ============================================================================
- * afk-syncinfo.js — 首頁顯示「原版最後同步時間」
+ * afk-syncinfo.js — 首頁顯示「原作者 + 加掛版版本號」
  *
- * 自動同步流程(sync-upstream)每次把原作者更新合併進來時,會在 last-sync.json
- * 寫下當下時間。本外掛在首頁(#main-menu)最下方讀出並顯示,讓玩家一眼知道
- * 「目前這版是什麼時候從原作者那邊同步來的」。
- *   - 純讀取根目錄 last-sync.json,讀不到就安靜隱藏,不影響遊戲。
- *   - 時間一律換算成台灣時間顯示(與自動同步打的 tag 同時區)。
+ * 本專案自 2026-07 起獨立維護、不再跟進原作者版本;首頁(#main-menu)保留
+ * 原作者署名與正版連結,並顯示加掛版自己的版本號(讀根目錄 version.json 的
+ * app 欄位,由 /release 發版時 bump),玩家回報問題時能講出所在版本。
+ *   - 純讀取 version.json,讀不到就只藏版本列,不影響遊戲。
+ *   - 檔名沿用歷史名稱(原本顯示「原版最後同步時間」),避免改名折騰快取與引用。
  *
  * 掛接:在 index.html 的 </body> 前加一行 <script src="afk-syncinfo.js"></script>
  * ========================================================================== */
@@ -15,19 +15,6 @@
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
     else fn();
-  }
-
-  // ISO 時間 → 台灣時間字串「YYYY/MM/DD HH:mm」
-  function fmtTpe(iso) {
-    var d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    var parts = new Intl.DateTimeFormat('zh-TW', {
-      timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hour12: false
-    }).formatToParts(d);
-    var o = {};
-    parts.forEach(function (p) { o[p.type] = p.value; });
-    return o.year + '/' + o.month + '/' + o.day + ' ' + o.hour + ':' + o.minute;
   }
 
   function injectCSS() {
@@ -54,7 +41,7 @@
     foot.id = 'afk-syncinfo';
     foot.innerHTML =
       '<div class="afk-si-row"><span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span> <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(正版連結)</a></span></div>' +
-      '<div class="afk-si-row afk-si-timerow"><span class="afk-si-time">正版最後同步：載入中…</span></div>';
+      '<div class="afk-si-row afk-si-verrow"><span class="afk-si-ver"></span></div>';
     menu.appendChild(foot);
     // 連結:巴哈討論串 + 加入Line群(各自一列;afk-skin 會排到框內較下方)
     var links = document.createElement('div');
@@ -63,19 +50,18 @@
       '<div class="afk-si-row"><a class="afk-si-link" href="https://forum.gamer.com.tw/C.php?bsn=84452&amp;snA=8362" target="_blank" rel="noopener">巴哈討論串</a>（本加掛版發布在 <a class="afk-si-link" href="https://forum.gamer.com.tw/Co.php?bsn=84452&amp;sn=37297" target="_blank" rel="noopener">301</a> 樓）</div>' +
       '<div class="afk-si-row"><a class="afk-si-link" href="https://line.me/ti/g2/RRXPx6rMc8ZhxiuNSSziKtcjnhc2AXEPuIOpVA?utm_source=invitation&amp;utm_medium=link_copy&amp;utm_campaign=default" target="_blank" rel="noopener">[加入Line群討論]</a> <a class="afk-si-link" href="https://discord.com/invite/xyWDYknDj" target="_blank" rel="noopener">[加入Discord討論]</a></div>';
     menu.appendChild(links);
-    console.log('[AFK-syncinfo] hooks OK — 首頁顯示原作者與原版最後同步時間。');
+    console.log('[AFK-syncinfo] hooks OK — 首頁顯示原作者與加掛版版本號。');
 
-    var timeRow = foot.querySelector('.afk-si-timerow'), timeEl = foot.querySelector('.afk-si-time');
-    // file:// 無法 fetch(CORS,origin null)→ 直接降級藏時間列,避免 console 噴紅字;http(s) 才去抓同步時間
-    if (!/^https?:$/.test(location.protocol)) { timeRow.style.display = 'none'; return; }
-    fetch('last-sync.json', { cache: 'no-store' })
+    var verRow = foot.querySelector('.afk-si-verrow'), verEl = foot.querySelector('.afk-si-ver');
+    verRow.style.display = 'none';   // 讀到版本才顯示,讀不到整列不佔位
+    // file:// 無法 fetch(CORS,origin null)→ 直接降級藏版本列,避免 console 噴紅字;http(s) 才去抓
+    if (!/^https?:$/.test(location.protocol)) return;
+    fetch('version.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
-        var t = j && j.syncedAt ? fmtTpe(j.syncedAt) : '';
-        if (t) { timeEl.textContent = '正版最後同步：' + t; }
-        else { timeRow.style.display = 'none'; }   // 讀不到時間只藏時間列,作者照顯示
+        if (j && j.app) { verEl.textContent = '加掛版 v' + j.app; verRow.style.display = ''; }
       })
-      .catch(function () { timeRow.style.display = 'none'; });
+      .catch(function () { /* 讀不到就維持隱藏 */ });
   }
 
   ready(init);

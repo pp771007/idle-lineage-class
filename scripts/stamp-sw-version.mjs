@@ -2,15 +2,13 @@
  * stamp-sw-version.mjs — 依「index.html ＋ 全部外掛 js 的內容」算 hash，
  *   覆寫 sw.js 的 CODE_VERSION（程式桶版本）。
  *
- * 為什麼：PWA 要靠「sw.js 內容變了」來偵測更新。只要程式有任何改動（原版同步換了
- *   index.html、或我改了某支 afk-*.js），這支算出來的 hash 就會變 → CODE_VERSION 變 →
+ * 為什麼：PWA 要靠「sw.js 內容變了」來偵測更新。只要程式有任何改動（index.html、
+ *   js/css、或任何一支 afk-*.js），這支算出來的 hash 就會變 → CODE_VERSION 變 →
  *   玩家端瀏覽器發現新 sw.js → 觸發更新流程。把外掛 js 內容也納入 hash，
  *   即使忘了 bump 該外掛的 ?v= 版本號，SW 版本一樣會跟著變，不會漏更新。
  *
- * 何時跑：
- *   - 自動同步流程（sync-upstream.mjs）改完 index.html 後會自動呼叫。
- *   - 我手動改外掛、push 前，跑一次：node scripts/stamp-sw-version.mjs
- *   （從 repo 根目錄跑）。
+ * 何時跑：改完程式、push 前跑一次：node scripts/stamp-sw-version.mjs
+ *   （從 repo 根目錄跑;/prepush 會自動跑）。
  * ========================================================================== */
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -59,9 +57,11 @@ export function stampSwVersion() {
 
   // version.json:給頁面端「獨立於 SW 機制」判斷有沒有落後線上最新版用。
   //   走網路、永遠最新、不進任何快取(見 sw.js fetch handler 不攔截 .json);內容與 CODE_VERSION/BUILD_ID 同源。
-  //   每次都寫(沒變動則內容相同、不影響);自動同步 workflow 的 git add 要含它,否則線上不會更新。
+  //   app 欄位=加掛版對玩家的版本號(semver,由 /release 發版時 bump),本腳本只保留、不改動。
   const buildNow = (next.match(/const BUILD_ID\s*=\s*'([^']*)';/) || [])[1] || '';
-  const vjson = JSON.stringify({ code: version, build: buildNow }) + '\n';
+  let app = '';
+  try { app = JSON.parse(readFileSync('version.json', 'utf8')).app || ''; } catch { /* 首次沒有就留空 */ }
+  const vjson = JSON.stringify({ code: version, build: buildNow, ...(app ? { app } : {}) }) + '\n';
   if (!existsSync('version.json') || readFileSync('version.json', 'utf8') !== vjson) {
     writeFileSync('version.json', vjson);
     console.log('[stamp] version.json →', version, buildNow);

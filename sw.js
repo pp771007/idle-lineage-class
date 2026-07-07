@@ -23,8 +23,8 @@
  *
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
-const CODE_VERSION = 'code-a805de96cbe5';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0706-2237'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+const CODE_VERSION = 'code-7b3b04e6cc40';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0707-1011'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;
@@ -76,7 +76,7 @@ function manifestEntries(manifest) {
   return (manifest || []).map((e) => (Array.isArray(e) ? { path: e[0], sha: e[1] } : { path: e, sha: null }));
 }
 
-// git blob sha(跟 GitHub 樹狀 API、sync-upstream 同演算法):sha1("blob "+len+"\0"+bytes)。
+// git blob sha(跟 GitHub 樹狀 API 同演算法):sha1("blob "+len+"\0"+bytes)。
 async function gitBlobSha(buf) {
   const bytes = new Uint8Array(buf);
   const header = new TextEncoder().encode('blob ' + bytes.length + '\x00');
@@ -263,5 +263,5 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 其餘(last-sync.json / assets-manifest.json / version.json / 其它)→ 不攔截,直接走網路、永遠最新。
+  // 其餘(assets-manifest.json / version.json / 其它)→ 不攔截,直接走網路、永遠最新。
 });

@@ -116,10 +116,9 @@
         #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
         /* 🏜️ 條狀比例背景(沙漠等·套 area-fit)：戰鬥框高度鎖定＝圖片比例(1920/580)，背景滿版貼齊、任何視窗寬度都無上下黑邊；省下的高度由下方戰鬥日誌(flex-1)自動吸收長高。 */
         /* ⚠️v2.6.37 用戶要求「狩獵區域改回 1920×580 比例」：戰鬥框本身鎖 aspect-ratio 1920/580(＝條狀·不再 flex:1 吃滿整個地圖面板成 16:9)；背景 cover 貼齊此條狀框。省下的高度由 #log-row(下方 :has 規則改 flex:1)吸收。安全區(town·無 area-fit)與攻城/裂痕(16:9·非 area-fit)不受影響。 */
-        /* 🖥️ v2.7.1 用戶要求「狩獵區域固定解析度」：戰鬥框改「固定 1120×338 px」(維持 1920/580 條狀比例)、置中、不再隨視窗寬度伸縮。
-           原因：動畫怪是小張像素幀(狼91×46/王子55×97…)，響應式框高會讓 height:100% 的放大倍率隨視窗浮動→動畫怪忽大忽小又糊；框高鎖死後放大倍率恆定、大小一致。
-           max-width:100% 僅為超窄視窗(非目標)防溢出的安全網——怪物大小由「固定框高 338」決定、與寬度無關，故即使觸發也不影響怪物尺寸一致性。align-self:center 讓固定寬度框在整欄置中(面板標題仍滿版)。 */
-        #battle-view.area-fit:not(.hidden) { display: flex; align-items: flex-end; justify-content: center; background-position: center; overflow: hidden; flex: 0 0 auto; width: 800px; height: 242px; max-width: 100%; align-self: center; }   /* 🖥️ 固定 800×242(v2.7.3·由 1120×338 縮小·維持 1920/580 比例)；動畫怪為原生尺寸(v2.7.3)不隨框縮放→框縮小後小怪相對更明顯。⚠️v2.6.0 加 :not(.hidden)：安全區 battle-view 帶 .hidden 時本規則不得蓋過 .hidden 而露出狩獵圖 */
+        /* 🖥️ 2026-07-07 用戶要求「戰鬥區等比放大到左右無黑邊」：戰鬥框寬度吃滿中央欄、依 1920/580 等比定高(取代舊固定 800×242 置中——固定框在寬視窗兩側留黑邊)。
+           靜態怪圖 height:100% 隨框高等比縮放；動畫怪維持原生尺寸(v2.7.3)不隨框縮放。max-height 防超寬扁視窗把下方日誌整個擠掉——觸發時背景 cover 裁上下、寬度仍滿版無左右黑邊。 */
+        #battle-view.area-fit:not(.hidden) { display: flex; align-items: flex-end; justify-content: center; background-position: center; overflow: hidden; flex: 0 0 auto; width: 100%; height: auto; aspect-ratio: 1920 / 580; max-height: 52vh; }   /* ⚠️v2.6.0 加 :not(.hidden)：安全區 battle-view 帶 .hidden 時本規則不得蓋過 .hidden 而露出狩獵圖 */
         #battle-view.area-fit #mob-list { height: 100%; }   /* 🎯 v2.7.1 怪物站立帶＝填滿固定框高(338)→放大倍率恆定、怪物大小/前後排景深/特效命中位置一致(不再依視窗寬度) */
         #battle-view.area-fit #mob-list:has(.boss-slot) { height: 100%; aspect-ratio: auto; }   /* 🐉 龍窟頭目(boss-slot)維持填滿整框大圖、不套站立帶 */
         /* 🎯 五怪站位（⚠️v2.6.39 用戶要求：取消隨機出沒＋恢復整齊「前排三個・後排兩個(後排較高)」＋怪變大）：

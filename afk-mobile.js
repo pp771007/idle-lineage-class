@@ -910,6 +910,20 @@
          沒有巢狀就沒有哪層的爭議,iOS/安卓都正常。桌機維持原本各自捲(滑鼠滾輪無此問題)。 */
       'body.m-mobile #wh-inv-list,body.m-mobile #wh-store-list{max-height:none !important;overflow:visible !important;}',
 
+      /* 倉庫版面(手機緊湊化):說明縮小、金幣/分類列收緊、廢話註記藏掉、兩清單改上下堆疊。
+         掛鉤 class(wh-help/wh-goldrow/wh-ctlrow/wh-note/wh-grid)由 js/12 renderWarehouseNPC 模板提供。 */
+      'body.m-mobile .wh-help{font-size:11px !important;line-height:1.5 !important;color:#94a3b8 !important;}',
+      'body.m-mobile .wh-goldrow{padding:8px !important;gap:6px !important;font-size:12px !important;}',
+      'body.m-mobile .wh-goldrow > span{flex:1 1 100% !important;}',   /* 金幣資訊獨佔第一行 → 第二行=輸入框+存入+取出,不再孤鈕換行 */
+      'body.m-mobile .wh-goldrow input{flex:1 1 auto !important;width:auto !important;min-width:0 !important;height:32px !important;margin-left:0 !important;}',
+      'body.m-mobile .wh-goldrow button{flex:0 0 auto !important;height:32px !important;padding:0 12px !important;font-size:12px !important;}',
+      'body.m-mobile .wh-ctlrow{gap:6px !important;font-size:12px !important;}',
+      'body.m-mobile .wh-note{display:none !important;}',   /* （存入／取出共用此分類）手機藏:資訊價值低、佔一整行 */
+      'body.m-mobile .wh-ctlrow select{flex:1 1 34% !important;min-width:0 !important;height:32px !important;}',   /* 第一行=物品分類+兩個下拉(合計>100% → 後面的自動換行) */
+      'body.m-mobile .wh-ctlrow #wh-qty-amt{flex:0 0 64px !important;width:64px !important;height:32px !important;}',
+      'body.m-mobile .wh-ctlrow button{flex:1 1 30% !important;min-width:0 !important;white-space:nowrap !important;margin-left:0 !important;height:34px !important;padding:0 4px !important;font-size:13px !important;}',   /* 第二行=數量+輸入框+一鍵存入+一鍵排列 */
+      'body.m-mobile .wh-grid{grid-template-columns:1fr !important;gap:12px !important;}',   /* 兩欄在手機太窄 → 背包/倉庫上下堆疊 */
+
       /* 潘朵拉黑市(20 格輪播櫥窗):桌機 4 欄在手機窄寬下每格只剩 ~85px,名稱/價格/購買鈕塞不下 → 改 2 欄。
          能力 tooltip 走滑鼠 hover,手機點卡片(非購買鈕)會觸發 mouseenter 顯示、點別處收起,堪用。
          scope 在 js/14 面板加的 .pandora-grid(inline 4 欄要 !important 才蓋得過);版面再改自動失效。 */

@@ -318,6 +318,7 @@ function allyQiguAttack(ally, t, wpn) {
 function allyAttackOnce(ally) {
     if (!ally || !ally.d) return;
     let t = getTarget(); if (!t || t.curHp <= 0) return;
+    if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'attack');   // 🤝 v3.0.70 隊員戰場 sprite：攻擊動作
     let d = ally.d;
     // 🔮 幻術士傭兵 奇古獸攻擊（公式同玩家，用傭兵自身衍生值；裝奇古獸或魔劍精通）
     if (ally.cls === 'illusion') {
@@ -471,6 +472,7 @@ function allyDualWieldOffhandAttack(ally, t) {
 }
 // 法師協力：依其選定攻擊魔法施放（手動重現 castSkill 魔法傷害公式：單體/全體、魔攻係數、法師倍率、魔暴、MR減免、剋屬性固定加值）
 function allyCastMagic(ally, sk) {
+    if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'skill', sk && sk.n);   // 🤝 v3.0.70 隊員戰場 sprite：施法動作
     let d = ally.d || {};
     let targets = (sk.target === 'all') ? mapState.mobs.filter(m => m && m.curHp > 0) : [getTarget()].filter(m => m && m.curHp > 0);
     if (!targets.length) return;
@@ -566,6 +568,7 @@ function allyCastMagic(ally, sk) {
 function allyCastNonDamage(ally, sk) {
     if (!sk || sk.type !== 'atk' || sk.dmgDice || sk.multiDmg || sk.dmgType === 'physical') return false;   // 僅處理「無傷害骰的魔法狀態/即死技」
     if (!sk.status && !sk.instakill) return false;
+    if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'skill', sk.n);   // 🤝 v3.0.70 隊員戰場 sprite：施法動作
     let d = ally.d || {};
     let targets = (sk.target === 'all') ? mapState.mobs.filter(m => m && m.curHp > 0) : [getTarget()].filter(m => m && m.curHp > 0);
     if (!targets.length) return false;
@@ -603,6 +606,7 @@ function allyCastNonDamage(ally, sk) {
 function allyCastPhysicalSkill(ally, sk) {
     if (!sk || sk.type !== 'atk' || sk.dmgType !== 'physical') return false;
     let t = getTarget(); if (!t || t.curHp <= 0) return false;
+    if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'skill', sk.n);   // 🤝 v3.0.70 隊員戰場 sprite：施法動作
     let d = ally.d || {};
     let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
     if (sk.reqWpn === 'w2h'    && !(wpn && wpn.w2h && !wpn.isBow)) return false;   // 需雙手武器（🛡️ v2.6.69 審計#4：且非弓·與玩家路徑一致）
@@ -1881,6 +1885,9 @@ function allyTryHeal(ally) {
     heal = waterVitalHeal(heal);   // 🆕 v2.6.17 水之元氣改全隊生效：傭兵治癒也吃隊長「水之元氣」加倍（waterVitalHeal 讀真隊長 player.buffs＋共用 7 秒冷卻·此處 player 為真隊長非換身）
     if (lowest === player) { player.hp = Math.min(player.mhp, player.hp + heal); }
     else { lowest.curHp = Math.min(lowest.mhp, (lowest.curHp || 0) + heal); }
+    // 🎬 v3.0.95 傭兵治癒視覺回饋：①施放者播施法動作 ②治癒特效疊在被治癒者 sprite 身上（無 sprite→戰鬥區預設錨點；未註冊技能名靜默略過）
+    if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'skill', sk.n);
+    if (typeof playSelfFx === 'function') { try { playSelfFx(sk.n, (typeof _partyMemberRect === 'function') ? _partyMemberRect(lowest) : null); } catch (e) {} }
     let _who = (lowest === player) ? (player.name || '你') : ('協力·' + lowest._allyName);
     logCombat(`<span class="text-emerald-300 font-bold">協力·${ally._allyName}</span> 施放 ${sk.n}，為 ${_who} 恢復 ${heal} 點 HP。`, 'heal', 'mercenary');
     return true;
@@ -1970,6 +1977,7 @@ function _reviveAllyDone(ally, via) {
     logSys(`<span class="text-emerald-300 font-bold">使用 ${via}，協力傭兵 ${ally._allyName} 原地復活（HP 50%）！</span>`);
     saveGame(); updateUI();
     try { renderSquadPanel(); } catch (e) {}
+    if (typeof playSelfFx === 'function') { try { setTimeout(function () { playSelfFx('返生術', (typeof _partyMemberRect === 'function') ? _partyMemberRect(ally) : null); }, 30); } catch (e) {} }   // 🪦 v3.0.102 返生術/復活卷軸→於復活的傭兵身上播返生術特效（延一拍待 sprite 復現後錨定·SELF_FX 未註冊該名則靜默略過）
 }
 // 🤝 Phase 3：回村/回城（進入 town_ 安全區）免費復活全體倒地傭兵至滿血滿魔（由 changeMap 村莊分支呼叫）
 function reviveDownedMercsAtTown() {

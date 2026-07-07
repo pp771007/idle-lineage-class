@@ -204,7 +204,7 @@ const SELF_FX = {
     '傳送術':       { dir: '傳送術',     prefix: '169-0', n: 7,  fps: 14, blend: 'screen', h: 0.85, cy: 0.55 },   // 🌀 v2.7.54 高瘦傳送光柱(97×330)·手動施放於 manualCast teleport 分支掛
 };
 let _selfFxActive = {};   // 技能名 → true：同增益同時只保留一個
-function playSelfFx(skn) {
+function playSelfFx(skn, anchorRect) {   // 🩹 v3.0.95 第2參 anchorRect（選用）：顯式錨點 rect（傭兵治癒疊在被治癒者 sprite 身上）·未傳→原邏輯（玩家 sprite→戰鬥區中央）
     try {
         if (window.__vfxOff) return;
         let cfg = SELF_FX[skn]; if (!cfg) return;
@@ -221,11 +221,14 @@ function playSelfFx(skn) {
         let fxH, fxW, left, top;
         let _geom = () => {
             fxH = r.height * (cfg.h || 0.5); fxW = fxH * ar;
-            let pr = (typeof _pmCasterRect === 'function') ? _pmCasterRect() : null;   // 🧝 v3.0.49 玩家變身 sprite 顯示中→特效錨定 sprite 身上（水平置中·底對齊腳底·尺寸仍以戰鬥區高為基準）
-            if (pr) { left = (pr.left + pr.width / 2 - fxW / 2) + 'px'; top = (pr.bottom - fxH) + 'px'; }
+            let pr = anchorRect || ((typeof _pmCasterRect === 'function') ? _pmCasterRect() : null);   // 🧝 v3.0.49 玩家戰鬥 sprite 顯示中→特效錨定 sprite 身上（水平置中）；v3.0.95 顯式錨點優先
+            if (pr) {
+                left = (pr.left + pr.width / 2 - fxW / 2) + 'px';
+                top = (cfg.overHead ? (pr.top - fxH * 0.55) : (pr.bottom - fxH)) + 'px';   // 🙏 輔助 buff→疊在 sprite 頭頂上方；治癒→疊在身體(自腳底往上)
+            }
             else {
                 left = (r.left + r.width * (cfg.cx != null ? cfg.cx : 0.5) - fxW / 2) + 'px';
-                top = (r.top + r.height * (cfg.cy != null ? cfg.cy : 0.62) - fxH / 2) + 'px';
+                top = (r.top + r.height * (cfg.cy != null ? cfg.cy : (cfg.overHead ? 0.42 : 0.62)) - fxH / 2) + 'px';   // 無 sprite→輔助偏上、治癒略偏下
             }
         };
         _geom();
@@ -243,6 +246,27 @@ function playSelfFx(skn) {
             el.src = frames[i].src;
         }, Math.round(1000 / (cfg.fps || 14)));
     } catch (e) {}
+}
+// 🌀 v3.0.102 傳送術特效：於玩家 sprite 身上播 傳送術 光柱，並在特效期間暫時隱藏玩家 sprite（時間到自動恢復）。
+//   （上游掛點在 doTeleport/enterHiddenArea；本 fork 尚未接掛點,_teleportFxUntil 恆 0＝sprite 不隱藏,函式保留供之後接。）
+let _teleportFxUntil = 0;   // Date.now() 毫秒·此刻之前 _playerMorphApply 隱藏玩家 sprite
+function playTeleportFx() {
+    try {
+        let cfg = SELF_FX['傳送術'];
+        let durMs = cfg ? (cfg.n / (cfg.fps || 14) * 1000) : 500;
+        _teleportFxUntil = Date.now() + durMs + 80;   // +80ms 緩衝：特效播畢後 sprite 才復現
+        if (typeof playSelfFx === 'function') playSelfFx('傳送術');   // 無 anchorRect→錨定玩家 sprite（_pmCasterRect）·此刻 sprite 尚未隱藏→rect 有效
+    } catch (e) {}
+}
+// 🩹 v3.0.95 隊伍成員「戰場 sprite」錨點：回傳該成員(玩家/傭兵) sprite 的 rect，供 playSelfFx 把治癒特效疊在被治癒者身上；無 sprite/不可見→null（playSelfFx 落回預設錨點）
+function _partyMemberRect(who) {
+    try {
+        if (!who) return null;
+        if (who === player) return (typeof _pmCasterRect === 'function') ? _pmCasterRect() : null;
+        let st = _allySpriteStates[String(who._slot)];
+        if (st && st.el && st.el.isConnected) { let r = st.el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) return r; }
+    } catch (e) {}
+    return null;
 }
 // ===== ❄️ 冰凍「狀態」疊加動畫（v2.7.20）：怪物 st.freeze>0 時於身上循環播冰封 state 幀·解凍(freeze歸0/怪陣亡)時播一次 end 碎裂幀 =====
 //   來源 assets/fx/冰凍狀態/state_0..7.png(持續中·全域時鐘循環)＋end_0..3.png(結束碎裂·一次性)。逐怪一個疊層(vfx-layer·每幀重錨定跟隨怪·適用所有怪不限動畫怪)。
@@ -785,8 +809,8 @@ if (typeof castSkill === 'function' && !castSkill._vfxWrapped) {
         let proj = !window.__vfxOff && !!_pele;
         let before = null;
         if (proj) { before = mapState.mobs.map(m => (m && !m._dead) ? { uid: m.uid, hp: m.curHp, rect: _vfxSlotRect(m.uid) } : null); }
-        try { if (typeof _playerMorphTrigger === 'function') _playerMorphTrigger('skill'); } catch (e) {}   // 🧝 v3.0.46 玩家變身 sprite：施法動作
         let r = _vfxOrigCastSkill(skId);
+        if (r) { try { if (typeof _playerMorphTrigger === 'function') _playerMorphTrigger('skill', skId); } catch (e) {} }   // 🧝 v3.0.105 施法動作只在「實際施放成功(r)」才播（修：自動恢復/維持技即使沒真的施放·仍每 tick 觸發施法動畫→sprite 卡在施法姿勢）
         if (proj) { try { _vfxCastProjectiles(before, _pele); } catch (e) {} }
         return r;
     };
@@ -1250,8 +1274,9 @@ function _mobAnimApply() {
         }
     }
 }
-// ===== 🧝 v3.0.46 玩家變身戰鬥 sprite（Phase 2）=====
-//   變身為下列 15 形態時，狩獵區(#battle-view.area-fit)最下方「中間偏左」顯示玩家 sprite（assets/morphanim/<名>/）。
+// ===== 🧝 v3.0.46 玩家戰鬥 sprite（變身 Phase 2＋🗡️ v3.0.67 職業動態 ARPG Tier1）=====
+//   形態優先序：變身（assets/morphanim/<名>/）＞ 職業動態（assets/classanim/<avatar>/·依手上武器選變體）＞ 無（不顯示）。
+//   顯示位置＝狩獵區(#battle-view.area-fit)最下方「中間偏左」。
 //   動作：idle=停止攻擊循環／attack=攻擊觸發(js/04 playerAttack)／skill=施法觸發(castSkill/manualCast 包裝)／hurt=受擊觸發(HP-delta 偵測·免掛 50+ 傷害點)／death=死亡觸發·播畢凍結最後一幀直到復活(HP>0 自動解除)。
 //   三層：<動作>_s(影子·multiply·墊底)＋本體＋<動作>_w(武器特效·screen·最上)——與本體 --multi 共畫布→同 rect 疊放即像素級對齊·嚴格逐幀(_w 本幀無→隱藏·比照 v2.7.36)。
 //   ⚠️容器不用 transform 置中（transform 會建立隔離群組使 _w 的 mix-blend:screen 失效＝火系黑邊病根·v3.0.19）→ 改 left:calc(44% - 寬/2)。
@@ -1260,12 +1285,59 @@ const MORPH_BATTLE_ANIM = new Set(['克特', '卡司特王', '思克巴女皇', 
     '反王肯恩', '吸血鬼', '巨人', '白金巡守', '賽尼斯', '銀光巡守', '阿魯巴', '黃金巡守', '黑暗巡守', '黑暗精靈',   // 🧝 v3.0.52 +10 變身（黑暗精靈＝黑暗妖精套裝 高等黑暗精靈 經別名映射）
     '卡士柏', '史巴托', '妖魔巡守', '妖魔鬥士', '巨大牛人', '巴土瑟', '暴走兔', '果凍怪', '格利芬', '歐姆民兵', '獨眼巨人', '甘地妖魔', '石頭高崙', '紙人', '羅孚妖魔', '西瑪', '那魯加妖魔', '都達瑪拉妖魔', '重裝歐姆', '長老', '阿吐巴妖魔', '雪怪', '食人妖精', '馬庫爾', '骷髏', '黑暗妖精運送員', '黑長者', '黑騎士']);   // 🧝 v3.0.57 +28 變身（合計 76＝POLY_TIERS 全形態·變身動畫全數到位）
 const MORPH_BATTLE_ALIAS = { '真‧死亡騎士': '死亡騎士', '真‧克特': '克特', '高等黑暗精靈': '黑暗精靈' };   // 套裝變身→同源動畫（v3.0.52 黑暗妖精套裝→黑暗精靈·與 js/19 立繪別名一致）
-let _morphBattleCache = {};   // 變身名 → { idle/attack/skill/hurt/death:[Image]|null, shadow:{...}, weapon:{...} } | 'probing'
-function _morphBattleProbe(name) {
-    _morphBattleCache[name] = 'probing';
+// ===== 🗡️ v3.0.67 職業戰鬥動態（ARPG Tier1·用戶確認：未變身＝職業 sprite 常駐場上·有變身＝變身形態取代）=====
+//   assets/classanim/<avatar>/：檔名＝<武器key>_<idle|attack|hurt>_N.png（+_s 影子）＋全武器共用 skill_N/death_N（+_s）·無 _w 層。
+//   武器 key 由 atkSpdFamily(手上武器) 映射；清單外武器一律 sword1（用戶 CSV 規則「裝備列表沒有的武器就用單手劍顯示」）·空手/箭矢=unarmed。
+//   ⚠️新職業：部署 assets/classanim/<avatar>/（46 spr 一次 --multi 共畫布·管線見記憶 class-battle-anim-project）後把 avatar 名加進 Set（一行）。
+const CLASS_BATTLE_ANIM = new Set(['男騎士', '女騎士', '男妖精', '女妖精', '王子', '公主', '男法師', '女法師', '男黑暗妖精', '女黑暗妖精', '男龍騎士', '女龍騎士', '男幻術士', '女幻術士', '男戰士', '女戰士']);   // 🗡️ v3.0.70 全 16 avatar（職業動態 CSV 全部轉檔完成）
+const CLASS_ANIM_WPN_KEY = { '匕首': 'dagger', '單手劍': 'sword1', '雙手劍': 'sword2', '單手鈍器': 'blunt', '雙手鈍器': 'blunt', '弓': 'bow', '十字弓': 'bow', '單手矛': 'spear', '雙手矛': 'spear', '魔杖': 'wand', '雙刀': 'dual', '鋼爪': 'claw', '鎖鏈劍': 'chainsword', '奇古獸': 'qigu' };   // 🏹 v3.0.89 十字弓沿用弓動畫（有弓動畫的職業裝十字弓即播弓·龍騎士/戰士無弓動畫仍走各自 fallback）
+// 🗡️ v3.0.70 per-avatar 可用武器變體＋fallback（CSV 規則：裝備列表沒有的武器→各職 fallback 顯示·法師/幻術士=魔杖·黑暗妖精=匕首·戰士=雙手劍·其餘=單手劍）
+const CLASS_ANIM_SETS = {
+    '男騎士':     { w: ['unarmed','sword2','dagger','sword1','blunt','bow','spear'], fb: 'sword1' },
+    '女騎士':     { w: ['unarmed','sword2','dagger','sword1','blunt','bow','spear'], fb: 'sword1' },
+    '男妖精':     { w: ['unarmed','bow','dagger','sword1','blunt','spear'], fb: 'sword1' },
+    '女妖精':     { w: ['unarmed','bow','dagger','sword1','blunt','spear'], fb: 'sword1' },
+    '王子':       { w: ['unarmed','sword1','dagger','spear','bow','blunt','sword2'], fb: 'sword1' },
+    '公主':       { w: ['unarmed','sword1','blunt','dagger','spear','sword2','bow'], fb: 'sword1' },
+    '男法師':     { w: ['unarmed','dagger','sword1','wand','bow','spear','blunt'], fb: 'wand' },
+    '女法師':     { w: ['unarmed','wand','dagger','sword1','spear','bow','blunt'], fb: 'wand' },
+    '男黑暗妖精': { w: ['unarmed','dagger','sword1','bow','dual','claw'], fb: 'dagger' },
+    '女黑暗妖精': { w: ['unarmed','dagger','sword1','bow','dual','claw'], fb: 'dagger' },
+    '男龍騎士':   { w: ['unarmed','sword1','sword2','blunt','chainsword'], fb: 'sword1' },
+    '女龍騎士':   { w: ['unarmed','sword2','sword1','blunt','chainsword'], fb: 'sword1' },
+    '男幻術士':   { w: ['unarmed','blunt','wand','bow','qigu'], fb: 'wand' },
+    '女幻術士':   { w: ['unarmed','blunt','wand','bow','qigu'], fb: 'wand' },
+    '男戰士':     { w: ['unarmed','dblunt','blunt','spear','sword2'], fb: 'sword2' },
+    '女戰士':     { w: ['unarmed','blunt','dblunt','spear','sword2'], fb: 'sword2' }
+};
+function _classAnimWpnKey(p, set) {   // p=玩家或傭兵（讀 p.eq.wpn/offwpn）
+    let w = p && p.eq && p.eq.wpn;
+    if (!w || !w.id) return 'unarmed';
+    if (p.cls === 'warrior' && p.eq.offwpn && set.w.indexOf('dblunt') >= 0) return 'dblunt';   // ⚔️ 戰士雙持（副手武器欄有東西）→ 雙持鈍器動作
+    let fam = (typeof atkSpdFamily === 'function') ? atkSpdFamily(w.id) : null;
+    if (!fam) return 'unarmed';   // 箭矢等非揮擊武器
+    let k = CLASS_ANIM_WPN_KEY[fam] || null;
+    return (k && set.w.indexOf(k) >= 0) ? k : set.fb;   // 該職無此變體（含十字弓等未列武器）→ fallback
+}
+function _classForm(p, allyGrp) {   // 職業形態解析：p=玩家或傭兵·allyGrp=true→隊員2/3 用 <avatar>2 資料夾（另一組朝向）
+    let av = p ? p.avatar : null;
+    if (!av || !CLASS_BATTLE_ANIM.has(av)) return null;
+    let set = CLASS_ANIM_SETS[av]; if (!set) return null;
+    let wk = _classAnimWpnKey(p, set);
+    let folder = allyGrp ? av + '2' : av;
+    return { key: 'class:' + folder + ':' + wk, base: 'assets/classanim/' + encodeURIComponent(folder) + '/', wpn: wk };
+}
+function _playerBattleForm() {   // 主玩家戰場形態：變身優先 → 職業動態 → null（變身限定主玩家·隊員一律職業動畫）
+    let m = _playerMorphName();
+    if (m) return { key: 'morph:' + m, base: 'assets/morphanim/' + encodeURIComponent(m) + '/', wpn: null };
+    return _classForm((typeof player !== 'undefined') ? player : null, false);
+}
+let _morphBattleCache = {};   // 形態 key（morph:<名>｜class:<avatar>:<武器key>）→ { idle/attack/skill/hurt/death:[Image]|null, shadow:{...}, weapon:{...} } | 'probing'
+function _battleSpriteProbe(form) {
+    _morphBattleCache[form.key] = 'probing';
     let out = { shadow: {}, weapon: {} };
-    let pending = 15;
-    let finish = () => { if (--pending <= 0) _morphBattleCache[name] = out; };
+    let pending = form.wpn ? 17 : 15;   // 🗡️ v3.0.70 職業形態多探 2 項：武器專屬 skill（<wpn>_skill_·黑暗妖精雙刀/鋼爪·龍騎士雙手劍/鎖鏈劍·戰士各武器）
+    let finish = () => { if (--pending <= 0) _morphBattleCache[form.key] = out; };
     let probeSeq = (target, key, pfx, minF) => {
         let frames = [], _min = minF || 2;
         let tryLoad = (i) => {
@@ -1273,15 +1345,22 @@ function _morphBattleProbe(name) {
             let im = new Image();
             im.onload = () => { frames.push(im); tryLoad(i + 1); };
             im.onerror = () => { target[key] = frames.length >= _min ? frames : null; finish(); };
-            im.src = 'assets/morphanim/' + encodeURIComponent(name) + '/' + pfx + i + '.png';
+            im.src = form.base + pfx + i + '.png';
         };
         tryLoad(0);
     };
+    let pfxOf = (a) => (form.wpn && a !== 'skill' && a !== 'death') ? form.wpn + '_' + a + '_' : a + '_';   // 職業形態：idle/attack/hurt 帶武器前綴·skill/death 共用
     ['idle', 'attack', 'skill', 'hurt', 'death'].forEach(a => {
-        probeSeq(out, a, a + '_', a === 'hurt' ? 1 : 2);
-        probeSeq(out.shadow, a, a + '_s_', 1);
-        probeSeq(out.weapon, a, a + '_w_', 1);
+        let p = pfxOf(a);
+        probeSeq(out, a, p, a === 'hurt' ? 1 : 2);
+        probeSeq(out.shadow, a, p.slice(0, -1) + '_s_', 1);
+        if (form.wpn) { out.weapon[a] = null; finish(); }   // 職業動態無 _w 層→免探測（省 404）
+        else probeSeq(out.weapon, a, p.slice(0, -1) + '_w_', 1);
     });
+    if (form.wpn) {   // 🗡️ 武器專屬 skill（無此檔＝null→播放層退通用 skill）
+        probeSeq(out, 'wskill', form.wpn + '_skill_', 2);
+        probeSeq(out.shadow, 'wskill', form.wpn + '_skill_s_', 1);
+    }
 }
 function _playerMorphName() {   // 目前變身名（含套裝別名映射）·非 15 形態之一→null
     if (typeof player === 'undefined' || !player) return null;
@@ -1300,37 +1379,63 @@ function _pmCasterRect() {
         return (r.width > 0 && r.height > 0) ? r : null;
     } catch (e) { return null; }
 }
-function _playerMorphTrigger(k) {   // js/04 attack／castSkill·manualCast 包裝 skill／HP-delta hurt 呼叫
-    let name = _playerMorphName(); if (!name) return;
+// 🎬 v3.0.106 動作播放權重（用戶指定）：death > hurt > skill > attack > idle。高權重可打斷低權重·低權重不打斷高權重(attack 被蓋→排隊到當前播完再補)。
+const _PM_PRIO = { death: 5, hurt: 4, skill: 3, attack: 2, idle: 1 };
+function _pmCurActivePrio() {   // 目前「仍在播放中」動作的權重（已播完/待機→0）
     let st = _pmState;
-    if (st.act === 'death') return;   // 死亡鎖定：復活前不接受其他動作
-    if (st.act === 'skill' && k === 'hurt') {   // 施法鎖定：受擊不打斷（比照怪物 skill lock）
-        let a = _morphBattleCache[name];
-        let seq = (a && a !== 'probing') ? a.skill : null;
-        if (seq && (Date.now() - st.t) < seq.length * (1000 / MOB_ANIM_FPS)) return;
-    }
-    st.act = k; st.t = Date.now();
+    if (!st.act || st.act === 'idle') return 0;
+    if (st.act === 'death') return _PM_PRIO.death;   // 死亡鎖定
+    let form = _playerBattleForm(); let a = form && _morphBattleCache[form.key];
+    if (!a || a === 'probing') return 0;
+    let seq = (st.act === 'skill' && !st.skGen && a.wskill) ? a.wskill : a[st.act];
+    if (!seq || !seq.length) return 0;
+    let fms = (st.act === 'attack') ? _atkFrameMs((player.d && player.d.aspd) || 0, seq.length)
+        : (st.act === 'skill') ? _skillFrameMs(seq.length) : (1000 / MOB_ANIM_FPS);
+    return ((Date.now() - st.t) < seq.length * fms) ? (_PM_PRIO[st.act] || 0) : 0;   // 仍在播→其權重·已播完→0(idle)
+}
+function _playerMorphTrigger(k, skId) {   // js/04 attack／castSkill·manualCast 包裝 skill／HP-delta hurt 呼叫（🗡️ v3.0.67 職業形態亦適用·呼叫端零改動）
+    let form = _playerBattleForm(); if (!form) return;
+    let st = _pmState;
+    if (st.act === 'death') return;   // 死亡鎖定：復活前不接受任何動作（最高權重）
+    let newP = _PM_PRIO[k] || 0, curP = _pmCurActivePrio();   // 🎬 v3.0.106 依權重決定是否打斷（hurt>skill>attack）
+    if (newP < curP) { if (k === 'attack') st.pendAtk = true; return; }   // 權重較低→不打斷（attack 排隊·hurt/skill 直接略過）
+    if (k === 'skill') st.skGen = (skId === 'sk_warrior_roar');   // 🗡️ v3.0.70 戰士咆哮用「通用」skill 動作（CSV 規則）·其餘技能優先武器專屬 wskill
+    st.act = k; st.t = Date.now(); st.pendAtk = false;   // 🔮 新動作生效→清掉排隊中的攻擊（已被取代）
 }
 function _playerMorphRemove() {
     if (_pmState.el) { try { _pmState.el.remove(); } catch (e) {} }
-    _pmState.el = null; _pmState.imgs = null; _pmState.act = null; _pmState.name = null; _pmState.prevHp = null;
+    _pmState.el = null; _pmState.imgs = null; _pmState.act = null; _pmState.name = null; _pmState.prevHp = null; _pmState.pendAtk = false;
 }
-function _playerMorphApply() {   // 8fps ticker 驅動
-    let name = _playerMorphName();
+// ⚔️ v3.0.91 攻擊動畫播放速度隨攻速：攻擊動作每幀時長＝攻擊間隔(秒)÷幀數→整段動畫恰在一次攻擊間隔內播完（「播完對上攻速」）。
+//   只加速不放慢：慢攻取 min(base,…)＝維持預設 8fps（早播完後待機·不拖成慢動作）；下限 45ms/幀(≈22fps)防過快閃爍。
+//   intervalSec 來源＝各消費者實際攻擊排程用值：玩家＝player.d.aspd(js/03:290·已含加速/勇敢/精通/切割/變身所有倍率)、傭兵＝atkSpdBaseItv(ally)(js/06:1833)。僅套用於 attack 動作·idle/skill/hurt/death 維持 8fps。
+function _atkFrameMs(intervalSec, seqLen) {
+    let base = 1000 / MOB_ANIM_FPS;   // 預設 125ms/幀（8fps）
+    if (!(intervalSec > 0) || !(seqLen > 0)) return base;
+    return Math.max(45, Math.min(base, intervalSec * 1000 / seqLen));
+}
+// 🔮 v3.0.94 技能動畫播放速度隨施法速度：比照 _atkFrameMs·間隔＝castLock(tick·職業施法冷卻下限·js/07 施法鎖同源)÷10 秒·只加速不放慢（慢施法維持 8fps 早播完待機）
+//    v3.0.96 第2參 lockTicks（選用）：傭兵傳自身 ally.d.castLock；未傳＝主玩家 player.d.castLock（fallback 12）
+function _skillFrameMs(seqLen, lockTicks) { return _atkFrameMs((lockTicks != null ? lockTicks : ((player && player.d && player.d.castLock) || 12)) / 10, seqLen); }
+function _playerMorphApply() {   // 8fps ticker 驅動（🗡️ v3.0.67 形態＝變身優先→職業動態·key 含武器變體→換武器自動重建）
+    let form = _playerBattleForm();
     let bv = document.getElementById('battle-view');
     let inBattle = bv && !bv.classList.contains('hidden') && bv.classList.contains('area-fit');
-    if (!name || !inBattle) { if (_pmState.el) _playerMorphRemove(); return; }
-    let a = _morphBattleCache[name];
-    if (a === undefined) { _morphBattleProbe(name); return; }
+    if (!form || !inBattle) { if (_pmState.el) _playerMorphRemove(); return; }
+    // 🌀 v3.0.102 傳送術特效期間：暫時隱藏玩家 sprite（特效結束自動恢復·期間跳過渲染）
+    if (_teleportFxUntil > Date.now()) { if (_pmState.el) _pmState.el.style.visibility = 'hidden'; return; }
+    if (_pmState.el && _pmState.el.style.visibility === 'hidden') _pmState.el.style.visibility = '';
+    let a = _morphBattleCache[form.key];
+    if (a === undefined) { _battleSpriteProbe(form); return; }
     if (!a || a === 'probing') return;
-    if (_pmState.name !== name) { _playerMorphRemove(); _pmState.name = name; }
+    if (_pmState.name !== form.key) { _playerMorphRemove(); _pmState.name = form.key; }
     // 受擊：HP-delta 偵測（涵蓋物理/魔法/DoT 所有傷害落點）
     let hp = player.hp;
     if (_pmState.prevHp != null && hp < _pmState.prevHp && hp > 0) _playerMorphTrigger('hurt');
     _pmState.prevHp = hp;
     // 死亡/復活：以遊戲的 player.dead 旗標為準（手動改 hp 不觸發·regen 亦不誤判）；復活(revive 清旗標)→解除凍結回待機
     let _dead = !!player.dead || hp <= 0;
-    if (_dead) { if (_pmState.act !== 'death') { _pmState.act = 'death'; _pmState.t = Date.now(); try { if (typeof playMorphDeathSfx === 'function') playMorphDeathSfx(); } catch (e) {} } }   // 🧝 v3.0.47 變身死亡音（該怪物死亡音·一次）
+    if (_dead) { if (_pmState.act !== 'death') { _pmState.act = 'death'; _pmState.t = Date.now(); _pmState.pendAtk = false; try { if (typeof playMorphDeathSfx === 'function') playMorphDeathSfx(); } catch (e) {} } }   // 🧝 v3.0.47 變身死亡音（該怪物死亡音·一次）
     else if (_pmState.act === 'death') _pmState.act = null;
     // 建立 DOM（懶建·battle-view 直屬子節點·renderMobs 只重建 #mob-list 不動此層）
     if (!_pmState.el) {
@@ -1345,26 +1450,36 @@ function _playerMorphApply() {   // 8fps ticker 驅動
         _pmState.el = el; _pmState.imgs = { sh: sh, bd: bd, wp: wp };
         let w = (a.idle && a.idle[0]) ? a.idle[0].naturalWidth : 100;
         el.style.width = w + 'px';
-        el.style.left = 'calc(44% - ' + Math.round(w / 2) + 'px)';   // 中間偏左一點點·免 transform
     } else if (_pmState.el.parentElement !== bv) bv.appendChild(_pmState.el);
+    { let _pw = (a.idle && a.idle[0]) ? a.idle[0].naturalWidth : 100; _pmState.el.style.left = 'calc(' + _partySpriteXs().P + ' - ' + Math.round(_pw / 2) + 'px)'; }   // 🗡️ v3.0.71 每輪更新：站怪物格縫隙(依 5格/3格版面動態)·免 transform
+    // 🗡️ v3.0.70 權重站位：依 aggro 權重排前後（_partyBottoms 由 _allySpritesApply 每輪先算·權重高=前=bottom小·z 高）
+    if (typeof _partyBottoms !== 'undefined' && _partyBottoms && _partyBottoms.P != null) { _pmState.el.style.bottom = _partyBottoms.P + 'px'; _pmState.el.style.zIndex = String(30 - _partyBottoms.P); }
     // 動作＋幀（比照 _mobAnimApply：單次動作播一輪回待機·death 凍結最後一幀）
-    let act = null, f = 0;
+    let act = null, f = 0, _useW = false;
     if (_pmState.act) {
         let seq = a[_pmState.act];
+        if (_pmState.act === 'skill' && !_pmState.skGen && a.wskill) { seq = a.wskill; _useW = true; }   // 🗡️ v3.0.70 武器專屬 skill 優先（戰士咆哮 skGen→通用）
         if (seq) {
-            let ff = Math.floor((Date.now() - _pmState.t) / (1000 / MOB_ANIM_FPS));
+            let _fms = (_pmState.act === 'attack') ? _atkFrameMs((player.d && player.d.aspd) || 0, seq.length)   // ⚔️ v3.0.91 攻擊動畫隨攻速加速
+                : (_pmState.act === 'skill') ? _skillFrameMs(seq.length)   // 🔮 v3.0.94 技能動畫隨施法速度加速（castLock 內播完）
+                : (1000 / MOB_ANIM_FPS);
+            let ff = Math.floor((Date.now() - _pmState.t) / _fms);
             if (_pmState.act === 'death') { act = 'death'; f = Math.min(ff, seq.length - 1); }
             else if (ff < seq.length) { act = _pmState.act; f = ff; }
-            else _pmState.act = null;
+            else {
+                _pmState.act = null;
+                if (_pmState.pendAtk && a.attack) { _pmState.pendAtk = false; _pmState.act = 'attack'; _pmState.t = Date.now(); act = 'attack'; f = 0; _useW = false; }   // 🎬 v3.0.106 skill／hurt 播完→接播排隊中的攻擊動畫
+                else _pmState.pendAtk = false;
+            }
         } else if (_pmState.act !== 'death') _pmState.act = null;   // 該動作無序列→回待機（death 無序列則維持 idle）
         else act = null;
     }
-    if (act === null && a.idle) { act = 'idle'; f = Math.floor(Date.now() / (1000 / MOB_ANIM_FPS)) % a.idle.length; }
+    if (act === null && a.idle) { act = 'idle'; f = Math.floor(Date.now() / (1000 / MOB_ANIM_FPS)) % a.idle.length; _useW = false; }
     if (act === null) return;
-    let seq = a[act]; if (!seq || !seq[f]) return;
+    let seq = (act === 'skill' && _useW) ? a.wskill : a[act]; if (!seq || !seq[f]) return;
     let I = _pmState.imgs;
     if (I.bd.src !== seq[f].src) I.bd.src = seq[f].src;
-    let ss = a.shadow[act];   // 影子：寬容（幀數不足取模·缺動作隱藏）
+    let ss = (act === 'skill' && _useW) ? a.shadow.wskill : a.shadow[act];   // 影子：寬容（幀數不足取模·缺動作隱藏）
     if (ss && ss.length) { let sf = f < ss.length ? f : (f % ss.length); if (I.sh.style.visibility === 'hidden') I.sh.style.visibility = ''; if (I.sh.src !== ss[sf].src) I.sh.src = ss[sf].src; }
     else if (I.sh.style.visibility !== 'hidden') I.sh.style.visibility = 'hidden';
     let ws = a.weapon[act];   // 武器：嚴格 1:1（本動作本幀無 _w→隱藏·v2.7.36 規則）
@@ -1374,10 +1489,116 @@ function _playerMorphApply() {   // 8fps ticker 驅動
 // 🧝 施法觸發：包裝 manualCast（castSkill 已於上方 VFX 包裝內加掛）
 if (typeof manualCast === 'function' && !manualCast._pmWrapped) {
     let _pmOrigManualCast = manualCast;
-    manualCast = function () { try { if (typeof _playerMorphTrigger === 'function') _playerMorphTrigger('skill'); } catch (e) {} return _pmOrigManualCast.apply(this, arguments); };
+    manualCast = function (skId) { try { if (typeof _playerMorphTrigger === 'function') _playerMorphTrigger('skill', skId); } catch (e) {} return _pmOrigManualCast.apply(this, arguments); };
     manualCast._pmWrapped = true;
 }
-setInterval(() => { if (!document.hidden) { try { _mobAnimApply(); } catch (e) {} try { _updateFreezeFx(); } catch (e) {} try { _updateMobSkillFx(); } catch (e) {} try { _playerMorphApply(); } catch (e) {} } }, Math.floor(1000 / MOB_ANIM_FPS));
+// ===== 🤝 v3.0.70 隊員戰場 sprite（隊員1=主玩家組動畫·主玩家左側；隊員2/3=<avatar>2 組·中間偏右/更右；一律職業動畫·變身限定主玩家）=====
+// 🗡️ v3.0.71 隊伍站「怪物格縫隙中點」避免與怪物完全重疊：5格模式(前排flex1.2×3+後排0.8×2+gap16)怪物中心≈12/34.5/57/76/91%→隊伍站 23/45.5/66/83.5%；
+//    3格版面(純BOSS房/軍王之室·等寬格)怪物中心≈17.3/50/82.7%→兩縫各站兩人 28/39/62/72%。相對序恆為 隊員1＜主玩家＜隊員2＜隊員3（主玩家中間偏左·隊員2中間偏右·隊員3更右）。
+function _partySpriteXs() {
+    let five = true; try { five = (typeof backSlotsActive !== 'function') || backSlotsActive(); } catch (e) {}
+    return five ? { P: '45.5%', A: ['23%', '66%', '83.5%'] } : { P: '39%', A: ['28%', '62%', '72%'] };
+}
+let _allySpriteStates = {};   // slot → { act, t, prevHp, el, imgs, key, skGen }
+let _partyBottoms = null;     // 每輪 _allySpritesApply 先算：{ P: bottom, <slot>: bottom }（權重高=前=bottom 小·主玩家 sprite 於 _playerMorphApply 消費）
+function _partyRankBottom() {
+    let members = [{ id: 'P', w: (typeof mercAggroWeight === 'function') ? mercAggroWeight(player) : 1 }];
+    ((player && player.allies) || []).forEach(a => { if (a) members.push({ id: String(a._slot), w: (a._downed || (a.curHp || 0) <= 0) ? -1 : mercAggroWeight(a) }); });   // 倒地者權重視為最低（排最後方）
+    members.sort((x, y) => y.w - x.w);
+    let out = {};
+    members.forEach((m, i) => { out[m.id] = 2 + i * 9; });   // 最前 bottom 2px·每名往後 +9px（狩獵區帶內可辨識前後）
+    return out;
+}
+function _allySpriteTrigger(ally, k, skId) {   // js/06 掛點：allyAttackOnce→'attack'·三施法函式→'skill'
+    try {
+        if (!ally || ally._slot == null) return;
+        let st = _allySpriteStates[String(ally._slot)];
+        if (!st || st.act === 'death') return;
+        if (st.act === 'skill' && k === 'attack') {   // 🔮 v3.0.96 鏡像玩家(v3.0.94)：技能動畫優先——攻擊排隊(pendAtk)到技能播完才播（傭兵受擊走 HP-delta 本就不打斷施法）
+            let a = _morphBattleCache[st.key];
+            let seq = (a && a !== 'probing') ? ((!st.skGen && a.wskill) ? a.wskill : a.skill) : null;
+            if (seq && (Date.now() - st.t) < seq.length * _skillFrameMs(seq.length, (ally.d && ally.d.castLock) || 12)) { st.pendAtk = true; return; }
+        }
+        if (k === 'skill') st.skGen = (skId === 'sk_warrior_roar' || skId === '咆哮');   // 傭兵端傳技能名·玩家端傳技能 id
+        st.act = k; st.t = Date.now(); st.pendAtk = false;   // 新動作生效→清掉排隊中的攻擊（已被取代）
+    } catch (e) {}
+}
+function _allySpritesApply() {   // 8fps ticker 驅動（先於 _playerMorphApply→_partyBottoms 供主玩家消費）
+    let bv = document.getElementById('battle-view');
+    let inBattle = bv && !bv.classList.contains('hidden') && bv.classList.contains('area-fit');
+    let allies = (typeof player !== 'undefined' && player && player.allies) || [];
+    _partyBottoms = inBattle ? _partyRankBottom() : null;
+    for (let slot in _allySpriteStates) {   // 清理：離場/不在戰鬥→移除
+        if (!inBattle || !allies.some(a => a && String(a._slot) === slot)) {
+            let st = _allySpriteStates[slot];
+            if (st && st.el) { try { st.el.remove(); } catch (e) {} }
+            delete _allySpriteStates[slot];
+        }
+    }
+    if (!inBattle) return;
+    allies.forEach((ally, i) => {
+        if (!ally) return;
+        let form = _classForm(ally, i > 0);   // 隊員1(i=0)＝主玩家組·隊員2/3＝<avatar>2 組
+        if (!form) return;
+        let a = _morphBattleCache[form.key];
+        if (a === undefined) { _battleSpriteProbe(form); return; }
+        if (!a || a === 'probing') return;
+        let slot = String(ally._slot);
+        let st = _allySpriteStates[slot] || (_allySpriteStates[slot] = { act: null, t: 0, prevHp: null, el: null, imgs: null, key: null, skGen: false, pendAtk: false });
+        if (st.key !== form.key) { if (st.el) { try { st.el.remove(); } catch (e) {} } st.el = null; st.imgs = null; st.act = null; st.key = form.key; st.pendAtk = false; }   // 🔮 v3.0.96 換形態→清排隊攻擊
+        // 受擊：curHp-delta（涵蓋所有傷害落點）🎬 v3.0.106 播放權重 hurt>skill：受擊可打斷施法（只有死亡不被打斷·鏡像玩家）
+        let hp = ally.curHp || 0;
+        if (st.prevHp != null && hp < st.prevHp && hp > 0 && st.act !== 'death') { st.act = 'hurt'; st.t = Date.now(); st.pendAtk = false; }
+        st.prevHp = hp;
+        // 倒地/復活
+        if (ally._downed || hp <= 0) { if (st.act !== 'death') { st.act = 'death'; st.t = Date.now(); st.pendAtk = false; } }   // 🔮 v3.0.96 倒地→清排隊攻擊
+        else if (st.act === 'death') st.act = null;
+        // DOM 懶建
+        if (!st.el) {
+            let el = document.createElement('div');
+            el.className = 'party-sprite';
+            let sh = document.createElement('img'); sh.className = 'pm-shadow';
+            let bd = document.createElement('img'); bd.className = 'pm-body';
+            [sh, bd].forEach(im => { im.alt = ''; im.draggable = false; });
+            el.append(sh, bd);
+            bv.appendChild(el);
+            st.el = el; st.imgs = { sh: sh, bd: bd };
+        } else if (st.el.parentElement !== bv) bv.appendChild(st.el);
+        let w = (a.idle && a.idle[0]) ? a.idle[0].naturalWidth : 100;
+        st.el.style.width = w + 'px';
+        st.el.style.left = 'calc(' + _partySpriteXs().A[Math.min(i, 2)] + ' - ' + Math.round(w / 2) + 'px)';   // 每輪更新（隊員順位/地圖版面 5格↔3格 可能變）
+        if (_partyBottoms && _partyBottoms[slot] != null) { st.el.style.bottom = _partyBottoms[slot] + 'px'; st.el.style.zIndex = String(30 - _partyBottoms[slot]); }
+        // 動作＋幀（同主玩家邏輯·wskill 武器專屬 skill 優先·咆哮通用）
+        let act = null, f = 0, _useW = false;
+        if (st.act) {
+            let seq = a[st.act];
+            if (st.act === 'skill' && !st.skGen && a.wskill) { seq = a.wskill; _useW = true; }
+            if (seq) {
+                let _fms = (st.act === 'attack') ? _atkFrameMs(((ally.d && ally.d.aspd) ? ally.d.aspd : (typeof atkSpdBaseItv === 'function' ? atkSpdBaseItv(ally) : 0)), seq.length)   // ⚔️ v3.0.98 傭兵攻擊動畫用實際排程間隔 ally.d.aspd（含加速等·與 js/06 攻速一致；原用 base 會動畫比攻擊慢）
+                    : (st.act === 'skill') ? _skillFrameMs(seq.length, (ally.d && ally.d.castLock) || 12)   // 🔮 v3.0.96 傭兵技能動畫隨自身施法速度（鏡像玩家 v3.0.94）
+                    : (1000 / MOB_ANIM_FPS);
+                let ff = Math.floor((Date.now() - st.t) / _fms);
+                if (st.act === 'death') { act = 'death'; f = Math.min(ff, seq.length - 1); }
+                else if (ff < seq.length) { act = st.act; f = ff; }
+                else {
+                    let _wasSkill = (st.act === 'skill');
+                    st.act = null;
+                    if (_wasSkill && st.pendAtk && a.attack) { st.pendAtk = false; st.act = 'attack'; st.t = Date.now(); act = 'attack'; f = 0; _useW = false; }   // 🔮 v3.0.96 技能播完→接播排隊中的攻擊動畫
+                    else st.pendAtk = false;
+                }
+            } else if (st.act !== 'death') st.act = null;
+            else act = null;
+        }
+        if (act === null && a.idle) { act = 'idle'; f = (Math.floor(Date.now() / (1000 / MOB_ANIM_FPS)) + i * 3) % a.idle.length; _useW = false; }   // 隊員間錯相（+i*3）
+        if (act === null) return;
+        let seq = (act === 'skill' && _useW) ? a.wskill : a[act]; if (!seq || !seq[f]) return;
+        if (st.imgs.bd.src !== seq[f].src) st.imgs.bd.src = seq[f].src;
+        let ss = (act === 'skill' && _useW) ? a.shadow.wskill : a.shadow[act];
+        if (ss && ss.length) { let sf = f < ss.length ? f : (f % ss.length); if (st.imgs.sh.style.visibility === 'hidden') st.imgs.sh.style.visibility = ''; if (st.imgs.sh.src !== ss[sf].src) st.imgs.sh.src = ss[sf].src; }
+        else if (st.imgs.sh.style.visibility !== 'hidden') st.imgs.sh.style.visibility = 'hidden';
+    });
+}
+setInterval(() => { if (!document.hidden) { try { _mobAnimApply(); } catch (e) {} try { _updateFreezeFx(); } catch (e) {} try { _updateMobSkillFx(); } catch (e) {} try { _allySpritesApply(); } catch (e) {} try { _playerMorphApply(); } catch (e) {} } }, Math.floor(1000 / MOB_ANIM_FPS));
 
 // 🚀 效能：分頁面板重繪保護＋節流。狩獵時扣箭/耗肉/掉寶會每 tick 觸發 renderTabs 重建整個面板，
 //    重建會洗掉按鈕→在 mousedown↔mouseup 間重建使「賣出/強化」點擊失效並造成卡頓。

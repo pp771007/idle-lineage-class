@@ -153,11 +153,11 @@ async function reconcileAnim(folders, client) {
   const cache = await caches.open(IMG_CACHE);
   const recorded = await readAnimHashes(cache);
 
-  // 走訪一次圖桶,把已快取的 anim 幀依「怪資料夾」分組,避免每個資料夾各掃一次全桶。
+  // 走訪一次圖桶,把已快取的動畫幀依「資料夾」分組,避免每個資料夾各掃一次全桶。anim=怪物幀、classanim=職業戰鬥幀(v3.0.67),同走一資料夾一雜湊。
   const byFolder = new Map();
   for (const req of await cache.keys()) {
     let path; try { path = decodeURIComponent(new URL(req.url).pathname); } catch (err) { continue; }  // 中文資料夾名在 URL 是 %XX,要 decode 才對得上 manifest 的原始名
-    const m = path.match(/\/(assets\/anim\/[^/]+)\//);
+    const m = path.match(/\/(assets\/(?:anim|classanim)\/[^/]+)\//);
     if (!m) continue;
     if (!byFolder.has(m[1])) byFolder.set(m[1], []);
     byFolder.get(m[1]).push(req);

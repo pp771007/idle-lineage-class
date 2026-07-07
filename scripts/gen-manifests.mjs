@@ -33,18 +33,20 @@ function walkAssets(dir) {
 }
 
 if (existsSync('assets')) {
-  const assetFiles = walkAssets('assets').filter((p) => !p.startsWith('assets/anim/'));
+  const assetFiles = walkAssets('assets').filter((p) => !p.startsWith('assets/anim/') && !p.startsWith('assets/classanim/'));
   const publicFiles = existsSync('public/assets') ? walkAssets('public/assets') : [];
   const manifest = [...assetFiles, ...publicFiles].sort().map((p) => [p, gitBlobSha(readFileSync(p))]);
   writeFileSync('assets-manifest.json', JSON.stringify(manifest) + '\n');
   console.log('[gen-manifests] assets-manifest.json →', manifest.length, '筆');
 }
 
-if (existsSync('assets/anim')) {
+{
+  // anim(怪物幀) + classanim(職業戰鬥幀·v3.0.67)都走「一資料夾一合併 sha」,同進 anim-manifest.json
+  const animDirs = ['assets/anim', 'assets/classanim'].filter((d) => existsSync(d));
   const byFolder = {};
-  for (const p of walkAssets('assets/anim')) {
-    const parts = p.split('/');           // assets/anim/<怪>/<file…>
-    if (parts.length < 4) continue;       // 只收「怪資料夾底下」的幀,anim/ 直屬檔(若有)略過
+  for (const dir of animDirs) for (const p of walkAssets(dir)) {
+    const parts = p.split('/');           // assets/<anim|classanim>/<資料夾>/<file…>
+    if (parts.length < 4) continue;       // 只收「資料夾底下」的幀,直屬檔(若有)略過
     const folder = parts.slice(0, 3).join('/');
     (byFolder[folder] ||= []).push(p);
   }

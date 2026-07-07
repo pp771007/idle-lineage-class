@@ -777,7 +777,7 @@ function getTarget() {
             let m = mapState.mobs[i];
             if(!m || m._dead) continue;
             let b = (m._born != null) ? m._born : Infinity;
-            if(b < bestBorn) { bestBorn = b; best = i; }
+            if(best === -1 || b < bestBorn) { bestBorn = b; best = i; }   // 🔧 best===-1＝格位序 tiebreak：全場都缺 _born(如木人場外掛自建怪)時仍能鎖定第一隻活怪,否則整隊永遠沒目標、不攻擊
         }
         if(best >= 0) {
             setTarget(best);

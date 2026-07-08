@@ -50,7 +50,8 @@
     foot.id = 'afk-syncinfo';
     foot.innerHTML =
       '<div class="afk-si-row"><span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span> <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(正版連結)</a></span></div>' +
-      '<div class="afk-si-row afk-si-verrow"><span class="afk-si-ver"></span></div>';
+      '<div class="afk-si-row afk-si-verrow"><span class="afk-si-ver"></span></div>' +
+      '<div class="afk-si-row afk-si-updrow"><span class="afk-si-upd"></span></div>';
     menu.appendChild(foot);
     // 連結:巴哈討論串 + 加入Line群(各自一列;afk-skin 會排到框內較下方)
     var links = document.createElement('div');
@@ -62,20 +63,21 @@
     console.log('[AFK-syncinfo] hooks OK — 首頁顯示原作者與加掛版版本號。');
 
     var verRow = foot.querySelector('.afk-si-verrow'), verEl = foot.querySelector('.afk-si-ver');
-    verRow.style.display = 'none';   // 讀到版本才顯示,讀不到整列不佔位
+    var updRow = foot.querySelector('.afk-si-updrow'), updEl = foot.querySelector('.afk-si-upd');
+    verRow.style.display = 'none'; updRow.style.display = 'none';   // 讀到才顯示,讀不到整列不佔位
     // file:// 無法 fetch(CORS,origin null)→ 直接降級藏版本列,避免 console 噴紅字;http(s) 才去抓
     if (!/^https?:$/.test(location.protocol)) return;
     fetch('version.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         if (!j || !j.app) return;
-        // 加掛版版本號 · 最後更新時間(台灣時間) · 更新日誌連結
-        var html = '加掛版 v' + j.app;
-        var t = fmtUpdTime(j.buildAt, j.build);
-        if (t) html += '<span class="afk-si-dot">·</span>最後更新 ' + t;
-        html += '<span class="afk-si-dot">·</span><a class="afk-si-link" href="https://github.com/pp771007/idle-lineage-class/releases" target="_blank" rel="noopener">更新日誌</a>';
-        verEl.innerHTML = html;
+        // 第一列:加掛版版本號 · 更新日誌連結
+        verEl.innerHTML = '加掛版 v' + j.app +
+          '<span class="afk-si-dot">·</span><a class="afk-si-link" href="https://github.com/pp771007/idle-lineage-class/releases" target="_blank" rel="noopener">更新日誌</a>';
         verRow.style.display = '';
+        // 第二列:最後更新時間(台灣時間),自成一行放在版本號下面
+        var t = fmtUpdTime(j.buildAt, j.build);
+        if (t) { updEl.innerHTML = '最後更新 ' + t; updRow.style.display = ''; }
       })
       .catch(function () { /* 讀不到就維持隱藏 */ });
   }

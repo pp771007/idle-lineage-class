@@ -26,6 +26,16 @@ function nowTaipei() {
   return `${o.month}${o.day}-${o.hour}${o.minute}`;
 }
 
+// 完整台灣時間戳「YYYY-MM-DD HH:MM」：給首頁「最後更新時間」顯示（build 只有 MMDD-HHMM、無年份）。
+function nowTaipeiFull() {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const o = {};
+  p.forEach((x) => { o[x.type] = x.value; });
+  return `${o.year}-${o.month}-${o.day} ${o.hour}:${o.minute}`;
+}
+
 export function stampSwVersion() {
   if (!existsSync(SW_FILE)) { console.warn('[stamp] 找不到 sw.js，略過'); return null; }
   const parts = [];
@@ -59,9 +69,11 @@ export function stampSwVersion() {
   //   走網路、永遠最新、不進任何快取(見 sw.js fetch handler 不攔截 .json);內容與 CODE_VERSION/BUILD_ID 同源。
   //   app 欄位=加掛版對玩家的版本號(semver,由 /release 發版時 bump),本腳本只保留、不改動。
   const buildNow = (next.match(/const BUILD_ID\s*=\s*'([^']*)';/) || [])[1] || '';
-  let app = '';
-  try { app = JSON.parse(readFileSync('version.json', 'utf8')).app || ''; } catch { /* 首次沒有就留空 */ }
-  const vjson = JSON.stringify({ code: version, build: buildNow, ...(app ? { app } : {}) }) + '\n';
+  let app = '', oldBuildAt = '';
+  try { const _ov = JSON.parse(readFileSync('version.json', 'utf8')); app = _ov.app || ''; oldBuildAt = _ov.buildAt || ''; } catch { /* 首次沒有就留空 */ }
+  // buildAt=完整台灣時間戳（YYYY-MM-DD HH:MM），供首頁「最後更新時間」顯示。與 build 同步：程式真的變了才更新成現在時間，沒變沿用舊值（首次沒有就補生成）。
+  const buildAt = codeChanged ? nowTaipeiFull() : (oldBuildAt || nowTaipeiFull());
+  const vjson = JSON.stringify({ code: version, build: buildNow, buildAt, ...(app ? { app } : {}) }) + '\n';
   if (!existsSync('version.json') || readFileSync('version.json', 'utf8') !== vjson) {
     writeFileSync('version.json', vjson);
     console.log('[stamp] version.json →', version, buildNow);

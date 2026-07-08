@@ -17,6 +17,14 @@
     else fn();
   }
 
+  // 最後更新時間顯示：優先用 version.json 的 buildAt(完整「YYYY-MM-DD HH:MM」台灣時間)；
+  //   舊版 version.json 無 buildAt 時退回 build(「MMDD-HHMM」)格式化成「MM/DD HH:MM」(無年份)。
+  function fmtUpdTime(buildAt, build) {
+    if (buildAt && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(buildAt)) return buildAt;
+    var m = /^(\d{2})(\d{2})-(\d{2})(\d{2})$/.exec(build || '');
+    return m ? (m[1] + '/' + m[2] + ' ' + m[3] + ':' + m[4]) : '';
+  }
+
   function injectCSS() {
     if (document.getElementById('afk-syncinfo-style')) return;
     var s = document.createElement('style');
@@ -25,6 +33,7 @@
       '#afk-syncinfo,#afk-syncinfo-links{color:#64748b;font-size:12px;text-align:center;letter-spacing:.3px;line-height:1.6;}' +
       '.afk-si-row{margin-top:1px;}' +
       '.afk-si-link{color:#7dd3fc;text-decoration:underline;}' +
+      '.afk-si-dot{color:#475569;margin:0 5px;}' +
       // 原作者名:彩虹漸層流動(會動)
       '.afk-si-name{font-weight:bold;background:linear-gradient(90deg,#f472b6,#fb923c,#fde047,#34d399,#22d3ee,#a78bfa,#f472b6);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:afk-si-flow 6s linear infinite;}' +
       '@keyframes afk-si-flow{to{background-position:220% 0;}}';
@@ -59,7 +68,14 @@
     fetch('version.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
-        if (j && j.app) { verEl.textContent = '加掛版 v' + j.app; verRow.style.display = ''; }
+        if (!j || !j.app) return;
+        // 加掛版版本號 · 最後更新時間(台灣時間) · 更新日誌連結
+        var html = '加掛版 v' + j.app;
+        var t = fmtUpdTime(j.buildAt, j.build);
+        if (t) html += '<span class="afk-si-dot">·</span>最後更新 ' + t;
+        html += '<span class="afk-si-dot">·</span><a class="afk-si-link" href="https://github.com/pp771007/idle-lineage-class/releases" target="_blank" rel="noopener">更新日誌</a>';
+        verEl.innerHTML = html;
+        verRow.style.display = '';
       })
       .catch(function () { /* 讀不到就維持隱藏 */ });
   }

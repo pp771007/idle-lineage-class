@@ -521,6 +521,7 @@
     wrap.className = 'm-scroll-toggles';
     wrap.appendChild(makeScrollToggle('set-magicbarrier', '魔法卷軸(魔法屏障)', 'text-cyan-300'));
     wrap.appendChild(makeScrollToggle('set-teleport', '瞬間移動卷軸(遇BOSS)', 'text-sky-300'));
+    wrap.appendChild(makeScrollToggle('set-teleport-boss', '戒指自動找BOSS', 'text-rose-300'));
     return wrap;
   }
   function makeScrollToggle(targetId, label, colorClass) {
@@ -717,6 +718,7 @@
       'body.m-mobile #m-heal-bar .m-scroll-cb{width:18px;height:18px;flex:0 0 auto;margin:0;}',
       'body.m-mobile #m-heal-bar .m-scroll-lab.text-cyan-300{color:#67e8f9;}',
       'body.m-mobile #m-heal-bar .m-scroll-lab.text-sky-300{color:#7dd3fc;}',
+      'body.m-mobile #m-heal-bar .m-scroll-lab.text-rose-300{color:#fda4af;}',
       'body.m-mobile #m-heal-bar .m-heal-row{display:flex;align-items:center;gap:10px;}',
       'body.m-mobile #m-heal-bar .m-heal-fruit{display:none;}',                /* 沒有安特的水果就不顯示這列 */
       'body.m-mobile #m-heal-bar .m-heal-fruit.m-show{display:flex;}',

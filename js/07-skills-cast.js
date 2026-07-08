@@ -779,10 +779,50 @@ function autoActions() {
         }
     });
 
+    // 🐲 自動瞬移找BOSS（傳送控制戒指）：勾選且持有戒指→場上無 BOSS 時自動瞬移（強制遇 BOSS），有 BOSS 就留下擊殺；清空後再瞬移。
+    //    與下方「遇BOSS自動逃離」互斥（找BOSS開啟時抑制逃離）。僅即時線上生效——state.ff（背景補跑/離線掛機）不套用（使用者要求）。
+    //    等待旗標避免瞬移後 BOSS 尚未生成（約 5 秒）就連續空瞬移狂耗卷軸；100 拍安全逾時後容許重試。
+    let _huntBoss = false;
+    {
+        let hChk = document.getElementById('set-teleport-boss');
+        _huntBoss = !!(hChk && hChk.checked) && !state.ff && hasTeleportRing()
+            && !isSiegeArea(mapState.current) && !PURE_BOSS_MAPS.includes(mapState.current)
+            && !KING_ROOMS[mapState.current] && !HIDDEN_AREA_PARENT[mapState.current]
+            && mapState.current.indexOf('town_') !== 0
+            && !state.prideClimb && !state.oblivion && !state.riftRun;
+        if (_huntBoss && (state._manualTpUntil == null || (state.ticks || 0) >= state._manualTpUntil)) {
+            if (mapState.mobs.some(m => m && m.boss)) {
+                state._autoBossHunt = 1;   // BOSS 已現身→留下擊殺
+            } else if (state._autoBossHunt === 2 && (state.ticks || 0) < (state._autoBossHuntUntil || 0)) {
+                // 剛瞬移、BOSS 尚未生成→等待，不重複瞬移
+            } else {
+                let done = false;
+                if (player.skills && player.skills.includes('sk_teleport')) {   // 先用傳送術（有 MP），比照手動瞬移
+                    let _sk = DB.skills.sk_teleport;
+                    if (player.mp >= player.d.getMpCost(_sk.mp, _sk.tier)) { manualCast('sk_teleport'); done = true; }
+                }
+                if (!done) {   // 無傳送術／MP 不足→用瞬間移動卷軸（非 silent＝持戒指強制遇 BOSS）；缺卷軸時比照逃離用同一個自動購買勾選
+                    let item = player.inv.find(i => i.id === 'scroll_teleport');
+                    if (!item) {
+                        let buyChk = document.getElementById('set-auto-buy-teleport');
+                        let _tpCost = shopPrice(DB.items.scroll_teleport.p);
+                        if (buyChk && buyChk.checked && player.gold >= _tpCost) {
+                            player.gold -= _tpCost;
+                            gainItem('scroll_teleport', 1, true, true);
+                            item = player.inv.find(i => i.id === 'scroll_teleport');
+                        }
+                    }
+                    if (item) { useItem(item.uid, false); done = true; }
+                }
+                if (done) { state._autoBossHunt = 2; state._autoBossHuntUntil = (state.ticks || 0) + 100; }   // 進入「等待 BOSS 生成」
+            }
+        }
+    }
+
     // 瞬間移動卷軸：戰鬥中出現 BOSS 時自動使用（自動使用必定為未裝備傳送控制戒指的傳送術效果）
     {
         let tChk = document.getElementById('set-teleport');
-        if (tChk && tChk.checked && mapState.mobs.some(m => m && m.boss && !m.noAutoTeleport) && !isSiegeArea(mapState.current) && !PURE_BOSS_MAPS.includes(mapState.current) && !state.prideClimb && !state.oblivion && !state.riftRun && (state._manualTpUntil == null || (state.ticks || 0) >= state._manualTpUntil)) {   // 🕒 手動瞬移後 5 秒內不自動瞬移/自動購買；攻城區與純BOSS房(安塔瑞斯/法利昂/巴拉卡斯)：BOSS為目標，不自動瞬移；🔧 卡瑞(noAutoTeleport)不觸發自動瞬移；🗼 傲慢之塔攀登中不自動瞬移；🌀 時空裂痕不自動瞬移逃離頭目
+        if (tChk && tChk.checked && !_huntBoss && mapState.mobs.some(m => m && m.boss && !m.noAutoTeleport) && !isSiegeArea(mapState.current) && !PURE_BOSS_MAPS.includes(mapState.current) && !state.prideClimb && !state.oblivion && !state.riftRun && (state._manualTpUntil == null || (state.ticks || 0) >= state._manualTpUntil)) {   // 🕒 手動瞬移後 5 秒內不自動瞬移/自動購買；攻城區與純BOSS房(安塔瑞斯/法利昂/巴拉卡斯)：BOSS為目標，不自動瞬移；🔧 卡瑞(noAutoTeleport)不觸發自動瞬移；🗼 傲慢之塔攀登中不自動瞬移；🌀 時空裂痕不自動瞬移逃離頭目
             let item = player.inv.find(i => i.id === 'scroll_teleport');
             if (!item) {
                 let buyChk = document.getElementById('set-auto-buy-teleport');

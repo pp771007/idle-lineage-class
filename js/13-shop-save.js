@@ -706,6 +706,7 @@ function saveGame() {
         setMagicbarrier: document.getElementById('set-magicbarrier').checked,
         setTeleport: document.getElementById('set-teleport').checked,
         setAutoBuyTeleport: document.getElementById('set-auto-buy-teleport').checked,
+        setAutoBuyRevive: document.getElementById('set-auto-buy-revive').checked,
         setAutoBuyArrow: document.getElementById('set-auto-buy-arrow').checked,
         autoBuffSkills: {} // 用來儲存動態生成的法術 Buff
     };
@@ -928,6 +929,7 @@ function loadGame() {
             if (c.setMagicbarrier !== undefined) document.getElementById('set-magicbarrier').checked = c.setMagicbarrier;
             if (c.setTeleport !== undefined) document.getElementById('set-teleport').checked = c.setTeleport;
             if (c.setAutoBuyTeleport !== undefined) document.getElementById('set-auto-buy-teleport').checked = c.setAutoBuyTeleport;
+            if (c.setAutoBuyRevive !== undefined) document.getElementById('set-auto-buy-revive').checked = c.setAutoBuyRevive;
             if (c.setAutoBuyArrow !== undefined) document.getElementById('set-auto-buy-arrow').checked = c.setAutoBuyArrow;
             
             // 動態魔法 Buff 設定還原

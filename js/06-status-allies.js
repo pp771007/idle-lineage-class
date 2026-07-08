@@ -1963,7 +1963,14 @@ function tryAutoReviveMercScroll(ally) {
     if (!ally || !ally._downed) return false;
     if ((ally._reviveCd || 0) > 0) return false;                                            // 15 秒冷卻未結束
     let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive' && (i.cnt || 0) > 0);
-    if (!sc) return false;                                                                    // 身上沒有復活卷軸→等待
+    if (!sc) {                                                                                // 身上沒有復活卷軸
+        let ab = document.getElementById('set-auto-buy-revive');                              // 開了「復活卷軸不足時自動購買」且金錢足夠 → 補 1 張（線上/離線補跑共用·讀 checkbox 同 autoActions）
+        if (ab && ab.checked) {
+            let price = shopPrice(DB.items.scroll_revive.p);                                  // 攻城獲勝 8 折亦適用
+            if (player.gold >= price) { player.gold -= price; gainItem('scroll_revive', 1, true, true); sc = player.inv.find(i => i.id === 'scroll_revive' && (i.cnt || 0) > 0); }
+        }
+        if (!sc) return false;                                                                // 仍拿不到（未開自動買／金錢不足）→ 等待
+    }
     sc.cnt--; player.inv = player.inv.filter(i => (i.cnt || 0) > 0);                          // 消耗 1 張復活卷軸
     _reviveAllyDone(ally, '復活卷軸（自動）');
     return true;

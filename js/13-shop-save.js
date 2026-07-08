@@ -489,7 +489,7 @@ function selectClass(c) {
     } else if (curCreate.cls === 'warrior') {
         document.getElementById('class-desc').innerText = "戰士：力量與體質兼備的純近戰職業，專精斧頭與鈍器、可雙持單手鈍器，魔防偏低。出生於海音。";
     } else if (curCreate.cls === 'royal') {
-        document.getElementById('class-desc').innerText = "王族：天生的領袖，傭兵上限與其他職業相同（最多 3 名）；但攜帶的傭兵與項圈夥伴可獲得王族魅力加成——造成傷害、HP、MP 皆 ×(1＋魅力/100)。習得王族專屬魔法。天生加入血盟、不可退出。出生於說話之島。";
+        document.getElementById('class-desc').innerText = "王族：天生的領袖，可同時僱用的傭兵數量隨魅力提升（3＋魅力/15，最多 7 名）；且攜帶的傭兵與項圈夥伴可獲得王族魅力加成——造成傷害、HP、MP 皆 ×(1＋魅力/100)。習得王族專屬魔法。天生加入血盟、不可退出。出生於說話之島。";
     }
     
     document.getElementById('stat-allocation').style = "";

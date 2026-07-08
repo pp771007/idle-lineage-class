@@ -467,6 +467,12 @@
 .classic-inventory-viewport input[type="checkbox"] { flex:0 0 auto; margin-right:3px; }
 .classic-inventory-viewport > .list-item > div { width:100%; min-width:0; }
 
+/* 🔧 批量選擇（快速強化／快速廢品）每勾一項畫面往上跳一格的根治：renderTabs 重建整份列表後雖已手動
+   還原 scrollTop，但瀏覽器的 scroll anchoring（捲動錨定）會在隨後的 reflow 以「被清空重建的列」為錨、
+   再補償約一列高度、蓋過我們還原的值，累積成每點一次上移一格。我們自己保存/還原捲動位置＝唯一權威，
+   故關掉這幾個捲動容器的自動錨定即可（對玩家正常捲動列表無任何影響）。 */
+#tab-weapons, #tab-armors, #tab-items, #tab-equip, .classic-skill-grid-scroll { overflow-anchor: none; }
+
 /* ===== 🎨 v3.0.55 1.8 原版風格技能魔法視窗（移植參考版）＋底部 S.power(魔法傷害)/M.resist(MR) 數值 ===== */
 #tab-skill { padding:0 !important; overflow:auto !important; align-items:center; justify-content:flex-start; background:#08090d; }
 .classic-skill-window {

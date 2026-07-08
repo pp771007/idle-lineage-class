@@ -1211,7 +1211,7 @@ function initCombatLogLock() {
 }
 
 // ⚡ 快速強化（批次強化）狀態：wpn=武器分頁、arm=防具分頁（含飾品）。sel 為 uid→true 的勾選集合。
-let quickEnh = { wpn: { active: false, target: 6, sel: {}, useBless: false }, arm: { active: false, target: 6, sel: {}, useBless: false } };   // 🌟 useBless：快速強化是否使用祝福卷（成功時 +1~+3）
+let quickEnh = { wpn: { active: false, target: 6, sel: {}, useBless: false, useCurse: false }, arm: { active: false, target: 6, sel: {}, useBless: false, useCurse: false } };   // 🌟 useBless：快速強化是否使用祝福卷（成功時 +1~+3）；🔻 useCurse：改用詛咒卷退階（把裝備降回目標等級）
 // 🗑️ 快速廢品（批次標記廢品）狀態：wpn/arm/item 三分頁；啟用時預先勾選「已是廢品」者。sel 為 uid→true。（與快速強化同分頁互斥）
 let quickJunk = { wpn: { active: false, sel: {}, known: {} }, arm: { active: false, sel: {}, known: {} }, item: { active: false, sel: {}, known: {} } };   // known＝面板開啟時(及之後同步)已納入的物品 uid，避免「面板開啟後才掉落的廢品」於確認時被誤取消標記
 

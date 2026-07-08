@@ -1205,16 +1205,20 @@ function buildQuickEnhanceHeader(type) {
     let eligible = _qeEligibleItems(type);
     let allSel = eligible.length > 0 && eligible.every(i => st.sel[i.uid]);
     let someSel = eligible.some(i => st.sel[i.uid]);
-    let target = st.target || 6;
+    let curse = !!st.useCurse;   // 🔻 詛咒退階模式
+    let target = st.target != null ? st.target : 6;   // ⚠ 不可用 `|| 6`：詛咒模式可選 +0，0 會被當 falsy 誤跳成 6
     let opts = '';
-    for (let t = 1; t <= 12; t++) opts += `<option value="${t}" ${t === target ? 'selected' : ''}>+${t}</option>`;
+    for (let t = (curse ? 0 : 1); t <= 12; t++) opts += `<option value="${t}" ${t === target ? 'selected' : ''}>+${t}</option>`;   // 強化目標 +1~+12；詛咒退階可到 +0
     let _blessId = type === 'wpn' ? 'scroll_weapon_b' : 'scroll_armor_b';   // 🌟 祝福卷（飾品無祝福卷，仍以防具祝福卷數量顯示）
     let _blessCnt = (player.inv.find(i => i.id === _blessId) || {}).cnt || 0;
-    hdr.innerHTML = `<div class="flex items-center gap-1 bg-slate-900/80 border border-slate-700 rounded p-1">
+    let _curseId = type === 'wpn' ? 'scroll_weapon_c' : 'scroll_armor_c';   // 🔻 詛咒卷（飾品無詛咒卷，仍以防具詛咒卷數量顯示）
+    let _curseCnt = (player.inv.find(i => i.id === _curseId) || {}).cnt || 0;
+    hdr.innerHTML = `<div class="flex items-center gap-1 bg-slate-900/80 border ${curse ? 'border-red-800/70' : 'border-slate-700'} rounded p-1">
         <button onclick="cancelQuickEnhance('${type}')" class="btn border-slate-600 bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs font-bold text-white rounded">取消</button>
-        <button onclick="runQuickEnhance('${type}')" class="btn border-blue-600 bg-blue-800 hover:bg-blue-700 px-2 py-1 text-xs font-bold text-blue-200 rounded">強化</button>
-        <label class="flex items-center gap-1 text-xs ${_blessCnt > 0 ? 'text-yellow-300' : 'text-slate-500'} cursor-pointer select-none whitespace-nowrap" title="勾選＝使用『祝福的卷軸』強化（成功時隨機 +1~+3）；不勾＝一般卷軸（+1）。飾品無祝福卷，恆以一般卷強化。"><input type="checkbox" ${st.useBless ? 'checked' : ''} onchange="quickEnh['${type}'].useBless=this.checked"> 祝福卷(${_blessCnt})</label>
-        <select id="qe-target-${type}" onchange="quickEnh['${type}'].target=Number(this.value)" class="bg-slate-800 border border-slate-600 text-blue-200 text-xs font-bold rounded px-1 py-1 ml-auto">${opts}</select>
+        <button onclick="runQuickEnhance('${type}')" class="btn ${curse ? 'border-red-600 bg-red-800 hover:bg-red-700 text-red-100' : 'border-blue-600 bg-blue-800 hover:bg-blue-700 text-blue-200'} px-2 py-1 text-xs font-bold rounded">${curse ? '退階' : '強化'}</button>
+        <label class="flex items-center gap-1 text-xs ${curse ? 'text-slate-600' : (_blessCnt > 0 ? 'text-yellow-300' : 'text-slate-500')} cursor-pointer select-none whitespace-nowrap" title="勾選＝使用『祝福的卷軸』強化（成功時隨機 +1~+3）；不勾＝一般卷軸（+1）。飾品無祝福卷，恆以一般卷強化。"><input type="checkbox" ${st.useBless ? 'checked' : ''} ${curse ? 'disabled' : ''} onchange="setQuickBless('${type}',this.checked)"> 祝福卷(${_blessCnt})</label>
+        <label class="flex items-center gap-1 text-xs ${_curseCnt > 0 ? 'text-red-300' : 'text-slate-500'} cursor-pointer select-none whitespace-nowrap" title="勾選＝改用『詛咒的卷軸』退階：把勾選裝備的強化值降回右側指定等級（每 -1 消耗 1 張、100% 成功、不爆裝）。飾品無詛咒卷、無法退階。"><input type="checkbox" ${curse ? 'checked' : ''} onchange="setQuickCurse('${type}',this.checked)"> 詛咒卷(${_curseCnt})</label>
+        <select id="qe-target-${type}" onchange="quickEnh['${type}'].target=Number(this.value)" class="bg-slate-800 border border-slate-600 ${curse ? 'text-red-200' : 'text-blue-200'} text-xs font-bold rounded px-1 py-1 ml-auto" title="${curse ? '退回到此強化等級' : '目標強化等級'}">${opts}</select>
         <label class="flex items-center gap-1 text-xs text-slate-300 cursor-pointer select-none whitespace-nowrap"><input type="checkbox" ${allSel ? 'checked' : ''} onchange="quickEnhanceSelectAll('${type}', this.checked)"> 全選</label>
     </div>`;
     let cb = hdr.querySelector('input[onchange*="quickEnhanceSelectAll"]'); if (cb) cb.indeterminate = someSel && !allSel;   // 部分勾選顯示半選（精準選取全選框，避免被新增的祝福卷框搶到）
@@ -1227,10 +1231,14 @@ function toggleQuickEnhance(type) { if (quickJunk[type] && quickJunk[type].activ
 function cancelQuickEnhance(type) { let st = quickEnh[type]; st.active = false; st.sel = {}; renderTabs(true); }
 function quickEnhanceSelectAll(type, checked) { let st = quickEnh[type]; st.sel = {}; if (checked) _qeEligibleItems(type).forEach(i => st.sel[i.uid] = true); renderTabs(true); }
 function toggleQuickItem(type, uid) { let st = quickEnh[type]; if (st.sel[uid]) delete st.sel[uid]; else st.sel[uid] = true; renderTabs(true); }
+// 🌟🔻 祝福卷 / 詛咒卷 互斥（強化向上 vs 退階向下）：勾一邊自動取消另一邊；切回強化時把可能為 +0 的目標夾回 +1（強化下拉無 +0）
+function setQuickBless(type, checked) { let st = quickEnh[type]; st.useBless = checked; if (checked) st.useCurse = false; if (!st.useCurse && st.target < 1) st.target = 1; renderTabs(true); }
+function setQuickCurse(type, checked) { let st = quickEnh[type]; st.useCurse = checked; if (checked) st.useBless = false; else if (st.target < 1) st.target = 1; renderTabs(true); }
 
 function runQuickEnhance(type) {
     if (traditionalActive()) return;   // 🏛️ 縱深防護：傳統模式不可批次強化
     let st = quickEnh[type];
+    if (st.useCurse) return runQuickCurse(type);   // 🔻 詛咒退階模式
     let goal = Number((document.getElementById('qe-target-' + type) || {}).value) || st.target || 0;
     let entries = _qeEligibleItems(type).filter(i => st.sel[i.uid]);
     if (!entries.length) { logSys(`<span class="text-red-400 font-bold">尚未勾選任何裝備。</span>`); return; }
@@ -1274,6 +1282,55 @@ function runQuickEnhance(type) {
     if (skipped) parts.push(`已達標 ${skipped} 件`);
     parts.push(`<span class="text-red-400">爆裝 ${destroyed} 件</span>`);
     logSys(`<span class="text-blue-300 font-bold">快速強化完成（目標 +${goal}${st.useBless ? '·祝福卷' : ''}）：</span>${parts.join('、')}，消耗 ${usedTotal} 張${st.useBless ? '祝福' : ''}卷軸。`);
+    calcStats();
+    renderTabs(true);
+    saveGame();
+}
+
+// 🔻 快速詛咒退階：用詛咒卷把勾選裝備的強化值降回目標等級（每 -1 消耗 1 張、100% 成功、不爆裝；飾品無詛咒卷跳過）
+function runQuickCurse(type) {
+    let st = quickEnh[type];
+    let goal = Number((document.getElementById('qe-target-' + type) || {}).value);
+    if (!Number.isFinite(goal)) goal = st.target || 0;
+    let entries = _qeEligibleItems(type).filter(i => st.sel[i.uid]);
+    if (!entries.length) { logSys(`<span class="text-red-400 font-bold">尚未勾選任何裝備。</span>`); return; }
+
+    // 武器/防具各自扣自己的詛咒卷（共用計數池，多件同批扣同一池）
+    let curseIds = ['scroll_weapon_c', 'scroll_armor_c'];
+    let scrollStacks = {};
+    curseIds.forEach(sid => { let it = player.inv.find(i => i.id === sid); scrollStacks[sid] = { cnt: it ? (it.cnt || 0) : 0 }; });
+
+    let reached = 0, partial = 0, skipped = 0, noScroll = 0, usedTotal = 0;
+    let removeUids = new Set();
+    let survivors = [];
+
+    entries.forEach(entry => {
+        let d = DB.items[entry.id];
+        let curseId = d.type === 'wpn' ? 'scroll_weapon_c' : (d.type === 'arm' ? 'scroll_armor_c' : null);   // 🌟 飾品(acc)無詛咒卷
+        let cnt = entry.cnt || 1;
+        removeUids.add(entry.uid);
+        for (let u = 0; u < cnt; u++) {
+            let en = entry.en || 0;
+            if (!curseId) { noScroll++; survivors.push({ ...entry, cnt: 1, uid: uid() }); continue; }   // 飾品：原樣保留
+            if (en <= goal) { skipped++; survivors.push({ ...entry, cnt: 1, uid: uid() }); continue; }   // 已在目標或更低
+            let stk = scrollStacks[curseId];
+            while (en > goal && en > 0 && stk.cnt > 0) { stk.cnt -= 1; en -= 1; usedTotal += 1; }   // 每 -1 消耗 1 張，100% 成功
+            if (en <= goal) reached++; else partial++;   // 抵達 or 詛咒卷不足停在中途
+            survivors.push({ ...entry, cnt: 1, uid: uid(), en: en, lock: false });
+        }
+    });
+
+    // 套用結果：移除原件 → 回寫詛咒卷 → 加入存活件（同簽章疊加）
+    player.inv = player.inv.filter(i => !removeUids.has(i.uid));
+    curseIds.forEach(sid => { let it = player.inv.find(i => i.id === sid); if (it) { it.cnt = scrollStacks[sid].cnt; if (it.cnt <= 0) player.inv = player.inv.filter(x => x.uid !== it.uid); } });
+    survivors.forEach(s => { let ex = player.inv.find(x => sameItemSig(x, s)); if (ex) ex.cnt = (ex.cnt || 1) + 1; else player.inv.push(s); });
+
+    st.active = false; st.sel = {};
+    let parts = [`退階 ${reached} 件`];
+    if (partial) parts.push(`詛咒卷不足停 ${partial} 件`);
+    if (skipped) parts.push(`已達標 ${skipped} 件`);
+    if (noScroll) parts.push(`飾品無法退階 ${noScroll} 件`);
+    logSys(`<span class="c-cursed font-bold">快速詛咒退階完成（退回 +${goal}）：</span>${parts.join('、')}，消耗 ${usedTotal} 張詛咒卷軸。`);
     calcStats();
     renderTabs(true);
     saveGame();

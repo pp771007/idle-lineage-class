@@ -1527,14 +1527,15 @@ function _allyXPct(i, n, xs) {
     return lo + step * slot;
 }
 let _allySpriteStates = {};   // slot → { act, t, prevHp, el, imgs, key, skGen }
-let _partyBottoms = null;     // 每輪 _allySpritesApply 先算：{ P: bottom, <slot>: bottom }（權重高=前=bottom 小·主玩家 sprite 於 _playerMorphApply 消費）
+let _partyBottoms = null;     // 每輪 _allySpritesApply 先算：{ P: bottom, <slot>: bottom }。🗡️ 仇恨高(肉)→bottom 大＝站到「靠怪物」那側(戰場上方/背景)；仇恨低(脆皮)/倒地→bottom 小＝前景遠離怪物。主玩家 sprite 於 _playerMorphApply 消費
 function _partyRankBottom() {
     let members = [{ id: 'P', w: (typeof mercAggroWeight === 'function') ? mercAggroWeight(player) : 1 }];
-    ((player && player.allies) || []).forEach(a => { if (a) members.push({ id: String(a._slot), w: (a._downed || (a.curHp || 0) <= 0) ? -1 : mercAggroWeight(a) }); });   // 倒地者權重視為最低（排最後方）
-    members.sort((x, y) => y.w - x.w);
+    ((player && player.allies) || []).forEach(a => { if (a) members.push({ id: String(a._slot), w: (a._downed || (a.curHp || 0) <= 0) ? -1 : mercAggroWeight(a) }); });   // 倒地者權重視為最低（拉到前景、離開戰線）
+    members.sort((x, y) => y.w - x.w);   // 仇恨高→低
     let out = {};
-    let step = members.length > 1 ? Math.min(9, Math.round(28 / (members.length - 1))) : 9;   // 🗡️ 大隊伍(王族最多 7 傭兵＋玩家＝8 員)壓縮前後間距,避免後排被推出短版面(戰場僅 ~94px 高);≤4 員維持原本 9px
-    members.forEach((m, i) => { out[m.id] = 2 + i * step; });   // 最前 bottom 2px·每名往後 +step（狩獵區帶內可辨識前後）
+    let step = members.length > 1 ? Math.min(9, Math.round(28 / (members.length - 1))) : 9;   // 🗡️ 大隊伍(王族最多 7 傭兵＋玩家＝8 員)壓縮前後間距,避免超出短版面(戰場僅 ~94px 高);≤4 員維持原本 9px
+    let last = members.length - 1;
+    members.forEach((m, i) => { out[m.id] = 2 + (last - i) * step; });   // 🗡️ 反轉:仇恨高(i 小)→bottom 大=最靠怪物(前線·肉);仇恨低/倒地(i 大)→bottom 小=前景(遠離怪物·脆皮)。配合 z-index=max(2,30-bottom)→前景(脆皮)在上層、肉在後,符合「鏡頭在我方後方、肉衝在最前線對著怪」的透視
     return out;
 }
 function _allySpriteTrigger(ally, k, skId) {   // js/06 掛點：allyAttackOnce→'attack'·三施法函式→'skill'

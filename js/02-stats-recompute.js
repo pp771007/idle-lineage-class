@@ -1,3 +1,7 @@
+// 彈窗面板底色：.panel 的 background 簡寫因色值不在最後一層而整條失效（背景恆為透明），
+// 故凡是浮在遊戲畫面上的 .panel 都要自帶底色，否則會透出後方的背包/戰鬥畫面（index.html 的 #item-modal 同此做法）
+const PANEL_BG = '#1e293b';
+
 function recomputeStats() {
     let p = player, d = p.d, b = p.base, a = p.alloc;
     if (typeof p.lv === 'number') p.lv = Math.max(1, Math.min(100, Math.floor(p.lv) || 1));   // 🛡️ 等級硬夾 [1,100]：即時中和「改 player.lv」的外掛，避免職業成長值被放大
@@ -803,7 +807,7 @@ function openPolySelect(uid) {
         modal.className = 'hidden fixed inset-0 z-[60] flex items-center justify-center';
         modal.innerHTML =
             '<div class="absolute inset-0 bg-black/60" onclick="closePolyModal()"></div>' +
-            '<div class="panel border-slate-500 p-5 relative w-[440px] max-h-[80vh] flex flex-col">' +
+            `<div class="panel border-slate-500 p-5 relative w-[440px] max-h-[80vh] flex flex-col" style="background:${PANEL_BG}">` +
               '<div class="panel-header rounded-md mb-3">變形控制戒指 — 選擇變身</div>' +
               '<div id="poly-modal-list" class="flex flex-col gap-2 overflow-y-auto pr-1"></div>' +
               '<button class="btn mt-4" onclick="closePolyModal()">取消</button>' +
@@ -874,7 +878,7 @@ function openOsirisBox(uid) {
     if (!modal) { modal = document.createElement('div'); modal.id = 'osiris-box-modal'; modal.className = 'hidden fixed inset-0 z-[60] flex items-center justify-center'; document.body.appendChild(modal); }
     modal.innerHTML =
         '<div class="absolute inset-0 bg-black/60" onclick="closeOsirisBoxModal()"></div>' +
-        '<div class="panel border-amber-500 p-5 relative w-[420px] flex flex-col">' +
+        `<div class="panel border-amber-500 p-5 relative w-[420px] flex flex-col" style="background:${PANEL_BG}">` +
           `<div class="panel-header rounded-md mb-3">${d.n} — 選擇開啟數量</div>` +
           `<div class="text-sm text-slate-300 mb-3">每開啟 1 個消耗 <span class="text-amber-300">1 顆 龜裂之核</span>。<br>持有寶箱 <span class="text-amber-300">${item.cnt || 1}</span> 個、龜裂之核 <span class="text-amber-300">${coreCnt}</span> 顆，最多可開啟 <span class="text-amber-300">${maxN}</span> 個。</div>` +
           `<input id="osiris-box-qty" type="number" min="1" max="${maxN}" value="${maxN}" class="w-full mb-3 px-2 py-1 rounded bg-slate-800 border border-slate-600 text-center text-lg">` +
@@ -939,7 +943,7 @@ function openPanaceaModal(uid) {
     if (!modal) { modal = document.createElement('div'); modal.id = 'panacea-modal'; modal.className = 'hidden fixed inset-0 z-[60] flex items-center justify-center'; document.body.appendChild(modal); }
     modal.innerHTML =
         '<div class="absolute inset-0 bg-black/60" onclick="closePanaceaModal()"></div>' +
-        '<div class="panel border-pink-400 p-5 relative w-[420px] max-w-[92vw] flex flex-col">' +
+        `<div class="panel border-pink-400 p-5 relative w-[420px] max-w-[92vw] flex flex-col" style="background:${PANEL_BG}">` +
           `<div class="panel-header rounded-md mb-3">${d.n} — 選擇服用數量</div>` +
           `<div class="text-sm text-slate-300 mb-3">每服用 1 瓶，${PANACEA_STAT_CN[st]} 永久 <span class="text-pink-300">+1</span>。<br>` +
           `持有 <span class="text-pink-300">${item.cnt || 1}</span> 瓶、萬能藥已使用 <span class="text-pink-300">${player.panaceaUsed || 0}/${PANACEA_MAX}</span>、` +

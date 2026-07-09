@@ -90,6 +90,11 @@
 - **受擊動作是「HP 掉了就播」(HP-delta 偵測),自傷技能(`hpCost`)的自扣血會被誤判成被打(踩過 2026-07-09:屠宰者全程只播受傷動作)**:`_playerMorphApply` 用 `hp < prevHp` 判受擊,而屠宰者/冥想術/隱身術/魂體轉換這類 `sk.hpCost` 技能施放時自己扣血 → 下一幀被判成受擊;受擊權重(4)又高過施法(3)/攻擊(2),於是把該播的動作整個蓋掉、且因技能連發而卡在受傷姿勢。**解法:施放成功後呼叫 `_pmAbsorbSelfHpCost()` 把這次 HP-delta 吸收掉**(castSkill / manualCast 兩個包裝都要)。原版(`D:\otherPersonRepos\idle-lineage-class`)同樣沒處理,是上游共有的坑。**判準:新增「會自己扣玩家 HP/觸發 HP 變化」的技能或機制 → 想一下 sprite 會不會誤判受擊。**
 - **「揮武器/擲武器」型的技能不該播施法動作**:`_PM_ATTACK_SKILLS`(玩家端·技能 id)/`_PM_ATTACK_SKILL_NAMES`(傭兵端·技能名)列出這類技能,改播攻擊動畫;有 `hits` 的(屠宰者/三重矢)連播 hits 次(burst),沒有 `hits` 的(戰斧投擲)播單次、不進 burst(免擋掉緊接著的普攻動畫)。新增同性質技能記得加進去。
 
+### 🤝 傭兵自我 buff(js/06-status-allies.js `allyMaintainBuffs`)的坑
+
+- **不可用「隊長身上有沒有這個 buff」當傭兵施放與否的判斷(踩過 2026-07-09)**:自我增益寫進 `ally.buffs` 後才會經 `_allyLevelRecompute` 生效在傭兵身上,**隊長的 `player.buffs` 對傭兵零加成**。舊碼(v2.6.50)在施放前檢查 `player.buffs[sid]>0 就 continue`,結果是「隊長開了 buff,傭兵反而永遠裸著」。真正全隊共享的(幻覺光環/大地祝福/鋼鐵防護/水之元氣)本來就在 `_isMercSelfBuff` 排除、各走 aura 路徑,不需要這條。**判準:傭兵的施放條件只能看 `ally` 自己的狀態。**
+- **`_isMercSelfBuff` 要排除「純玩家端效果」的 buff,否則傭兵白耗 MP(同日踩到)**:有些 buff 沒有 `d:{}` 衍生值,效果寫死成只讀 `player.buffs`——日光術(出怪間隔 `js/03`)、無所遁形術(史巴托現身 `js/03`)、隱身術(`isPlayerStealth` `js/08`)。傭兵放了不會有任何事發生。**偵測法:新增 buff 時問「這支的效果,傭兵端讀得到嗎?」——① 有 `d:{}`(走 recompute)或 ② 有 `ally.buffs.<id>` 的具名讀取(如 `_allyAtkBuffProcs`/`allyStrikeRoll`),兩者皆無 → 加進 `_isMercSelfBuff` 的排除清單。** 用 `grep -oE 'player\.buffs\.[A-Za-z_0-9]+' js/*.js` 列出所有玩家端具名讀取,再比對 ally 端有沒有對應那支。
+
 ### 外掛 DOM / CSS 注入的坑(踩過)
 
 > `afk-fixes.js` 收「不綁手機/離線/查詢」的通用補坑碼:會主動執行(包核心函式/長駐監聽)的補坑放這;純 CSS 覆寫那種「過時自動失效」的不歸這、留在 `afk-mobile.js`。(存檔匯入/匯出原本有 `afk-savedata.js`,遊戲內建匯出入功能後移除。)

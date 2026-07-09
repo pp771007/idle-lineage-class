@@ -1681,6 +1681,9 @@ function _isMercSelfBuff(sk, sid) {
     if (sid === 'sk_antidote' || sid === 'sk_holy_light' || sid === 'sk_cancel') return false;
     if (sid === 'sk_illu_avatar' || sid === 'sk_elf_earthbless' || sid === 'sk_elf_steelguard' || sid === 'sk_elf_watervital') return false;   // 🌊 v2.6.17 水之元氣＝隊長團隊增益(waterVitalHeal 讀隊長)·傭兵不自我維持免白耗MP
     if (sid === 'sk_abs_barrier' || sid === 'sk_elf_earthshield' || sid === 'sk_magic_shield') return false;   // 🚫 v2.6.13 #5b：完全免疫類（絕對屏障/大地屏障/魔法屏障）不給傭兵（自動維持會近乎無敵·用戶決定）→不自動維持免白耗MP
+    // 純玩家端效果（無 d 衍生值·效果只讀 player.buffs）：日光術=出怪間隔(js/03)、無所遁形術=史巴托現身(js/03)、隱身術=isPlayerStealth(js/08)。
+    // 傭兵放了零效果、只白耗 MP（傭兵版隱身走 sk_dark_stealth）。
+    if (sid === 'sk_sunlight' || sid === 'sk_reveal' || sid === 'sk_invisible') return false;
     return true;
 }
 const _MERC_AWAKENS = ['sk_dragon_awaken_antares', 'sk_dragon_awaken_falion', 'sk_dragon_awaken_baraka'];

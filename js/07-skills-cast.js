@@ -808,7 +808,7 @@ function autoActions() {
                     }
                 }
                 if (item) {
-                    useItem(item.uid, false);
+                    useItem(item.uid, false, true);   // 非 silent＝引動戒指強制遇 BOSS；keepModal＝自動觸發，別關玩家開著的物品視窗
                     state._autoBossHunt = 2; state._autoBossHuntUntil = (state.ticks || 0) + 100;   // 進入「等待 BOSS 生成」
                 }
             }

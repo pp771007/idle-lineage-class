@@ -239,7 +239,9 @@ function getItemFullName(item) {
     return `${segs}<span class="${getItemColor(item)}">${en}${setPrefix}${d.n}${cnt}</span>`;
 }
 
-function useItem(u, silent = false) {
+// silent=true：自動使用（不寫日誌、瞬移卷軸不引動傳送控制戒指、不進隱藏區域）
+// keepModal=true：非玩家點擊觸發的使用（如自動找 BOSS 的瞬移），不關掉玩家正在看的物品視窗
+function useItem(u, silent = false, keepModal = false) {
     let item = player.inv.find(i => i.uid === u);
     if (!item) return;
     if (player.dead) { if (!silent) logSys(`死亡狀態無法使用道具，請先復活。`); return; }   // 死亡(未復活前)鎖住手動使用
@@ -475,7 +477,7 @@ function useItem(u, silent = false) {
         } else logSys(`你已經學過這個技能了。`);
     }
     updateUI();
-    if(!silent && document.getElementById('item-modal').classList.contains('hidden') === false && (d.type !== 'scroll' || d.eff === 'poly' || d.eff === 'magicbarrier' || d.eff === 'teleport_scroll')) {
+    if(!silent && !keepModal && document.getElementById('item-modal').classList.contains('hidden') === false && (d.type !== 'scroll' || d.eff === 'poly' || d.eff === 'magicbarrier' || d.eff === 'teleport_scroll')) {
         closeModal();
     }
 }

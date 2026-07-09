@@ -434,15 +434,15 @@ function useItem(u, silent = false) {
             }
             // 落到下方 consume(item)，消耗一張卷軸
         } else if (d.eff === 'panacea') {
-            const STAT_CN = { str:'力量', dex:'敏捷', con:'體質', int:'智力', wis:'精神', cha:'魅力' };
-            let st = d.pstat, cap = 60;
+            let st = d.pstat;
             // 萬能藥已取消等級限制（不再檢查 plv）
-            if ((player.panaceaUsed || 0) >= 60) { if(!silent) logSys(`萬能藥最多只能使用 60 瓶，使用回憶蠟燭後可重新使用。`); return; }   // 🔧 上限 20→30→50→60
-            if (naturalStat(st) >= cap) { if(!silent) logSys(`${STAT_CN[st]}已達上限（${cap}），無法再使用 ${d.n}。`); return; }
+            if (!silent && panaceaMaxDoses(item, d) > 1) { openPanaceaModal(item.uid); return; }   // 🧪 可服用 2 瓶以上 → 先選數量（doDrinkPanacea 再逐瓶 silent 呼叫回來）
+            if ((player.panaceaUsed || 0) >= PANACEA_MAX) { if(!silent) logSys(`萬能藥最多只能使用 ${PANACEA_MAX} 瓶，使用回憶蠟燭後可重新使用。`); return; }   // 🔧 上限 20→30→50→60
+            if (naturalStat(st) >= PANACEA_STAT_CAP) { if(!silent) logSys(`${PANACEA_STAT_CN[st]}已達上限（${PANACEA_STAT_CAP}），無法再使用 ${d.n}。`); return; }
             if (!player.panacea) player.panacea = { str:0, dex:0, con:0, int:0, wis:0, cha:0 };
             player.panacea[st] = (player.panacea[st] || 0) + 1;
             player.panaceaUsed = (player.panaceaUsed || 0) + 1;
-            if(!silent) logSys(`使用了 ${d.n}，${STAT_CN[st]} 永久 +1！（萬能藥已使用 ${player.panaceaUsed}/60）`);
+            if(!silent) logSys(`使用了 ${d.n}，${PANACEA_STAT_CN[st]} 永久 +1！（萬能藥已使用 ${player.panaceaUsed}/${PANACEA_MAX}）`);
             // 落到下方 consume(item) + calcStats()，由 useItem 結尾 updateUI 刷新
         } else if (d.eff === 'reset') {
             startRespec(); return;   // 🕯️ 回憶蠟燭：改為「資訊面板配點重置」流程（確認時才消耗蠟燭，故此處不 consume）

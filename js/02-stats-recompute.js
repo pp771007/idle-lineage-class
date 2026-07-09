@@ -921,6 +921,60 @@ function doOpenOsirisBox(uid, n) {
     closeOsirisBoxModal();
 }
 
+// 🧪 萬能藥：選擇數量批量服用（比照歐西里斯寶箱流程）
+//    上限規則統一在此宣告，useItem 的 panacea 分支與本區塊共用，不各寫一份。
+const PANACEA_MAX = 60;        // 萬能藥總使用瓶數上限（回憶蠟燭後歸零）
+const PANACEA_STAT_CAP = 60;   // 單一屬性自然值上限（不含裝備）
+const PANACEA_STAT_CN = { str: '力量', dex: '敏捷', con: '體質', int: '智力', wis: '精神', cha: '魅力' };
+// 本次最多可服用幾瓶：受「背包堆疊數」「總量上限」「該屬性距離上限」三者夾擊
+function panaceaMaxDoses(item, d) {
+    return Math.max(0, Math.min(item.cnt || 1, PANACEA_MAX - (player.panaceaUsed || 0), PANACEA_STAT_CAP - naturalStat(d.pstat)));
+}
+function openPanaceaModal(uid) {
+    let item = player.inv.find(i => i.uid === uid);
+    if (!item) return;
+    let d = DB.items[item.id]; if (!d) return;
+    let st = d.pstat, maxN = panaceaMaxDoses(item, d);
+    let modal = document.getElementById('panacea-modal');
+    if (!modal) { modal = document.createElement('div'); modal.id = 'panacea-modal'; modal.className = 'hidden fixed inset-0 z-[60] flex items-center justify-center'; document.body.appendChild(modal); }
+    modal.innerHTML =
+        '<div class="absolute inset-0 bg-black/60" onclick="closePanaceaModal()"></div>' +
+        '<div class="panel border-pink-400 p-5 relative w-[420px] max-w-[92vw] flex flex-col">' +
+          `<div class="panel-header rounded-md mb-3">${d.n} — 選擇服用數量</div>` +
+          `<div class="text-sm text-slate-300 mb-3">每服用 1 瓶，${PANACEA_STAT_CN[st]} 永久 <span class="text-pink-300">+1</span>。<br>` +
+          `持有 <span class="text-pink-300">${item.cnt || 1}</span> 瓶、萬能藥已使用 <span class="text-pink-300">${player.panaceaUsed || 0}/${PANACEA_MAX}</span>、` +
+          `${PANACEA_STAT_CN[st]}目前 <span class="text-pink-300">${naturalStat(st)}/${PANACEA_STAT_CAP}</span>（不含裝備）。<br>` +
+          `本次最多可服用 <span class="text-pink-300">${maxN}</span> 瓶。</div>` +
+          `<input id="panacea-qty" type="number" min="1" max="${maxN}" value="${maxN}" class="w-full mb-3 px-2 py-1 rounded bg-slate-800 border border-slate-600 text-center text-lg">` +
+          `<div class="flex gap-2"><button class="btn flex-1 bg-pink-800 hover:bg-pink-700 font-bold" onclick="confirmPanacea('${uid}')">服用</button><button class="btn flex-1" onclick="closePanaceaModal()">取消</button></div>` +
+        '</div>';
+    modal.classList.remove('hidden');
+    if (!document.getElementById('item-modal').classList.contains('hidden')) closeModal();
+}
+function confirmPanacea(uid) {
+    let inp = document.getElementById('panacea-qty');
+    doDrinkPanacea(uid, Math.max(1, parseInt(inp && inp.value) || 1));
+}
+function closePanaceaModal() { let m = document.getElementById('panacea-modal'); if (m) m.classList.add('hidden'); }
+// 逐瓶走 useItem(silent) 的 panacea 分支：上限檢查／消耗／calcStats 全在那裡，此處不重複實作
+function doDrinkPanacea(uid, n) {
+    let item = player.inv.find(i => i.uid === uid);
+    if (!item) { closePanaceaModal(); return; }
+    let d = DB.items[item.id], st = d.pstat, before = player.panaceaUsed || 0;
+    n = Math.max(1, Math.floor(n));
+    for (let k = 0; k < n; k++) {
+        let cur = player.inv.find(i => i.uid === uid);
+        if (!cur || (cur.cnt || 0) < 1) break;
+        let used = player.panaceaUsed || 0;
+        useItem(uid, true);
+        if ((player.panaceaUsed || 0) === used) break;   // 沒增加＝被上限擋下
+    }
+    let got = (player.panaceaUsed || 0) - before;
+    if (got > 0) logSys(`服用了 ${got} 瓶 ${d.n}，${PANACEA_STAT_CN[st]} 永久 +${got}！（萬能藥已使用 ${player.panaceaUsed}/${PANACEA_MAX}）`);
+    renderTabs(true); updateUI(); saveGame();
+    closePanaceaModal();
+}
+
 // 主迴圈：依「真實經過的時間」補跑對應數量的邏輯 tick。
 // 這樣即使分頁切到背景被瀏覽器降速、或機器卡頓導致 setInterval 延遲，
 // 遊戲時間仍會以正確速率前進（回到分頁時自動快轉補上落後的進度）。

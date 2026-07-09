@@ -85,6 +85,11 @@
 > - afk-sw 無 DOM 掛點不列入 smoke;**afk-pwa 有 UI 掛點,已列入 smoke 的 `[AFK-pwa]` 檢查**。
 > - **⚠️ SW `cache.put` 絕不能存 206(Range 部分回應)——`res.ok` 對 206 也是 true,會踩雷(踩過 2026-06-30,玩家回報 `sw.js TypeError: Failed to execute 'put'`)**:`<audio>`/`<video>` 串流(`assets/bgm/*`、`assets/sfx/*` 音檔)用 `Range:` 抓 → server 回 **206 Partial Content**,而 `cache.put` 對 206 會 **reject**(`Partial response unsupported`)。**判準/解法:存進 Cache 的條件一律用 `res.status === 200`(不是 `res.ok`,後者含 206/204…),且 `cache.put(...).catch(()=>{})` 永遠掛 catch**(配額滿/race 也不該炸頁面)。新增任何「會被 Range 請求的媒體」或改 SW 快取邏輯時都套這條。
 
+### 🎬 戰鬥 sprite 動作(js/09-vfx-render.js)的坑
+
+- **受擊動作是「HP 掉了就播」(HP-delta 偵測),自傷技能(`hpCost`)的自扣血會被誤判成被打(踩過 2026-07-09:屠宰者全程只播受傷動作)**:`_playerMorphApply` 用 `hp < prevHp` 判受擊,而屠宰者/冥想術/隱身術/魂體轉換這類 `sk.hpCost` 技能施放時自己扣血 → 下一幀被判成受擊;受擊權重(4)又高過施法(3)/攻擊(2),於是把該播的動作整個蓋掉、且因技能連發而卡在受傷姿勢。**解法:施放成功後呼叫 `_pmAbsorbSelfHpCost()` 把這次 HP-delta 吸收掉**(castSkill / manualCast 兩個包裝都要)。原版(`D:\otherPersonRepos\idle-lineage-class`)同樣沒處理,是上游共有的坑。**判準:新增「會自己扣玩家 HP/觸發 HP 變化」的技能或機制 → 想一下 sprite 會不會誤判受擊。**
+- **「揮武器/擲武器」型的技能不該播施法動作**:`_PM_ATTACK_SKILLS`(玩家端·技能 id)/`_PM_ATTACK_SKILL_NAMES`(傭兵端·技能名)列出這類技能,改播攻擊動畫;有 `hits` 的(屠宰者/三重矢)連播 hits 次(burst),沒有 `hits` 的(戰斧投擲)播單次、不進 burst(免擋掉緊接著的普攻動畫)。新增同性質技能記得加進去。
+
 ### 外掛 DOM / CSS 注入的坑(踩過)
 
 > `afk-fixes.js` 收「不綁手機/離線/查詢」的通用補坑碼:會主動執行(包核心函式/長駐監聽)的補坑放這;純 CSS 覆寫那種「過時自動失效」的不歸這、留在 `afk-mobile.js`。(存檔匯入/匯出原本有 `afk-savedata.js`,遊戲內建匯出入功能後移除。)

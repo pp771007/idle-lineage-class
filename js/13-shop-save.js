@@ -359,6 +359,22 @@ async function exportSave(){
     downloadSaveFile(data, fname);
 }
 function downloadSaveFile(data, fname){
+    // Android Chrome 行動模式的下載管理員是非同步的，blob URL 常在它讀取前就被 revoke → 下載 0 byte。
+    // Web Share API 不走下載管理員，直接交給系統的分享/儲存對話框。桌面版模式 UA 不含 Android，走下面原路徑。
+    if (/Android/i.test(navigator.userAgent || '')) {
+        try {
+            let file = new File([data], fname, { type: 'application/json' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({ files: [file], title: fname })
+                    .then(() => logSys(`<span class="text-indigo-300 font-bold">✔ 存檔已匯出：${fname}</span>`))
+                    .catch(err => { if (!err || err.name !== 'AbortError') downloadSaveFileBlob(data, fname); });   // 使用者取消不重試；其他錯誤才退回下載
+                return;
+            }
+        } catch (e) {}   // 舊版 Android 無 canShare / File → 落到下載
+    }
+    downloadSaveFileBlob(data, fname);
+}
+function downloadSaveFileBlob(data, fname){
     let blob = new Blob([data], { type: 'application/json' });
     let url = URL.createObjectURL(blob);
     let a = document.createElement('a');
@@ -674,9 +690,13 @@ function updateClassPotionRows() {
 //    會把靜態預設 UI 寫進存檔、永久洗掉玩家全部自動化設定。未就緒時保留既有 player.config 原樣入檔。
 let _uiConfigReady = false;
 function saveGame() {
+    // 未載入角色不寫檔：主選單/創角時 player 是空白預設（cls 為 null），此時寫檔會把空白角色
+    // 蓋進 lineage_idle_save_<currentSlot>（預設 1）→ 覆蓋玩家第 1 格真實存檔，且此路徑不留備份。
+    // cls 在 startGame() 一開始就設好，故此防呆只擋「主選單空白」這唯一壞狀態。
+    if (!player || !player.cls) return;
     // 死亡狀態不寫檔：避免把 player.dead=true 存進去，導致下次讀檔卡在死亡狀態而不出怪。
     // 死亡期間沒有可保存的進度，保留上一份「存活」存檔即可。
-    if (player && player.dead) return;
+    if (player.dead) return;
     if (typeof sanitizeState === 'function') sanitizeState();   // 🛡️ 寫檔前合理性夾擠：把 runtime(Console)改出的不可能數值夾回合法範圍，連同簽章一起固化、不讓作弊值被存檔/匯出
     // 收集目前的自動化設定 UI 狀態（🛡️ 僅在 UI 已同步時重建；否則沿用記憶體中既有 config）
     if (_uiConfigReady) {
@@ -723,6 +743,20 @@ function saveGame() {
     if (typeof _dexFlushFf === 'function') _dexFlushFf();   // 🚀 快轉期間延後的收集冊寫入,隨存檔一併補寫（見 js/12 saveCardDex）
     logSys(`遊戲進度已儲存。`);
 }
+
+// 關閉分頁 / 切到背景時補存一次：自動存檔每 5 分鐘一次，直接關掉最多會丟近 5 分鐘進度。
+// visibilitychange→hidden 是手機最可靠的時機（被系統殺背景時 pagehide/beforeunload 常不觸發）。
+(function () {
+    function saveOnExit() {
+        if (window.__afkLoggingOut) return;   // 手機登出流程已自己存過（afk-mobile），再存會讓 toast 跳兩次
+        let gs = document.getElementById('game-screen');
+        if (!gs || gs.classList.contains('hidden')) return;   // 只在真的在遊戲畫面時存
+        try { saveGame(); } catch (e) {}
+    }
+    window.addEventListener('pagehide', saveOnExit);
+    window.addEventListener('beforeunload', saveOnExit);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') saveOnExit(); });
+})();
 
 // 合併同一性物品堆疊（相容舊存檔：修復前被拆分的相同卷軸/物品會重新合併）。
 // 僅合併未強化(en===0)的物品；強化品(+N)維持獨立。鎖定不列入同一性比對（與 gainItem 一致），

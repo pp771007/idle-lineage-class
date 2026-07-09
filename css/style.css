@@ -194,6 +194,16 @@
         #battle-view.area-fit .boss-zoom .mob-img-wrap { overflow: visible; }
         #battle-view.area-fit .boss-zoom .mob-img-inner { transform: scale(1.78); transform-origin: bottom center; }   /* 👑 頭目圖放大 1.78×(由 1.2× 調大)；底部對齊原點→只往上/兩側脹大、腳不動 */
         #battle-view.area-fit .boss-zoom > :nth-child(1), #battle-view.area-fit .boss-zoom > :nth-child(2) { position: relative; z-index: 5; }
+        /* 👑 邊格頭目不被戰鬥框裁掉：最左那隻由 bottom left 放大(只往右脹)、最右那隻由 bottom right(只往左脹)，中間維持 center */
+        #battle-view.area-fit .boss-zoom:first-child .mob-img-inner { transform-origin: bottom left; }
+        #battle-view.area-fit .boss-zoom:last-child .mob-img-inner { transform-origin: bottom right; }
+        /* 👑 多隻頭目重疊時的前後層次(左到右第 1~5 格)：中間最上、最左次之、最右第三 */
+        #battle-view.area-fit .mob-target.boss-zoom { position: relative; }
+        #battle-view.area-fit .mob-target:nth-child(1).boss-zoom { z-index: 40; }
+        #battle-view.area-fit .mob-target:nth-child(2).boss-zoom { z-index: 20; }
+        #battle-view.area-fit .mob-target:nth-child(3).boss-zoom { z-index: 50; }
+        #battle-view.area-fit .mob-target:nth-child(4).boss-zoom { z-index: 10; }
+        #battle-view.area-fit .mob-target:nth-child(5).boss-zoom { z-index: 30; }
         /* 🆕 五怪前後排：一般狩獵地圖於原三格(前排·略低·z2)之間插入兩格(後排·略高·z1)，營造前後景深；頭目可出現於任一格(後排頭目套下方專屬放大規則)。位移/縮放只套在圖層(mob-img-inner)→名稱/徽章/狀態列不被裁、徽章可讀 */
         #battle-view .mob-front, #battle-view .mob-back { position: relative; overflow: visible; }   /* 前排放大(1.1×)/頭目(1.78×)需溢出卡片(由戰鬥框 overflow:hidden 收邊) */
         #battle-view .mob-front { z-index: 2; flex: 1.2 1 0%; }
@@ -219,6 +229,8 @@
         .bar-text { position: absolute; top: 0; left: 0; width: 100%; text-align: center; font-size: 12px; line-height: 20px; font-weight: 700; text-shadow: 1px 1px 2px rgba(0,0,0,0.9); }
         /* 🛡️ 裝備可用職業 logo：細金邊、無發光特效 */
         .class-eq-icon { display: inline-block; width: 20px; height: 20px; object-fit: contain; vertical-align: middle; margin-right: 4px; border: 1px solid #c9a227; border-radius: 4px; background: #11161f; box-shadow: none; }
+        /* 🛡️ 點擊職業 logo 浮現的職業名 tip（手機無 hover，看不到 title） */
+        #eqicon-tip { position: fixed; z-index: 100000; pointer-events: none; background: #0f172a; border: 1px solid #475569; color: #e2e8f0; font-size: 13px; font-weight: bold; padding: 4px 10px; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.5); opacity: 0; transition: opacity .12s; white-space: nowrap; }
         .c-blessed { color: #facc15; } .c-ancient { color: #c084fc; } .c-rare { color: #fb923c; } .c-attr { color: #22d3ee; } .c-anc-bless { color: #e3a625; }
         .c-eternal    { color: #f43f5e; text-shadow: 0 0 5px rgba(244,63,94,.65); }   /* 永恆：玫瑰紅（與火屬性三紅區隔） */
         .c-immortal   { color: #10b981; text-shadow: 0 0 5px rgba(16,185,129,.65); }  /* 不朽：翡翠綠（與風屬性三綠區隔） */

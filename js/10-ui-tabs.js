@@ -1996,3 +1996,24 @@ function toggleAutomationCollapse() {
     try { _lsSet('fb5_automation_collapsed', collapsed ? '1' : '0'); } catch (e) {}
 }
 // 🔧 v2.6.76 傭兵隊伍面板收合已移除（恆展開·用戶要求）：_applySquadCollapse/toggleSquadCollapse 刪除、index.html 標題列改純標題無箭頭。
+
+// 🛡️ 適用職業 logo：手機沒有 hover，看不到 title 屬性 → 點一下浮現職業名 1.6 秒。
+//    全域委派：物品彈窗與小百科「裝備」分頁用的是同一個 class-eq-icon，一個 handler 兩邊都補。
+(function () {
+    let tip = null, hideT = null;
+    document.addEventListener('click', function (e) {
+        let ic = e.target && e.target.closest ? e.target.closest('img.class-eq-icon') : null;
+        if (!ic) return;
+        let name = ic.getAttribute('title') || ic.getAttribute('alt');
+        if (!name) return;
+        e.preventDefault();
+        if (!tip) { tip = document.createElement('div'); tip.id = 'eqicon-tip'; document.body.appendChild(tip); }
+        tip.textContent = '可裝備：' + name;
+        tip.style.opacity = '1';   // 先顯示才量得到尺寸
+        let r = ic.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+        tip.style.left = Math.min(window.innerWidth - tw - 6, Math.max(6, r.left + r.width / 2 - tw / 2)) + 'px';
+        tip.style.top = (r.top - th - 6 < 6 ? r.bottom + 6 : r.top - th - 6) + 'px';
+        if (hideT) clearTimeout(hideT);
+        hideT = setTimeout(() => { tip.style.opacity = '0'; }, 1600);
+    }, true);
+})();

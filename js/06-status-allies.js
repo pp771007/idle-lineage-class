@@ -1700,13 +1700,9 @@ function allyMaintainBuffs(ally) {
             //    存於 config.autoBuffSkills（buildAlly 深拷貝已帶入傭兵快照）。傭兵原本無條件維持「所有已學 buff」→會維持玩家根本沒開的 buff 白扣 MP（王族/龍騎士尤其明顯：MP 只出不進）。
             //    改為：只維持「來源角色有勾選自動施放」的 buff（沒有 config 或未勾＝不維持·與該角色親自遊玩時完全一致）。⚠️summon/HoT 走各自區塊·此閘只管 _isMercSelfBuff 自我增益。
             if (!_mercAutoOn(ally, sid)) continue;
-            // 🆕 v2.6.50 用戶要求：傭兵輔助法術「以主要玩家為判斷依據」→ 主玩家身上已有此輔助狀態就不施放、沒有才施放。
-            //    (player.buffs 與 ally.buffs 皆以技能 id 為鍵·同一輔助 buff 可直接比對；加速另有 buffs.haste 具名鍵·含藥水加速一併判定)
-            if (typeof player !== 'undefined' && player && player.buffs) {
-                if ((player.buffs[sid] || 0) > 0) continue;                  // 主玩家已有同一輔助法術的 buff → 不放
-                if (sk.haste && (player.buffs.haste || 0) > 0) continue;     // 主玩家已處於加速狀態（含藥水加速）→ 不放加速類
-            }
-            if ((ally.buffs[sid] || 0) > 0) continue;   // 已生效（含 noRefresh 語意）；保留自身守衛避免同一秒重複施放/MP 空轉
+            // 自我增益只寫 ally.buffs 才對傭兵生效（隊長的 player.buffs 不會加成傭兵）→ 判斷一律看 ally 自己。
+            // 真正全隊共享的（幻覺光環/大地祝福/鋼鐵防護/水之元氣）已在 _isMercSelfBuff 排除、各走 aura 路徑。
+            if ((ally.buffs[sid] || 0) > 0) continue;   // 已生效（含 noRefresh 語意）；避免同一秒重複施放/MP 空轉
             if (sk.darkStealth && (ally._darkStealthCd || 0) > state.ticks) continue;   // 🖤 v2.7.92 暗隱術（傭兵）：迴避消費後 5 秒冷卻內不再施放（鏡像玩家 js/07 autocast 閘）
             let w = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
             if (sk.reqWpn === 'w2h' && (!w || !w.w2h)) continue;

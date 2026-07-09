@@ -673,7 +673,8 @@ function playerHasWindHelm() {
     return !!((player.eq && player.eq.helm && player.eq.helm.id === 'hlm_wind') || (player.inv && player.inv.some(i => i.id === 'hlm_wind')));
 }
 
-function equipItem(item) {
+// silent=true：戰鬥中自動換裝（如箭矢用完自動補上），不關掉玩家正在看的物品視窗
+function equipItem(item, silent) {
     let d = DB.items[item.id];
     let slot = d.type === 'wpn' ? 'wpn' : d.slot;
     if (d.isArrow) slot = 'arrow'; // 如果是箭矢，強制分配到 arrow 欄位
@@ -770,7 +771,7 @@ function equipItem(item) {
     calcStats();
     renderTabs();
     renderSkillSelects();   // 穿戴裝備後即時更新自動化技能選項（如魔法頭盔授予的法術）
-    closeModal();
+    if (!silent) closeModal();
 }
 
 // 🔧 詛咒鎖定：裝備出現「詛咒的」時無法卸下，也無法被換裝退回背包；需先用解除詛咒卷軸消除詛咒

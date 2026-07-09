@@ -906,7 +906,7 @@ function consumeArrow() {
         // 1. 嘗試從背包尋找任何箭矢自動裝上
         let invArrow = player.inv.find(i => DB.items[i.id] && DB.items[i.id].isArrow);
         if (invArrow) {
-            equipItem(invArrow);
+            equipItem(invArrow, true);
             logSys(`自動裝備了 ${DB.items[invArrow.id].n}。`);
         } else {
             // 2. 背包也沒箭，檢查是否開啟自動購買
@@ -918,7 +918,7 @@ function consumeArrow() {
                     gainItem('wpn_22', 1000, true, true);
                     logSys(`自動花費 ${cost} 金幣購買了 1000 銀箭。`);
                     let freshArrow = player.inv.find(i => i.id === 'wpn_22');
-                    if (freshArrow) equipItem(freshArrow);
+                    if (freshArrow) equipItem(freshArrow, true);
                 } else {
                     logCombat(`沒有箭矢，且金幣不足無法自動購買！`, 'miss');
                     return null;

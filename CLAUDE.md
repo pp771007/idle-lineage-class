@@ -40,7 +40,7 @@
 - 推論:**任何「會改動玩家 localStorage」的外掛操作,都要假設自己可能在「未載入角色 / currentSlot 不是使用者以為的那格」的狀態被觸發**,先驗狀態再動手;能唯讀就唯讀。
 - 原作者的存檔系統**只在「匯入」時才留 `*_bak` 備份**,`saveGame()`/一般存檔**不留備份**——所以一旦被外掛誤覆蓋就是永久損失,務必從源頭防止。
 
-## 目前的外掛(21 支,載入順序照 index.html;afk-skin 固定排最後)
+## 目前的外掛(22 支,載入順序照 index.html;afk-skin 固定排最後)
 
 | 檔案 | 功能 |
 |---|---|
@@ -64,6 +64,7 @@
 | `afk-mobname.js` | 怪物名稱顯示模式三選一(全部常駐/鎖定中常駐/原版 hover 才顯示;純 CSS + body data 屬性驅動,零 per-tick 成本;設定存 `afk_mobname_mode`) |
 | `afk-training.js` | 木人場(「⚙️ 自動化」面板入口;選 1~5 隻怪打不死量真實 DPS,HUD 顯示每隻/總 DPS;怪血設天文數字、每 tick 量血量變化=總傷害再補回,涵蓋所有傷害來源;包 `killMob` 攔即死;可套席琳/瘋狂席琳模式,重用原作 `applySherineBuff`) |
 | `afk-analytics.js` | 注入 Cloudflare Web Analytics beacon 統計人數/開啟次數(免費、不用 cookie;**只在正式站台注入**——非 https、localhost/127.0.0.1/`*.local` 一律略過,免本機測試污染統計;token 未填(`__` 開頭)時自動略過。不掛 DOM、不列入 smoke) |
+| `afk-panacea.js` | 萬能藥批量使用(包 `useItem`;手動使用萬能藥且「本次可用瓶數>1」時彈數量視窗/最大鈕,比照歐西里斯寶箱 `openOsirisBox`;確認後逐瓶呼叫原作 `useItem(uid,true)`→總量60瓶/單屬性60上限/消耗/calcStats 全走原邏輯;可用量≤1 或屬性已滿→直接交回原作) |
 | `afk-skin.js` | 首頁「加掛版」品牌標記+公告跑馬燈+外掛入口收納(桌機收成一顆「🔌 外掛工具」鈕開 Modal、手機維持半透明外框;外掛鈕套原版首頁按鈕皮;本檔載入順序排最後,用 MutationObserver 等其他外掛的入口到齊再收納,idempotent) |
 
 > **小百科 / 掉落查詢的「獨立頁」(`?view=`)**:`index.html?view=wiki`、`index.html?view=dex` 會讓對應外掛把面板鋪滿整頁(藏掉創角/遊戲畫面、改 `document.title`、隱藏關閉鈕、背景點擊不關),並在最上方加一條**頁首導覽**(`#m-standalone-nav`:🏠首頁 / 📚小百科 / 📖掉落查詢,active 標亮)可互切與回首頁。看起來像獨立網頁。首頁兩顆入口旁各有一顆 `↗` 小鈕用 `window.open` 開新分頁到這網址;原本點主鈕開 modal 的行為保留。(頁首 `buildStandaloneNav` 在兩支外掛各有一份相同實作,只有 active 那支會跑、用 id 去重。)**資料仍來自 index.html 的 `DB`/`MOB_DROPS`/… 全域**(無法真的抽成獨立檔——那些 const 夾在遊戲主程式裡),所以獨立頁就是「重用 index.html 當資料源、只顯示該面板」。全寫在外掛內、不動遊戲碼。

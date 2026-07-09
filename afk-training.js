@@ -153,7 +153,7 @@
     window.applyAreaBackground = function () {
       if (inTrain()) {
         var bv = document.getElementById('battle-view');
-        if (bv) { bv.style.backgroundImage = 'url("' + TRAIN_BG + '")'; bv.style.backgroundSize = 'contain'; bv.classList.add('area-fit'); bv.classList.add('has-bg'); }   // area-fit→怪物用現在尺寸;boss 邊緣不裁的修正改放全域 afk-fixes(通用,非木人場特例)
+        if (bv) { bv.style.backgroundImage = 'url("' + TRAIN_BG + '")'; bv.style.backgroundSize = 'contain'; bv.classList.add('area-fit'); bv.classList.add('has-bg'); }   // area-fit→怪物用現在尺寸;boss 邊緣不裁的修正在 css/style.css(通用,非木人場特例)
         return;
       }
       return _origApplyBg.apply(this, arguments);

@@ -41,8 +41,8 @@
 猶豫時問:「**這段 code 需要知道核心的內部規則嗎?**」需要 → 寫核心。只讀資料、或整塊可插拔 → 外掛。
 
 - 外掛要能「優雅降級」:自我檢查需要的全域函式/元素是否存在,缺了就 `console.warn` 後安靜停用,**不可把遊戲弄壞**。
-- **「補原作者坑」的補丁優先直接改核心根治**,改完把 `afk-fixes.js` 對應那段刪掉。真的還留在外掛的(尚未搬回核心),要在該段檔頭寫清楚「上游怎麼改就能整段刪」。
-- 改核心前先 grep 外掛有沒有包住同一個函式(如 afk-fixes/afk-mobile 都包過 renderTabs),避免兩層邏輯打架。
+- **「補原作者坑」的補丁一律直接改核心根治**(2026-07-09 `afk-fixes.js` 已全數搬回核心並刪檔)。不要再為了「不動原作者碼」去包一層 wrapper。
+- 改核心前先 grep 外掛有沒有包住同一個函式(如 `afk-mobile` 包過 renderTabs、`afk-offline` 包過 saveGame),避免兩層邏輯打架。
 - 改了 `js/*.js` 要同步更新 index.html 該檔的 `?v=`(慣例=內容 sha1 前 10 碼,`sha1sum js/<檔> | cut -c1-10`)並跑 `node scripts/stamp-sw-version.mjs`(`/prepush` 內含)。
 
 ### 🚨 外掛絕不可盲呼叫「會寫入/覆蓋玩家存檔」的原作者函式(踩過、害玩家存檔變 Lv.1 null)
@@ -54,7 +54,7 @@
 - 推論:**任何「會改動玩家 localStorage」的外掛操作,都要假設自己可能在「未載入角色 / currentSlot 不是使用者以為的那格」的狀態被觸發**,先驗狀態再動手;能唯讀就唯讀。
 - 原作者的存檔系統**只在「匯入」時才留 `*_bak` 備份**,`saveGame()`/一般存檔**不留備份**——所以一旦被外掛誤覆蓋就是永久損失,務必從源頭防止。
 
-## 目前的外掛(21 支,載入順序照 index.html;afk-skin 固定排最後)
+## 目前的外掛(20 支,載入順序照 index.html;afk-skin 固定排最後)
 
 | 檔案 | 功能 |
 |---|---|
@@ -65,7 +65,6 @@
 | `afk-extradata.js` | **掉落查詢+小百科共用的手動補充資料**(純資料、無 DOM、在 dex/wiki 之前載入,定義全域 `AFK_EXTRA`):`itemAcquire`(物品取得方式,`short` 給 dex 物品卡＋小百科裝備頁;`chain` 是舊傳說頁專用、現未使用)、`weaponTraitEff`/`weaponTagTrait`(武器特性白話對照,dex 物品卡共用)、`mapName`(地圖 id→中文)。**只放「不能從遊戲 DB 動態算」的手動補充**;補一件裝備取得只改這支、dex+wiki 同時生效。dex/wiki 都 call 時即時讀、沒載到優雅降級 |
 | `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;讀 DB.mobs/maps/items + **五張掉落表 MOB_DROPS／DARK_WEAPON_DROPS／DARK_CRYSTAL_DROPS／DRAGON_DROPS／WARRIOR_DROPS**(與原作 _auditMobDrops 同一組;漏讀哪張就查不到);龍騎士表的職業限定任務道具標「🐉僅X」(讀 `TRIAL_ITEM_CLASS`);**純兌換/無怪掉的成品**(龍騎士書板·鎖鏈劍·臂甲…)補 `AFK_EXTRA.itemAcquire[id].short`「取得方式」、且這類非裝備非商店物品要靠有 itemAcquire 才會收進搜尋索引;桌機手機共用;**支援獨立頁 `?view=dex`**,見下「獨立頁」;頂部「掉落率模式」下拉=一般/席琳×3/瘋狂席琳×5/經典×1/10 重算怪卡掉落率) |
 | `afk-wiki.js` | 小百科(首頁入口;**多分頁 + 關鍵字搜尋**:職業專精/武器特性/戰鬥機制/地圖/能力值/職業魔法/帶寵物/傭兵/任務/套裝/收藏-裝備/收藏-道具/收藏-怪物/魔法娃娃/裝備/強化/製作/負重/席琳/血盟/傲慢之塔/遺忘之島/軍王之室;部分讀遊戲資料、部分本檔手動維護(收藏-怪物讀 CARD_*、收藏-裝備讀 EQUIP_CATEGORIES/EQUIP_CAT_*、收藏-道具讀 MISC_CATEGORIES/MISC_CAT_*,皆 data-driven 自動跟上。**收藏三分頁**另有模式切換鈕:預設不選(防爆雷),點了才依模式共用桶 `lineage_idle_carddex/equipdex/miscdex+modeSuffix` **唯讀**顯示收集進度與缺項);桌機手機共用;**支援獨立頁 `?view=wiki`**;**改前先讀下方「小百科維護準則」**)。**「地圖」分頁**讀 `MAP_CATEGORIES`+`DB.maps/DB.mobs` 動態列出(每張標 📍進入路徑=在哪個分類、等級範圍、進入條件,自動同步;遊戲移動方式=地圖選單選分類再選圖直接傳送,故路徑即分類)。**「裝備」分頁**(`renderEquip`)讀 `DB.items` 依部位分組列出全部裝備+職業篩選(用遊戲 `equipOk` 真實規則);**詳情數值直接呼叫遊戲全域 `buildItemDescHTML({id,en:0,…})`**(永遠與遊戲一致、新增裝備/特效自動跟上、零手動維護),取得方式呼叫 `afk-dex.js` 暴露的 `window.AFK_DEX_API.acquireHTML(id)`(製作/商店/怪物掉落/`itemAcquire`)。每件詳情常駐 DOM(`display:none`)→ 完整數值與特效都進統一搜尋;詳情與整頁 HTML 都 memoize(`_equipDetail`/`_equipHtml`)→ 441 件搜尋重渲染不卡。**改裝備顯示時不要自己刻數值格式(會與遊戲分歧、得手動補),一律重用 `buildItemDescHTML`**。**「職業魔法」分頁**:每張魔法卡左側加圖示(`assets/icons/skills/<魔法名>.png`,與遊戲同路徑、缺圖 `onerror` 隱藏);選定單一職業時顯示「選擇角色」下拉(`charSelectHTML`,**唯讀**讀 8 格存檔 `_lzGet`/`_saveUnwrap` 取職業/等級/暱稱,預設不選、該職業無角色不顯示),選了角色後依其學過的魔法(`player.skills` 扣掉裝備臨時授予的 `grantedSkills`)把圖示變亮(`.is-learned`)/未學變暗(`.is-unlearned`);**絕不呼叫會寫存檔的原作函式**(見上方存檔鐵則) |
-| `afk-fixes.js` | 通用修正(尚未搬回核心的補丁,桌機/手機通用;**剩 3 段**:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉;日誌鎖定捲動防飄移;快轉時靜音/不跳特效(`_sfxCfg.on`+`__vfxOff` 改 getter)。這三段都動到每 tick 熱路徑,搬核心要單獨測。**已搬回核心的**:saveGame 空白防呆(js/13)、關閉前存檔(js/13)、Android 匯出 Web Share(js/13)、職業 logo 點擊 tip(js/10)、邊格頭目裁切+層次(css/style.css)) |
 | `afk-sw.js` | Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
 | `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |
 | `afk-statpts.js` | 能力值面板每個屬性下補一行「點數來源分解」(始/升/藥/總,不含裝備;monkey-patch `updateUI` 後插入;讀 `player.base/alloc/panacea`) |
@@ -104,6 +103,12 @@
 - **受擊動作是「HP 掉了就播」(HP-delta 偵測),自傷技能(`hpCost`)的自扣血會被誤判成被打(踩過 2026-07-09:屠宰者全程只播受傷動作)**:`_playerMorphApply` 用 `hp < prevHp` 判受擊,而屠宰者/冥想術/隱身術/魂體轉換這類 `sk.hpCost` 技能施放時自己扣血 → 下一幀被判成受擊;受擊權重(4)又高過施法(3)/攻擊(2),於是把該播的動作整個蓋掉、且因技能連發而卡在受傷姿勢。**解法:施放成功後呼叫 `_pmAbsorbSelfHpCost()` 把這次 HP-delta 吸收掉**(castSkill / manualCast 兩個包裝都要)。原版(`D:\otherPersonRepos\idle-lineage-class`)同樣沒處理,是上游共有的坑。**判準:新增「會自己扣玩家 HP/觸發 HP 變化」的技能或機制 → 想一下 sprite 會不會誤判受擊。**
 - **「揮武器/擲武器」型的技能不該播施法動作**:`_PM_ATTACK_SKILLS`(玩家端·技能 id)/`_PM_ATTACK_SKILL_NAMES`(傭兵端·技能名)列出這類技能,改播攻擊動畫;有 `hits` 的(屠宰者/三重矢)連播 hits 次(burst),沒有 `hits` 的(戰斧投擲)播單次、不進 burst(免擋掉緊接著的普攻動畫)。新增同性質技能記得加進去。
 
+### 📜 日誌裁切要「絕對設定 scrollTop」,不能「相對扣掉被裁高度」(Chrome 會自己補一次)
+
+- **踩過 2026-07-09(把 afk-fixes 的日誌捲動錨定搬回核心時)**:`logCombat`/`logSys` 在鎖定捲動時裁掉頂端舊訊息,若寫成 `el.scrollTop -= 被裁高度`,在 **Chrome 會補兩次**(瀏覽器的 scroll anchoring,`overflow-anchor` 預設 `auto`,removeChild 頂端節點時自動調整 scrollTop)→ 視野往回飄。但 **iOS Safari 不支援 `overflow-anchor`**、完全不補,拿掉補償手機又會飄。
+- **解法(核心 `_trimLog`)**:裁切前記下「視窗頂端那則訊息」與它距視窗頂的像素差,裁切後 `el.scrollTop = anchor.offsetTop + delta` **絕對設定**——冪等,不管瀏覽器有沒有自己補都落在同一位置。實測 Chrome 預設與 `overflow-anchor:none`(模擬 Safari)兩種模式下 scrollTop 完全一致。
+- **判準**:任何「移除捲動容器頂端節點」的程式碼,想補償位移就用絕對定位,別用相對扣減;而且要在 `overflow-anchor:none` 下也測一次(桌機 Chrome 測不出手機的行為)。
+
 ### 🤝 傭兵自我 buff(js/06-status-allies.js `allyMaintainBuffs`)的坑
 
 - **不可用「隊長身上有沒有這個 buff」當傭兵施放與否的判斷(踩過 2026-07-09)**:自我增益寫進 `ally.buffs` 後才會經 `_allyLevelRecompute` 生效在傭兵身上,**隊長的 `player.buffs` 對傭兵零加成**。舊碼(v2.6.50)在施放前檢查 `player.buffs[sid]>0 就 continue`,結果是「隊長開了 buff,傭兵反而永遠裸著」。真正全隊共享的(幻覺光環/大地祝福/鋼鐵防護/水之元氣)本來就在 `_isMercSelfBuff` 排除、各走 aura 路徑,不需要這條。**判準:傭兵的施放條件只能看 `ally` 自己的狀態。**
@@ -111,7 +116,7 @@
 
 ### 外掛 DOM / CSS 注入的坑(踩過)
 
-> `afk-fixes.js` 收「不綁手機/離線/查詢」的通用補坑碼:會主動執行(包核心函式/長駐監聽)的補坑放這;純 CSS 覆寫那種「過時自動失效」的不歸這、留在 `afk-mobile.js`。(存檔匯入/匯出原本有 `afk-savedata.js`,遊戲內建匯出入功能後移除。)
+> 通用補坑碼一律寫進核心(`afk-fixes.js` 已於 2026-07-09 整支搬回核心刪除);只有「手機專屬的 CSS/版面覆寫」才留 `afk-mobile.js`。(存檔匯入/匯出原本有 `afk-savedata.js`,遊戲內建匯出入功能後移除。)
 > - **⚠️ 手機 CSS 覆寫「版面容器」時,若寫死 `display:… !important`,小心 specificity 蓋過遊戲用來『隱藏』該容器的 `.hidden{display:none!important}` → 畫面關不掉(踩過 2026-07-06)**:遊戲用 `#creation-screen.hidden{display:none!important}`(specificity 1,1,0)隱藏登入/創角畫面;外掛的 `body.m-mobile #creation-screen{display:block!important}` 是 (1,1,1) 更高 → 即使加了 `.hidden` 也被外掛的 `display:block` 壓著不隱藏,載入存檔/建角進遊戲後登入畫面仍蓋在遊戲上,玩家表現=「卡在選角畫面進不去」(且 DOM 上 `.hidden` 有加、`classList.contains('hidden')` 為 true,只有 computed `display` 是 block,極易誤判)。**判準/解法:任何「會被 `.hidden`(或其他隱藏 class)切換顯示」的容器,外掛覆寫它的 `display`/`visibility` 一律加 `:not(.hidden)` 條件**(`body.m-mobile #creation-screen:not(.hidden){…}`)。自我檢查:改到 `#creation-screen`/`#game-screen` 這種「整屏切換」容器的手機 CSS,有沒有無條件 `display:…!important`?有就補 `:not(.hidden)`,並實測「載入存檔→有真的進到遊戲、登入畫面消失」。
 > - **⚠️ 外掛「自建遊戲物件」(如木人場自 spawn 怪)要跟上核心欄位演進,缺欄位可能整個系統安靜失效(踩過 2026-07-07)**:v3.0.11 getTarget 改「鎖最早出生(_born)」後,木人場外掛自建怪沒有 _born → 全場鎖不到目標 → 玩家/傭兵全體不攻擊、DPS 恆 0,無錯誤無警告,直到玩家從畫面發現。已修核心(getTarget 補格位序 tiebreak,缺 _born 也能鎖)。**判準:合併/改動核心「怪物生成」欄位(spawnMob 的 {...} 內容)時,grep 外掛有沒有自建同型物件(`mapState.mobs[` in afk-*.js),欄位要對齊或核心要容錯。**
 > - **⚠️ 外掛「插 DOM」的錨點別依賴版面的內部結構,錨不到會安靜消失、smoke 也驗不到(踩過 2026-07-06:首頁跑馬燈)**:afk-skin 的公告跑馬燈原本錨定「h1 的父層必須是 `#creation-screen` 直接子層」,遊戲 v3.0.40 把標題包進 `#login-art-stage>#login-title-layer` 後條件不成立 → `ensureMarquee` 安靜 return、跑馬燈消失,**頁面照常、console 無警告、smoke 照過**,直到玩家回報才發現。同場加映:登入頁的按鈕皮 `#main-menu > button` 只吃「直接子層」,外掛按鈕包在 row/外框內吃不到 → 掉回舊配色(已在 afk-skin 抄同組宣告套上,改 css/style.css 該段要跟著換)。**判準/解法:① 外掛插入點優先錨定「穩定的容器 id」(如 `#main-menu`),不要錨「標題/包裝層的父子關係」;② 依賴 DOM 形狀的視覺注入,改過首頁版面後要人工掃一輪首頁(跑馬燈/加掛版徽章/外掛框都在,樣式沒退化)——這些不在 smoke 範圍。**
@@ -261,7 +266,7 @@
 - **不是記憶體/log 累積**:單場結算過程記憶體穩定在 13~20MB、沒漏;戰鬥日誌在 `state.ff`(快轉)時 `logCombat`/`logSys` 直接 return、不累積。
 - **真正成本 = 戰鬥模擬本身,且 RNG 變異極大**:同一隻角色同圖,跑兩次差很多——沒升級那次每 tick ~0.11ms(24h 純運算約 96 秒)、升到 Lv68 打進更硬戰鬥那次飆到 1~2ms(24h 約 471 秒)。慢不是 bug,就是「真的在一場一場模擬戰鬥」,場面越大越吃運算。
 - **參考數據**:`TICK_MS=100`,24h = 864,000 個 tick。離線外掛 `afk-offline.js` 的「ms」是時間切片預算(`SLICE_MIN_MS=28` 短離線、`SLICE_MAX_MS=250` 長離線≥1h),只影響「讓畫面喘」的額外開銷、不影響純運算那條底;250ms 以上邊際效益已很小。
-- **2026-07-05 追加驗證(使用者又報慢、懷疑上游更新害的)**:對 v2.7.92–96/v3.0.x 大更新前後做 A/B 基準——本機起兩個 server(HEAD vs 更新前 commit 的 sparse worktree)、Playwright 同一套合成角色(Lv63/zone_14)各跑 3 輪×36k tick、每輪重新載頁,結果每 tick 5–7µs **無差異,上游更新沒有拖慢快轉**(新特效函式全走 `window.__vfxOff` 總開關;`logCombat` 也仍有 `state.ff` 早退)。倒是 CDP profile 抓到**我們外掛在快轉迴圈漏電**:`afk-fixes` 的「日誌捲動錨定」wrapper 在 `state.ff` 時仍對每則 logCombat/logSys 先 `getElementById`+讀 `scrollHeight`(強制排版,約佔合成快轉 10%)——已加 ff 快速通道直呼原函式。**方法備忘:懷疑效能回歸就 A/B+profile,別用猜的**;profile 其餘熱點(autoSellJunk 每 100 拍全背包掃、`_dpsSnap`/`_dpsDealt` DPS 統計每拍快照、afk-autobuy 的 tick wrapper)都是原設計或必要成本,佔比小、別動。
+- **2026-07-05 追加驗證(使用者又報慢、懷疑上游更新害的)**:對 v2.7.92–96/v3.0.x 大更新前後做 A/B 基準——本機起兩個 server(HEAD vs 更新前 commit 的 sparse worktree)、Playwright 同一套合成角色(Lv63/zone_14)各跑 3 輪×36k tick、每輪重新載頁,結果每 tick 5–7µs **無差異,上游更新沒有拖慢快轉**(新特效函式全走 `window.__vfxOff` 總開關;`logCombat` 也仍有 `state.ff` 早退)。倒是 CDP profile 抓到**我們外掛在快轉迴圈漏電**:`afk-fixes` 的「日誌捲動錨定」wrapper 在 `state.ff` 時仍對每則 logCombat/logSys 先 `getElementById`+讀 `scrollHeight`(強制排版,約佔合成快轉 10%)——已加 ff 快速通道直呼原函式;**該段已於 2026-07-09 搬回核心 `_trimLog`,wrapper 消失、`state.ff` 早退在 logCombat/logSys 第一行,此漏電結構性不再存在**。**方法備忘:懷疑效能回歸就 A/B+profile,別用猜的**;profile 其餘熱點(autoSellJunk 每 100 拍全背包掃、`_dpsSnap`/`_dpsDealt` DPS 統計每拍快照、afk-autobuy 的 tick wrapper)都是原設計或必要成本,佔比小、別動。
 - **2026-07-05 補測「離線強制賣廢品」策略**:合成 2000 格大背包+放大廢品流入,五變體×2輪×36k拍——現行不強制賣 14.2~15.6µs/拍;強制每100拍賣 12.1~12.4(比現行快~15%,因背包變小掃描變便宜);每1000/6000拍賣與每100拍無差;自動賣出整個關 7.2~8.4µs=快近一倍。但這些差距只在「弱角色+肥背包」情境顯著——**真實重戰鬥角色每拍 0.3~2ms,自動賣出相關全部 <1~2%、體感不出來**;當初移除強制賣出屬中性決定,不必加回。真正有感的手段仍是玩家自己清背包/收倉庫。
 
 ## Git / GitHub

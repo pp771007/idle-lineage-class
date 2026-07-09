@@ -13,6 +13,10 @@ function _vfxLayer() {
     if (!l) { l = document.createElement('div'); l.id = 'vfx-layer'; document.body.appendChild(l); }
     return l;
 }
+// 🚫 特效總閘：玩家設定(window.__vfxOff / __vfxNumOff，標題畫面切換、存 localStorage) || 快轉中(state.ff)。
+//    離線/背景補跑逐拍跑完 24h≈86 萬拍，跳傷害數字/粒子既洗畫面又白吃效能 → 一律視為關閉。
+function _vfxOff() { return window.__vfxOff || state.ff; }
+function _vfxNumOff() { return window.__vfxNumOff || state.ff; }
 // ===== ⚡ 法術特效疊加層（v2.7.15）：技能命中時於目標怪身上疊播天堂原版法術特效序列幀（一次性·加亮混合 screen·純視覺不影響任何數值·吃 __vfxOff 開關）=====
 //   幀來源：assets/fx/<dir>/<prefix>_0.png..N.png（spr2png 單檔轉·gfx 對照 list.spr·10-0.spr=lightning gfx10）。
 //   SPELL_FX：技能顯示名(sk.n) → { dir 資料夾, prefix 檔名前綴, n 幀數, fps, blend, h=特效高度為目標圖高的倍數, ax/ay=特效「打擊錨點」在特效圖內的比例(閃電 origin≈底部中央) }。
@@ -88,7 +92,7 @@ function _preloadDeathFx(name, n) {
 //    v2.7.18：支援 shadowPrefix→特效自身影子層（疊在特效下·同畫布同步·如地裂術地面裂痕）；targetVc→地面型錨點下移。
 function playSpellFx(skn, mob) {
     try {
-        if (window.__vfxOff || !mob) return;
+        if (_vfxOff() || !mob) return;
         let cfg = SPELL_FX[skn]; if (!cfg) return;
         // 🔮 v2.7.44 屬性變體(cfg.byEle)：依「目標怪屬性 mob.e」選對應幀組(如能量感測 火/水/地/風)·目標無對應屬性(none等)→靜默不播
         if (cfg.byEle) { let _v = cfg.byEle[mob.e]; if (!_v) return; cfg = Object.assign({}, cfg, _v); }
@@ -209,7 +213,7 @@ const SELF_FX = {
 let _selfFxActive = {};   // 技能名 → true：同增益同時只保留一個
 function playSelfFx(skn, anchorRect) {   // 🩹 v3.0.95 第2參 anchorRect（選用）：顯式錨點 rect（傭兵治癒疊在被治癒者 sprite 身上）·未傳→原邏輯（玩家 sprite→戰鬥區中央）
     try {
-        if (window.__vfxOff) return;
+        if (_vfxOff()) return;
         let cfg = SELF_FX[skn]; if (!cfg) return;
         if (_selfFxActive[skn]) return;
         let bv = document.getElementById('battle-view');
@@ -287,7 +291,7 @@ function _freezePosition(el, r) {
 }
 function _updateFreezeFx() {
     try {
-        if (window.__vfxOff) { for (let u in _freezeFx) { _freezeFx[u].el.remove(); delete _freezeFx[u]; } return; }
+        if (_vfxOff()) { for (let u in _freezeFx) { _freezeFx[u].el.remove(); delete _freezeFx[u]; } return; }
         // 🚀 快速通道：無殘留特效且場上沒有任何冰凍怪(常態)→直接返回，免每幀 querySelectorAll+getBoundingClientRect(強制排版)
         if (!Object.keys(_freezeFx).length) {
             let _any = false;
@@ -333,7 +337,7 @@ function _updateFreezeFx() {
 let _mobSkillFx = {};   // uid → { el, t0 }
 function _updateMobSkillFx() {
     try {
-        if (window.__vfxOff) { for (let u in _mobSkillFx) { if (_mobSkillFx[u].el) _mobSkillFx[u].el.remove(); if (_mobSkillFx[u].el2) _mobSkillFx[u].el2.remove(); delete _mobSkillFx[u]; } return; }
+        if (_vfxOff()) { for (let u in _mobSkillFx) { if (_mobSkillFx[u].el) _mobSkillFx[u].el.remove(); if (_mobSkillFx[u].el2) _mobSkillFx[u].el2.remove(); delete _mobSkillFx[u]; } return; }
         let ids = Object.keys(_mobSkillFx); if (!ids.length) return;
         let ml = document.getElementById('mob-list');
         let byUid = {};
@@ -403,7 +407,7 @@ function _updateMobSkillFx() {
 }
 // 由 _renderMobsImpl 迴圈呼叫（讀 m.justHit 前）：用 HP 差捕捉本幀傷害，免改 50+ 個傷害落點
 function _vfxQueueDmg(m) {
-    if ((window.__vfxOff && window.__vfxNumOff) || !m) { if (m) m._vfxBig = false; return; }   // 🔢 v3.0.9 傷害數字獨立於特效：只有「特效關且數字也關」才完全略過→數字開時即使關特效仍捕捉 HP 差生成數字
+    if ((_vfxOff() && _vfxNumOff()) || !m) { if (m) m._vfxBig = false; return; }   // 🔢 v3.0.9 傷害數字獨立於特效：只有「特效關且數字也關」才完全略過→數字開時即使關特效仍捕捉 HP 差生成數字
     let prev = (m._vfxHp == null) ? m.curHp : m._vfxHp;
     let d = prev - m.curHp;
     m._vfxHp = m.curHp;
@@ -415,7 +419,7 @@ function _vfxQueueDmg(m) {
 }
 // innerHTML 重建後呼叫：此時格子已布局，可取螢幕座標生成飄字
 function _vfxFlush() {
-    if (window.__vfxOff && window.__vfxNumOff) { _vfxPending = []; return; }   // 🔢 v3.0.9 特效關但數字開→仍走 flush 顯示數字（粒子/impact 於下方另由 __vfxOff 個別關）
+    if (_vfxOff() && _vfxNumOff()) { _vfxPending = []; return; }   // 🔢 v3.0.9 特效關但數字開→仍走 flush 顯示數字（粒子/impact 於下方另由 __vfxOff 個別關）
     if (!_vfxPending.length) return;
     let layer = _vfxLayer();
     let ml = document.getElementById('mob-list');
@@ -435,13 +439,13 @@ function _vfxFlush() {
             // 🩸 傷害數字＝玩家最在意的資訊、單一輕量文字節點→放寬上限至 200，使快速/多段攻擊(龍騎士、AoE、傭兵/召喚同時打)也穩定顯示，不再整批被略過
             if (layer.childElementCount < 200) _vfxNumber(cx + (Math.random() * 26 - 13), it.top + it.h * 0.40, it.p.dmg, it.p.ele, it.p.big);
             // ✨ 命中衝擊環＋屬性火花＝較重(blur/box-shadow/多節點)→維持原防洪上限 80；場上特效過多時只略過「粒子」、傷害數字照常顯示
-            if (!window.__vfxOff && layer.childElementCount < 80) _vfxImpact(cx, cy, it.p.ele, it.p.big);   // 🎚️ v3.0.9 命中衝擊環/火花＝純特效→僅特效開時顯示（傷害數字已獨立於上方）
+            if (!_vfxOff() && layer.childElementCount < 80) _vfxImpact(cx, cy, it.p.ele, it.p.big);   // 🎚️ v3.0.9 命中衝擊環/火花＝純特效→僅特效開時顯示（傷害數字已獨立於上方）
         }
     }
     _vfxPending = [];
 }
 function _vfxNumber(x, y, dmg, ele, big) {
-    if (window.__vfxNumOff) return;   // 🔢 v3.0.2 「只關傷害數字」獨立開關：關掉所有飄動傷害數字(致命/非致命皆走此唯一渲染點)·其餘特效不受影響
+    if (_vfxNumOff()) return;   // 🔢 v3.0.2 「只關傷害數字」獨立開關：關掉所有飄動傷害數字(致命/非致命皆走此唯一渲染點)·其餘特效不受影響
     let el = document.createElement('div');
     el.className = 'vfx-dmg' + (big ? ' vfx-crit' : '');
     el.style.left = x + 'px'; el.style.top = y + 'px';
@@ -532,7 +536,7 @@ function vfxKill(mob) {
         _vfxLastKillRect = { left: r.left, top: r.top, width: r.width, height: r.height };   // 供稀有掉落閃光定位
         let layer = _vfxLayer();
         // 🩸 致命一擊的傷害數字：死怪在下一幀渲染前已被 settleDeadMobs 移除→渲染側 HP-delta 抓不到，故在此(格子 DOM 仍在)補顯示，使龍騎士等「一/二擊秒殺」也看得到傷害
-        if (!window.__vfxNumOff) { let _prev = (mob._vfxHp != null) ? mob._vfxHp : (mob.hp || 0);   // 🔢 v3.0.9 致命傷害數字改由「傷害數字開關」控制（獨立於特效）：數字開→即使關特效仍顯示致命傷害數字（死亡動畫本就照播）
+        if (!_vfxNumOff()) { let _prev = (mob._vfxHp != null) ? mob._vfxHp : (mob.hp || 0);   // 🔢 v3.0.9 致命傷害數字改由「傷害數字開關」控制（獨立於特效）：數字開→即使關特效仍顯示致命傷害數字（死亡動畫本就照播）
           let _kdmg = Math.floor(_prev - mob.curHp);   // 自上次渲染以來累積傷害(含致命擊；curHp 可能為負＝溢殺，顯示實際打出的數值)
           let _kbig = mob._vfxBig; mob._vfxBig = false;   // 'crit'|'heavy'：致命擊的爆擊/重擊旗標仍在(渲染未重設)
           if (_kdmg > 0 && layer.childElementCount < 200) {
@@ -604,7 +608,7 @@ function vfxKill(mob) {
             // 🚫 v2.7.49 移除死亡衝擊波環(vfx-killring)/核心爆閃(vfx-particle) CSS 特效——只保留死亡序列幀 anim
         }
         // 🚫 v2.7.49 移除死亡爆裂粒子(vfx-particle) CSS 特效——只保留死亡序列幀 anim
-        if (!window.__vfxOff && mob.boss) {   // 👑 頭目擊殺：戰場金白閃光（🎚️ v3.0.1 純裝飾→關閉特效時不閃）
+        if (!_vfxOff() && mob.boss) {   // 👑 頭目擊殺：戰場金白閃光（🎚️ v3.0.1 純裝飾→關閉特效時不閃）
             let bv = document.getElementById('battle-view'); let br = bv && bv.getBoundingClientRect();
             if (br && br.width > 0) {
                 let fl = document.createElement('div'); fl.className = 'vfx-areaflash';
@@ -619,7 +623,7 @@ function vfxKill(mob) {
 // 升級慶祝：金色擴散圓環 + 上升文字 + 戰場金光 + 金色火花
 function vfxLevelUp() {
     try {
-        if (window.__vfxOff) return;
+        if (_vfxOff()) return;
         let bv = document.getElementById('battle-view');
         let r = bv ? bv.getBoundingClientRect() : null;
         if (!r || r.width === 0) { let hb = document.getElementById('bar-hp'); r = hb ? hb.getBoundingClientRect() : null; }
@@ -674,7 +678,7 @@ function _vfxSlotRect(uid) {
 // 魔法拋射物：從施法者飛向目標（v3.0.49：玩家變身 sprite 顯示中→sprite 胸口·否則戰場底部中央）→ 抵達時小火花；衝擊環/數字由渲染側負責，避免重疊
 function _vfxProjectile(rect, ele) {
     try {
-        if (window.__vfxOff || !rect) return;
+        if (_vfxOff() || !rect) return;
         let bv = document.getElementById('battle-view'); let br = bv && bv.getBoundingClientRect();
         if (!br || br.width === 0) return;
         let layer = _vfxLayer();
@@ -714,7 +718,7 @@ function _vfxProjectile(rect, ele) {
 }
 // castSkill 包裝用：對本次施法「掉了血」的怪各射一發拋射物（before=施法前 HP/位置快照）
 function _vfxCastProjectiles(before, ele) {
-    if (window.__vfxOff || !before) return;
+    if (_vfxOff() || !before) return;
     let e = (ele && ele !== 'none') ? ele : 'magic';
     for (const b of before) {
         if (!b) continue;
@@ -730,7 +734,7 @@ function _vfxCastProjectiles(before, ele) {
 // 稀有掉落（潘朵拉權重=1）：金色名稱上升 + 金色星芒火花，定位於剛擊殺的怪物格
 function vfxRareDrop(name) {
     try {
-        if (window.__vfxOff) return;
+        if (_vfxOff()) return;
         let rect = _vfxLastKillRect;
         if (!rect || rect.width === 0) { let bv = document.getElementById('battle-view'); let br = bv && bv.getBoundingClientRect(); if (br && br.width > 0) rect = { left: br.left, top: br.top, width: br.width, height: br.height }; }
         if (!rect) return;
@@ -756,7 +760,7 @@ function vfxRareDrop(name) {
 // 玩家受到較大一擊：戰場輕微震動 + HP 條紅閃
 function vfxPlayerHit(dmg) {
     try {
-        if (window.__vfxOff) return;
+        if (_vfxOff()) return;
         let frac = (player && player.mhp) ? dmg / player.mhp : 0;
         if (frac < 0.10) return;   // 只在 ≥10% 最大HP 的一擊才震，避免每下都晃
         let bv = document.getElementById('battle-view');
@@ -809,7 +813,7 @@ if (typeof castSkill === 'function' && !castSkill._vfxWrapped) {
     castSkill = function (skId) {
         let sk = DB.skills[skId];
         let _pele = (sk && sk.ele && sk.ele !== 'none' && !sk.weaponDmg && !sk.throwAxe) ? sk.ele : (sk ? _VFX_PROJECTILE_SKILLS[skId] : null);   // 屬性攻擊魔法 ＋ 白名單投射技能(光箭/究極光裂/心靈破壞/三重矢/戰斧投擲)
-        let proj = !window.__vfxOff && !!_pele;
+        let proj = !_vfxOff() && !!_pele;
         let before = null;
         if (proj) { before = mapState.mobs.map(m => (m && !m._dead) ? { uid: m.uid, hp: m.curHp, rect: _vfxSlotRect(m.uid) } : null); }
         let r = _vfxOrigCastSkill(skId);

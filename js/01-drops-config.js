@@ -1263,8 +1263,26 @@ function logCombat(msg, type="player", src=null) {
     el.insertAdjacentHTML('beforeend', `<div class="log-entry ${colorClass} ${catClass}" data-src="${_src}">${msg}</div>`);   // 🚀 只解析新訊息、不重建整個日誌(原 innerHTML+= 會 O(n) 重建全部子節點，戰鬥洗版時造成卡頓)
     // 🔒 鎖定捲動時保留更多歷史；未鎖定時維持一般上限
     let _max = _combatLogLocked ? COMBAT_LOG_MAX_LOCKED : COMBAT_LOG_MAX;
-    while(el.children.length > _max && el.children.length > 1) el.removeChild(el.firstChild);
+    _trimLog(el, _max, _combatLogLocked);
     if(!_combatLogLocked) el.scrollTop = el.scrollHeight;   // 鎖定時不自動捲到底，保留玩家檢視位置
+}
+
+// 裁掉超量的舊訊息（從頂端移除）。鎖定捲動時，頂端一被裁掉整個內容就往上位移 → 玩家正在看的那段
+// 會一直飄，鎖定形同無效。故鎖定時錨定「視窗頂端那則訊息」，裁切後把它擺回原本的螢幕位置。
+//   ⚠ 用「絕對設定 scrollTop」而非「相對扣掉被裁高度」：Chrome 的 scroll anchoring（overflow-anchor 預設 auto）
+//     會自己補償一次，相對扣減等於補兩次、反而往回飄；iOS Safari 不支援 overflow-anchor、完全不補。
+//     絕對設定在兩者都正確（冪等）。錨點自己就在被裁範圍內時不動，等同舊行為。
+function _trimLog(el, max, locked) {
+    let n = el.children.length;
+    if (n <= max || n <= 1) return;
+    if (!locked) { while (el.children.length > max && el.children.length > 1) el.removeChild(el.firstChild); return; }
+    let st = el.scrollTop, anchor = null, delta = 0;
+    for (let i = 0; i < n; i++) {   // 視窗頂端那則（讀 offsetTop 會強制排版，故只有鎖定時才做）
+        let c = el.children[i];
+        if (c.offsetTop + c.offsetHeight > st) { anchor = c; delta = st - c.offsetTop; break; }
+    }
+    while (el.children.length > max && el.children.length > 1) el.removeChild(el.firstChild);
+    if (anchor && anchor.parentNode === el) el.scrollTop = anchor.offsetTop + delta;
 }
 
 // 🔒 系統與物品日誌捲動鎖定：與戰鬥日誌相同（向上捲動鎖定刷新、保留 150 行、捲回底部自動解除）
@@ -1300,7 +1318,7 @@ function logSys(msg) {
     el.insertAdjacentHTML('beforeend', `<div class="log-entry text-slate-100">${msg}</div>`);   // 🚀 同戰鬥日誌：只解析新訊息，避免 innerHTML+= 重建全部
     // 🔒 鎖定捲動時保留更多歷史（150 行）；未鎖定時維持一般上限（50 行）
     let _max = _sysLogLocked ? SYS_LOG_MAX_LOCKED : SYS_LOG_MAX;
-    while(el.children.length > _max && el.children.length > 1) el.removeChild(el.firstChild);
+    _trimLog(el, _max, _sysLogLocked);
     if(!_sysLogLocked) el.scrollTop = el.scrollHeight;   // 鎖定時不自動捲到底，保留玩家檢視位置
 }
 

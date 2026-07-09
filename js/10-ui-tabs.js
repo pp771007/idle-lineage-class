@@ -10,6 +10,12 @@ function _tabFlushPending() {
     let f = _tabRebuildForce; _tabRebuildForce = false;
     renderTabs(f);
 }
+// 🔽 分頁/物品彈窗裡有原生 <select> 正展開（快速強化的目標等級）：重建會把該元素刪掉，玩家點開瞬間被關
+const TAB_SELECT_HOSTS = '#tab-weapons,#tab-armors,#tab-items,#tab-equip,#tab-skill,#item-modal';
+function _tabSelectOpen() {
+    let ae = document.activeElement;
+    return !!(ae && ae.tagName === 'SELECT' && ae.closest && ae.closest(TAB_SELECT_HOSTS));
+}
 // 🗑️⚡ 任一分頁的快速廢品/快速強化「選擇模式」進行中（renderTabs 的凍結守衛與 autoSortInventory 共用）
 function _anyQuickSelectActive() {
     return quickJunk.wpn.active || quickJunk.arm.active || quickJunk.item.active || quickEnh.wpn.active || quickEnh.arm.active;
@@ -48,6 +54,14 @@ function _initTabGuard() {
     let _release = function(){ if (!_tabPointerDown) return; _tabPointerDown = false; if (_tabRebuildPending) { setTimeout(_tabFlushPending, 0); } };   // 放開後(讓 click 先觸發)再補一次重建
     document.addEventListener('pointerup', _release);
     document.addEventListener('pointercancel', _release);
+    // 🔽 下拉選單關閉後補做延後的重建。用 setTimeout 讓 inline onchange(更新 quickEnh.target)先跑完、
+    //    元素也確實失焦後再重建；此時 _tabSelectOpen() 已為 false（若焦點跳到另一個 select 則 renderTabs 會再度延後）
+    let _selectDone = function(e){
+        let t = e.target;
+        if (t && t.tagName === 'SELECT' && t.closest && t.closest(TAB_SELECT_HOSTS)) setTimeout(_tabFlushPending, 0);
+    };
+    document.addEventListener('change', _selectDone, true);
+    document.addEventListener('blur', _selectDone, true);
 }
 
 // ===== 🎨 v3.0.55 1.8 原版風格技能魔法視窗（移植參考版 idle-lineage-class）=====
@@ -175,6 +189,9 @@ function renderClassicSkillBook(sDiv) {
 let _tabSecSig = { ctx:'', wpn:'', arm:'', item:'', eq:'' };
 function renderTabs(force) {
     if(state.ff) return; // 補跑期間不刷新畫面
+    // 🔽 下拉展開中：連 force 都延後（重建會刪掉那個 <select>，玩家點開的瞬間就被關掉）。
+    //    選單關閉(change/blur)後由 _initTabGuard 補一次 force 重建，追上延後期間的背包變動。
+    if(_tabSelectOpen()) { _tabRebuildPending = true; _tabRebuildForce = true; return; }
     // 🚀 使用者正按住分頁面板(點擊中)：延後非強制重建到放開後，避免按鈕被重繪掉而點擊失效
     if(!force && (_tabPointerDown || _tabWheelActive)) { _tabRebuildPending = true; return; }
     // 🚀 捲動中(含放開手指後的慣性、拖曳捲軸)：連 force 都延後（掉卡/擊殺路徑的 force 重建才不會在捲動途中

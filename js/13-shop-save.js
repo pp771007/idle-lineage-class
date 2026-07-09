@@ -689,6 +689,8 @@ function updateClassPotionRows() {
 //    loadGame 途中（config 還原在尾端）觸發的 saveGame（如進村領取傭兵經驗）若照舊以「當下 DOM」重建 player.config，
 //    會把靜態預設 UI 寫進存檔、永久洗掉玩家全部自動化設定。未就緒時保留既有 player.config 原樣入檔。
 let _uiConfigReady = false;
+let _lastSaveMs = 0;                   // 上次實際寫檔的時間（供 saveOnExit 去重）
+const EXIT_SAVE_DEDUPE_MS = 2000;      // 離開頁面時，距上次寫檔多久內視為「已存過」
 function saveGame() {
     // 未載入角色不寫檔：主選單/創角時 player 是空白預設（cls 為 null），此時寫檔會把空白角色
     // 蓋進 lineage_idle_save_<currentSlot>（預設 1）→ 覆蓋玩家第 1 格真實存檔，且此路徑不留備份。
@@ -741,16 +743,20 @@ function saveGame() {
 
     _lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })));   // 🔧 架構#6：寫入存檔版本（🛡️ 加完整性簽章後 💾 LZString 壓縮）   // 🔧 一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準（迷魅重新計時 1 小時）
     if (typeof _dexFlushFf === 'function') _dexFlushFf();   // 🚀 快轉期間延後的收集冊寫入,隨存檔一併補寫（見 js/12 saveCardDex）
+    _lastSaveMs = Date.now();   // 供 saveOnExit 去重（見下）；不影響任何 saveGame 呼叫端
     logSys(`遊戲進度已儲存。`);
 }
 
 // 關閉分頁 / 切到背景時補存一次：自動存檔每 5 分鐘一次，直接關掉最多會丟近 5 分鐘進度。
 // visibilitychange→hidden 是手機最可靠的時機（被系統殺背景時 pagehide/beforeunload 常不觸發）。
+//   ⚠ 這三個事件關頁時會連續觸發，且外部流程（手機登出）也常在 reload 前自己先存一次 →
+//     不去重的話同一次離開會存 2~3 遍、日誌/手機 toast 也跳好幾次。故「剛存過就跳過」。
+//     去重只作用在離開路徑；一般 saveGame 呼叫端（開寶箱/喝萬能藥/匯入存檔…）行為完全不變。
 (function () {
     function saveOnExit() {
-        if (window.__afkLoggingOut) return;   // 手機登出流程已自己存過（afk-mobile），再存會讓 toast 跳兩次
+        if (Date.now() - _lastSaveMs < EXIT_SAVE_DEDUPE_MS) return;   // 剛存過（含外部流程存的）→ 不重存
         let gs = document.getElementById('game-screen');
-        if (!gs || gs.classList.contains('hidden')) return;   // 只在真的在遊戲畫面時存
+        if (!gs || gs.classList.contains('hidden')) return;           // 只在真的在遊戲畫面時存
         try { saveGame(); } catch (e) {}
     }
     window.addEventListener('pagehide', saveOnExit);

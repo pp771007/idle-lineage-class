@@ -103,6 +103,13 @@
 - **受擊動作是「HP 掉了就播」(HP-delta 偵測),自傷技能(`hpCost`)的自扣血會被誤判成被打(踩過 2026-07-09:屠宰者全程只播受傷動作)**:`_playerMorphApply` 用 `hp < prevHp` 判受擊,而屠宰者/冥想術/隱身術/魂體轉換這類 `sk.hpCost` 技能施放時自己扣血 → 下一幀被判成受擊;受擊權重(4)又高過施法(3)/攻擊(2),於是把該播的動作整個蓋掉、且因技能連發而卡在受傷姿勢。**解法:施放成功後呼叫 `_pmAbsorbSelfHpCost()` 把這次 HP-delta 吸收掉**(castSkill / manualCast 兩個包裝都要)。原版(`D:\otherPersonRepos\idle-lineage-class`)同樣沒處理,是上游共有的坑。**判準:新增「會自己扣玩家 HP/觸發 HP 變化」的技能或機制 → 想一下 sprite 會不會誤判受擊。**
 - **「揮武器/擲武器」型的技能不該播施法動作**:`_PM_ATTACK_SKILLS`(玩家端·技能 id)/`_PM_ATTACK_SKILL_NAMES`(傭兵端·技能名)列出這類技能,改播攻擊動畫;有 `hits` 的(屠宰者/三重矢)連播 hits 次(burst),沒有 `hits` 的(戰斧投擲)播單次、不進 burst(免擋掉緊接著的普攻動畫)。新增同性質技能記得加進去。
 
+### 💾 離開頁面的存檔要去重,不要靠「外掛設旗標告訴核心別存」
+
+- **踩過 2026-07-09**:手機登出流程(afk-mobile)自己先 `saveGame()` 再 `location.reload()`,reload 觸發的 `pagehide` 又存一次 → 手機 toast 跳兩次。當時的解法是外掛設 `window.__afkLoggingOut`、核心讀它跳過——**核心讀外掛的全域變數,而且只擋掉這一個特例**。
+- **真正的問題是重複存檔沒防護**:關頁時 `visibilitychange(hidden)` / `pagehide` / `beforeunload` 三個事件會**連續觸發**,`saveOnExit` 就跑三遍(桌機看不出來,手機 toast 才暴露)。
+- **解法(js/13)**:`saveGame()` 結尾記 `_lastSaveMs`;`saveOnExit` 判斷 `Date.now() - _lastSaveMs < EXIT_SAVE_DEDUPE_MS(2000)` 就跳過。**去重只作用在離開路徑**,一般 `saveGame` 呼叫端(開寶箱/喝萬能藥/匯入存檔/擊殺頭目)行為完全不變、連呼三次就存三次。`__afkLoggingOut` 已刪除。
+- **判準**:發現「A 模組設旗標叫 B 模組別做某事」時,先問「B 是不是根本沒防重複執行?」——修 B 的重複,比讓 B 認識 A 好。
+
 ### 📜 日誌裁切要「絕對設定 scrollTop」,不能「相對扣掉被裁高度」(Chrome 會自己補一次)
 
 - **踩過 2026-07-09(把 afk-fixes 的日誌捲動錨定搬回核心時)**:`logCombat`/`logSys` 在鎖定捲動時裁掉頂端舊訊息,若寫成 `el.scrollTop -= 被裁高度`,在 **Chrome 會補兩次**(瀏覽器的 scroll anchoring,`overflow-anchor` 預設 `auto`,removeChild 頂端節點時自動調整 scrollTop)→ 視野往回飄。但 **iOS Safari 不支援 `overflow-anchor`**、完全不補,拿掉補償手機又會飄。

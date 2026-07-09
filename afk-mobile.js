@@ -480,8 +480,7 @@
     m.addEventListener('click', function (e) { if (e.target === m) close(); });   // 點背景關閉
     m.querySelector('#m-logout-cancel').addEventListener('click', close);
     m.querySelector('#m-logout-ok').addEventListener('click', function () {
-      window.__afkLoggingOut = true;   // 告知核心(js/13)的關閉前存檔別重存:本流程已存過,reload 觸發的 beforeunload/pagehide 不必再存(否則手機 toast 會跳兩次)
-      try { if (typeof window.saveGame === 'function') window.saveGame(); } catch (e) {}   // 先存當前進度,避免漏掉上次自動存檔後的收益
+      try { if (typeof window.saveGame === 'function') window.saveGame(); } catch (e) {}   // 先存當前進度,避免漏掉上次自動存檔後的收益(reload 觸發的 pagehide 存檔會被核心的 EXIT_SAVE_DEDUPE_MS 去重,不會重存)
       try { if (window.__afk && window.__afk.stamp) window.__afk.stamp(); } catch (e) {}   // 存完再蓋錨點 → 存檔時間=離線起算時間,離線結算不會漏算/重算
       showLogoutOverlay();   // 立刻蓋全螢幕遮罩:reload 是整頁重開機(手機要幾秒),期間舊頁仍在跑戰鬥,不蓋住會看起來像「還在打怪」
       // double rAF:確保遮罩先畫出來(rAF 在繪製前觸發,巢狀第二個在首次繪製後),再開始 reload

@@ -279,17 +279,14 @@
     (function () {
       if (typeof window.renderTabs !== 'function' || window.renderTabs.__mBagDefer) return;
       var origRT = window.renderTabs;
-      var THROTTLE_MS = 250, SELSEL = '#tab-weapons,#tab-armors,#tab-items,#tab-equip,#tab-skill,#item-modal';
+      var THROTTLE_MS = 250;
       var dirty = false, dirtyForce = false, lastRun = -1e9, trail = null;   // dirtyForce:延後期間有沒有 force 呼叫——補跑只在真的有 force 被延後時才 force,免得掉寶的非強制重繪被升級成 force、繞過核心 renderTabs 的「快速廢品/強化選擇模式凍結」守衛
       function now() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
       function bagOpen() { return document.body.classList.contains('mview-bag'); }
-      function selOpen() { var ae = document.activeElement; try { return !!(ae && ae.tagName === 'SELECT' && ae.closest && ae.closest(SELSEL)); } catch (e) { return false; } }
       function markDirty(force) { dirty = true; dirtyForce = dirtyForce || !!force; }
       function schedTrail(delay) { if (!trail) trail = setTimeout(function () { trail = null; if (dirty) { var f = dirtyForce; run([f]); } }, delay); }
-      function run(args) {
-        if (selOpen()) { markDirty(args && args[0]); schedTrail(200); return; }   // 下拉開著時不重建(會把它關掉)→ 比照核心 renderTabs 的 _tabSelectOpen 守衛,延後
-        dirty = false; dirtyForce = false; lastRun = now(); return origRT.apply(window, args || [true]);
-      }
+      // 下拉展開時的延後由核心 renderTabs 的 _tabSelectOpen 守衛負責（含 change/blur 後補繪）
+      function run(args) { dirty = false; dirtyForce = false; lastRun = now(); return origRT.apply(window, args || [true]); }
       var wrapped = function () {
         if (!detectMobile()) return origRT.apply(this, arguments);
         if (!bagOpen()) { markDirty(arguments[0]); return; }       // 戰鬥/設定畫面看不到背包 → 跳過,記 dirty

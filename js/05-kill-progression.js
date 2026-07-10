@@ -406,7 +406,7 @@ function killMob(idx) {
     updateUI();
     if(isSiegeArea(mapState.current)) mapState.suppressSiegeBoss = false;   // 攻城區擊殺後，重生開始可出現城門/守護塔(10%)
     handleSiegeKill(mob);   // 攻城戰：擊殺計數 + 城門/守護塔判定
-    if (mob.boss && !player.dead) saveGame();   // 🔧 成功擊殺頭目時自動存檔（保護稀有掉落）
+    if (mob.boss && !player.dead && !state.ff) saveGame();   // 🔧 成功擊殺頭目時自動存檔（保護稀有掉落）；補跑期間不逐王存檔（序列化很貴、離線結算另有每 5 秒檢查點保護，密集 BOSS 圖一晚殺數百王會拖慢結算數倍）
     if (_kbRoom && mob.boss && !player.dead) {   // 🔧 軍王之室：擊敗頭目並取得掉落後，於清算時傳送回村/回城（🏛️ 雙BOSS祭壇：場上不再有其他存活BOSS時才算全滅）
         let _krm = KING_ROOMS[mapState.current];
         if (!_krm.dual || !mapState.mobs.some(m => m && m.boss && !m._dead && m.uid !== mob.uid)) state._kbVictory = true;

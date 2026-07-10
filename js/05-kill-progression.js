@@ -175,6 +175,7 @@ function trialItemDropMult(id) { return (typeof TRIAL_ITEM_CLASS !== 'undefined'
 function killMob(idx) {
     let mob = mapState.mobs[idx];
     if (!mob || mob._dead) return;        // 冪等保護：同一隻怪只結算一次獎勵
+    if (window.__afkKillTally && mob.n) __afkKillTally[mob.n] = (__afkKillTally[mob.n] || 0) + 1;   // 🌙 離線結算期間依怪名計殺（js/offline.js；平時 null 零開銷）
     mob._dead = true;
     try { vfxKill(mob); } catch(e){}   // ✨ VFX：擊殺粒子爆裂（趁格子 DOM 仍在、重繪前）
     try { playMobKill(mob); } catch(e){}   // 🔊 音效：怪物死亡（依怪名對應專屬死亡音，查無→通用擊殺音）
@@ -860,7 +861,8 @@ function renderRiftEntrance(container) {
         <button onclick="claimRiftReward()" class="btn w-full py-4 text-xl font-bold ${pending ? 'bg-amber-700 hover:bg-amber-600 border-amber-400' : 'bg-slate-700 border-slate-500'} text-white shadow-lg">🎁 領取獎勵${pending ? '（可領取）' : '（無）'}</button>
         ${rankBlock(player.riftRank, false)}
         ${player.classicMode ? '' : rankBlock(player.riftRankSherine, true)}
-        <div class="text-slate-500 text-xs">進入需消耗 <span class="text-amber-300">1 顆 龜裂之核</span>（目前持有 ${cores}）。停留越久排名越前、獎勵越好；裂痕內無法傳送，離開後須先領取上次獎勵才能再次進入。${player.classicMode ? '' : '一般與席琳的世界排名各自獨立。'}</div>`;
+        <div class="text-slate-500 text-xs">進入需消耗 <span class="text-amber-300">1 顆 龜裂之核</span>（目前持有 ${cores}）。停留越久排名越前、獎勵越好；裂痕內無法傳送，離開後須先領取上次獎勵才能再次進入。${player.classicMode ? '' : '一般與席琳的世界排名各自獨立。'}</div>
+        <div style="margin-top:2px;padding:8px 10px;border:1px solid #b45309;background:rgba(180,83,9,0.14);border-radius:8px;color:#fcd34d;font-size:12px;line-height:1.55;">⚠ <b>不支援離線掛機</b>：關閉或重新整理頁面會中斷挑戰，<b>不結算、不記排名</b>（龜裂之核照樣消耗）。要記錄成績與獎勵，請以戰死或主動撤離結束。</div>`;
     container.appendChild(box);
 }
 

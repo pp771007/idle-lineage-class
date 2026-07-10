@@ -8,7 +8,7 @@
  *
  * 上方工具列可:① 選只看某個存檔位 / 全部;② 多選要顯示哪些欄位(經驗/金錢/道具/擊殺),方便整理。
  *
- * 資料來源:afk-offline.js 結算離線時寫進的 localStorage 鍵 afk_hist_<slot>(陣列)。
+ * 資料來源:js/offline.js(核心離線掛機)結算離線時寫進的 localStorage 鍵 afk_hist_<slot>(陣列)。
  * 角色身分:呼叫遊戲全域 slotSummary(n) 唯讀讀存檔摘要(名稱/職業/等級),讀不到就只顯示存檔位。
  *
  * 🔒 對玩家存檔唯讀:只讀 afk_hist_<slot> 與存檔摘要,絕不寫入遊戲存檔、不呼叫 saveGame、不碰任何遊戲資料。

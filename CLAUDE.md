@@ -42,7 +42,7 @@
 
 - 外掛要能「優雅降級」:自我檢查需要的全域函式/元素是否存在,缺了就 `console.warn` 後安靜停用,**不可把遊戲弄壞**。
 - **「補原作者坑」的補丁一律直接改核心根治**(2026-07-09 `afk-fixes.js` 已全數搬回核心並刪檔)。不要再為了「不動原作者碼」去包一層 wrapper。
-- 改核心前先 grep 外掛有沒有包住同一個函式(如 `afk-mobile` 包過 renderTabs、`afk-offline` 包過 saveGame),避免兩層邏輯打架。
+- 改核心前先 grep 外掛有沒有包住同一個函式(如 `afk-mobile` 包過 renderTabs),避免兩層邏輯打架。(離線掛機已於 2026-07-10 移入核心 `js/offline.js`,不再包 saveGame/loadGame/changeMap——這幾支的離線掛點改為函式尾端直呼 `offlineStamp`/`offlinePreLoad`/`offlineAfterLoad`。)
 - 改了 `js/*.js` 要同步更新 index.html 該檔的 `?v=`(慣例=內容 sha1 前 10 碼,`sha1sum js/<檔> | cut -c1-10`)並跑 `node scripts/stamp-sw-version.mjs`(`/prepush` 內含)。
 
 ### 🚨 外掛絕不可盲呼叫「會寫入/覆蓋玩家存檔」的原作者函式(踩過、害玩家存檔變 Lv.1 null)
@@ -54,14 +54,13 @@
 - 推論:**任何「會改動玩家 localStorage」的外掛操作,都要假設自己可能在「未載入角色 / currentSlot 不是使用者以為的那格」的狀態被觸發**,先驗狀態再動手;能唯讀就唯讀。
 - 原作者的存檔系統**只在「匯入」時才留 `*_bak` 備份**,`saveGame()`/一般存檔**不留備份**——所以一旦被外掛誤覆蓋就是永久損失,務必從源頭防止。
 
-## 目前的外掛(20 支,載入順序照 index.html;afk-skin 固定排最後)
+## 目前的外掛(載入順序照 index.html;afk-skin 固定排最後。⚠ 離線掛機不在此表——2026-07-10 已移入核心 `js/offline.js`,見下方離線掛機章節)
 
 | 檔案 | 功能 |
 |---|---|
-| `afk-offline.js` | 離線掛機(關瀏覽器也結算收益;24h 上限、撞死即停、存活回原狩獵圖續掛;長離線走「混合快速結算」,見下方離線掛機章節) |
 | `afk-mobile.js` | 手機版面(底部導覽列、一行式狀態列、浮動日誌面板、修正彈窗溢出;桌機零接觸,只在手機尺寸/裝置 init) |
 | `afk-backnav.js` | 手機「返回鍵/返回手勢」在子畫面(選存檔位/創角)回首頁而不是關掉 PWA(History API 包作者畫面切換函式;只手機;無 DOM 掛點不列 smoke) |
-| `afk-slotinfo.js` | 選角/載入畫面的存檔鈕下方附加「📍目前掛哪張圖、⏱已掛多久」(讀 afk-offline 寫的 `afk_map_/afk_ts_<slot>`,唯讀;暴露 `window.AFK_SLOTINFO.read(slot)`;桌機手機共用) |
+| `afk-slotinfo.js` | 選角/載入畫面的存檔鈕下方附加「📍目前掛哪張圖、⏱已掛多久」(讀核心離線模組寫的 `afk_map_/afk_ts_<slot>`,唯讀;暴露 `window.AFK_SLOTINFO.read(slot)`;桌機手機共用) |
 | `afk-extradata.js` | **掉落查詢+小百科共用的手動補充資料**(純資料、無 DOM、在 dex/wiki 之前載入,定義全域 `AFK_EXTRA`):`itemAcquire`(物品取得方式,`short` 給 dex 物品卡＋小百科裝備頁;`chain` 是舊傳說頁專用、現未使用)、`weaponTraitEff`/`weaponTagTrait`(武器特性白話對照,dex 物品卡共用)、`mapName`(地圖 id→中文)。**只放「不能從遊戲 DB 動態算」的手動補充**;補一件裝備取得只改這支、dex+wiki 同時生效。dex/wiki 都 call 時即時讀、沒載到優雅降級 |
 | `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;讀 DB.mobs/maps/items + **五張掉落表 MOB_DROPS／DARK_WEAPON_DROPS／DARK_CRYSTAL_DROPS／DRAGON_DROPS／WARRIOR_DROPS**(與原作 _auditMobDrops 同一組;漏讀哪張就查不到);龍騎士表的職業限定任務道具標「🐉僅X」(讀 `TRIAL_ITEM_CLASS`);**純兌換/無怪掉的成品**(龍騎士書板·鎖鏈劍·臂甲…)補 `AFK_EXTRA.itemAcquire[id].short`「取得方式」、且這類非裝備非商店物品要靠有 itemAcquire 才會收進搜尋索引;桌機手機共用;**支援獨立頁 `?view=dex`**,見下「獨立頁」;頂部「掉落率模式」下拉=一般/席琳×3/瘋狂席琳×5/經典×1/10 重算怪卡掉落率) |
 | `afk-wiki.js` | 小百科(首頁入口;**多分頁 + 關鍵字搜尋**:職業專精/武器特性/戰鬥機制/地圖/能力值/職業魔法/帶寵物/傭兵/任務/套裝/收藏-裝備/收藏-道具/收藏-怪物/魔法娃娃/裝備/強化/製作/負重/席琳/血盟/傲慢之塔/遺忘之島/軍王之室;部分讀遊戲資料、部分本檔手動維護(收藏-怪物讀 CARD_*、收藏-裝備讀 EQUIP_CATEGORIES/EQUIP_CAT_*、收藏-道具讀 MISC_CATEGORIES/MISC_CAT_*,皆 data-driven 自動跟上。**收藏三分頁**另有模式切換鈕:預設不選(防爆雷),點了才依模式共用桶 `lineage_idle_carddex/equipdex/miscdex+modeSuffix` **唯讀**顯示收集進度與缺項);桌機手機共用;**支援獨立頁 `?view=wiki`**;**改前先讀下方「小百科維護準則」**)。**「地圖」分頁**讀 `MAP_CATEGORIES`+`DB.maps/DB.mobs` 動態列出(每張標 📍進入路徑=在哪個分類、等級範圍、進入條件,自動同步;遊戲移動方式=地圖選單選分類再選圖直接傳送,故路徑即分類)。**「裝備」分頁**(`renderEquip`)讀 `DB.items` 依部位分組列出全部裝備+職業篩選(用遊戲 `equipOk` 真實規則);**詳情數值直接呼叫遊戲全域 `buildItemDescHTML({id,en:0,…})`**(永遠與遊戲一致、新增裝備/特效自動跟上、零手動維護),取得方式呼叫 `afk-dex.js` 暴露的 `window.AFK_DEX_API.acquireHTML(id)`(製作/商店/怪物掉落/`itemAcquire`)。每件詳情常駐 DOM(`display:none`)→ 完整數值與特效都進統一搜尋;詳情與整頁 HTML 都 memoize(`_equipDetail`/`_equipHtml`)→ 441 件搜尋重渲染不卡。**改裝備顯示時不要自己刻數值格式(會與遊戲分歧、得手動補),一律重用 `buildItemDescHTML`**。**「職業魔法」分頁**:每張魔法卡左側加圖示(`assets/icons/skills/<魔法名>.png`,與遊戲同路徑、缺圖 `onerror` 隱藏);選定單一職業時顯示「選擇角色」下拉(`charSelectHTML`,**唯讀**讀 8 格存檔 `_lzGet`/`_saveUnwrap` 取職業/等級/暱稱,預設不選、該職業無角色不顯示),選了角色後依其學過的魔法(`player.skills` 扣掉裝備臨時授予的 `grantedSkills`)把圖示變亮(`.is-learned`)/未學變暗(`.is-unlearned`);**絕不呼叫會寫存檔的原作函式**(見上方存檔鐵則) |
@@ -73,7 +72,7 @@
 | `afk-autobuy.js` | 外掛自動購買(設定面板「自動買銀箭」下方注入:肉耗盡自動買、魔法屏障卷軸自動補貨;包 `tick()` 低於門檻照商店價補;設定依存檔位存 `afk_autobuy_*_<slot>`;離線結算共用同一套 tick 邏輯,並暴露 `window.__afkAutobuyCheck` 供離線快速結算呼叫) |
 | `afk-pwa.js` | PWA「安裝成免網路遊玩」+ 自動/手動更新 + 背景預抓離線資源(首頁 `#main-menu`:未安裝顯示文字連結、iOS 跳文字引導;**已安裝(standalone)** 顯示 checkbox「自動更新至最新版本」預設打勾,沒勾且有新版才顯示「更新至最新版」連結+確認視窗;安裝後背景把 `assets/` 全抓進圖桶顯示進度。`<head>` 的 manifest/圖示/theme-color 用 JS 注入。SW 註冊沿用 afk-sw.js,本檔只管觀察更新/UI/預抓) |
 | `afk-storage.js` | 首頁「⚙ 設定」鈕 → 展開選單(`MENU_ITEMS` 可擴充,afk-history 也註冊進來)→ 檢查存檔大小(唯讀列出 localStorage 各 key 用量與 ~5MB 上限比例) |
-| `afk-history.js` | 首頁設定選單「📜 離線掛機紀錄」:每存檔位最近 5 筆離線結算卡片(時間/地點/經驗金錢/道具/擊殺;可篩選存檔位、多選欄位);讀 afk-offline 寫的 `afk_hist_<slot>`,**對玩家存檔唯讀**;顯示偏好存 `afk_hist_prefs` |
+| `afk-history.js` | 首頁設定選單「📜 離線掛機紀錄」:每存檔位最近 5 筆離線結算卡片(時間/地點/經驗金錢/道具/擊殺;可篩選存檔位、多選欄位);讀核心離線模組寫的 `afk_hist_<slot>`,**對玩家存檔唯讀**;顯示偏好存 `afk_hist_prefs` |
 | `afk-mobname.js` | 怪物名稱顯示模式三選一(全部常駐/鎖定中常駐/原版 hover 才顯示;純 CSS + body data 屬性驅動,零 per-tick 成本;設定存 `afk_mobname_mode`) |
 | `afk-training.js` | 木人場(「⚙️ 自動化」面板入口;選 1~5 隻怪打不死量真實 DPS,HUD 顯示每隻/總 DPS;怪血設天文數字、每 tick 量血量變化=總傷害再補回,涵蓋所有傷害來源;包 `killMob` 攔即死;可套席琳/瘋狂席琳模式,重用原作 `applySherineBuff`) |
 | `afk-analytics.js` | 注入 Cloudflare Web Analytics beacon 統計人數/開啟次數(免費、不用 cookie;**只在正式站台注入**——非 https、localhost/127.0.0.1/`*.local` 一律略過,免本機測試污染統計;token 未填(`__` 開頭)時自動略過。不掛 DOM、不列入 smoke) |
@@ -216,7 +215,7 @@
 
 > **🛠️ 這份清單已包成 `/prepush` skill(`.claude/skills/prepush/`):自動偵測改動的外掛→bump `?v=`→`stamp-sw-version`→smoke→掃衝突標記。準備 push 時跑 `/prepush` 即可。另有 `.claude/` 兩個 hook 兜底:`git push` 前自動擋衝突標記/漏引用/sw 版本過時(prepush-guard)、改 `afk-*.js` 後提醒 bump(bump-reminder)。** 下面是清單本體(skill/hook 即據此):
 
-1. **確認所有外掛 JS 都已在 `index.html` 有 `<script>` 引用**(在 `</body>` 前;目前 21 支,清單見上方外掛表,以 index.html 現況為準)。
+1. **確認所有外掛 JS 都已在 `index.html` 有 `<script>` 引用**(在 `</body>` 前;目前 20 支,清單見上方外掛表,以 index.html 現況為準)。
    - 新增外掛時,**務必同時**加上對應的 `<script>` 行;**有 DOM 掛點的**再加進 `scripts/smoke-hooks.mjs` 的 `need`(像 `afk-sw.js` 這種純註冊、無 DOM 掛點的就不必),否則功能不會生效、或掛點壞了沒人擋。
    - **⚠️ 改「外掛 init 觸發條件」(尤其只在特定裝置/尺寸才執行的)→ 想清楚 smoke 那輪驗不驗得到它。踩過(2026-07-01):`afk-mobile` 改成「桌機零接觸」(只有手機尺寸/裝置才 `init` 並印 `[AFK-mobile] hooks OK`)後,smoke 是用桌機視窗跑的 → afk-mobile 永遠印不出 hooks OK → 假性失效。修法:smoke 對「只在手機才 init 的外掛」用 `devices['iPhone 13']` 開第二輪 context 專驗(`needMobileOnly=['[AFK-mobile]']`),桌機那輪不列入。判準:任何「掛點只在某條件下才建立」的外掛,smoke 必須在該條件下(手機模擬/特定狀態)驗它,否則就是假性失效。**
 2. **smoke 沒有任何自動排程在跑(自動同步已停),一律 push 前本機跑**:`node scripts/smoke-hooks.mjs` → exit 0 才推(`/prepush` 內含)。紅了代表某外掛 hook 失效,回報是哪支。
@@ -243,7 +242,14 @@
 
 ## 🗺️ 離線掛機原則:等同「在線上掛機照跑」+ 非選單地圖(攀登/遺忘之島)的續掛寫法
 
-`afk-offline.js` 的核心原則:**離線掛機 = 把「在線上會發生的掛機」照跑一遍**,行為盡量與在線一致(同圖續掛、撞死即停結算到死前、存活回原地)。新增/修改離線行為前先對齊這條,不要自己發明特例。
+> **🏠 2026-07-10 起離線掛機是核心模組 `js/offline.js`(外掛 afk-offline.js 以 git mv 移入、已退役)**。要點:
+> - **檔名刻意不用數字開頭**(使用者明訂):日後手動合併原版可能新增 js/21-*.js 等編號檔,避免衝突。index.html 的 `<script>` 排在 js/20 之後、所有 afk-*.js 外掛之前。
+> - **對外相容不變**:localStorage 鍵(`afk_ts_/afk_map_/afk_pride_/afk_obl_/afk_hist_<slot>`)、`window.__afk` 介面(afk-mobile 用 `stamp`、afk-slotinfo 用 `mapName/capHours`、afk-history 用 `histKey`)、`[AFK] hooks OK` 開機訊息(smoke 認這個)全沿用——玩家更新前累積的離線時間照結算。
+> - **掛點=核心直呼,不再 monkey-patch**:js/13 `loadGame` 開頭 `offlinePreLoad()`(必須在回村甦醒覆寫錨點前擷取)→ 成功載入尾端 `offlineAfterLoad(pre)`;js/13 `saveGame`/js/11 `changeMap` 尾端 `offlineStamp()`;js/05 `killMob`/js/08 `gainItem` 經 `window.__afkKillTally/__afkGainTally` 計數(平時 null 零開銷)。
+> - **💾 分段檢查點(2026-07-10 修「結算中斷=整晚蒸發」)**:結算每 ~5 秒真實時間 `saveGame`+把錨點推進到「closeTs+已結算拍數」(絕不是「現在」),並 upsert 同 closeTs 的離線紀錄;`stamp()` 在 `catchingUp` 期間一律跳過(心跳/存檔/落點 changeMap 都蓋不了錨點)。中斷後下次載入只補剩餘。**判準:任何新程式碼想在結算期間蓋 afk_ts,都是 bug。**
+> - **其餘同日修正**:略過結算(村莊/攻城/排名/裂痕/木人場/非標準圖)會用 `skipNote` 寫一句白話進系統日誌(先前只寫 console,玩家看不到原因);`runCatchup` 全程 try/finally 包死 `catchingUp` 旗標(先前前段丟例外會讓同頁面之後所有角色都靜默不結算);afk_map 缺值的後備讀存檔改走 `_lzGet`+`_saveUnwrap`(存檔已壓縮+簽章,先前直接 JSON.parse 必失敗)。
+
+核心原則:**離線掛機 = 把「在線上會發生的掛機」照跑一遍**,行為盡量與在線一致(同圖續掛、撞死即停結算到死前、存活回原地)。新增/修改離線行為前先對齊這條,不要自己發明特例。
 
 ### ⚡ 混合快速結算(2026-07-06 上線,使用者核可):一般圖長離線不再逐拍模擬
 
@@ -256,7 +262,7 @@
 - **快速段會推進 `state.ticks`**(每殺 +round(拍/殺)),召喚/buff 的 endTick、賣廢品排程才不會凍結。**⚠ 快速段不跑 `tick()`,凡「靠 tick() 逐拍/每秒遞減」的玩家狀態都會凍結——與「絕對 tick 時間點」的狀態脫鉤就是 bug**(踩過 2026-07-07:`player.buffs` 秒數凍結、召喚物 endTick 照走 → 掛機回來精靈被移除但 buff 仍正,自動施放不重召。已在 `fastAdvance` 同步扣 buff 秒數,歸零後回線上 autoActions 自動重施)。判準:遊戲新增「每 tick 遞減的計時器」且會影響離線行為 → 檢查 fastAdvance 要不要同步推進。`logSys` 在 ff 靜音 → 快速段的買箭/買藥訊息本來就不會出現,**debug 時別誤判成「沒買」**(判準:快速段沒印「退回全模擬」=補貨正常)。
 - **⚠ 快速段繞過 `tick()`→也繞過 `autoActions()`,凡「只寫在 autoActions 的自動行為」在快速段都不會自己發生,要在快速段各自補上(踩過 2026-07-08:遇 BOSS 自動瞬移逃離)**:自動瞬移、自動施法、自動購買、自動換裝這類都掛在 `autoActions()`(由 `tick()` 每拍呼叫),而快速段是 `spawnMob→killMob→settleDeadMobs`、不跑 `tick()`,所以這些自動行為在快速段一律不觸發。判準:遊戲在 `autoActions` 加了新的「戰鬥中自動反應」且會影響離線收益 → 檢查 `fastKillOnce`/`fastAdvance` 要不要補。**⭐ 補的時候鐵則:要「模擬某個原作自動行為」時,直接呼叫原作那支函式(如瞬移就 `useItem(scroll.uid, true)`),不要自己刻它的前置守衛/地圖清單**——`useItem` 的 teleport_scroll 分支內部已依序擋掉「行動限制狀態／軍王之室(`KING_ROOMS`)／`prideTeleportBlocked()`(時空裂痕·排名·傲慢之塔11F+無支配符)／遺忘之島(`state.oblivion`)」且被擋下不消耗卷軸;自己在外掛重列一份「哪些地圖能瞬移」必漏(第一版只擋了 siege/純BOSS房,漏了傲慢之塔11F+無符→會白扣卷軸還硬瞬移,使用者抓到)。重用原作函式 = 永遠與原作規則同步、不分歧。
 - **⚠ 補跑(ff)期間「戰鬥路徑直接呼叫的渲染函式」會洩漏到畫面+白費效能——render* 要嘛在呼叫點包 `!state.ff`、要嘛函式內自帶 `if(state.ff)return`(踩過 2026-07-08:傭兵倒地動畫)**:離線/背景補跑時 `state.ff=true`,`tick()` 尾端的 `updateUI()`/`renderMobs()` 都包在 `if(!state.ff){…}` 裡不會動畫面;但戰鬥子路徑常「直接」呼叫某個 render(傭兵倒地/復活/升級 → `renderSquadPanel()`;`js/04`/`js/06`/`js/05` 多處),這種**繞過 tick 尾端那層守衛**,補跑時照樣整塊 `innerHTML` 重建 → 畫面閃倒地動畫、還很吃效能。已在 `renderSquadPanel` 開頭加 `if(state.ff)return`(一處擋全部呼叫點,補跑結束後由正常 `updateUI` 再畫一次最終狀態)。判準:任何「戰鬥/傭兵/掉落等 tick 期間會跑到的路徑」若**直接** call `render*`/改 DOM,grep 它有沒有被 `!state.ff` 包住或函式內早退;沒有就是 ff 洩漏(症狀=離線掛機回來看到戰鬥動畫/面板在跳)。`renderMobs` 是逐呼叫點包、`renderSquadPanel`/`_updateUIImpl` 是函式內早退,兩種都行、擇一即可。
-- **⚠ 「遊戲邏輯的時間判斷」要用遊戲時鐘 `state.ticks`,不要用牆鐘 `Date.now()`——否則離線補跑(壓縮時間)會失真(踩過 2026-07-08:長老之室 BOSS 3 分鐘節流)**:離線補跑把 24h 遊戲時間壓進幾秒跑完,`Date.now()`(真實時間)只走幾秒 → 任何用 `Date.now()` 做「經過多久」判斷的遊戲邏輯,在補跑期間都幾乎凍住。踩過:長老之室「第 1 隻 BOSS 活滿 3 分鐘才出第 2 隻」原本用 `Date.now()-_bornMs>=180000`,離線時 3 分鐘牆鐘湊不到 → 第 2 隻永遠不出 → 離線比線上少一隻 BOSS、危險度失真。已改成 `state.ticks-_bornTick>=1800`(3 分鐘=1800 拍)。遊戲裡絕大多數時間邏輯(出怪排程 `spawnAt`、軍王復活 `_kbRespawnAt`、buff `endTick`)本來就用 `state.ticks`,補跑會正確推進它;偶爾走偏用 `Date.now()` 的才要抓回來。**判準:一個 `Date.now()` 該不該換 `state.ticks`,問「這段時間玩家離線時該不該繼續流逝?」**——① 該繼續流逝(攻城冷卻/盟主祝福這種「關遊戲也要倒數」的,`js/01:443` 有註解;魔物追蹤刻意做成離線全程有效,afk-offline 另有 `until` 撐長處理)→ **留牆鐘**;② 該跟「玩家在遊戲裡實際經過多久」走(怪存活時間、技能節流)→ **改 `state.ticks`**。新增時間相關機制時照這條選時鐘。
+- **⚠ 「遊戲邏輯的時間判斷」要用遊戲時鐘 `state.ticks`,不要用牆鐘 `Date.now()`——否則離線補跑(壓縮時間)會失真(踩過 2026-07-08:長老之室 BOSS 3 分鐘節流)**:離線補跑把 24h 遊戲時間壓進幾秒跑完,`Date.now()`(真實時間)只走幾秒 → 任何用 `Date.now()` 做「經過多久」判斷的遊戲邏輯,在補跑期間都幾乎凍住。踩過:長老之室「第 1 隻 BOSS 活滿 3 分鐘才出第 2 隻」原本用 `Date.now()-_bornMs>=180000`,離線時 3 分鐘牆鐘湊不到 → 第 2 隻永遠不出 → 離線比線上少一隻 BOSS、危險度失真。已改成 `state.ticks-_bornTick>=1800`(3 分鐘=1800 拍)。遊戲裡絕大多數時間邏輯(出怪排程 `spawnAt`、軍王復活 `_kbRespawnAt`、buff `endTick`)本來就用 `state.ticks`,補跑會正確推進它;偶爾走偏用 `Date.now()` 的才要抓回來。**判準:一個 `Date.now()` 該不該換 `state.ticks`,問「這段時間玩家離線時該不該繼續流逝?」**——① 該繼續流逝(攻城冷卻/盟主祝福這種「關遊戲也要倒數」的,`js/01:443` 有註解;魔物追蹤刻意做成離線全程有效,js/offline.js 另有 `until` 撐長處理)→ **留牆鐘**;② 該跟「玩家在遊戲裡實際經過多久」走(怪存活時間、技能節流)→ **改 `state.ticks`**。新增時間相關機制時照這條選時鐘。
 - **debug**:`window.__afk.forceCatchup(分鐘數, noFast)`——第二參數 true 強制全模擬(A/B 比對用);**此入口會帶當前地圖**(2026-07-06 修:原本沒帶 → `gotoMap(undefined)` 空轉零收益,測試時誤判成功能壞掉)。
 
 **特別坑:有些「狩獵地點」不是地圖選單裡的地圖**(攀登 `pride_fN`、遺忘之島 `oblivion_travel`/`oblivion_island`)——它們**不在 `DB.maps`/`MAP_CATEGORIES`**,而且原作**不存檔**這類「旅程/攀登狀態」(`state.prideClimb…`/`state.oblivion`),重載一律回村。對這種地圖做離線續掛,規則:
@@ -269,7 +275,7 @@
 
 ### 例外:「時間排名挑戰」類的特殊 run → 離線一律「不續、不結算」(不是續掛)
 
-非選單地圖不全都要續掛。**排名/計時挑戰**(原作 `state.riftRun` 的「時空裂痕」`rift_battle`、攀登的「排名挑戰」`prideRanked`)的設計是「停留越久排名/獎勵越高、撐到被打死」,**離線自動續＝刷排名/刷獎勵 exploit**;且原作這類 state 不存檔(transient `state` 物件)、重載一律回村(等同「中途離開＝該次作廢」)。所以離線外掛對這類**明確早退、完全不模擬**(`afk-offline.js` `maybeCatchup` 裡:排名攀登看 `prePride.ranked`、時空裂痕看 `savedMap === 'rift_battle'`)。判準:**這張圖的收益/排名是不是「靠線上停留時間累積」?是 → 離線不能幫他跑**(不然就是掛機刷榜)。一般狩獵圖(含底比斯、魔族/暗影神殿等選單地圖)才照「在線掛機照跑」續結算。
+非選單地圖不全都要續掛。**排名/計時挑戰**(原作 `state.riftRun` 的「時空裂痕」`rift_battle`、攀登的「排名挑戰」`prideRanked`)的設計是「停留越久排名/獎勵越高、撐到被打死」,**離線自動續＝刷排名/刷獎勵 exploit**;且原作這類 state 不存檔(transient `state` 物件)、重載一律回村(等同「中途離開＝該次作廢」)。所以離線模組對這類**明確早退、完全不模擬**(`js/offline.js` `maybeCatchup` 裡:排名攀登看 `prePride.ranked`、時空裂痕看 `savedMap === 'rift_battle'`)。判準:**這張圖的收益/排名是不是「靠線上停留時間累積」?是 → 離線不能幫他跑**(不然就是掛機刷榜)。一般狩獵圖(含底比斯、魔族/暗影神殿等選單地圖)才照「在線掛機照跑」續結算。
 
 ## 🐌 離線結算效能:實測結論(別再往「優化掃描」方向想)
 
@@ -280,7 +286,7 @@
 - **不是背包掃描**(本來最直覺的猜測,實測推翻):決定性反事實測試——在跑到很慢時把背包從 258 筆砍到 203 筆,每 tick 耗時幾乎沒變(311→302µs)。背包整段 24h 也只從 184 長到 258 筆(+40%),撐不起好幾倍的速度落差。所以「離線時清廢品來加速」**無效,不要做**。
 - **不是記憶體/log 累積**:單場結算過程記憶體穩定在 13~20MB、沒漏;戰鬥日誌在 `state.ff`(快轉)時 `logCombat`/`logSys` 直接 return、不累積。
 - **真正成本 = 戰鬥模擬本身,且 RNG 變異極大**:同一隻角色同圖,跑兩次差很多——沒升級那次每 tick ~0.11ms(24h 純運算約 96 秒)、升到 Lv68 打進更硬戰鬥那次飆到 1~2ms(24h 約 471 秒)。慢不是 bug,就是「真的在一場一場模擬戰鬥」,場面越大越吃運算。
-- **參考數據**:`TICK_MS=100`,24h = 864,000 個 tick。離線外掛 `afk-offline.js` 的「ms」是時間切片預算(`SLICE_MIN_MS=28` 短離線、`SLICE_MAX_MS=250` 長離線≥1h),只影響「讓畫面喘」的額外開銷、不影響純運算那條底;250ms 以上邊際效益已很小。
+- **參考數據**:`TICK_MS=100`,24h = 864,000 個 tick。離線模組 `js/offline.js` 的「ms」是時間切片預算(`SLICE_MIN_MS=28` 短離線、`SLICE_MAX_MS=250` 長離線≥1h),只影響「讓畫面喘」的額外開銷、不影響純運算那條底;250ms 以上邊際效益已很小。
 - **2026-07-05 追加驗證(使用者又報慢、懷疑上游更新害的)**:對 v2.7.92–96/v3.0.x 大更新前後做 A/B 基準——本機起兩個 server(HEAD vs 更新前 commit 的 sparse worktree)、Playwright 同一套合成角色(Lv63/zone_14)各跑 3 輪×36k tick、每輪重新載頁,結果每 tick 5–7µs **無差異,上游更新沒有拖慢快轉**(新特效函式全走 `window.__vfxOff` 總開關;`logCombat` 也仍有 `state.ff` 早退)。倒是 CDP profile 抓到**我們外掛在快轉迴圈漏電**:`afk-fixes` 的「日誌捲動錨定」wrapper 在 `state.ff` 時仍對每則 logCombat/logSys 先 `getElementById`+讀 `scrollHeight`(強制排版,約佔合成快轉 10%)——已加 ff 快速通道直呼原函式;**該段已於 2026-07-09 搬回核心 `_trimLog`,wrapper 消失、`state.ff` 早退在 logCombat/logSys 第一行,此漏電結構性不再存在**。**方法備忘:懷疑效能回歸就 A/B+profile,別用猜的**;profile 其餘熱點(autoSellJunk 每 100 拍全背包掃、`_dpsSnap`/`_dpsDealt` DPS 統計每拍快照、afk-autobuy 的 tick wrapper)都是原設計或必要成本,佔比小、別動。
 - **2026-07-05 補測「離線強制賣廢品」策略**:合成 2000 格大背包+放大廢品流入,五變體×2輪×36k拍——現行不強制賣 14.2~15.6µs/拍;強制每100拍賣 12.1~12.4(比現行快~15%,因背包變小掃描變便宜);每1000/6000拍賣與每100拍無差;自動賣出整個關 7.2~8.4µs=快近一倍。但這些差距只在「弱角色+肥背包」情境顯著——**真實重戰鬥角色每拍 0.3~2ms,自動賣出相關全部 <1~2%、體感不出來**;當初移除強制賣出屬中性決定,不必加回。真正有感的手段仍是玩家自己清背包/收倉庫。
 

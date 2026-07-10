@@ -162,7 +162,7 @@
 
   // ---- 離場還原用：進場前真實 mapState 的全鍵快照(backup.ms),exitTraining 用它把 mapState 換回去。
   //   ⚠ 刻意「不」去包 saveGame：木人場是暫態地圖,就算存到 afk_dummy/假怪也無害——loadGame 會強制回村
-  //   (setMapSelectors(回村)+changeMap(true) 整個重置地圖與怪),離線收益則由 afk-offline 偵測 afk_dummy 直接不結算。
+  //   (setMapSelectors(回村)+changeMap(true) 整個重置地圖與怪),離線收益則由 js/offline.js(核心)偵測 afk_dummy 直接不結算。
   //   (包 saveGame 是高風險做法,曾把存檔寫壞成 Lv.1 null,故改走「不擋存檔+讀檔回村+離線略過」這條更安全的路。) ----
   var SAFE_MS = { current: 'town_kent', mobs: [null, null, null, null, null], targetIdx: -1, spawnAt: [null, null, null, null, null], forceBoss: false, suppressSiegeBoss: false };
   function swapAllKeys(target, src) {            // 用 src 的鍵完全覆蓋 target（含刪掉多出來的鍵）；離場還原用

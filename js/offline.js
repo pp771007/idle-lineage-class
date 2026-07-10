@@ -1,16 +1,23 @@
 /* ============================================================================
- * afk-offline.js — 離線掛機外掛(關閉瀏覽器也能結算掛機收益)
+ * js/offline.js — 離線掛機(核心模組;關閉瀏覽器也能結算掛機收益)
  *
- * 設計原則:完全不改原作者程式碼,只從外面「包住」全域函式(monkey-patch)。
- *   - 時間戳存在自己的 localStorage 鍵(afk_ts_<slot>),不碰原存檔格式。
- *   - 離線戰鬥直接呼叫原作者的 tick(),平衡/掉落跟著原版自動同步。
+ * 2026-07-10 由外掛 afk-offline.js 移入核心(git mv,歷史保留)。對外相容不變:
+ *   - localStorage 鍵沿用 afk_ts_/afk_map_/afk_pride_/afk_obl_/afk_hist_<slot>(玩家零遷移)。
+ *   - window.__afk 介面沿用(afk-mobile 用 stamp、afk-slotinfo 用 mapName/capHours、afk-history 用 histKey)。
+ *   - 開機訊息沿用「[AFK] hooks OK」(smoke 檢查認這個前綴)。
+ *
+ * 設計原則:
+ *   - 離線戰鬥直接跑核心 tick()/killMob() 管線,平衡/掉落與在線一致。
  *   - 撞死即停、結算到死亡前(不做不死,避免無敵 exploit);存活則結算後接回原狩獵圖續掛。
  *   - per-slot 心跳:多分頁掛不同角色用各自的 afk_ts_<slot>,互不干擾。
- *   - 時間切片 + 進度遮罩,8 小時補跑也不會凍結頁面。
+ *   - 時間切片 + 進度遮罩,長補跑不凍結頁面。
+ *   - 💾 分段檢查點:結算每 ~CKPT_MS 就 saveGame 並把錨點推進到「已結算到的時間點」——
+ *     結算中被關頁/重整/系統殺掉,下次載入只補剩下沒算的,整晚收益不再無聲蒸發。
  *
- * 掛接方式:在 index.html 的 </body> 前加一行
- *   <script src="afk-offline.js"></script>
- * 更新版本時通常只要重新加回這一行即可。
+ * 掛接點(核心直呼,不再 monkey-patch):
+ *   - js/13 loadGame:開頭 offlinePreLoad() 擷取離線錨點 → 載入成功結尾 offlineAfterLoad(pre) 結算。
+ *   - js/13 saveGame / js/11 changeMap:結尾 offlineStamp() 蓋錨點。
+ *   - js/05 killMob / js/08 gainItem:結算期間經 window.__afkKillTally/__afkGainTally 計數(平時 null 零開銷)。
  * ========================================================================== */
 (function () {
   'use strict';
@@ -19,6 +26,7 @@
   var CAP_HOURS        = 24;                      // 離線收益上限(小時)
   var CAP_MS           = CAP_HOURS * 3600 * 1000;
   var HEARTBEAT_MS     = 5 * 1000;              // 活著時多久蓋一次時間戳
+  var CKPT_MS          = 5 * 1000;              // 💾 結算檢查點間隔(真實毫秒):每滿就把已結算收益 saveGame＋錨點推進到已結算時點;結算被中斷最多丟這麼久的量
   var OVERLAY_MIN_TICK = 3000;                  // 補跑超過這麼多 tick 才顯示進度遮罩(約 5 分鐘)
   // 「每段最多跑這麼久就 await raf 讓出一次」＝畫面更新間隔(進度遮罩只在讓出時重繪、期間頁面凍結)。
   //   值小→讓出多、畫面順但等影格開銷大、結算慢;值大→相反。故依「要補跑的時間長短」動態取值:
@@ -73,8 +81,14 @@
   // 遺忘之島旅程:原作 saveGame 不存 state.oblivion(且 loadGame 一律回村),同攀登由外掛自己記一份,
   //   登入後還原並接回島上續掛。島/途中地圖(oblivion_island/oblivion_travel)非選單地圖,走 enterOblivionMap 進場(不能用 gotoMap)。
   function readObl()    { try { var s = localStorage.getItem(oblKey()); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
-  // 蓋時間戳,順手記下「即時所在地圖」(changeMap 不會存檔,光看存檔 blob 會誤判還在村莊)
+  // 蓋時間戳(=現在),順手記下「即時所在地圖」(changeMap 不會存檔,光看存檔 blob 會誤判還在村莊)。
+  // ⚠ 結算期間(catchingUp)一律跳過:錨點只能由檢查點以「已結算到的時間點」推進——
+  //   否則心跳/存檔/落點 changeMap 把錨點蓋成「現在」,結算一被中斷整段離線時間就此蒸發(2026-07-10 修)。
   function stamp() {
+    if (catchingUp) return;
+    stampCore(Date.now());
+  }
+  function stampCore(ts) {
     try {
       if (!validSlot()) return;
       // 只在「真的進到遊戲畫面」時記錄。開始選單/創角/載入前 game-screen 是 hidden,此時
@@ -82,7 +96,7 @@
       // afk_map 蓋成 training(且只波及 slot 1),害離線結算跑錯地圖。守在這裡根治。
       var gs = document.getElementById('game-screen');
       if (!gs || gs.classList.contains('hidden')) return;
-      localStorage.setItem(tsKey(), Date.now());
+      localStorage.setItem(tsKey(), ts);
       if (typeof mapState !== 'undefined' && mapState && mapState.current) localStorage.setItem(mapKey(), mapState.current);
       // 攀登中才記攀登狀態(在第幾樓/是否排名);非攀登就清掉,避免下次登入誤判
       if (typeof state !== 'undefined' && state && state.prideClimb) {
@@ -260,22 +274,30 @@
     out.sort(function (a, b) { return b.cnt - a.cnt; });
     return out;
   }
-  // ⚠ 唯一寫入點:把一筆紀錄塞進 afk_hist_<slot> 陣列頭、截到上限。純 localStorage.setItem,不動原作者存檔、不 saveGame。
+  // ⚠ 唯一寫入點:把一筆紀錄寫進 afk_hist_<slot> 陣列、截到上限。純 localStorage.setItem,不動玩家存檔、不 saveGame。
+  //   同 closeTs 覆寫(upsert):檢查點期間反覆更新「進行中」的同一筆、結算完成時覆寫成最終版,
+  //   同一段離線不會拆成多筆、中斷也不會漏記。
   function recordHistory(rec) {
     try {
       if (!validSlot()) return;
       var arr = [];
       try { var raw = localStorage.getItem(histKey()); if (raw) arr = JSON.parse(raw) || []; } catch (e) { arr = []; }
       if (!Array.isArray(arr)) arr = [];
-      arr.unshift(rec);
+      var hit = -1;
+      for (var j = 0; j < arr.length; j++) { if (arr[j] && arr[j].closeTs === rec.closeTs) { hit = j; break; } }
+      if (hit >= 0) arr[hit] = rec; else arr.unshift(rec);
       if (arr.length > HIST_MAX) arr = arr.slice(0, HIST_MAX);
       localStorage.setItem(histKey(), JSON.stringify(arr));
     } catch (e) { console.warn('[AFK] recordHistory error:', e); }
   }
   // 地圖 id → 顯示名稱(查原作者的 MAP_CATEGORIES);查不到就回 id 本身
   // 地圖 id → 中文名：統一委派 afk-extradata 共用解析(離線收益摘要 + 選角掛機地點 afk-slotinfo 委派此函式都走這份)。
-  //   afk-offline 雖比 afk-extradata 早載入,但本函式在「執行期」才被呼叫,屆時 AFK_EXTRA 已就緒;缺了則退回 id。
+  //   本檔(核心)比外掛 afk-extradata 早載入,但本函式在「執行期」才被呼叫,屆時 AFK_EXTRA 已就緒;缺了則退回 id。
   function mapName(id) { try { return (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(id) : (id || '?'); } catch (e) { return id || '?'; } }
+  // 略過離線結算時,在系統日誌講一句白話原因(先前只寫 console,玩家只看到「載入很快、什麼都沒有」,無從判斷;2026-07-10 加)
+  function skipNote(msg) {
+    try { if (typeof logSys === 'function') logSys('<span class="text-slate-400">🌙 ' + msg + '</span>'); } catch (e) {}
+  }
   // 累積總經驗(等級已過的各級需求總和 + 目前這級經驗)。player.exp 是「當級經驗」升級會歸零,
   // 直接相減在升級時會變負;改用累積值相減才正確(getExpReq=每級所需經驗,核心遊戲全域函式)。
   function expTotal(lv, exp) {
@@ -400,7 +422,7 @@
 
   // ----- 離線補跑(時間切片) ----------------------------------------------
   var catchingUp = false;
-  var killTally = null;   // 📜 非 null 時(只在補跑中)累計各怪擊殺數 {怪名:次數};線上遊玩為 null → killMob 包裝零開銷
+  var killTally = null;   // 📜 非 null 時(只在補跑中)累計各怪擊殺數 {怪名:次數};線上遊玩為 null → killMob 的計數判斷零開銷
   var gainTally = null;   // ⚡ 非 null 時(只在補跑中)累計各物品獲得數 {物品id:數量};供快速結算把「淨變化」還原成「真實消耗」(消耗=期初+獲得−期末)
   var _forceNoFast = false;   // 🧪 debug:forceCatchup(mins, true) 可強制全模擬(A/B 比對快速結算保真度用)
   async function runCatchup(totalTicks, withOverlay, huntMap, prePride, preObl, timing) {
@@ -408,6 +430,10 @@
     catchingUp = true;
     killTally = {};   // 📜 本次補跑的擊殺計數歸零
     gainTally = {};   // ⚡ 本次補跑的獲得計數歸零
+    window.__afkKillTally = killTally;   // 核心 killMob/gainItem 在結算期間經這兩個計數(平時 null → 零開銷)
+    window.__afkGainTally = gainTally;
+    var prevFf0, prevInTick0;   // 先宣告在 try 外:例外時 finally 才有得還原
+    try {   // 🛡️ 全程包死:任何一步丟例外都不可讓 catchingUp 卡在 true——否則同頁面之後所有角色載入都會靜默跳過結算(2026-07-10 修)
 
     // 🎯 魔物追蹤:until 是牆鐘時間,離線中過期的話補跑時 spawnMob 的「until > Date.now()」整段不成立
     //   → 明明關遊戲時追蹤還有效,離線收益卻完全吃不到追蹤。使用者決定(2026-07-07):離線當下追蹤仍有效
@@ -432,7 +458,7 @@
     // 暫停 live loop,避免結算期間與主迴圈交錯;結算後再以全新計時重啟
     try { if (typeof _gameLoopId !== 'undefined' && _gameLoopId !== null) { clearInterval(_gameLoopId); _gameLoopId = null; } } catch (e) {}
 
-    var prevFf0 = state.ff, prevInTick0 = state.inTick;
+    prevFf0 = state.ff; prevInTick0 = state.inTick;
     state.ff = true; state.inTick = true;        // 先靜音,再切到關閉時所在的位置
     if (isClimb) {
       // 攀登:還原原作不存檔的攀登旗標,用 enterPrideFloor 進場(ff=true 故不碰 DOM);補跑期間照常爬樓/撞死即停
@@ -665,6 +691,57 @@
     // ═══ 混合快速結算(宣告結束;主迴圈內 fastMode 分支使用) ═════════════════════
 
     var done = 0, died = false;
+
+    // ═══ 💾 分段檢查點 ══════════════════════════════════════════════════════
+    // 每 CKPT_MS 真實毫秒把「已結算到的收益」saveGame 固化,並把錨點推進到「closeTs + 已結算拍數」
+    // (絕不是「現在」)。結算中被關頁/重整/PWA 被系統殺掉 → 下次載入從錨點續算剩餘,整晚收益不再無聲蒸發。
+    // stamp() 在 catchingUp 期間一律跳過(心跳/存檔/落點 changeMap 都蓋不了錨點),錨點只由這裡推進。
+    // debug forceCatchup 無 timing → 不做檢查點、不動錨點(維持既有 debug 行為:不寫紀錄、結束才 stamp)。
+    var _ckptLastMs = performance.now();
+    function buildHistRec() {   // 組一筆離線紀錄:檢查點=「進行中」版本、結算完成=最終版本;同 closeTs 由 recordHistory 覆寫
+      var a2 = snapshot();
+      var hKills = [];
+      for (var kn in killTally) hKills.push({ n: kn, cnt: killTally[kn] });
+      hKills.sort(function (x, y) { return x.cnt - y.cnt; });   // 數量「少 → 多」(稀有/BOSS 殺得少自然排前面)
+      var hKind, hMap;
+      if (climbSegs && (climbSegs.length || segFloor > 0)) {
+        hKind = 'climb';
+        var _f0 = climbSegs.length ? climbSegs[0].floor : segFloor;
+        var _f1 = segFloor > 0 ? segFloor : (climbSegs.length ? climbSegs[climbSegs.length - 1].floor : _f0);
+        hMap = '傲慢之塔（' + _f0 + ' → ' + _f1 + ' 樓）';
+      } else if (isObl) { hKind = 'oblivion'; hMap = mapName(oblEndMap || (mapState && mapState.current) || huntMap); }
+      else if (isKing)  { hKind = 'king';     hMap = mapName(huntMap); }
+      else              { hKind = 'normal';   hMap = mapName(huntMap); }
+      var hExp = expTotal(a2.lv, a2.exp) - expTotal(before.lv, before.exp); if (hExp < 0) hExp = 0;
+      var loginTs2 = (timing && timing.loginTs) || Date.now();
+      return {
+        v: 1,
+        closeTs: timing.closeTs,            // 關閉(離線開始)時間
+        loginTs: loginTs2,                  // 登入(離線結束)時間
+        realMs: Math.max(0, loginTs2 - timing.closeTs),   // 真實離線時間(未封頂)→ 顯示「共 X 時 Y 分」
+        settledMs: done * TICK_MS,          // 實際結算時間 → 算平均效率用
+        capped: (loginTs2 - timing.closeTs) > CAP_MS,     // 真實時間是否超過 24h 上限(超過時實際只結算到上限)
+        kind: hKind,                        // normal / climb / oblivion / king
+        map: hMap,
+        exp: hExp,
+        gold: (a2.gold || 0) - (before.gold || 0),
+        lv: (a2.lv || 0) - (before.lv || 0),
+        items: invDeltaList(before, a2),
+        kills: hKills,
+        died: !!(died || player.dead),
+        keysUsed: isKing ? Math.max(0, kingKeysBefore - countKingKeys()) : 0
+      };
+    }
+    function doCheckpoint() {
+      try {
+        if (typeof saveGame === 'function') saveGame();   // ff 下 logSys 靜音,不會洗「進度已儲存」;saveGame 尾端的 offlineStamp 被 catchingUp 擋掉,不影響錨點
+        stampCore(timing.closeTs + done * TICK_MS);       // 錨點=已結算到的時間點(絕不用 now,剩餘離線時間才不會被吃掉)
+        recordHistory(buildHistRec());                    // 已結算部分先寫進離線紀錄(同 closeTs 覆寫,不會多筆)
+      } catch (eCk) {}
+      _ckptLastMs = performance.now();
+    }
+    // ═══ 分段檢查點(宣告結束) ═══════════════════════════════════════════════
+
     try {
       while (done < totalTicks && !_abortCatchup) {
         if (player.dead || !state.running) { died = !!player.dead; break; }
@@ -726,6 +803,8 @@
           }
         }
         if (withOverlay) updateOverlay(done / totalTicks, done, totalTicks);
+        if (timing && timing.closeTs && done > 0 && !player.dead && state.running &&
+            (performance.now() - _ckptLastMs) >= CKPT_MS) doCheckpoint();   // 💾 分段檢查點(見上方宣告)
         await pace(sliceMs);   // 前景 rAF / 背景 Worker 溫和節拍(切走也續算)
         // 「長按放棄剩餘收益」按滿 HOLD_MS → 設旗標跳出(已算到的收益本就累積保留,等同撞死即停)
         if (_holdStart && (performance.now() - _holdStart) >= HOLD_MS) _abortCatchup = true;
@@ -805,51 +884,13 @@
       try { if (typeof logSys === 'function') logSys('<span style="color:#fca5a5;font-weight:bold;">⏭ 已放棄剩餘約 ' + _skipMin + ' 分鐘的離線收益（你提前結束了結算）。</span>'); } catch (e) {}
     }
 
-    // 📜 寫一筆離線掛機歷史紀錄(僅在「有 timing(真實離線)且真的結算了 done>0 tick」時記;debug forceCatchup 無 timing → 不記)
+    // 📜 寫離線掛機歷史紀錄(僅在「有 timing(真實離線)且真的結算了 done>0 tick」時記;debug forceCatchup 無 timing → 不記)
+    //   與檢查點共用 buildHistRec/recordHistory:同 closeTs 覆寫 → 檢查點寫的「進行中」版本在此被最終版取代。
     try {
-      if (timing && timing.closeTs && done > 0) {
-        var hKills = [];
-        for (var kn in killTally) hKills.push({ n: kn, cnt: killTally[kn] });
-        hKills.sort(function (a, b) { return a.cnt - b.cnt; });   // 數量「少 → 多」(稀有/BOSS 殺得少自然排前面)
-        var hKind, hMap;
-        if (climbSegs && climbSegs.length) {
-          hKind = 'climb';
-          hMap = '傲慢之塔（' + climbSegs[0].floor + ' → ' + climbSegs[climbSegs.length - 1].floor + ' 樓）';
-        } else if (isObl) { hKind = 'oblivion'; hMap = mapName(oblEndMap || huntMap); }
-        else if (isKing)  { hKind = 'king';     hMap = mapName(huntMap); }
-        else              { hKind = 'normal';   hMap = mapName(huntMap); }
-        var hExp, hGold, hLv;
-        if (climbSegs && climbSegs.length) {
-          hExp = 0; hGold = 0; hLv = 0;
-          climbSegs.forEach(function (s) { hExp += s.exp || 0; hGold += s.gold || 0; hLv += s.lv || 0; });
-        } else {
-          hExp = expTotal(after.lv, after.exp) - expTotal(before.lv, before.exp); if (hExp < 0) hExp = 0;
-          hGold = (after.gold || 0) - (before.gold || 0);
-          hLv = (after.lv || 0) - (before.lv || 0);
-        }
-        var loginTs = timing.loginTs || Date.now();
-        recordHistory({
-          v: 1,
-          closeTs: timing.closeTs,            // 關閉(離線開始)時間
-          loginTs: loginTs,                   // 登入(離線結束)時間
-          realMs: Math.max(0, loginTs - timing.closeTs),   // 真實離線時間(未封頂)→ 顯示「共 X 時 Y 分」
-          settledMs: done * TICK_MS,          // 實際結算時間 → 算平均效率用
-          capped: (loginTs - timing.closeTs) > CAP_MS,     // 真實時間是否超過 24h 上限(超過時實際只結算到上限)
-          kind: hKind,                        // normal / climb / oblivion / king
-          map: hMap,
-          exp: hExp, gold: hGold, lv: hLv,
-          items: invDeltaList(before, after),
-          kills: hKills,
-          died: !!died,
-          keysUsed: (kingInfo && kingInfo.keysUsed) || 0
-        });
-      }
+      if (timing && timing.closeTs && done > 0) recordHistory(buildHistRec());
     } catch (e) { console.warn('[AFK] 寫離線紀錄失敗:', e); }
-    killTally = null;   // 📜 補跑結束,回到「線上 killMob 不計數」狀態
-    gainTally = null;   // ⚡ 同上,線上 gainItem 不計數
     try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
     try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
-    removeOverlay();
     // 手機:離線結算摘要寫在系統日誌,自動打開日誌浮動面板(切到系統)讓玩家一進來就看到
     try {
       if (window.__afkm && window.__afkm.isMobile && window.__afkm.isMobile()) {
@@ -857,28 +898,46 @@
         if (window.__afkm.openLog) window.__afkm.openLog();
       }
     } catch (e) {}
-    stamp();
-    catchingUp = false;
+
+    } catch (eRun) {   // 🛡️ 結算流程例外:已結算的收益由檢查點/期間的 saveGame 保留,絕不讓旗標卡死
+      console.error('[AFK] 離線結算發生例外，已中止:', eRun);
+      try { if (typeof logSys === 'function') logSys('<span class="text-red-400">離線結算發生錯誤而提前中止，已保留結算到目前為止的收益。</span>'); } catch (e2) {}
+    } finally {
+      killTicker();                                        // 冪等:正常路徑內層 finally 已關過
+      killTally = null; gainTally = null;                  // 回到「線上不計數」狀態
+      window.__afkKillTally = null; window.__afkGainTally = null;
+      if (prevFf0 !== undefined && state.ff !== prevFf0) { state.ff = prevFf0; state.inTick = prevInTick0; }   // 例外時的保險還原(正常路徑已還原 → 此處不動作)
+      try { if (typeof startGameTimers === 'function') startGameTimers(); } catch (e3) {}   // 內含去重,正常路徑已重啟 → 無事
+      removeOverlay();
+      catchingUp = false;   // 先解旗標再 stamp(stamp 在 catchingUp 期間一律跳過)
+      stamp();
+    }
   }
 
-  // 載入後決定要不要結算離線。preMap/preTs 由 loadGame wrapper 在「原 loadGame 執行前」擷取——
-  // 因為原 loadGame 會在村莊甦醒(內部呼叫 changeMap),而 changeMap 已被攔截會 stamp(),會把
-  // afk_map/afk_ts 覆寫成現在(村莊),晚讀就拿不到真正的離線狀態。
+  // 載入後決定要不要結算離線。preMap/preTs 由 loadGame 開頭的 offlinePreLoad() 在「回村甦醒之前」擷取——
+  // 因為 loadGame 會在村莊甦醒(內部呼叫 changeMap → offlineStamp),會把 afk_map/afk_ts 覆寫成
+  // 現在(村莊),晚讀就拿不到真正的離線狀態。
   function maybeCatchup(preMap, preTs, prePride, preObl) {
     if (!validSlot() || !state || !state.running) return;
     var last = preTs;
     var savedMap = preMap;
-    if (!savedMap) {   // 後援:舊資料沒有 afk_map,退回讀存檔 blob
-      try { var raw = JSON.parse(localStorage.getItem('lineage_idle_save_' + currentSlot)); savedMap = (raw && raw.ms && raw.ms.current) || ''; } catch (e) {}
+    if (!savedMap) {   // 後援:舊資料沒有 afk_map,退回讀存檔 blob(存檔為 LZ 壓縮＋簽章,要走核心解包;2026-07-10 修——先前直接 JSON.parse 原文必失敗)
+      try {
+        var _u = (typeof _saveUnwrap === 'function' && typeof _lzGet === 'function') ? _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot)) : null;
+        var _pj = (_u && _u.payload) ? JSON.parse(_u.payload) : null;
+        savedMap = (_pj && _pj.ms && _pj.ms.current) || '';
+      } catch (e) {}
     }
     var isClimb = !!(prePride && prePride.climb && !prePride.ranked);   // 排名挑戰不自動續(防重載刷分/閃死),只續一般攀登
     var isObl = !!(preObl && preObl.phase && typeof enterOblivionMap === 'function');   // 🏝️ 上次在遺忘之島旅程中(島/途中):同攀登,還原旅程並接回島上續掛
     if (isObl && !savedMap) savedMap = (preObl.phase === 'island') ? 'oblivion_island' : 'oblivion_travel';   // afk_map 缺值時用旅程階段推地圖
     var now = Date.now();
-    stamp(); // 不論如何先更新自己的心跳/錨點(宣告此分頁佔用此 slot)
+    // ⚠ 這裡「不可」先 stamp:結算完成前錨點必須停在 closeTs——先蓋成「現在」的話,結算一被中斷
+    //   (關頁/重整/PWA 被系統殺)整段離線時間就此蒸發(2026-07-10 修)。略過結算的情況由 5 秒心跳自然接手蓋新錨點。
     if (prePride && prePride.climb && prePride.ranked) {
-      // 排名挑戰:依原作設計「重載＝回城放棄該次排名」,不自動續(stamp 已把 game-screen 開啟後的非攀登狀態清掉攀登旗標)
+      // 排名挑戰:依原作設計「重載＝回城放棄該次排名」,不自動續(心跳 stamp 會把 game-screen 開啟後的非攀登狀態清掉攀登旗標)
       console.info('[AFK] 上次在傲慢之塔排名挑戰中：依設計不自動續(重載＝回城、該次排名作廢)。');
+      skipNote('上次在傲慢之塔「排名挑戰」中：依設計重載＝回城、該次排名作廢，不結算離線收益。');
       return;
     }
     if (savedMap === 'rift_battle') {
@@ -888,12 +947,14 @@
       //   若不擋:savedMap='rift_battle' 非 town_/非攻城 → 會被當一般圖跑 gotoMap('rift_battle'),
       //   但它不是選單地圖 → setMapSelectors 設不上 → mapState.current 變空 → 空轉、收益歸零(同遺忘之島舊雷)。
       console.info('[AFK] 上次在時空裂痕(時間排名挑戰)中：依設計不自動續、不結算離線收益。');
+      skipNote('上次在「時空裂痕」中：時間排名挑戰依設計不結算離線收益（該次挑戰已作廢）。');
       return;
     }
     if (savedMap === 'afk_dummy') {
       // 🥊 木人場(afk-training 外掛):打不死的木人、純測 DPS,沒有經驗/掉落/金錢。關在木人場時 afk_map 戳成 afk_dummy
       //   → 離線一律不結算(本來就沒收益可算);重開後 loadGame 強制回村(setMapSelectors+changeMap(true)),假地圖/假怪都被覆蓋。
       console.info('[AFK] 上次在木人場(測 DPS)中：不結算離線收益。');
+      skipNote('上次在木人場（測 DPS）：木人無獎勵，離線期間無收益。');
       return;
     }
     if (!last) {
@@ -907,16 +968,19 @@
     if (!isClimb && !isObl) {
       if (!savedMap || savedMap.indexOf('town_') === 0) {
         console.info('[AFK] 關閉時位於村莊/無有效地圖，無離線戰鬥收益。');
+        skipNote('上次關閉時人在村莊/安全區（' + (savedMap ? mapName(savedMap) : '無地圖') + '），離線期間沒有戰鬥收益。要離線掛機請先前往狩獵地圖再關閉遊戲。');
         return;
       }
       if (typeof isSiegeArea === 'function' && isSiegeArea(savedMap)) {
         console.info('[AFK] 關閉時位於攻城區，略過離線結算。');
+        skipNote('上次關閉時位於攻城區：攻城戰不結算離線收益。');
         return;
       }
       // 🛡️ 通用保險:地圖不在 DB.maps(無怪池可撈)→ 一律略過,不硬跑(避免空轉)。
       //   涵蓋未來「還沒補邏輯的新特殊戰場」(時空裂痕式暫態戰場等)。隱藏狩獵區域在 DB.maps,不受影響、照常結算。
       if (typeof DB !== 'undefined' && DB.maps && !DB.maps[savedMap]) {
         console.info('[AFK] 上次地圖「' + savedMap + '」非標準狩獵圖(不在 DB.maps)，離線略過以免空轉。');
+        skipNote('上次所在的「' + mapName(savedMap) + '」屬特殊戰場，不支援離線結算。');
         return;
       }
     }
@@ -927,86 +991,25 @@
     runCatchup(Math.max(0, ticks), ticks > OVERLAY_MIN_TICK, savedMap, prePride, preObl, { closeTs: last, loginTs: now });   // timing → 供寫離線歷史紀錄(done>0 才會真的記)
   }
 
-  // ----- 包裹 saveGame / loadGame -----------------------------------------
-  var _save = window.saveGame;
-  window.saveGame = function () {
-    var r = _save.apply(this, arguments);
-    stamp();
-    return r;
+  // ----- 核心掛點(loadGame / saveGame / changeMap 直呼;2026-07-10 起不再 monkey-patch) -------
+  // 蓋錨點:js/13 saveGame 與 js/11 changeMap 的結尾呼叫(「切圖後馬上關瀏覽器」時 5 秒心跳來不及,由 changeMap 當下記錄)
+  window.offlineStamp = stamp;
+  // js/13 loadGame 開頭呼叫:必須在「回村甦醒(內部 changeMap → offlineStamp 覆寫 afk_map/afk_ts/afk_pride)」之前擷取上次離線狀態
+  window.offlinePreLoad = function () {
+    return { map: readMap(), ts: readTs(), pride: readPride(), obl: readObl() };
+  };
+  // js/13 loadGame 成功載入(state.running=true 之後)呼叫:決定要不要結算離線
+  window.offlineAfterLoad = function (pre) {
+    if (!pre) return;
+    try { maybeCatchup(pre.map, pre.ts, pre.pride, pre.obl); } catch (e) { console.warn('[AFK] offlineAfterLoad error:', e); }
   };
 
-  var _load = window.loadGame;
-  window.loadGame = function () {
-    // 必須在原 loadGame 之前擷取:它會「在村莊甦醒」呼叫 changeMap → 被攔截 stamp() 覆寫 afk_map/afk_ts/afk_pride
-    var preMap = readMap();
-    var preTs = readTs();
-    var prePride = readPride();
-    var preObl = readObl();
-    var r = _load.apply(this, arguments);
-    try { maybeCatchup(preMap, preTs, prePride, preObl); } catch (e) { console.warn('[AFK] maybeCatchup error:', e); }
-    return r;
-  };
+  // 📜⚡ 擊殺/獲得計數:js/05 killMob、js/08 gainItem 直接讀 window.__afkKillTally/__afkGainTally
+  //   (只在結算期間指向 killTally/gainTally 同一物件,平時 null → 熱路徑只多一次 truthy 判斷、零累計開銷)。
+  window.__afkKillTally = null;
+  window.__afkGainTally = null;
 
-  // 攔截 changeMap:切地圖的「當下」就立即記錄即時地圖(+時間戳)。
-  // 解決「切圖後馬上關瀏覽器」時,5 秒心跳還沒輪到、手機又常不觸發 beforeunload 的情況。
-  if (typeof window.changeMap === 'function') {
-    var _changeMap = window.changeMap;
-    window.changeMap = function () {
-      var r = _changeMap.apply(this, arguments);
-      stamp();
-      return r;
-    };
-  }
-
-  // 📜 包住 killMob:只在離線補跑期間(killTally 非 null)依怪名累計擊殺數,供離線歷史紀錄的「擊殺」欄。
-  //   線上遊玩 killTally=null → 只多一次 if 判斷、零累計開銷。比照原作 killMob 的冪等(已死的怪不重複計)。
-  if (typeof window.killMob === 'function') {
-    var _killMob = window.killMob;
-    window.killMob = function (idx) {
-      if (killTally) {
-        try { var m = mapState.mobs[idx]; if (m && !m._dead && m.n) killTally[m.n] = (killTally[m.n] || 0) + 1; } catch (e) {}
-      }
-      return _killMob.apply(this, arguments);
-    };
-  }
-
-  // ⚡ 包住 gainItem:只在離線補跑期間(gainTally 非 null)累計各物品「獲得數量」,供混合快速結算
-  //   把取樣窗的「庫存淨變化」還原成「真實消耗」(消耗 = 期初 + 期間獲得 − 期末)。線上 gainTally=null → 零開銷。
-  if (typeof window.gainItem === 'function') {
-    var _gainItem = window.gainItem;
-    window.gainItem = function (id, cnt) {
-      if (gainTally && id) { try { gainTally[id] = (gainTally[id] || 0) + (cnt == null ? 1 : cnt); } catch (e) {} }
-      return _gainItem.apply(this, arguments);
-    };
-  }
-
-  // ----- 入口提示:時空裂痕 / 傲慢之塔排名模式 不支援離線掛機 ----------------
-  // 這兩個是「時間排名挑戰」,離線一律跳過(見 maybeCatchup 的 ranked/rift 早退);玩家容易誤以為能掛機,
-  //   故在各自入口面板補一行醒目提示。包住原作全域 renderRiftEntrance/renderPrideEntrance:
-  //   原函式把 box appendChild 進 container 後(box=container 最後一個子元素),往該 box 補一行提示(不改 index.html)。
-  function injectEntranceHint(fnName, html) {
-    if (typeof window[fnName] !== 'function' || window[fnName].__afkHint) return;
-    var orig = window[fnName];
-    window[fnName] = function (container) {
-      var r = orig.apply(this, arguments);
-      try {
-        var box = container && container.lastElementChild;
-        if (box && !box.querySelector('.afk-norank-note')) {
-          var note = document.createElement('div');
-          note.className = 'afk-norank-note';
-          note.setAttribute('style', 'margin-top:2px;padding:8px 10px;border:1px solid #b45309;background:rgba(180,83,9,0.14);border-radius:8px;color:#fcd34d;font-size:12px;line-height:1.55;');
-          note.innerHTML = html;
-          box.appendChild(note);
-        }
-      } catch (e) {}
-      return r;
-    };
-    window[fnName].__afkHint = true;
-  }
-  injectEntranceHint('renderRiftEntrance',
-    '⚠ <b>不支援離線掛機</b>：關閉或重新整理頁面會中斷挑戰，<b>不結算、不記排名</b>（龜裂之核照樣消耗）。要記錄成績與獎勵，請以戰死或主動撤離結束。');
-  injectEntranceHint('renderPrideEntrance',
-    '⚠ <b>排名模式不支援離線掛機</b>：排名挑戰中關閉或重新整理頁面會直接回城、<b>放棄該次排名</b>。（一般攀登可正常離線續爬，不受影響。）');
+  // 入口提示(時空裂痕/排名攀登不支援離線)已直接寫進核心 renderRiftEntrance(js/05)/renderPrideEntrance(js/11),不再包 wrapper 注入。
 
   // ----- 心跳 + 關閉前蓋章 -------------------------------------------------
   setInterval(function () {
@@ -1017,14 +1020,15 @@
 
   // ----- 除錯介面 ----------------------------------------------------------
   window.__afk = {
-    version: '1.1.0',
+    version: '2.0.0',   // 2.x=核心版(js/offline.js);1.x=外掛版(afk-offline.js,已退役)
     capHours: CAP_HOURS,
     stamp: stamp,
     readTs: readTs,
     mapName: mapName,   // 對外:地圖 id→中文名(供 afk-mobile 在匯入頁顯示「掛在哪張地圖」)
     histKey: histKey,   // 對外:目前角色的離線紀錄 key(供 afk-history)
+    setCkptMs: function (ms) { CKPT_MS = Math.max(200, +ms || 5000); },   // 🧪 測試用:縮短檢查點間隔(驗「結算中斷只丟尾段」)
     forceCatchup: function (mins, noFast) { _forceNoFast = !!noFast; runCatchup(Math.floor((mins || 60) * 60000 / TICK_MS), true, (typeof mapState !== 'undefined' && mapState && mapState.current) || ''); }   // 帶當前地圖,否則 gotoMap(undefined) 空轉零收益;noFast=true 強制全模擬(A/B 用)
   };
 
-  console.log('[AFK] hooks OK — 離線掛機外掛已啟用(上限 ' + CAP_HOURS + ' 小時，撞死即停，存活回原狩獵圖)。');
+  console.log('[AFK] hooks OK — 離線掛機(核心)已啟用(上限 ' + CAP_HOURS + ' 小時，撞死即停，存活回原狩獵圖，分段檢查點防中斷)。');
 })();

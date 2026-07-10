@@ -1179,6 +1179,7 @@ function changeMap(force) {
         renderMobs();
     }
     syncMapSelectors();   // 切換完成後，同步分類選單與地圖選單為目前所在地圖
+    if (typeof offlineStamp === 'function') offlineStamp();   // 🌙 離線掛機錨點：切圖當下即記錄即時地圖（「切圖後馬上關瀏覽器」時 5 秒心跳來不及；js/offline.js）
 }
 
 // ===== 🔮 席琳神殿：祈禱（席琳的世界 開關介面）=====
@@ -1446,7 +1447,8 @@ function renderPrideEntrance(container) {
         <button onclick="startPrideClimb(true)" class="btn w-full py-4 text-xl font-bold bg-amber-800 hover:bg-amber-700 border border-amber-500 text-white shadow-lg">🏆 挑戰排名模式</button>
         ${rankBlock(player.prideRank, false)}
         ${player.classicMode ? '' : rankBlock(player.prideRankSherine, true)}
-        <div class="text-slate-500 text-xs">排名模式中即使持有支配符也無法使用傳送術與瞬間移動卷軸；回村或擊敗 100 層頭目時結算。${player.classicMode ? '' : '一般與席琳的世界的排名各自獨立計算。'}</div>`;
+        <div class="text-slate-500 text-xs">排名模式中即使持有支配符也無法使用傳送術與瞬間移動卷軸；回村或擊敗 100 層頭目時結算。${player.classicMode ? '' : '一般與席琳的世界的排名各自獨立計算。'}</div>
+        <div style="margin-top:2px;padding:8px 10px;border:1px solid #b45309;background:rgba(180,83,9,0.14);border-radius:8px;color:#fcd34d;font-size:12px;line-height:1.55;">⚠ <b>排名模式不支援離線掛機</b>：排名挑戰中關閉或重新整理頁面會直接回城、<b>放棄該次排名</b>。（一般攀登可正常離線續爬，不受影響。）</div>`;
     container.appendChild(box);
 }
 

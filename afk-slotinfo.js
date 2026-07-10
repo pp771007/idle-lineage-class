@@ -6,8 +6,8 @@
  *   桌機與手機共用同一份附加邏輯(手機差異純由 afk-mobile.js 的 CSS 處理,不另外重建內容)。
  *   對外仍暴露 window.AFK_SLOTINFO.read(slot) → { mapName, idleText }(純資料、無 DOM)供他人取用。
  *
- * 資料來源:afk-offline.js 寫的即時地圖記錄 afk_map_<slot>(較準)、最後活躍心跳 afk_ts_<slot>;
- *   讀不到 afk_map_ 就退回存檔 blob 的 ms.current。地圖中文名與離線上限呼叫 afk-offline 暴露的 window.__afk。
+ * 資料來源:js/offline.js(核心離線掛機)寫的即時地圖記錄 afk_map_<slot>(較準)、最後活躍心跳 afk_ts_<slot>;
+ *   讀不到 afk_map_ 就退回存檔 blob 的 ms.current。地圖中文名與離線上限呼叫核心離線模組暴露的 window.__afk。
  *
  * 優雅降級:openSlotSelect / __afk 不存在就安靜停用,不弄壞畫面。
  */
@@ -45,7 +45,7 @@
     var idleText = '';
     if (ts > 0) {
       var idleMs = Date.now() - ts;
-      var capH = (window.__afk && window.__afk.capHours) || 24;   // 離線收益上限(小時),讀 afk-offline
+      var capH = (window.__afk && window.__afk.capHours) || 24;   // 離線收益上限(小時),讀核心離線模組
       idleText = '⏱ 已掛機 ' + fmtIdle(idleMs);
       if (idleMs >= capH * 3600000) idleText += '（收益上限 ' + capH + ' 小時）';   // 顯示真實時間,超過上限時提醒收益封頂
     }

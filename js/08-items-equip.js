@@ -1,4 +1,5 @@
 function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
+    if (window.__afkGainTally && id) __afkGainTally[id] = (__afkGainTally[id] || 0) + (cnt == null ? 1 : cnt);   // 🌙 離線結算期間計獲得量，供快速結算把庫存淨變化還原成真實消耗（js/offline.js；平時 null 零開銷）
     // 🏛️ 僅「經典+傳統」任何來源都不產生施法卷軸（武器/盔甲/飾品＋祝福/詛咒變體）——掉落／黑市／歐西里斯寶箱／血盟入盟禮／兌換等全擋；一般+傳統照常產生（供克里斯特→賦予祝福）
     if (TRAD_NO_SCROLLS[id] && tradNoScrolls()) return null;
     // 卷軸變祝福／詛咒機率：各 1%（互斥）

@@ -14,7 +14,7 @@
 (function () {
   window.AFK_EXTRA = {
 
-    // ── 🗺️ 統一地圖名解析（唯一一份；afk-dex / afk-wiki / afk-offline / afk-slotinfo 都呼叫這份）──
+    // ── 🗺️ 統一地圖名解析（唯一一份；afk-dex / afk-wiki / js/offline.js(核心) / afk-slotinfo 都呼叫這份）──
     //   涵蓋：風木地監、遺忘之島、時空裂痕、隱藏狩獵區域(HIDDEN_AREA_NAMES)、攀登(pride_fN / pride_a_b)、
     //   選單地圖(MAP_CATEGORIES)、攻城(SIEGE_CITY)、村莊(DB.towns)；查不到回 id。
     //   ⭐ 以後作者新增「不在 MAP_CATEGORIES 的地圖類型」只要改這一處，四支外掛同時生效（免再逐份補）。

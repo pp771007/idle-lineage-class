@@ -744,6 +744,7 @@ function saveGame() {
     _lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })));   // 🔧 架構#6：寫入存檔版本（🛡️ 加完整性簽章後 💾 LZString 壓縮）   // 🔧 一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準（迷魅重新計時 1 小時）
     if (typeof _dexFlushFf === 'function') _dexFlushFf();   // 🚀 快轉期間延後的收集冊寫入,隨存檔一併補寫（見 js/12 saveCardDex）
     _lastSaveMs = Date.now();   // 供 saveOnExit 去重（見下）；不影響任何 saveGame 呼叫端
+    if (typeof offlineStamp === 'function') offlineStamp();   // 🌙 離線掛機錨點：存檔即蓋（js/offline.js；結算期間內部自動跳過，錨點只由檢查點推進）
     logSys(`遊戲進度已儲存。`);
 }
 
@@ -788,6 +789,9 @@ function consolidateInventory() {
 }
 
 function loadGame() {
+    // 🌙 離線掛機：先擷取此存檔位的離線錨點（上次時間戳/所在地圖/攀登/遺忘之島狀態）——
+    //   必須在下方「回村甦醒（changeMap → offlineStamp）」覆寫掉之前讀，否則拿不到真正的離線狀態。
+    let _offPre = (typeof offlinePreLoad === 'function') ? offlinePreLoad() : null;
     _uiConfigReady = false;   // 🛡️ 審計#1：載入期間 DOM 仍是上一個畫面/預設值，禁止 saveGame 以它重建 config
     let _u = _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot));   // 🛡️ 解存檔簽章（舊明文存檔 signed:false 照常載入）
     if (_u.signed && !_u.ok) { alert('此存檔的完整性校驗未通過，可能已被外部修改，無法載入。\n可在載入畫面點「復原備份」還原，或改用未被修改的存檔。'); return; }   // 🛡️ 簽章不符＝被竄改：拒絕載入
@@ -998,6 +1002,7 @@ function loadGame() {
         // 計時器統一由 startGameTimers() 註冊（內含去重），含每 5 分鐘自動存檔。
         startGameTimers();
         logSys(`===== 歡迎回來 =====`);
+        if (_offPre && typeof offlineAfterLoad === 'function') offlineAfterLoad(_offPre);   // 🌙 離線掛機：載入完成後結算離線收益（js/offline.js；不需結算時內部自行略過）
     }
 }
 

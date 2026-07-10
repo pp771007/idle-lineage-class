@@ -5,7 +5,7 @@
 - 網頁放置遊戲。遊戲本體由原作者(巴哈姆特 秋玥)製作,原版網址:**https://shines871.github.io/idle-lineage-class/**;本專案原是「原版 + 加掛外掛」的鏡像站。
 - **🛑 2026-07-06 起本專案獨立維護,不再跟進原作者版本(使用者決定)**:原本「每小時自動同步原版」的整組機制——GitHub workflow `sync-upstream.yml`、Cloudflare Worker `cf-sync-trigger/`(已 `wrangler delete`)、腳本 `scripts/sync-upstream.mjs`、首頁同步時間 `last-sync.json`——已全部從 repo 移除,只留 git 歷史。**背景沒有任何自動同步在跑**;首頁跑馬燈已公告「伺服器永久開放,但不再跟進原作者版本」。
 - 結構:`index.html`(殼)＋`js/*.js`(遊戲邏輯,00-data…等多檔)＋`css/`(樣式)＋`assets/`(圖,含 `anim/` 動畫幀)＋`public/assets/`(登入圖)＋根目錄 `afk-*.js`(外掛)。遊戲全域(`DB`/`tick`/`saveGame`/`MAP_CATEGORIES`…)定義在 `js/*.js`(一般 script,全域共用),外掛 `<script>` 排在 `</body>` 前、作者 js 之後,載入時全域已就緒。
-- **若將來要手動合併原版**:舊同步腳本從 git 歷史撈(`git log --oneline -- scripts/sync-upstream.mjs` 找刪除前 commit → `git checkout <commit>^ -- scripts/sync-upstream.mjs`)。原則=原版覆蓋 index.html/js/css → 補回全部外掛 `<script>`(帶 `?v=`)→ 補圖(走 GitHub API blob SHA,**中文檔名不可當原生 exe 參數**,git-bash 會重編碼弄壞)→ `node scripts/gen-manifests.mjs` 重產圖片對帳清單 → smoke 驗掛點。恢復自動同步同理撈回 `.github/workflows` 與 `cf-sync-trigger/`,CF Worker 需重放 GH_PAT secret 再 `wrangler deploy`。
+- **要看原版更新了什麼 / 選擇性移植原版功能 → 跑 `/upstream-diff` skill**(`.claude/skills/upstream-diff/`,2026-07-10 建):以 `upstream-checkpoint.json` 的 `reviewedUpstreamCommit` 為錨點,對上游本機 clone(`D:/otherPersonRepos/idle-lineage-class`)diff 分析 → 產出功能菜單報告(`upstream-reviews/`)給使用者挑 → 逐功能 3-way 移植(分家點兩邊 blob 等價,`git apply -3` 可用;assets 用 `git archive | tar -x` 搬,中文檔名安全)。**🚨 分家後兩邊每支核心 js 都各自改過,絕不可整檔覆蓋**;舊的「整檔覆蓋式自動同步」永久作廢(腳本留在 git 歷史,勿撈回來用)。
 
 ## 🔁 漏東西 / 犯會重演的錯 → 當下就把教訓寫回這份 CLAUDE.md(鐵則,使用者明訂・2026-06-27)
 

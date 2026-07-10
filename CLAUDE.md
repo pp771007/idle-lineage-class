@@ -245,7 +245,7 @@
 > **🏠 2026-07-10 起離線掛機是核心模組 `js/offline.js`(外掛 afk-offline.js 以 git mv 移入、已退役)**。要點:
 > - **檔名刻意不用數字開頭**(使用者明訂):日後手動合併原版可能新增 js/21-*.js 等編號檔,避免衝突。index.html 的 `<script>` 排在 js/20 之後、所有 afk-*.js 外掛之前。
 > - **對外相容不變**:localStorage 鍵(`afk_ts_/afk_map_/afk_pride_/afk_obl_/afk_hist_<slot>`)、`window.__afk` 介面(afk-mobile 用 `stamp`、afk-slotinfo 用 `mapName/capHours`、afk-history 用 `histKey`)、`[AFK] hooks OK` 開機訊息(smoke 認這個)全沿用——玩家更新前累積的離線時間照結算。
-> - **掛點=核心直呼,不再 monkey-patch**:js/13 `loadGame` 開頭 `offlinePreLoad()`(必須在回村甦醒覆寫錨點前擷取)→ 成功載入尾端 `offlineAfterLoad(pre)`;js/13 `saveGame`/js/11 `changeMap` 尾端 `offlineStamp()`;js/05 `killMob`/js/08 `gainItem` 經 `window.__afkKillTally/__afkGainTally` 計數(平時 null 零開銷)。
+> - **掛點=核心直呼,不再 monkey-patch**:js/13 `loadGame` 開頭 `offlinePreLoad()`(必須在回村甦醒覆寫錨點前擷取;**「離線前狀態」一律在這裡讀,連 afk_map 缺值時的「後備讀存檔 blob」也是**——回村甦醒會觸發存檔(`mercBankAlliesAtTown` 傭兵入庫 saveGame)把 blob 所在地圖蓋成村莊,晚讀=誤判在村莊而跳過整段結算,2026-07-10 踩過)→ 成功載入尾端 `offlineAfterLoad(pre)`;js/13 `saveGame`/js/11 `changeMap` 尾端 `offlineStamp()`;js/05 `killMob`/js/08 `gainItem` 經 `window.__afkKillTally/__afkGainTally` 計數(平時 null 零開銷)。
 > - **💾 分段檢查點(2026-07-10 修「結算中斷=整晚蒸發」)**:結算每 ~5 秒真實時間 `saveGame`+把錨點推進到「closeTs+已結算拍數」(絕不是「現在」),並 upsert 同 closeTs 的離線紀錄;`stamp()` 在 `catchingUp` 期間一律跳過(心跳/存檔/落點 changeMap 都蓋不了錨點)。中斷後下次載入只補剩餘。**判準:任何新程式碼想在結算期間蓋 afk_ts,都是 bug。**
 > - **其餘同日修正**:略過結算(村莊/攻城/排名/裂痕/木人場/非標準圖)會用 `skipNote` 寫一句白話進系統日誌(先前只寫 console,玩家看不到原因);`runCatchup` 全程 try/finally 包死 `catchingUp` 旗標(先前前段丟例外會讓同頁面之後所有角色都靜默不結算);afk_map 缺值的後備讀存檔改走 `_lzGet`+`_saveUnwrap`(存檔已壓縮+簽章,先前直接 JSON.parse 必失敗)。
 

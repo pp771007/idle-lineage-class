@@ -1091,14 +1091,7 @@
   function maybeCatchup(preMap, preTs, prePride, preObl) {
     if (!validSlot() || !state || !state.running) return;
     var last = preTs;
-    var savedMap = preMap;
-    if (!savedMap) {   // 後援:舊資料沒有 afk_map,退回讀存檔 blob(存檔為 LZ 壓縮＋簽章,要走核心解包;2026-07-10 修——先前直接 JSON.parse 原文必失敗)
-      try {
-        var _u = (typeof _saveUnwrap === 'function' && typeof _lzGet === 'function') ? _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot)) : null;
-        var _pj = (_u && _u.payload) ? JSON.parse(_u.payload) : null;
-        savedMap = (_pj && _pj.ms && _pj.ms.current) || '';
-      } catch (e) {}
-    }
+    var savedMap = preMap;   // afk_map 缺值的後備讀圖已在 offlinePreLoad 做掉(必須趁 blob 未被回村甦醒的存檔蓋掉前讀,這裡太晚)
     var isClimb = !!(prePride && prePride.climb && !prePride.ranked);   // 排名挑戰不自動續(防重載刷分/閃死),只續一般攀登
     var isObl = !!(preObl && preObl.phase && typeof enterOblivionMap === 'function');   // 🏝️ 上次在遺忘之島旅程中(島/途中):同攀登,還原旅程並接回島上續掛
     if (isObl && !savedMap) savedMap = (preObl.phase === 'island') ? 'oblivion_island' : 'oblivion_travel';   // afk_map 缺值時用旅程階段推地圖
@@ -1167,7 +1160,19 @@
   window.offlineStamp = stamp;
   // js/13 loadGame 開頭呼叫:必須在「回村甦醒(內部 changeMap → offlineStamp 覆寫 afk_map/afk_ts/afk_pride)」之前擷取上次離線狀態
   window.offlinePreLoad = function () {
-    return { map: readMap(), ts: readTs(), pride: readPride(), obl: readObl() };
+    var map = readMap();
+    // 後援:舊資料沒有 afk_map → 現在(loadGame 一開頭)就從存檔 blob 補讀所在地圖。
+    //   ⚠ 一定要在這裡讀、不能等到 maybeCatchup:載入流程的「回村甦醒」會觸發存檔
+    //   (mercBankAlliesAtTown 傭兵入庫時 saveGame),blob 的所在地圖屆時已被蓋成村莊,
+    //   晚讀會誤判「關閉時人在村莊」而跳過整段離線結算(2026-07-10 踩過)。
+    if (!map) {
+      try {
+        var _u = (typeof _saveUnwrap === 'function' && typeof _lzGet === 'function') ? _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot)) : null;
+        var _pj = (_u && _u.payload) ? JSON.parse(_u.payload) : null;
+        map = (_pj && _pj.ms && _pj.ms.current) || '';
+      } catch (e) {}
+    }
+    return { map: map, ts: readTs(), pride: readPride(), obl: readObl() };
   };
   // js/13 loadGame 成功載入(state.running=true 之後)呼叫:決定要不要結算離線
   window.offlineAfterLoad = function (pre) {

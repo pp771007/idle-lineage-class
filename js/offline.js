@@ -485,11 +485,16 @@
     var segStart = isClimb ? before : null;
     var segFloor = isClimb ? (state.prideFloor || 2) : 0;
 
-    // ═══ ⚡ 混合快速結算(2026-07-06,使用者核可) ═══════════════════════════════
-    // 長離線先「真模擬取樣」量出平均殺速與安全度;夠安全就把剩餘時間改成「逐殺走真實獎勵管線」:
-    //   spawnMob → killMob → settleDeadMobs 全走原作 code——掉落表擲骰/經驗/升級/任務/卡片/收集冊/
-    //   誘捕/傭兵經驗一律照真;只有「殺一隻花幾拍」與「消耗品每殺耗率」是取樣平均。
-    // 一律退回全模擬的情況:特殊地圖(攀登/遺忘之島/軍王之室,由 fastEligible 排除)、取樣最低血量過低
+    // ═══ ⚡ 混合快速結算(2026-07-06 上線;2026-07-10 改「事件驅動」,使用者核可) ═══════
+    // 長離線先「真模擬取樣」量出平均殺速與安全度;夠安全就把剩餘時間改成「事件驅動逐殺」:
+    //   出怪走核心 maybeSpawnMobs()(js/03 與 tick() 同一份排程——出怪延遲/長老之室 BOSS 節流/
+    //   後排格/席琳與日光加速全部照原作生效,時間直接跳到「下一隻出怪/殺完這隻」的事件點),
+    //   殺怪走 killMob → settleDeadMobs 真實獎勵管線——掉落表擲骰/經驗/升級/任務/卡片/收集冊/
+    //   誘捕/傭兵經驗一律照真;只有「殺一隻的純戰鬥耗時(svcPerKill)」與「消耗品每拍耗率」是取樣平均。
+    //   (2026-07-08 曾實測舊寫法「spawnMob(0) 連續出怪」在長老之室這類節流圖收益偏高 ~13%,
+    //    事件驅動重用真實排程+真實場面佔位後,節流自然生效,結構上不再分歧。)
+    // 一律退回全模擬的情況:特殊地圖(攀登/遺忘之島「途中」/軍王之室,由 fastEligible 排除;
+    //   遺忘之島「本島」是無限刷怪圖 → 2026-07-10 起納入快速)、取樣最低血量過低
     //   (可能會死→維持撞死即停的忠實性)、殺太少(樣本不可信)、消耗品斷貨且自動購買補不上(戰局質變)。
     // 升級 → 戰力變了殺速會變 → 退回真模擬重新取樣。HP/MP 軌跡不用模擬:結算存活本就補滿(見下方落點)。
     var FAST_SAMPLE_TICKS = 3000;     // 首次取樣:5 分鐘(3000 拍)
@@ -499,7 +504,10 @@
     var FAST_MIN_HP_PCT = 70;         // 血量安全門檻起點 %(取樣 + BOSS safe 共用):真模擬 done=0 時的門檻
     var HP_FLOOR_ZERO_TICKS = 12000;  // 血量門檻「線性降到 0」的時點:真模擬連續存活滿 20 分鐘(12000 拍)沒死 → 門檻歸 0(之後一律切快速、BOSS 一律 safe)。撐過這段=打得過→完全信任;死了外層撞死即停,根本走不到門檻歸 0。
     var FAST_MIN_REMAIN = 6000;       // 取樣後剩不到 10 分鐘 → 全模擬本來就快,不值得切
-    var fastEligible = !isClimb && !isObl && !isKing && totalTicks >= (FAST_SAMPLE_TICKS + FAST_MIN_REMAIN) && !_forceNoFast;
+    // 🏝️ 遺忘之島「本島」納入快速(2026-07-10 使用者提議):本島=無限刷怪圖、無後續推進,與一般圖同等待遇;
+    //   「途中」(travel)維持全模擬——它是「打倒傳送門 BOSS 才進本島」的過場,怪組與本島不同、取樣不能混用。
+    var fastEligible = !isClimb && !isKing && (!isObl || (preObl && preObl.phase === 'island'))
+      && totalTicks >= (FAST_SAMPLE_TICKS + FAST_MIN_REMAIN) && !_forceNoFast;
     _forceNoFast = false;   // 🧪 一次性:用過即歸零,不影響之後的真實離線結算
     var fastMode = false, fastOff = false;   // fastOff = 本次補跑永久退出快速段
     // 血量安全門檻(取樣 + BOSS safe 共用):隨真模擬存活拍數 done 從 70% 線性降到 0(20 分鐘歸 0)。
@@ -510,8 +518,8 @@
     //   打輸=外層撞死即停;打不動=照實耗完時間。純 BOSS 圖因此自然接近全真模擬。
     var fastBossUid = null, fastBossName = '', fastBossStart = 0, fastBossMinHp = 1, fastBossKills0 = 0;
     var bossStats = {};   // {怪名: {ticks:實測耗時, safe:對打全程血量未低於安全線, minor:對戰期間同場被清掉的小怪數}}
-    var ticksPerKill = 0, consumePerTick = null, consumeAcc = null, buffSecAcc = 0;
-    var sampleFrom = 0, sampleKills0 = 0, sampleCnt0 = null, sampleGain0 = null, sampleMinHp = 1;
+    var svcPerKill = 0, busyTicks = 0, consumePerTick = null, consumeAcc = null, buffSecAcc = 0;   // svcPerKill=平均每殺「純戰鬥」耗時(取樣「場上有怪」的拍數÷殺數;出怪等待另由真實排程推進,不混進殺速)
+    var sampleFrom = 0, sampleKills0 = 0, sampleBusy0 = 0, sampleCnt0 = null, sampleGain0 = null, sampleMinHp = 1;
     var sampleEnd = fastEligible ? FAST_SAMPLE_TICKS : Infinity, sampleGrew = false;
     var lastLv = player.lv;
     var _junkEvery = (typeof JUNK_AUTOSELL_TICKS !== 'undefined') ? JUNK_AUTOSELL_TICKS : 100;
@@ -526,7 +534,7 @@
     }
     function tallySum(t) { var s = 0; for (var k in t) s += t[k]; return s; }
     function beginSample(from) {
-      sampleFrom = from; sampleKills0 = tallySum(killTally); sampleCnt0 = invCntMap();
+      sampleFrom = from; sampleKills0 = tallySum(killTally); sampleBusy0 = busyTicks; sampleCnt0 = invCntMap();
       sampleGain0 = {}; for (var k in gainTally) sampleGain0[k] = gainTally[k];
       sampleMinHp = 1;
     }
@@ -541,7 +549,9 @@
         fastOff = true; console.info('[AFK] 快速結算不啟用:取樣擊殺數太少(' + kills + '),樣本不可信,全程真模擬。'); return;
       }
       var winTicks = Math.max(1, done - sampleFrom);
-      ticksPerKill = winTicks / kills;
+      // ⚡ 事件驅動:殺速只取「純戰鬥」拍數(場上有怪的拍),出怪等待交給真實排程推進——
+      //   否則等待時間被算進殺速、事件迴圈又再等一次出怪 → 雙重計時、收益偏低。
+      svcPerKill = Math.max(1, (busyTicks - sampleBusy0) / kills);
       var cnt1 = invCntMap(), ids = {}, k;
       for (k in sampleCnt0) ids[k] = 1;
       for (k in cnt1) ids[k] = 1;
@@ -554,7 +564,7 @@
         if (used > 0) consumePerTick[k] = used / winTicks;   // 每「拍」速率:消耗跟時間走(BOSS 一場耗時長、耗得多,按殺算會低估)
       }
       fastMode = true;
-      console.info('[AFK] ⚡ 快速結算啟動:平均 ' + ticksPerKill.toFixed(1) + ' 拍/殺,每拍消耗 ' + JSON.stringify(consumePerTick));
+      console.info('[AFK] ⚡ 快速結算啟動(事件驅動):平均純戰鬥 ' + svcPerKill.toFixed(1) + ' 拍/殺,每拍消耗 ' + JSON.stringify(consumePerTick));
     }
     function fastRefill(id) {   // 斷貨 → 比照原作 autoActions / 外掛 autobuy 的自動購買;補不了 → false(退回全模擬)
       try {
@@ -632,7 +642,8 @@
         var tChk = document.getElementById('set-teleport');
         if (!(tChk && tChk.checked)) return false;                                   // 未勾選自動瞬移 → 照打
         if (!m || !m.boss || m.noAutoTeleport) return false;                         // 非 BOSS、或 noAutoTeleport(卡瑞/樓梯/傳送門)→ 不瞬移
-        // 頂層條件照 autoActions(js/07):攻城區/純BOSS房 BOSS 即目標不逃;攀登/遺忘之島/時空裂痕本就不走快速段,照抄不吃虧
+        // 頂層條件照 autoActions(js/07):攻城區/純BOSS房 BOSS 即目標不逃;攀登/時空裂痕本就不走快速段;
+        // 遺忘之島本島雖走快速段,但島上禁傳送(與線上一致)→ 這裡照 autoActions 一樣早退、照打
         if (isSiegeArea(mapState.current) || PURE_BOSS_MAPS.includes(mapState.current)) return false;
         if (state.prideClimb || state.oblivion || state.riftRun) return false;
         // 找卷軸,沒有就依 set-auto-buy-teleport 自動買 1 張(與 autoActions 完全一致)
@@ -650,42 +661,71 @@
         return !mapState.mobs.some(function (x) { return x && x.uid === bossUid; });  // BOSS 已被 doTeleport 清掉 → 瞬移成功;仍在(被守衛擋下)→ 回 false 照打
       } catch (e) { return false; }
     }
+    function fastAliveIdx() {   // 場上「最早出生」的活怪格位(=原作 getTarget 的鎖定序);-1=空場
+      var best = -1, bestBorn = Infinity;
+      for (var i = 0; i < mapState.mobs.length; i++) {
+        var m = mapState.mobs[i];
+        if (m && !m._dead && (m._born || 0) < bestBorn) { best = i; bestBorn = m._born || 0; }
+      }
+      return best;
+    }
     function fastKillMinors(n) {   // 🐲 BOSS 秒殺時,補回「對戰那段時間同場被 AOE/傭兵/寵物清掉的小怪」收益。
-      //   只走 spawnMob→killMob→settleDeadMobs 拿真實掉落/經驗;不推進時間、不扣消耗品——那段時間與消耗已由呼叫端 fastAdvance(_bs.ticks) 一次涵蓋。
-      //   抽到 BOSS 就跳過(這輪只補小怪;主 BOSS 收益已由本體那隻計入,不重複打第二隻 BOSS)。
-      for (var e = 0; e < n; e++) {
+      //   事件驅動版:優先殺「真實場上」的小怪(騰出格位讓排程自然補怪),差額再找空格臨時 spawn 補殺(抽到 BOSS 跳過,不重複打第二隻)。
+      //   只走 killMob→settleDeadMobs 拿真實掉落/經驗;不推進時間、不扣消耗品——那段時間與消耗已由呼叫端 fastAdvance(_bs.ticks) 一次涵蓋。
+      var e, i, idx;
+      for (e = 0; e < n; e++) {
+        idx = -1;
+        for (i = 0; i < mapState.mobs.length; i++) { var m = mapState.mobs[i]; if (m && !m._dead && !m.boss) { idx = i; break; } }
+        if (idx < 0) break;
+        try { killMob(idx); settleDeadMobs(); } catch (e1) { return; }
+      }
+      for (; e < n; e++) {
+        idx = -1;
+        for (i = 0; i < mapState.mobs.length; i++) if (!mapState.mobs[i]) { idx = i; break; }
+        if (idx < 0) break;
         try {
-          spawnMob(0);
-          var mm = mapState.mobs[0];
+          spawnMob(idx);
+          var mm = mapState.mobs[idx];
           if (!mm) break;
-          if (mm.boss) { mapState.mobs[0] = null; continue; }
-          killMob(0);
+          if (mm.boss) { mapState.mobs[idx] = null; continue; }
+          killMob(idx);
           settleDeadMobs();
         } catch (e2) { break; }
       }
     }
-    function fastKillOnce() {   // 快速段的一步:出一隻 → 即殺 → 清算;回 false = 退回全模擬
+    function fastEventStep() {   // ⚡ 事件驅動快速段的一步:原作排程出怪 → 殺「最早出生」那隻(或推進到下一個出怪時點);回 false = 退回全模擬
       try {
-        spawnMob(0);
-        var _m0 = mapState.mobs[0];
-        if (!_m0) return false;
+        maybeSpawnMobs();   // 核心 js/03 與 tick() 同一份排程:空格排 delay、到時 spawnMob——出怪延遲/長老之室節流/後排格/加速效果全照原作
+        var ti = fastAliveIdx();
+        if (ti < 0) {   // 空場:時間直接跳到「最近的出怪時點」,下一輪由排程出怪
+          var nextAt = Infinity;
+          for (var i = 0; i < (mapState.spawnAt || []).length; i++) {
+            if (mapState.spawnAt[i] != null && mapState.spawnAt[i] < nextAt) nextAt = mapState.spawnAt[i];
+          }
+          if (!isFinite(nextAt)) return false;   // 沒怪又沒有任何出怪排程(地圖異常)→ 退回全模擬
+          return fastAdvance(Math.max(1, nextAt - state.ticks));
+        }
+        var _m0 = mapState.mobs[ti];
         if (_m0.boss) {   // 🐲 BOSS:第一次(或未驗證安全)→ 真模擬對打;已驗證安全 → 即殺但時間按「該 BOSS 實測耗時」推進
-          if (fastTeleportAwayBoss(_m0)) return fastAdvance(1);   // 🌀 勾了自動瞬移且該圖可瞬移 → 甩掉不打(約當一拍;下輪 spawnMob 重抽)
+          if (fastTeleportAwayBoss(_m0)) return fastAdvance(1);   // 🌀 勾了自動瞬移且該圖可瞬移 → 甩掉不打(約當一拍;下輪排程重出)
           var _bs = bossStats[_m0.n];
           if (_bs && _bs.safe) {
-            killMob(0);
+            killMob(ti);
             settleDeadMobs();
             fastKillMinors(_bs.minor || 0);   // 補回這隻 BOSS 對戰期間同場小怪的收益(時間/消耗由下方 fastAdvance 一次涵蓋)
             return fastAdvance(_bs.ticks);
           }
           fastBossUid = _m0.uid; fastBossName = _m0.n || '?'; fastBossStart = done; fastBossMinHp = 1; fastBossKills0 = tallySum(killTally);   // 記真打起始殺數 → 倒下時算對戰期間清掉的小怪數
           console.info('[AFK] ⚔ 快速結算遇到 BOSS「' + fastBossName + '」(首次)→ 切回真模擬對打,倒下後同名 BOSS 才可快轉。');
-          return true;   // 不推進時間、不扣消耗品——接下來的真模擬拍會照實計
+          return true;   // 不推進時間、不扣消耗品——接下來的真模擬拍會照實計(場上其他怪由真模擬一併處理)
         }
-        killMob(0);
+        killMob(ti);
         settleDeadMobs();
+        maybeSpawnMobs();   // ⏱ 殺完「立刻」把空格排上重生計時——重生計時起點=怪死當下(與線上一致)。
+                            //   若等下一輪(時間已推進 svcPerKill 拍)才排,每殺晚一拍 → 出怪率被系統性壓低
+                            //   (真實存檔實測 AOE 法師 -8%;spawn-limited 圖對這個順序很敏感)。
       } catch (e) { console.warn('[AFK] 快速結算步驟出錯,退回全模擬:', e); return false; }
-      return fastAdvance(ticksPerKill);
+      return fastAdvance(svcPerKill);
     }
     if (fastEligible) beginSample(0);
     // ═══ 混合快速結算(宣告結束;主迴圈內 fastMode 分支使用) ═════════════════════
@@ -755,8 +795,8 @@
               done++;
               var _hpB = (player.mhp > 0) ? (player.hp / player.mhp) : 1;
               if (_hpB < fastBossMinHp) fastBossMinHp = _hpB;
-              var _bm = mapState.mobs[0];
-              if (!_bm || _bm._dead || _bm.uid !== fastBossUid) {   // BOSS 倒下(或場面被重置)→ 記錄實測耗時/安全度,回快速段
+              var _bAlive = mapState.mobs.some(function (x) { return x && x.uid === fastBossUid && !x._dead; });   // 事件驅動:BOSS 可能在任一格位,依 uid 掃全場
+              if (!_bAlive) {   // BOSS 倒下(或場面被重置)→ 記錄實測耗時/安全度,回快速段
                 fastBossUid = null;
                 var _durB = Math.max(1, done - fastBossStart);
                 var _safeB = fastBossMinHp >= hpFloorNow();   // 安全線跟取樣共用同一條門檻(隨存活時間降到 0):撐滿 20 分鐘後 BOSS 首遇打得贏就 safe → 秒殺
@@ -771,8 +811,8 @@
               }
               continue;
             }
-            // ⚡ 快速段:一次一殺(真實獎勵管線);失敗(斷貨/出怪異常)→ 退回全模擬跑完剩餘
-            if (!fastKillOnce()) { fastMode = false; fastOff = true; console.info('[AFK] ⚡ 快速結算退回全模擬(消耗品斷貨或步驟異常),剩餘時間照真模擬。'); continue; }
+            // ⚡ 快速段:一次一個事件(出怪排程推進/一殺真實獎勵管線);失敗(斷貨/出怪異常)→ 退回全模擬跑完剩餘
+            if (!fastEventStep()) { fastMode = false; fastOff = true; console.info('[AFK] ⚡ 快速結算退回全模擬(消耗品斷貨或步驟異常),剩餘時間照真模擬。'); continue; }
             if (player.lv !== lastLv) {   // 升級 → 戰力變了 → 重新取樣殺速
               lastLv = player.lv;
               fastMode = false; sampleGrew = false; sampleEnd = done + FAST_RESAMPLE_TICKS;
@@ -783,7 +823,8 @@
           tick();
           settleDeadMobs();
           done++;
-          if (fastEligible && !fastOff) {   // 取樣段:記錄最低血量,窗滿就評估要不要切快速
+          if (fastEligible && !fastOff) {   // 取樣段:記錄最低血量+「場上有怪」拍數(純戰鬥耗時),窗滿就評估要不要切快速
+            if (mapState.mobs.some(function (m) { return m && !m._dead; })) busyTicks++;
             var _hpP = (player.mhp > 0) ? (player.hp / player.mhp) : 1;
             if (_hpP < sampleMinHp) sampleMinHp = _hpP;
             if (player.lv !== lastLv) lastLv = player.lv;   // 取樣中升級:樣本自然涵蓋新戰力,不需特別處理

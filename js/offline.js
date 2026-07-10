@@ -416,7 +416,11 @@
     } catch (e) { console.warn('[AFK] gotoMap(' + mapKey + ') 失敗:', e); }
   }
   function homeTown() {
-    try { return (typeof getHomeTown === 'function') ? getHomeTown() : 'town_silver_knight'; }
+    // 🏘️ v3.0.94 對齊線上回村：優先「上一個待過的安全區」getLastTown(內含地圖有效性/城堡24h時效檢查,無紀錄自退回家鄉);缺函式(向後相容)才退 getHomeTown
+    try {
+      if (typeof getLastTown === 'function') return getLastTown();
+      return (typeof getHomeTown === 'function') ? getHomeTown() : 'town_silver_knight';
+    }
     catch (e) { return 'town_silver_knight'; }
   }
 

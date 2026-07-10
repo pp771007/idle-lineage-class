@@ -527,6 +527,15 @@ function getHomeTown() {
     if (player.cls === 'elf') return 'town_elf';
     return 'town_silver_knight';
 }
+// 🏘️ v3.0.94 回村改「回上一個待過的安全區」：changeMap 進村分支記錄 player.lastTownVisited；無紀錄/地圖無效→回家鄉。
+//    ⚠️ 城堡安全區(town_*_castle)有攻城獲勝 24h 時效：效期外不可回→退回家鄉（比照 siege-victory 各讀點自把時效）。
+function getLastTown() {
+    let t = player && player.lastTownVisited;
+    if (!t || typeof t !== 'string' || !t.startsWith('town_') || !(DB.towns[t] || DB.maps[t])) return getHomeTown();
+    let _isCastle = Object.values(SIEGE_CITY).some(c => c && c.castle === t);
+    if (_isCastle && !siegeVictoryActive()) return getHomeTown();
+    return t;
+}
 function returnToTown() {
     if (state.riftRun && mapState.current === 'rift_battle') { logSys('<span class="text-violet-300">扭曲的時空緊緊纏繞著你，無法回村——唯有戰死方能離開時空裂痕。</span>'); return; }   // 🌀 裂痕內不可回村
     // 與切換地圖相同的受控限制（石化／麻痺／冰凍／暈眩時無法回村）
@@ -536,7 +545,7 @@ function returnToTown() {
     }
     let _wasKingRoom = !!KING_ROOMS[mapState.current];   // 🔧 記住離開前是否在軍王之室
     if (state.oblivion) { state.oblivion = null; state._oblivionAdvance = false; }   // 🏝️ 回村即結束遺忘之島旅程
-    setMapSelectors(siegeVictoryActive() ? victoryCityCfg().castle : getHomeTown());   // 攻城獲勝 24h：回城＝獲勝城池
+    setMapSelectors(siegeVictoryActive() ? victoryCityCfg().castle : getLastTown());   // 攻城獲勝 24h：回城＝獲勝城池；🏘️ v3.0.94 否則回「上一個待過的安全區」（無紀錄→家鄉）
     changeMap();   // 走既有切換流程（進入村莊：補滿 HP/MP、清狀態、渲染 NPC）
     // 🔧 自軍王之室手動回城／回村：同樣將「特殊」記憶位置改為新兵修練場（避免下次自動回到需鑰匙的軍王之室）
     if (_wasKingRoom) { if (!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat.special = 'training'; saveGame(); }
@@ -1202,7 +1211,8 @@ function changeMap(force) {
         let tData = DB.towns[mapState.current];
         let tName = tData ? tData.n : document.getElementById('map-select').options[document.getElementById('map-select').selectedIndex].text;
         document.getElementById('town-name').innerText = tName;
-        
+        player.lastTownVisited = mapState.current;   // 🏘️ v3.0.94 記錄最後待過的安全區（「回村」按鈕改回此處·隨存檔持久）
+
         // 瞬間恢復所有 HP 與 MP
         player.hp = player.mhp;
         player.mp = player.mmp;

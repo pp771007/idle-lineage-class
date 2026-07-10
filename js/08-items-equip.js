@@ -344,7 +344,7 @@ function useItem(u, silent = false, keepModal = false) {
         }
         if (item.id.includes('potion_heal') || item.id === 'potion_strong' || item.id === 'potion_ult') {
             if (player.cds.pot > 0) return;
-            let h = Math.floor(d.val * (1 + (getConPotionPct(player.d.con) + dollFieldVal('potionBonus') + (player._miscPotionBonus || 0)) / 100));   // 🪆 魔法娃娃 potionBonus%（吸血鬼）；🧰 道具收集冊 材料/其他全收集：藥水恢復%
+            let h = Math.floor(potionHealBase(d) * (1 + (getConPotionPct(player.d.con) + dollFieldVal('potionBonus') + (player._miscPotionBonus || 0)) / 100));   // 🍶 藥水基準改隨機區間 valMin~valMax（紅10~20/橙30~50/白60~80）；🪆 魔法娃娃 potionBonus%（吸血鬼）；🧰 道具收集冊 材料/其他全收集：藥水恢復%
             if (hasMastery('k_survive')) h = Math.floor(h * 1.25);   // 🏅 生存精通：治癒藥水恢復 +25%
             if (hasMastery('k_tough') && player.hp < player.mhp * 0.4) h = Math.floor(h * 1.5);   // ⚔️ 堅韌精通：HP<40% 時藥水治癒量 +50%
             if (hasMastery('k_dragonblood')) h = Math.floor(h * 1.15);   // 🐉 龍血精通：治癒藥水恢復 +15%
@@ -570,6 +570,7 @@ const ILLUSION_WHITELIST = new Set([
 function illusionEquipOk(d, id) {
     if (!d) return false;
     if (d.type === 'wpn' && getWeaponTags(id).includes('匕首')) return false;   // 🔮 幻術士無法使用任何匕首（含全職業匕首）
+    if (d.type === 'wpn' && ['單手矛', '雙手矛'].includes(atkSpdFamily(id))) return false;   // 🔮 v3.0.90 用戶：幻術士不可使用任何矛（含全職業矛·早退→req:all／開放清單皆擋）
     if (reqAllowsClass(d, 'illusion')) return true;   // 全職業(req:all/無req·匕首已排除)或 req 含 illusion（奇古獸/幻術士專屬裝備）
     if (ILLUSION_WHITELIST.has(d.n || '')) return true;   // 開放清單（特定職業限定→開放給幻術士）
     return false;
@@ -587,6 +588,7 @@ const DRAGON_WHITELIST = new Set([
 function dragonEquipOk(d, id) {
     if (!d) return false;
     if (d.type === 'wpn' && getWeaponTags(id).includes('匕首')) return false;   // 🐉 龍騎士無法使用任何匕首（含全職業匕首）
+    if (d.type === 'wpn' && ['單手矛', '雙手矛'].includes(atkSpdFamily(id))) return false;   // 🐉 v3.0.90 用戶：龍騎士不可使用任何矛（含全職業矛·早退→req:all／開放清單皆擋）
     if (reqAllowsClass(d, 'dragon')) return true;   // 全職業(req:all/無req·匕首已排除)或 req 含 dragon（龍騎士專屬裝備）
     if (DRAGON_WHITELIST.has(d.n || '')) return true;   // 開放清單（特定職業限定→開放給龍騎士）
     return false;
@@ -989,7 +991,7 @@ function getBuffColor(k, def) {
 const STATUS_ICON_SKILLS = {
     'sk_sunlight':'日光術','sk_shield':'保護罩','sk_holy_wpn':'神聖武器','sk_ench_wpn':'擬似魔法武器','sk_reveal':'無所遁形術','sk_load_up':'負重強化','sk_shield2':'鎧甲護持',
     'sk_dex_up':'通暢氣脈術','sk_magic_shield':'魔法屏障','sk_meditation':'冥想術','sk_haste_spell':'加速術','sk_str_up':'體魄強健術',
-    'sk_bless_wpn':'祝福魔法武器','sk_greater_haste':'強力加速術','sk_berserk':'狂暴術','sk_holy_dash':'神聖疾走','sk_blizzard_storm':'冰雪颶風','sk_fire_prison':'火牢','sk_invisible':'隱身術',
+    'sk_bless_wpn':'祝福魔法武器','sk_greater_haste':'加速術','sk_berserk':'狂暴術','sk_holy_dash':'神聖疾走','sk_blizzard_storm':'冰雪颶風','sk_fire_prison':'火牢','sk_invisible':'隱身術',
     'sk_holy_barrier':'聖結界','sk_soul_up':'靈魂昇華','sk_solid_shield':'堅固防護','sk_reduction_armor':'增幅防禦','sk_spike_armor':'尖刺盔甲',
     'sk_counter_barrier':'反擊屏障','sk_elf_mr':'魔法防禦','sk_elf_purify':'淨化精神','sk_elf_eleres':'屬性防禦','sk_elf_singleres':'單屬性防禦',
     'sk_elf_firewpn':'火焰武器','sk_elf_windshot':'風之神射','sk_elf_winddash':'風之疾走','sk_elf_earthguard':'大地防護','sk_elf_watervital':'水之元氣',
@@ -1011,6 +1013,7 @@ function renderStatusIconBar() {
     let rows=[],seen=new Set();
     // player.buffs 的數值單位就是「秒」，主迴圈每 10 tick（1 秒）扣 1；不可再除以 10。
     let add=(name,seconds,label)=>{if(!name||seen.has(name))return;seen.add(name);let sec=Math.max(0,Math.ceil(Number(seconds)||0));rows.push({name,ticks:Number(seconds)||0,label:label||name,sec});};
+    if((player.buffs.sk_greater_haste||0)>0)add('加速術',player.buffs.sk_greater_haste,'強力加速術');   // 💨 v3.0.94 強力加速術優先：沿用加速術圖示·先登錄→seen 去重蓋掉下行的一般加速
     if(player.buffs.haste>0||player._equipHaste)add('加速術',player.buffs.haste||0,'加速');
     if(player.buffs.brave>0)add('勇敢藥水',player.buffs.brave,'勇敢藥水');
     if(player.buffs.blue>0)add('藍色藥水',player.buffs.blue,'藍色藥水');

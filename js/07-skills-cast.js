@@ -187,8 +187,7 @@ function manualCast(skId) {
         if(KING_ROOMS[mapState.current]) { logSys('<span class="text-red-400">軍王之室的封印之力壓制了傳送術，無法生效。</span>'); return; }
         if(prideTeleportBlocked()) { logSys('<span class="text-red-400">' + (state.riftRun ? '時空裂痕中無法使用傳送術。' : (state.prideRanked ? '排名挑戰中無法使用傳送術。' : '在此樓層需持有對應的傲慢之塔支配符才能使用傳送術。')) + '</span>'); return; }
         if(state.oblivion) { logSys('<span class="text-red-400">遺忘之島的迷霧壓制了傳送術，無法生效。</span>'); return; }
-        if(typeof playSelfFx === 'function') { try { playSelfFx('傳送術'); } catch(e){} }   // 🌀 v2.7.54 傳送術特效（過所有封鎖閘後、實際傳送前播·於戰鬥區中央光柱）
-        if (HIDDEN_AREA_PARENT[mapState.current]) {   // 🏛️ 對應地圖手動施放傳送術→進入隱藏狩獵區域（MP 已扣、冷卻照走）
+        if (HIDDEN_AREA_PARENT[mapState.current]) {   // 🏛️ 對應地圖手動施放傳送術→進入隱藏狩獵區域（MP 已扣、冷卻照走）;傳送特效統一由 doTeleport/enterHiddenArea 內的 playTeleportFx 播,此處不再直呼免雙播
             enterHiddenArea(HIDDEN_AREA_PARENT[mapState.current]);
         } else {
             let forceBoss = hasTeleportRing();

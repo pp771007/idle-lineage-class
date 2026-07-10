@@ -770,42 +770,76 @@ function vfxPlayerHit(dmg) {
     } catch (e) {}
 }
 
-// 🎚️ 戰鬥特效開關（僅標題畫面提供；遊戲中不再出現）：玩家選擇持久化於 localStorage，載入時套用到 window.__vfxOff
+// 🔋 省電模式（僅標題畫面提供；遊戲中不再出現）：一顆「省電模式」鈕開 Modal，內含四個獨立顯示開關，
+//    各自持久化於 localStorage、載入時套用到對應全域旗標。全部都是純顯示層，收益/戰鬥結果不受影響。
+//    - 戰鬥特效  __vfxOff     ：法術序列幀/命中衝擊/擊殺閃光/投射物/狀態疊層
+//    - 傷害數字  __vfxNumOff  ：飄動傷害數字
+//    - 戰鬥動畫  __animOff    ：怪物/傭兵/玩家的 sprite 動作幀（8fps ticker 直接早退＝最大省電項）
+//    - 畫面流暢更新 __uiSlow  ：tick 尾端的血條/怪物重繪由每秒 10 次降為 2 次＋日誌捲動批次化（js/03、js/01 讀此旗標）
 const _VFX_PREF_KEY = 'lineage_vfx_off';
 const _VFX_NUM_PREF_KEY = 'lineage_vfx_num_off';   // 🔢 v3.0.2 「只關傷害數字」獨立偏好
+const _ANIM_PREF_KEY = 'lineage_anim_off';
+const _UI_SLOW_PREF_KEY = 'lineage_ui_slow';
 function _applyVfxPref() {
-    let off = false;
-    try { off = localStorage.getItem(_VFX_PREF_KEY) === '1'; } catch (e) {}
-    window.__vfxOff = off;
-    let b = document.getElementById('btn-vfx-toggle');
-    if (b) {
-        b.textContent = off ? '✨ 戰鬥特效：關閉' : '✨ 戰鬥特效：開啟';
-        b.className = 'btn text-base w-72 py-2.5 ' + (off
-            ? 'bg-rose-900 hover:bg-rose-800 border-rose-700'
-            : 'bg-emerald-800 hover:bg-emerald-700 border-emerald-600');
-    }
-    // 🔢 v3.0.2 傷害數字獨立開關（與「戰鬥特效」互不影響：可全開只關數字）
-    let numOff = false;
-    try { numOff = localStorage.getItem(_VFX_NUM_PREF_KEY) === '1'; } catch (e) {}
-    window.__vfxNumOff = numOff;
-    let bn = document.getElementById('btn-vfxnum-toggle');
-    if (bn) {
-        bn.textContent = numOff ? '🔢 傷害數字：關閉' : '🔢 傷害數字：開啟';
-        bn.className = 'btn text-base w-72 py-2.5 ' + (numOff
-            ? 'bg-rose-900 hover:bg-rose-800 border-rose-700'
-            : 'bg-emerald-800 hover:bg-emerald-700 border-emerald-600');
+    let rd = (k) => { try { return localStorage.getItem(k) === '1'; } catch (e) { return false; } };
+    window.__vfxOff = rd(_VFX_PREF_KEY);
+    window.__vfxNumOff = rd(_VFX_NUM_PREF_KEY);
+    window.__animOff = rd(_ANIM_PREF_KEY);
+    window.__uiSlow = rd(_UI_SLOW_PREF_KEY);
+    let bp = document.getElementById('btn-powersave');
+    if (bp) {
+        let n = [window.__vfxOff, window.__vfxNumOff, window.__animOff, window.__uiSlow].filter(Boolean).length;
+        bp.textContent = n ? `🔋 省電模式：已關閉 ${n} 項效果` : '🔋 省電模式';
+        bp.className = 'btn text-base w-72 py-2.5 ' + (n
+            ? 'bg-emerald-800 hover:bg-emerald-700 border-emerald-600'
+            : 'bg-slate-700 hover:bg-slate-600 border-slate-500');
     }
 }
-function toggleVfxPref() {
-    let off = !window.__vfxOff;
-    try { localStorage.setItem(_VFX_PREF_KEY, off ? '1' : '0'); } catch (e) {}
+function _togglePref(key) {
+    let cur = false;
+    try { cur = localStorage.getItem(key) === '1'; } catch (e) {}
+    try { localStorage.setItem(key, cur ? '0' : '1'); } catch (e) {}
     _applyVfxPref();
 }
-function toggleVfxNumPref() {   // 🔢 v3.0.2 切換「只關傷害數字」
-    let off = !window.__vfxNumOff;
-    try { localStorage.setItem(_VFX_NUM_PREF_KEY, off ? '1' : '0'); } catch (e) {}
-    _applyVfxPref();
+function toggleVfxPref() { _togglePref(_VFX_PREF_KEY); }
+function toggleVfxNumPref() { _togglePref(_VFX_NUM_PREF_KEY); }
+function toggleAnimPref() { _togglePref(_ANIM_PREF_KEY); }
+function toggleUiSlowPref() { _togglePref(_UI_SLOW_PREF_KEY); }
+// 省電 Modal 的開關項目：label/desc 給玩家看;get()=目前「開啟」與否(開=效果有開=比較耗電)
+const _POWER_SAVE_ITEMS = [
+    { label: '✨ 戰鬥特效', desc: '法術特效、命中火花、擊殺閃光', get: () => !window.__vfxOff, toggle: toggleVfxPref },
+    { label: '🔢 傷害數字', desc: '戰鬥中飄出的傷害數字', get: () => !window.__vfxNumOff, toggle: toggleVfxNumPref },
+    { label: '🎬 戰鬥動畫', desc: '角色／傭兵／怪物的動作動畫，關閉後改為靜態圖（最省電的一項）', get: () => !window.__animOff, toggle: toggleAnimPref },
+    { label: '💧 畫面流暢更新', desc: '血條與戰鬥畫面每秒更新 10 次，關閉後降為每秒 2 次（數值照常計算）', get: () => !window.__uiSlow, toggle: toggleUiSlowPref },
+];
+function openPowerSaveModal() {
+    let modal = document.getElementById('powersave-modal');
+    if (!modal) { modal = document.createElement('div'); modal.id = 'powersave-modal'; modal.className = 'hidden fixed inset-0 z-[60] flex items-center justify-center'; document.body.appendChild(modal); }
+    modal.innerHTML =
+        '<div class="absolute inset-0 bg-black/60" onclick="closePowerSaveModal()"></div>' +
+        `<div class="panel border-slate-500 p-5 relative w-[420px] max-w-[92vw] flex flex-col" style="background:${typeof PANEL_BG !== 'undefined' ? PANEL_BG : '#1e293b'}">` +
+          '<div class="panel-header rounded-md mb-2">🔋 省電模式</div>' +
+          '<div class="text-xs text-slate-400 mb-3">以下都是純顯示效果，關閉不影響收益與戰鬥結果；關越多越省電。手機發燙、耗電快時建議全部關閉。</div>' +
+          '<div id="powersave-rows" class="flex flex-col gap-2"></div>' +
+          '<button class="btn mt-4" onclick="closePowerSaveModal()">關閉視窗</button>' +
+        '</div>';
+    _renderPowerSaveRows();
+    modal.classList.remove('hidden');
 }
+function _renderPowerSaveRows() {
+    let box = document.getElementById('powersave-rows'); if (!box) return;
+    box.innerHTML = _POWER_SAVE_ITEMS.map((it, i) => {
+        let on = it.get();
+        return `<button class="btn w-full py-2.5 px-3 text-left ${on
+            ? 'bg-emerald-800 hover:bg-emerald-700 border-emerald-600'
+            : 'bg-rose-900 hover:bg-rose-800 border-rose-700'}" onclick="_togglePowerSaveItem(${i})">` +
+            `<div>${it.label}：${on ? '開啟' : '關閉'}</div>` +
+            `<div class="text-xs opacity-75 font-normal whitespace-normal">${it.desc}</div>` +
+        '</button>';
+    }).join('');
+}
+function _togglePowerSaveItem(i) { let it = _POWER_SAVE_ITEMS[i]; if (it) it.toggle(); _renderPowerSaveRows(); }
+function closePowerSaveModal() { let m = document.getElementById('powersave-modal'); if (m) m.classList.add('hidden'); }
 
 // ✨ VFX：包裝 castSkill → 對本次「攻擊魔法」施法中掉血的目標各射一發拋射物（用 HP 差比對，與內部實作無關；僅有屬性、非武器/投擲類技能觸發）
 if (typeof castSkill === 'function' && !castSkill._vfxWrapped) {
@@ -1229,6 +1263,7 @@ function _mobAnimTrigger(m, k) {
     }
 }
 function _mobAnimApply() {
+    if (window.__animOff) return;   // 🔋 省電「戰鬥動畫」關閉:除 ticker 外,_renderMobsImpl 重建格子後也會直呼本函式補幀 → 在函式內早退一處擋全部,怪物維持重繪寫入的靜態圖
     let ml = document.getElementById('mob-list'); if (!ml) return;
     if (typeof mapState === 'undefined' || !mapState.mobs) return;
     let cards = ml.querySelectorAll('.mob-target[data-uid]');
@@ -1689,7 +1724,11 @@ function _allySpritesApply() {   // 8fps ticker 驅動（先於 _playerMorphAppl
         else if (st.imgs.sh.style.visibility !== 'hidden') st.imgs.sh.style.visibility = 'hidden';
     });
 }
-setInterval(() => { if (!document.hidden) { try { _mobAnimApply(); } catch (e) {} try { _updateFreezeFx(); } catch (e) {} try { _updateMobSkillFx(); } catch (e) {} try { _allySpritesApply(); } catch (e) {} try { _playerMorphApply(); } catch (e) {} } }, Math.floor(1000 / MOB_ANIM_FPS));
+setInterval(() => { if (!document.hidden) {
+    // 🔋 省電：戰鬥動畫關閉 → sprite 幀推進全部跳過(怪物在下次重繪自然回靜態圖、玩家/傭兵停格)。
+    //    凍結/技能疊層更新照跑：它們歸「戰鬥特效」開關管(內部吃 _vfxOff)，且需要持續跑才會自我清理。
+    if (window.__animOff) { try { _updateFreezeFx(); } catch (e) {} try { _updateMobSkillFx(); } catch (e) {} return; }
+    try { _mobAnimApply(); } catch (e) {} try { _updateFreezeFx(); } catch (e) {} try { _updateMobSkillFx(); } catch (e) {} try { _allySpritesApply(); } catch (e) {} try { _playerMorphApply(); } catch (e) {} } }, Math.floor(1000 / MOB_ANIM_FPS));
 
 // 🚀 效能：分頁面板重繪保護＋節流。狩獵時扣箭/耗肉/掉寶會每 tick 觸發 renderTabs 重建整個面板，
 //    重建會洗掉按鈕→在 mousedown↔mouseup 間重建使「賣出/強化」點擊失效並造成卡頓。

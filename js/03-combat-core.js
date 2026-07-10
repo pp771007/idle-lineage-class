@@ -101,7 +101,18 @@ function inAbsBarrier() { return !!(player.buffs && player.buffs.sk_abs_barrier 
 let _uiDirty = false, _mobsDirty = false;
 function updateUI() { if (state.inTick) { _uiDirty = true; return; } _uiDirty = false; _updateUIImpl(); }
 function renderMobs() { if (state.inTick) { _mobsDirty = true; return; } _mobsDirty = false; _renderMobsImpl(); }
-function flushTickRender() { if (_uiDirty) { _uiDirty = false; _updateUIImpl(); } if (_mobsDirty) { _mobsDirty = false; _renderMobsImpl(); } }
+const UI_SLOW_INTERVAL_MS = 500;   // 🔋 省電「畫面流暢更新」關閉時的重繪間隔（每秒 2 次）
+let _uiSlowLastMs = 0;
+function flushTickRender() {
+    // 🔋 省電：只降「tick 尾端的例行重繪」頻率；dirty 旗標保留，到點一次補上。
+    //    玩家操作觸發的 updateUI/renderMobs（state.inTick=false 時直呼）不經此處、即時性不受影響。
+    if (window.__uiSlow) {
+        let _n = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        if (_n - _uiSlowLastMs < UI_SLOW_INTERVAL_MS) return;
+        _uiSlowLastMs = _n;
+    }
+    if (_uiDirty) { _uiDirty = false; _updateUIImpl(); } if (_mobsDirty) { _mobsDirty = false; _renderMobsImpl(); }
+}
 // 🚀 怪物卡互動穩定：① 滑鼠所在怪的 uid 以 JS 追蹤(_hoverMobUid)、每次重繪都重新套用「顯示名字」class→避免重繪(每 tick 換掉 #mob-list 內容)使 :hover 瞬間失效造成名字一直閃；② 按住怪物卡期間(_mobPointerDown)延後重繪→避免 mousedown↔mouseup 之間整列被換掉使點擊切換目標失效。
 let _hoverMobUid = null, _mobPointerDown = false, _mobRebuildPending = false;
 function _applyHoverName() {   // 依 _hoverMobUid 即時切換各卡名字顯示(不整列重繪)

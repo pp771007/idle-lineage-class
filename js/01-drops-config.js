@@ -1264,7 +1264,23 @@ function logCombat(msg, type="player", src=null) {
     // 🔒 鎖定捲動時保留更多歷史；未鎖定時維持一般上限
     let _max = _combatLogLocked ? COMBAT_LOG_MAX_LOCKED : COMBAT_LOG_MAX;
     _trimLog(el, _max, _combatLogLocked);
-    if(!_combatLogLocked) el.scrollTop = el.scrollHeight;   // 鎖定時不自動捲到底，保留玩家檢視位置
+    if(!_combatLogLocked) _logScrollBottom(el);   // 鎖定時不自動捲到底，保留玩家檢視位置
+}
+
+// 捲到底：一般即時；🔋 省電「畫面流暢更新」關閉時批次化（scrollTop=scrollHeight 會強制排版，
+// 戰鬥洗版時每則訊息排版一次很傷 → 改每 0.5 秒統一捲一次，訊息本身照樣即時插入）。
+let _logScrollT = null;
+function _logScrollBottom(el) {
+    if (!window.__uiSlow) { el.scrollTop = el.scrollHeight; return; }
+    el._psNeedScroll = true;
+    if (_logScrollT) return;
+    _logScrollT = setTimeout(() => {
+        _logScrollT = null;
+        ['combat-log', 'sys-log'].forEach(id => {
+            let e = document.getElementById(id);
+            if (e && e._psNeedScroll) { e._psNeedScroll = false; e.scrollTop = e.scrollHeight; }
+        });
+    }, 500);
 }
 
 // 裁掉超量的舊訊息（從頂端移除）。鎖定捲動時，頂端一被裁掉整個內容就往上位移 → 玩家正在看的那段
@@ -1319,7 +1335,7 @@ function logSys(msg) {
     // 🔒 鎖定捲動時保留更多歷史（150 行）；未鎖定時維持一般上限（50 行）
     let _max = _sysLogLocked ? SYS_LOG_MAX_LOCKED : SYS_LOG_MAX;
     _trimLog(el, _max, _sysLogLocked);
-    if(!_sysLogLocked) el.scrollTop = el.scrollHeight;   // 鎖定時不自動捲到底，保留玩家檢視位置
+    if(!_sysLogLocked) _logScrollBottom(el);   // 鎖定時不自動捲到底，保留玩家檢視位置
 }
 
 // 🔧 架構#4：calcStats 職責拆分 ——

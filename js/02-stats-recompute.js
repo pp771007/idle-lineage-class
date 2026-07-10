@@ -85,7 +85,7 @@ function recomputeStats() {
           if (_eqHas('acc_curse_green')) { d.dex += 2; d.cha -= 2; }
       }
     }
-    // 🪆 魔法娃娃全收集：裝備收集冊 doll 部位全收集(50 隻) → 六維各 +1（提前套用→吃進 AC/HP/MP/近遠魔傷害/命中/爆擊等衍生值；受下方 80 上限夾擠）。
+    // 🪆 魔法娃娃全收集：裝備收集冊 doll 部位全收集(50 隻) → 六維各 +1（提前套用→吃進 AC/HP/MP/近遠魔傷害/命中/爆擊等衍生值；受下方 100 上限夾擠）。
     //    收集判定走 player.equipDex(共用桶)；recomputeStats 只對玩家執行(p 恆＝player)，傭兵不走此路徑故不吃。label 由 js/16 EQUIP_CAT_BONUS.doll 顯示。
     if (typeof equipCatComplete === 'function' && equipCatComplete('doll')) { d.str += 1; d.dex += 1; d.con += 1; d.int += 1; d.wis += 1; d.cha += 1; }
 
@@ -95,11 +95,11 @@ function recomputeStats() {
         if (d.str === _mx) d.str += 1; if (d.dex === _mx) d.dex += 1; if (d.con === _mx) d.con += 1;
         if (d.int === _mx) d.int += 1; if (d.wis === _mx) d.wis += 1; if (d.cha === _mx) d.cha += 1; } }
 
-    // 🎯 六維屬性效果上限 80：效果表(getStr/Dex/Int/Con/Wis... 系列)最高只設定到 80，超過 80 無對應能力。
-    //    故在此(Phase 1 加總完、Phase 2 換算前)把最終屬性夾擠至 ≤80：
-    //    ① 讓 HP/MP 線性成長(getConGrowth/getWisGrowth·原本無上限)亦止於 80；② 資訊欄(讀 d.str)顯示不超過 80，避免玩家誤會配更高有加成。
+    // 🎯 六維屬性效果上限 100（v3.1.51 由 80 拓展）：效果表(getStr/Dex/Int/Con/Wis... 系列·js/01)已依 60→80 段曲線鏡射設定到 100，超過 100 無對應能力。
+    //    故在此(Phase 1 加總完、Phase 2 換算前)把最終屬性夾擠至 ≤100：
+    //    ① 讓 HP/MP 線性成長(getConGrowth/getWisGrowth·原本無上限)亦止於 100；② 資訊欄(讀 d.str)顯示不超過 100，避免玩家誤會配更高有加成。
     //    註：只夾「衍生最終值 d.*」，不動 player.base/alloc/panacea(原始配點保留、可回憶蠟燭退還)；各效果自身更低的內部上限(ER封60/MpReduce封45/MR封60)不受影響。
-    { let _ATTR_CAP = 80;
+    { let _ATTR_CAP = 100;
       d.str = Math.min(_ATTR_CAP, d.str); d.dex = Math.min(_ATTR_CAP, d.dex); d.int = Math.min(_ATTR_CAP, d.int);
       d.con = Math.min(_ATTR_CAP, d.con); d.wis = Math.min(_ATTR_CAP, d.wis); d.cha = Math.min(_ATTR_CAP, d.cha); }
 

@@ -393,6 +393,12 @@
             80% { transform: translate(-2px,1px); }
         }
         .vfx-shake { animation: vfxShake .45s ease-in-out; }
+        /* 🔋 省電「戰鬥動畫關閉」的受擊回饋：怪物本體圖左右微晃(純 transform 合成器動畫·js/09 _renderMobsImpl 套用)。本體 img 無基礎 transform 可安全覆蓋；影子/武器層另有定位 transform 故不套 */
+        @keyframes mobHitShake {
+            0%,100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); } 55% { transform: translateX(3px); } 80% { transform: translateX(-2px); }
+        }
+        .mob-hit-shake { animation: mobHitShake .22s ease-in-out; }
         @keyframes vfxHurt { 0%,100% { box-shadow: inset 0 0 0 0 rgba(220,38,38,0); } 42% { box-shadow: inset 0 0 32px 6px rgba(220,38,38,.55); } }
         .vfx-hurt { animation: vfxHurt .5s ease-out; }
         /* 命中衝擊環 */

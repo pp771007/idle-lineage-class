@@ -876,7 +876,7 @@ function _renderMobsImpl() {
     if(state.ff) return; // 補跑期間不刷新畫面
     _initMobListGuard();
     if(_mobPointerDown) { _mobRebuildPending = true; return; }   // 🚀 按住怪物卡期間延後重繪→點擊切換目標不被中斷
-    let _slotHtmls = [], _forceHit = [];   // 🚀 改差異更新：先各格產生 html 字串，最後只重建有變動的格
+    let _slotHtmls = [], _forceHit = [], _shakeUids = [];   // 🚀 改差異更新：先各格產生 html 字串，最後只重建有變動的格；_shakeUids＝省電模式本幀被擊中的怪(DOM 寫入後套微晃 class)
 
     let _back = backSlotsActive();                                   // 🆕 五格模式：原三格(前排)＋後排兩格
     let _order = _back ? [0, 1, 2, 3, 4] : [0, 1, 2];                // 🆕 v2.7.47 前排(0,1,2)由左而右→再後排(3,4)由左而右；視覺左右序＝目標鎖定序一致(不再交錯)
@@ -886,12 +886,14 @@ function _renderMobsImpl() {
         let _rowCls = (i >= 3) ? ' mob-back' : (_back ? ' mob-front' : '');   // 後排/前排版位 class（三格模式不加→沿用原版面）
         if (m) {
             let act = (i === mapState.targetIdx) ? 'active' : '';
-            let _mi = mobStillImg(m.n, m.img, true);   // 🎬 戰鬥初始幀：有動畫→優先 spawn_0（無 spawn 退 idle_0·再退舊靜態）；無動畫→舊靜態
+            let _mi = mobStillImg(m.n, m.img, !window.__animOff);   // 🎬 戰鬥初始幀：有動畫→優先 spawn_0（無 spawn 退 idle_0·再退舊靜態）；無動畫→舊靜態。🔋 省電關動畫時不試 spawn_0（沒有登場動畫可播·許多怪無此幀→每次重繪 404 空窗＝怪圖閃消失）
             let hitClass = '';   // 🚫 v2.7.49 移除 CSS 受擊晃動/亮起特效（只保留 hurt 序列幀 anim；justHit 仍驅動 hurt 觸發與傷害數字）
-            _forceHit[_k] = !!m.justHit;   // 🚀 被擊中→即使字串相同也強制重建該格(重播受擊動畫)
+            _forceHit[_k] = !!m.justHit && !window.__animOff;   // 🚀 被擊中→即使字串相同也強制重建該格(重播受擊動畫)。🔋 省電關動畫：無受擊動畫可重播→不強制重建（重建的圖片載入空窗會讓怪圖閃消失），改由下方 _shakeUids 微晃回饋
             // 🎬 v2.6.94 受擊序列幀（hurt_*.png）：被擊中且該怪有 hurt 動畫→優先播一輪（非鎖定·可蓋掉攻擊/待機·不打斷登場/技能鎖定）。gate 在「確有 hurt 序列」避免無 hurt 的怪被誤清掉進行中的攻擊動作。
             // 🎯 v2.7.30 頭目受擊門檻（用戶要求）：頭目「只有被 重擊(_vfxBig='heavy') 或 爆擊(_vfxBig='crit')」才播 hurt——一般命中不打斷頭目的待機/攻擊/技能動作，維持頭目氣勢；非頭目維持「任何命中都播」。⚠️ _vfxBig 由本幀攻擊設(js/03:818 getPhysicalDmg 樞紐)·須在下一行 _vfxQueueDmg 重設它「之前」判斷。
             if (m.justHit && MOB_ANIM_NAMES.has(m.n) && (!m.boss || m._vfxBig === 'crit' || m._vfxBig === 'heavy' || m._spellHurt)) { let _ha = _mobAnimCache[m.n]; if (_ha && _ha !== 'probing' && _ha.hurt && typeof _mobAnimTrigger === 'function') _mobAnimTrigger(m, 'hurt'); }   // 🎬 v3.0.14 _spellHurt：法術傷害也讓「頭目」播 hurt（一般怪本就任何命中都播·物理維持 v2.7.30 爆擊/重擊門檻·DoT/反射不標記→頭目不因持續傷害狂顫）
+            // 🔋 省電「戰鬥動畫」關閉的受擊回饋：本體圖微晃(純 CSS transform·不重建 DOM)。頭目門檻沿用 v2.7.30（重擊/爆擊/法術才晃）
+            if (m.justHit && window.__animOff && (!m.boss || m._vfxBig === 'crit' || m._vfxBig === 'heavy' || m._spellHurt)) _shakeUids.push(m.uid);
             try { _vfxQueueDmg(m); } catch(e){}   // ✨ VFX：用 HP 差捕捉本幀傷害（須在重設 justHit 前）
             m.justHit = false;
             m._spellHurt = false;
@@ -974,6 +976,13 @@ function _renderMobsImpl() {
         //    但被重建過的格會丟失 hover class，故只在「有寫入 DOM」時重新套用一次（無重建的幀維持原樣、零成本）。
         if (_wrote) _applyHoverName();
         if (_wrote) { try { _mobAnimApply(); } catch(e){} }   // 🎞️ 重建過的格子立即補上當前動畫幀（同一同步工作內→不閃回靜態圖）
+        // 🔋 省電模式受擊微晃：DOM 寫入後才套 class（先套會被重建洗掉）；只晃本體 img——影子/武器層絕對定位帶自身 transform，動畫會蓋掉定位
+        for (const _su of _shakeUids) {
+            let _card = _ml.querySelector(`.mob-target[data-uid="${_su}"]`); if (!_card) continue;
+            let _img = _card.querySelector('.mob-img-inner img:not(.mob-anim-shadow):not(.mob-anim-weapon):not(.mob-anim-weapon2)'); if (!_img) continue;
+            _img.classList.remove('mob-hit-shake'); void _img.offsetWidth; _img.classList.add('mob-hit-shake');
+            _img.addEventListener('animationend', () => _img.classList.remove('mob-hit-shake'), { once: true });
+        }
     }
     try { _vfxFlush(); } catch(e){}   // ✨ VFX：格子重建後生成飄動傷害數字
 }
@@ -1150,6 +1159,7 @@ const MOB_ANIM_SKILL_FX = {
     '底比斯 斯芬克斯(黑)': { startPfx: 'skill_effect', anchored: { ox: 23, oy: 48, bw: 133, bh: 117 } },  // 彩虹波動(黑)：7幀藍色爆發(前5幀原始即空幀·尾段才顯)·eff 55x52
 };
 // 怪物「靜態顯示圖」候選：有動畫→戰鬥優先 spawn_0、圖鑑優先 idle_0，退回舊靜態 PNG；無動畫→直接舊靜態。回傳 {src, fb:[後備...]}（fb 走 onerror 逐張退·各呼叫點自行在末端補佔位符）。
+const _mobImgBadUrl = new Set();   // 🔋 曾 404 的候選圖 URL：省電模式不探測動畫幀→每次重繪都會重試 spawn_0/idle_0，記住失敗的直接跳過（重試的載入空窗＝怪圖被打閃消失的元凶之一）
 function mobStillImg(name, staticUrl, preferSpawn) {
     let base = staticUrl || `assets/icons/monsters/${name}.png`;
     if (!MOB_ANIM_NAMES.has(name)) return { src: base, fb: [] };
@@ -1160,12 +1170,15 @@ function mobStillImg(name, staticUrl, preferSpawn) {
         // 🎬 v2.6.93 已探測且確定「無登場動畫」(如哥布林只有 idle/attack/death)→不放 spawn_0，免每次渲染固定 404；未探測/探測中仍嘗試(首見一次無害)。
         if (!(_c && _c !== 'probing' && (!_c.spawn || !_c.spawn.length))) list.push(`assets/anim/${dir}/spawn_0.png`);
     }
-    list.push(`assets/anim/${dir}/idle_0.png`, base);
+    list.push(`assets/anim/${dir}/idle_0.png`);
+    list = list.filter(u => !_mobImgBadUrl.has(u));
+    list.push(base);   // 舊靜態圖恆為最終後備，不進黑名單過濾
     return { src: list[0], fb: list.slice(1) };
 }
 // 通用 img onerror：依 data-fb（|分隔清單）逐張退回，用盡則停。
 function _mobImgErr(img) {
     try {
+        let cur = img.getAttribute('src'); if (cur) _mobImgBadUrl.add(cur);
         let fb = (img.getAttribute('data-fb') || '').split('|').filter(Boolean);
         if (fb.length) { img.setAttribute('data-fb', fb.slice(1).join('|')); img.src = fb[0]; }
         else { img.onerror = null; }

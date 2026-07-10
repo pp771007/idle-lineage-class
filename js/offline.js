@@ -493,9 +493,11 @@
     //   誘捕/傭兵經驗一律照真;只有「殺一隻的純戰鬥耗時(svcPerKill)」與「消耗品每拍耗率」是取樣平均。
     //   (2026-07-08 曾實測舊寫法「spawnMob(0) 連續出怪」在長老之室這類節流圖收益偏高 ~13%,
     //    事件驅動重用真實排程+真實場面佔位後,節流自然生效,結構上不再分歧。)
-    // 一律退回全模擬的情況:特殊地圖(攀登/遺忘之島「途中」/軍王之室,由 fastEligible 排除;
-    //   遺忘之島「本島」是無限刷怪圖 → 2026-07-10 起納入快速)、取樣最低血量過低
-    //   (可能會死→維持撞死即停的忠實性)、殺太少(樣本不可信)、消耗品斷貨且自動購買補不上(戰局質變)。
+    // 一律退回全模擬的情況:特殊地圖(攀登/遺忘之島「途中」/軍王之室,由 fastEligible 排除——
+    //   王房實測快速無利可圖且失真,見 fastEligible 上方註解;遺忘之島「本島」納入快速)、取樣最低血量過低
+    //   (可能會死→維持撞死即停的忠實性)、殺太少(樣本不可信)。
+    // 消耗品斷貨且自動購買補不上(戰局質變)→ 不永久退出:改「重新取樣+固定 70% 血量門檻」重新評估新戰局
+    //   (沒藥還撐得穩就回快速;撐不穩維持真模擬保住撞死即停。2026-07-10 起,先前是永久退回全模擬)。
     // 升級 → 戰力變了殺速會變 → 退回真模擬重新取樣。HP/MP 軌跡不用模擬:結算存活本就補滿(見下方落點)。
     var FAST_SAMPLE_TICKS = 3000;     // 首次取樣:5 分鐘(3000 拍)
     var FAST_RESAMPLE_TICKS = 1200;   // 升級後重取樣:2 分鐘
@@ -506,13 +508,23 @@
     var FAST_MIN_REMAIN = 6000;       // 取樣後剩不到 10 分鐘 → 全模擬本來就快,不值得切
     // 🏝️ 遺忘之島「本島」納入快速(2026-07-10 使用者提議):本島=無限刷怪圖、無後續推進,與一般圖同等待遇;
     //   「途中」(travel)維持全模擬——它是「打倒傳送門 BOSS 才進本島」的過場,怪組與本島不同、取樣不能混用。
+    // ⚔ 軍王之室維持全模擬(2026-07-10 實測後決定):曾實作納入快速並 A/B(真實存檔 Lv96 法師,6h)——
+    //   魔獸軍王之室快速 +23%(抽驗以滿 MP 開打 vs 全模擬持續耗魔的穩態,對打耗時被量短)、底比斯 -16%,
+    //   而結算耗時「幾乎沒變快」(19→20s / 16→10s):王房的內容就是 BOSS 對打本身,首打+5% 抽驗全是真打,
+    //   沒有可跳過的小怪 farming → 快速模式無利可圖。全模擬跑王房本來就快(24h ≈ 75 秒)。
+    //   (事件迴圈仍保留 _kbRespawnAt 時間軸與 kingLeftRoom 偵測——若日後重啟,把下行 !isKing 拿掉即可。)
     var fastEligible = !isClimb && !isKing && (!isObl || (preObl && preObl.phase === 'island'))
       && totalTicks >= (FAST_SAMPLE_TICKS + FAST_MIN_REMAIN) && !_forceNoFast;
     _forceNoFast = false;   // 🧪 一次性:用過即歸零,不影響之後的真實離線結算
     var fastMode = false, fastOff = false;   // fastOff = 本次補跑永久退出快速段
+    var _dryHit = false;        // 消耗品斷貨旗標:fastAdvance 補不上貨時設起,主迴圈據此走「重取樣」而非永久退出
+    var hpFloorFixed = false;   // 斷貨(戰局質變)後改用固定 70% 門檻——「撐過 20 分鐘=打得過」的信任基礎已失效,不再隨時間放寬
     // 血量安全門檻(取樣 + BOSS safe 共用):隨真模擬存活拍數 done 從 70% 線性降到 0(20 分鐘歸 0)。
     //   即時用 done 算,故取樣評估、BOSS safe 判定各自用「當下」的門檻;越撐越信任,撐滿 20 分鐘完全放行。
-    function hpFloorNow() { return Math.max(0, (FAST_MIN_HP_PCT / 100) * (1 - done / HP_FLOOR_ZERO_TICKS)); }
+    function hpFloorNow() {
+      if (hpFloorFixed) return FAST_MIN_HP_PCT / 100;
+      return Math.max(0, (FAST_MIN_HP_PCT / 100) * (1 - done / HP_FLOOR_ZERO_TICKS));
+    }
     // 🐲 BOSS 策略(懶驗證):每「種」BOSS(按名字)第一次遇到 → 逐拍真模擬打到倒下,記錄實際耗時與安全度;
     //   之後同名 BOSS:安全的 → 即殺但時間按「該 BOSS 實測耗時」推進(不是小怪均速);對打時血量掉太深的 → 每次都真打。
     //   打輸=外層撞死即停;打不動=照實耗完時間。純 BOSS 圖因此自然接近全真模擬。
@@ -546,6 +558,7 @@
     function saveOffStats() {   // 量到新統計就更新快取(隨檢查點/結算尾的 saveGame 固化進存檔)
       try {
         if (!(svcPerEvent > 0)) return;
+        if (hpFloorFixed) return;   // 斷貨後的「質變戰局」統計不寫快取:簽章不含消耗品庫存,隔天補貨後會拿沒藥的殺速亂算
         player._offStats = { v: 1, sig: offStatsSig(), svcE: svcPerEvent, batch: batchPerEvent, consume: consumePerTick || {}, boss: bossStats, savedAt: Date.now() };
       } catch (e) {}
     }
@@ -676,9 +689,9 @@
         }
         if (_ended) { try { calcStats(); } catch (e) {} }   // 到期重算(比照 tick() 的 _buffEnded → calcStats)
       }
-      for (var id in consumePerTick) {   // 消耗品照取樣「每拍」速率扣;斷貨且補不上 → 戰局質變,退回全模擬
+      for (var id in consumePerTick) {   // 消耗品照取樣「每拍」速率扣;斷貨且補不上 → 戰局質變,設 _dryHit 由主迴圈轉「重取樣」
         consumeAcc[id] = (consumeAcc[id] || 0) + consumePerTick[id] * adv;
-        while (consumeAcc[id] >= 1) { consumeAcc[id] -= 1; if (!fastConsumeOne(id)) return false; }
+        while (consumeAcc[id] >= 1) { consumeAcc[id] -= 1; if (!fastConsumeOne(id)) { _dryHit = true; return false; } }
       }
       try {   // 自動賣廢品:照原作 tick 的排程(state._junkSellAt,每 100 拍),避免 24h 掉落塞爆背包/超重
         if (state._junkSellAt == null) state._junkSellAt = state.ticks + _junkEvery;
@@ -756,6 +769,9 @@
           for (var i = 0; i < (mapState.spawnAt || []).length; i++) {
             if (mapState.spawnAt[i] != null && mapState.spawnAt[i] < nextAt) nextAt = mapState.spawnAt[i];
           }
+          // ⚔ 軍王之室:王死後全場清空、下一輪由 state._kbRespawnAt(5 秒後 kbRoomRespawn 耗鑰匙復活)驅動,
+          //   不在 spawnAt 裡——把它也納入事件時間軸,否則空場會被誤判成地圖異常退回全模擬
+          if (typeof KING_ROOMS !== 'undefined' && KING_ROOMS[mapState.current] && state._kbRespawnAt != null && state._kbRespawnAt < nextAt) nextAt = state._kbRespawnAt;
           if (!isFinite(nextAt)) return false;   // 沒怪又沒有任何出怪排程(地圖異常)→ 退回全模擬
           return fastAdvance(Math.max(1, nextAt - state.ticks));
         }
@@ -874,6 +890,12 @@
         while (done < totalTicks && !player.dead && state.running && !_abortCatchup &&
                (performance.now() - t0) < (_holdStart ? HOLD_SLICE_MS : sliceMs)) {   // 按住放棄時切片縮小,讓 1.5 秒一到就立刻停
           if (fastMode) {
+            // ⚔ 軍王之室:鑰匙用完 → 核心 kbVictoryTeleport 已把人傳回村(mapState 變了)→ 剩餘時間在村莊,收快速段
+            if (isKing && !kingLeftRoom && mapState && mapState.current !== huntMap) {
+              kingLeftRoom = true; fastMode = false; fastOff = true;
+              console.info('[AFK] ⚔ 軍王之室:鑰匙用完被傳回村,剩餘離線時間無戰鬥收益。');
+              continue;
+            }
             if (fastBossUid != null) {   // 🐲 BOSS 對打中:逐拍真模擬(死亡由外層撞死即停接手;打不動就照實耗完時間)
               tick();
               settleDeadMobs();
@@ -902,8 +924,22 @@
               }
               continue;
             }
-            // ⚡ 快速段:一次一個事件(出怪排程推進/一殺真實獎勵管線);失敗(斷貨/出怪異常)→ 退回全模擬跑完剩餘
-            if (!fastEventStep()) { fastMode = false; fastOff = true; console.info('[AFK] ⚡ 快速結算退回全模擬(消耗品斷貨或步驟異常),剩餘時間照真模擬。'); continue; }
+            // ⚡ 快速段:一次一個事件(出怪排程推進/一批真實獎勵管線)。
+            //   失敗分兩種:消耗品斷貨(_dryHit)=戰局質變 → 重新取樣(固定 70% 門檻)評估「沒藥的新戰局」,
+            //   撐得穩就回快速;其他(出怪異常等)→ 安全網,永久退回全模擬。
+            if (!fastEventStep()) {
+              if (_dryHit) {
+                _dryHit = false;
+                fastMode = false; sampleGrew = false; hpFloorFixed = true;
+                sampleEnd = done + FAST_SAMPLE_TICKS;
+                beginSample(done);
+                console.info('[AFK] ⚡ 消耗品斷貨(戰局質變):退出快速段重新取樣(固定 70% 血量門檻),新戰局撐得穩再回快速。');
+                continue;
+              }
+              fastMode = false; fastOff = true;
+              console.info('[AFK] ⚡ 快速結算退回全模擬(步驟異常),剩餘時間照真模擬。');
+              continue;
+            }
             if (player.lv !== lastLv) {   // 升級 → 戰力變了 → 重新取樣殺速
               lastLv = player.lv;
               fastMode = false; sampleGrew = false; sampleEnd = done + FAST_RESAMPLE_TICKS;

@@ -573,7 +573,7 @@ function startGame() {
     let b = createBase[curCreate.cls];
     player.base = { str: b.str+curCreate.str, dex: b.dex+curCreate.dex, con: b.con+curCreate.con, int: b.int+curCreate.int, wis: b.wis+curCreate.wis, cha: b.cha+curCreate.cha };
     player.lv = 1; player.exp = 0; player.gold = 1000;
-    player.inv = []; player.eq = { wpn: null, helm: null, armor: null, shield: null, cloak: null, tshirt: null, gloves: null, boots: null, ring1: null, ring2: null, ring3: null, ring4: null, amulet: null, ear1: null, ear2: null, belt: null }; player.junkPrefs = {};
+    player.inv = []; player.eq = { wpn: null, helm: null, armor: null, shin: null, shield: null, cloak: null, tshirt: null, gloves: null, boots: null, ring1: null, ring2: null, ring3: null, ring4: null, amulet: null, ear1: null, ear2: null, belt: null }; player.junkPrefs = {};   // 🦵 shin=脛甲（遺物新增部位）
     player.skills = [];
     player.summon = null; player.charmed = null; player.manualCd = {}; player.hot = null; player.hots = {}; player.elfEle = null; player.buffs = { haste: 0, brave: 0, blue: 0, cautious: 0, elfcookie: 0, poly: 0, shield: 0 };
     
@@ -621,6 +621,7 @@ function startGame() {
     if (typeof ensureCardBook === 'function') ensureCardBook();   // 🎴 怪物收集冊改由「收藏」面板開啟（移除道具欄本體）
     if (typeof ensureEquipBook === 'function') ensureEquipBook();   // 🗡️ 裝備收集冊改由「收藏」面板開啟＋登錄起始裝備
     if (typeof ensureMiscDex === 'function') ensureMiscDex();   // 🧰 道具收集冊：登錄起始道具
+    if (typeof ensureRelicDex === 'function') ensureRelicDex();   // 🏺 遺物收集冊：登錄起始遺物
 
     calcStats();
     player.hp = player.mhp; player.mp = player.mmp;
@@ -909,6 +910,7 @@ function loadGame() {
         if (typeof ensureCardBook === 'function') ensureCardBook();   // 🎴 舊存檔遷移：移除道具欄的卡片收集冊本體（改由「收藏」面板開啟）
         if (typeof ensureEquipBook === 'function') ensureEquipBook();   // 🗡️ 舊存檔遷移：移除裝備收集冊本體＋登錄現有(背包/已裝備)裝備
         if (typeof ensureMiscDex === 'function') ensureMiscDex();   // 🧰 舊存檔遷移：登錄現有道具到道具收集冊
+        if (typeof ensureRelicDex === 'function') ensureRelicDex();   // 🏺 舊存檔遷移：登錄現有遺物到遺物收集冊
 
         // 👇 正確的新版起點邏輯
         // 🔧 讀檔回「家」改走 getHomeTown()：血盟成員回盟主村莊（海音/歐瑞），否則回職業起始村，與回村按鈕邏輯一致
@@ -917,7 +919,7 @@ function loadGame() {
         if (player.eq && player.eq.ring3 === undefined) player.eq.ring3 = null;   // 🔧 舊存檔補上第三戒指欄
         if (player.eq && player.eq.ring4 === undefined) player.eq.ring4 = null;   // 🔧 舊存檔補上第四戒指欄
         // 🔧 負重改版遷移：負重強化不再開放重甲，卸下現在無法裝備的裝備到背包
-        ['wpn','arrow','helm','armor','shield','cloak','tshirt','gloves','boots','ring1','ring2','ring3','ring4','amulet','belt'].forEach(_sl => {
+        ['wpn','arrow','helm','armor','shin','shield','cloak','tshirt','gloves','boots','ring1','ring2','ring3','ring4','amulet','belt'].forEach(_sl => {   // 🦵 shin=脛甲（遺物新增部位）
             let _e = player.eq && player.eq[_sl]; if (!_e) return;
             let _ok = true; try { _ok = checkCanEquip(_e); } catch(err) { _ok = true; }
             if (!_ok) {

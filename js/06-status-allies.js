@@ -1,6 +1,6 @@
 function newMobStatus() {
     return { freeze:0, stun:0, stone:0, sleep:0, poison:0, poisonTick:30, poisonDmg:0, poisonStacks:0, poisonUnit:0,
-             blind:0, blindVal:0, weaken:0, disease:0, vacuum:0, broken:0, slow:0, mrhalf:0, magicseal:0, armorbreak:0, confuse:0, panic:0, guardbreak:0, terror:0, doom:0 };
+             blind:0, blindVal:0, weaken:0, disease:0, vacuum:0, broken:0, slow:0, mrhalf:0, magicseal:0, armorbreak:0, confuse:0, panic:0, guardbreak:0, terror:0, doom:0, strawCurse:0 };
 }
 function mobEffAC(m) { return (m.ac || 0) + ((m.st && m.st.disease > 0) ? 8 : 0) + ((m.st && (m.st.confuse > 0 || m.st.panic > 0)) ? 5 : 0) + ((m.st && m.st.guardbreak > 0) ? 10 : 0) + ((m.weakExpose > 0 && hasMastery('k_weakness')) ? 3 * Math.min(5, m.weakExpose) : 0) - ((m._acGuardEnd > state.ticks) ? (m._acGuardVal || 0) : 0); }   // 🔮 混亂/恐慌：AC+5；🐉 護衛毀滅：AC+10；🐉 弱點精通：每層弱點曝光 AC+3（更易被命中）   // 🗼 鋼鐵防護：暫時降低 AC
 function mobActDisabled(m) {
@@ -284,6 +284,10 @@ function allyUnbonusBonus(ally, t) {
 // 🔮 幻術士傭兵 奇古獸攻擊：公式同玩家 qiguPlayerAttack，改用傭兵自身衍生值；奇古獸精通無視MR
 function allyQiguAttack(ally, t, wpn) {
     let d = ally.d || {};
+    if (wpn.procInstakill && t.curHp > 0 && !t._dead) {   // 🏺 遺物 曼陀羅之靈（傭兵奇古獸）：即死 proc（魔法路徑不經 allyOnHitEffects·比照玩家 qiguPlayerAttack 於此補上）
+        let _pk = wpn.procInstakill;
+        if (!_pk.maxLv || t.lv <= _pk.maxLv) { let _ri = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (_ri !== -1 && tryInstakill(t, { p: _pk.p, tag: _pk.tag || null }, `【協力·${ally._allyName}】${wpn.n}`, _ri)) return; }
+    }
     let dice = (t.s === 'L') ? wpn.dmgL : wpn.dmgS;
     let core = roll(1, dice) * (1 + (d.magicDmg || 0) / 16);
     let raw = core + (d.extraMp || 0) + (d.extraDmg || 0);
@@ -397,13 +401,23 @@ function allyAttackOnce(ally) {
         dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
         let _dualX2A = false;   // ⚔️ 雙刀內建特性（傭兵·鏡像玩家）：一般攻擊命中(非擦傷) 5% 機率最終傷害×2·經典停用
         if (!_grazeA && !ally.classicMode && ally.eq && ally.eq.wpn && getWeaponTags(ally.eq.wpn.id).includes('雙刀') && Math.random() < 0.05) { _dualX2A = true; dmg = Math.max(1, dmg * 2); }
+        if (wpn && wpn.hardSkinMult && _hsT > 0) dmg = Math.max(1, Math.floor(dmg * wpn.hardSkinMult));   // 🦀 目標有硬皮→一般攻擊傷害×1.5（傭兵鏡像玩家）
+        if (wpn && wpn.softMult && _hsT <= 0) dmg = Math.max(1, Math.floor(dmg * wpn.softMult));   // 🏺 不死將軍的珍愛巨劍：對「無硬皮」敵人傷害×1.3（傭兵鏡像玩家）
+        { let _fhmA = wpn && (_allyInTriple ? (!_allyTripleFhmUsed ? wpn.fullHpMultTriple : null) : wpn.fullHpMult); if (_fhmA && t.curHp === t.hp) { dmg = Math.max(1, Math.floor(dmg * _fhmA)); if (_allyInTriple) _allyTripleFhmUsed = true; } }   // 🏺 遺忘者的狙擊弓：三重矢對滿血×2（每次施放最多 1 箭·對齊玩家「僅第一箭」·防第1箭擊殺滿血怪後轉目標再吃×2）／一般攻擊對滿血×3（傭兵鏡像玩家·_allyInTriple 區分兩者）
+        if (wpn && wpn.silencedBonusDmg && t.st && t.st.magicseal > 0) dmg += wpn.silencedBonusDmg;   // 🏺 沉默的毒液：對沉默(magicseal)敵人額外固定傷害 +20（傭兵鏡像玩家）
+        if (wpn && wpn.poisonedBonusDmg && t.st && t.st.poison > 0) dmg += wpn.poisonedBonusDmg;   // 🐍 艾庫卡伊拉的毒牙：對中毒敵人額外固定傷害 +15（傭兵鏡像玩家）
+        if (wpn && wpn.slowedBonusDmg && t.st && t.st.slow > 0) dmg += wpn.slowedBonusDmg;   // 🐍 艾庫艾托的鞭笞藤：對緩速敵人額外固定傷害 +10（傭兵鏡像玩家）
+        if (wpn && wpn.raceBonus && t.race === wpn.raceBonus.race) dmg = Math.max(1, Math.floor(dmg * (wpn.raceBonus.mult || 1)));   // 🕷️ 刺針：對特定種族（蜘蛛）傷害×N（傭兵鏡像玩家）
+        if (wpn && wpn.raceFlat && t.race === wpn.raceFlat.race) dmg = dmg + (wpn.raceFlat.add || 0);   // 🏺 遺物 上古蜘蛛之爪：對特定種族（動物）額外固定傷害 +N（傭兵鏡像玩家）
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
+        if (t.curHp > 0) consumeStrawCurse(t);   // 🐍 詛咒稻草人：傭兵主攻擊亦消耗並額外扣 80 水魔傷（鏡像玩家）
+        if (wpn && wpn.strawCurse && t.curHp > 0 && Math.random() * 100 < wpn.strawCurse.rate) { if (!t.st) t.st = newMobStatus(); t.st.strawCurse = Math.max(t.st.strawCurse || 0, wpn.strawCurse.stacks || 3); }   // 🐍 傭兵種下詛咒稻草人（鏡像玩家）
         if (ally._setDragonblood2 && dmg > 0) ally.curHp = Math.min(ally.mhp || 1, (ally.curHp || 0) + Math.max(1, Math.floor(dmg * ((ally.curHp < (ally.mhp || 1) * 0.5) ? 0.05 : 0.01))));   // 🐉 v2.6.9 #1b 龍血2/5（傭兵）：造成物理傷害吸血1%（自身HP<50%→5%）·回復戰鬥HP(curHp)
         // 🔧 黑暗妖精傭兵：預設攻擊自動維持附加劇毒（學過 sk_dark_poison 即視為常駐增益）；命中 50%／劇毒精通 100% 使目標中毒（與玩家同規則）
         if (ally.cls === 'dark' && ally.skills && ally.skills.includes('sk_dark_poison') && t.curHp > 0 && Math.random() < (allyHasMastery(ally, 'd_poison') ? 1 : 0.5)) {
             if (!t.st) t.st = newMobStatus();
             let _pPct = allyHasMastery(ally, 'd_poison') ? 2.0 : 0.6;   // 🔧 劇毒精通：每秒 200%；否則 60%
-            let _pUnit = Math.max(1, Math.floor(dmg * _pPct));
+            let _pUnit = Math.max(1, Math.floor(dmg * _pPct * ((wpn && wpn.poisonMult) || 1)));   // 🏺 暗黑蠍的雙鉗：poisonMult 放大附加劇毒（傭兵鏡像玩家）
             // 🔧 新規則（與玩家一致）：未中毒、或新傷害高於現有時才上毒（取代並刷新5秒）；否則不更新，須等舊毒跑完
             if ((t.st.poison || 0) <= 0 || _pUnit > (t.st.poisonUnit || 0)) {
                 t.st.poison = 50; t.st.poisonTick = 10;                      // 持續 5 秒、1 層
@@ -427,6 +441,9 @@ function allyAttackOnce(ally) {
         if (wpn && wpn.eff === 'combo' && Math.random() * 100 < (wpn.comboRate || 0)) allyComboAttack(ally, t, true);     // 雙擊：命中後依 comboRate% 追加一次完整一般攻擊
         if (isCrit && allyHasMastery(ally, 'd_crit')) allyComboAttack(ally, t);   // 🔧 黑暗妖精爆擊精通：傭兵爆擊時追加一次連擊
         if (ally.eq && ally.eq.offwpn) allyDualWieldOffhandAttack(ally, t);   // ⚔️ 迅猛雙斧（傭兵）：副手第二攻擊來源
+        // 🏺 遺物 命中附加固定屬性傷害＋弱點洞察（傭兵鏡像玩家·置於各 proc 後、擊殺判定前，避免對死怪重複觸發）
+        if (t.curHp > 0 && wpn && wpn.onHitEleDmg && (!wpn.onHitEleDmg.rate || Math.random() * 100 < wpn.onHitEleDmg.rate)) { let _oh = wpn.onHitEleDmg; t.curHp -= _oh.dmg; t.justHit = _oh.ele; mobWake(t); logCombat(`<span class="font-bold" style="color:${RELIC_ELE_COLOR[_oh.ele] || '#e2e8f0'};">【協力·${ally._allyName}】附加 ${_oh.dmg} 點${RELIC_ELE_LABEL[_oh.ele] || ''}屬性傷害。</span>`, 'player'); }   // 🏺 rate：火焰長劍 3%（傭兵鏡像玩家）
+        if (t.curHp > 0) { let _whb = _relicWeakHitBonus(ally); if (_whb > 0) { let _we = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); if (_we && _we !== 'none' && elementCounterMult(_we, t.e) > 1) { t.curHp -= _whb; t.justHit = _we; mobWake(t); logCombat(`<span class="font-bold text-amber-300">【協力·${ally._allyName}·弱點洞察】</span>額外造成 ${_whb} 點傷害。`, 'player'); } } }
     }
     let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid);
     if (t.curHp <= 0) { if (ri !== -1) killMob(ri); } else renderMobs();
@@ -549,7 +566,7 @@ function allyCastMagic(ally, sk) {
     if (!ally._echoing) {
         let _wi = ally.eq && ally.eq.wpn, _w = _wi ? DB.items[_wi.id] : null;
         if (_w) {
-            if (_w.eff === 'mp_drain' || _w.mpOnHit) { let _en = capWpnEn(_wi.en); ally.mp = Math.min(ally.mmp || 0, (ally.mp || 0) + 1 + Math.max(0, _en - 6)); }   // 命中回 MP（同 allyWeaponProcs·同玩家 1+max(0,強化-6)）
+            if (_w.eff === 'mp_drain' || _w.mpOnHit) { let _en = capWpnEn(_wi.en); ally.mp = Math.min(ally.mmp || 0, (ally.mp || 0) + ((_w.mpOnHitAmt != null) ? _w.mpOnHitAmt : (1 + Math.max(0, _en - 6)))); }   // 命中回 MP（同 allyWeaponProcs·mpOnHitAmt 固定量優先·邪惡蜥蜴的眼瞳 +6）
             if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(_wi.id) && !ally.classicMode && !allyHasMastery(ally, 'm_strike') && Math.random() < ((d.int || 0) / 60)) { let _rt = _allyProcTarget(getTarget()); if (_rt) allyProcLightArrow(ally, _rt); }   // 共鳴：int/60 免費光箭回魔（同 allyWeaponProcs）；🏅 v2.6.70 魔擊精通傭兵共鳴已改發魔擊→本補償塊(只補回魔·不套傷害proc)不再施放光箭
         }
     }
@@ -1006,7 +1023,7 @@ function allyWeaponProcs(ally, target, hitInfo) {
     }
     if (hitInfo && hitInfo.hit && (wpn.eff === 'mp_drain' || wpn.mpOnHit)) {   // 瑪那魔杖/惡魔王魔杖(mpOnHit)：命中恢復MP → 傭兵自身（恢復量同玩家：1 + max(0, 強化-6)）
         let en = capWpnEn(wpnInst.en);
-        ally.mp = Math.min(ally.mmp||0, (ally.mp||0) + 1 + Math.max(0, en - 6));
+        ally.mp = Math.min(ally.mmp||0, (ally.mp||0) + ((wpn.mpOnHitAmt != null) ? wpn.mpOnHitAmt : (1 + Math.max(0, en - 6))));   // 🏺 邪惡蜥蜴的眼瞳：mpOnHitAmt 固定恢復量（!= null 判定·傭兵鏡像玩家）
     }
     {
         let _amk = allyHasMastery(ally, 'm_strike') && !ally.classicMode;   // 🏅 v2.6.70 魔擊精通（傭兵）：共鳴改發魔擊；v2.6.71 觸發率比照原生魔擊＝力量/60（鏡像玩家·經典模式維持光箭吃智力）
@@ -1080,6 +1097,13 @@ function allyOnHitEffects(ally, t, res) {
     if (wpn.eff === 'dice_death' && t.curHp > 0 && !t._dead) {   // 骰子匕首：1% 即死（非 BOSS）
         let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid);
         if (ri !== -1) tryInstakill(t, { p: 0.01, tag: null }, `【協力·${ally._allyName}】骰子匕首`, ri);
+    }
+    if (wpn.procInstakill && t.curHp > 0 && !t._dead) {   // 🏺 遺物武器即死 proc（強韌的大腿骨：傭兵版·比照玩家）
+        let _pk = wpn.procInstakill;
+        if (!_pk.maxLv || t.lv <= _pk.maxLv) { let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (ri !== -1) tryInstakill(t, { p: _pk.p, tag: _pk.tag || null }, `【協力·${ally._allyName}】${wpn.n}`, ri); }
+    }
+    if (wpn.stoneInstakill && t.curHp > 0 && !t._dead && t.st && t.st.stone > 0) {   // 🏺 蛇妖的無慈悲尾刺：命中石化敵人必定即死（傭兵鏡像玩家）
+        let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (ri !== -1) tryInstakill(t, { p: 1, tag: null }, `【協力·${ally._allyName}】蛇妖的無慈悲尾刺`, ri);
     }
     // 匕首/矛：力量/60 機率出血；🔧 出血精通：雙刀也比照匕首觸發（力量/60）；匕首/矛/雙刀皆可疊 10 層、每秒總傷害 ×(1+0.1×層)
     let _allyCanBleed = weaponHasBleed(wpnInst.id) || (allyHasMastery(ally, 'd_bleed') && getWeaponTags(wpnInst.id).includes('雙刀'));
@@ -1168,6 +1192,7 @@ function allyReactCounter(mob, blocked) {
         if (!_ctr && Math.random() >= (blocked ? 1 : 0.50)) return;
         let res = _allyStrikeWithIllu(ally, mob, { forceHit: true, noHeavy: true, mult: _ctr ? 0.65 : 0.50, forceCrit: _ctr });   // 🔮 v2.6.7：反擊也吃幻覺全隊光環
         if (ally.buffs && ally.buffs.sk_counter_barrier > 0 && getWeaponTags(ally.eq.wpn.id).includes('單手劍')) res.dmg = Math.max(1, Math.floor(res.dmg * 2));   // 🛡️ v2.6.22 反擊屏障：原生反擊(單手劍)武器最終傷害×2（鏡像玩家 js/03:1059）
+        if (ally.buffs && ally.buffs.sk_counter_barrier > 0 && DB.items[ally.eq.wpn.id] && DB.items[ally.eq.wpn.id].counterBarrierX2) res.dmg = Math.max(1, Math.floor(res.dmg * 2));   // 🏺 資深殘兵的重型劍：反擊屏障觸發的反擊傷害×2（傭兵鏡像玩家 js/03）
         logCombat(`<span class="font-bold" style="color:#fbbf24;text-shadow:0 0 6px #f59e0b;">【協力·${ally._allyName}·反擊】</span>對 <span class="${getMobColor(mob.lv)}">${mob.n}</span> 造成 ${res.dmg} 點傷害${res.crit?'（爆擊!）':''}。`, 'player');
         if (_ctr) wearHardSkin(mob, null, false, false, true);   // 🏅 傭兵反擊精通：反擊命中削減 1 硬皮值
         _allyDamageMob(ally, mob, res.dmg, getWpnEle(ally.eq.wpn, DB.items[ally.eq.wpn.id]));
@@ -1196,12 +1221,18 @@ function allyReactIai(mob) {
 }
 
 // 妖精協力：三重矢（3 次物理攻擊）後整體判定一次連射
+let _allyInTriple = false;   // 🏺 遺忘者的狙擊弓：三重矢期間旗標（allyAttackOnce 讀取以區分 fullHpMult×3／fullHpMultTriple×2）
+let _allyTripleFhmUsed = false;   // 🏺 三重矢滿血×2 每次施放只吃一箭（第1箭擊殺滿血怪→重選目標又是滿血→否則第2箭再吃×2·玩家鎖定單一目標天然只有一箭）
 function allyTripleShot(ally) {
     logCombat(`<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>施放 三重矢！`, 'player');
-    for (let h = 0; h < 3; h++) {
-        let t = getTarget(); if (!t || t.curHp <= 0) break;
-        allyAttackOnce(ally);
-    }
+    _allyInTriple = true;
+    _allyTripleFhmUsed = false;
+    try {
+        for (let h = 0; h < 3; h++) {
+            let t = getTarget(); if (!t || t.curHp <= 0) break;
+            allyAttackOnce(ally);
+        }
+    } finally { _allyInTriple = false; }
     allyRapidfire(ally);
 }
 // 妖精協力一次行動：選定三重矢且裝弓且 MP 足夠→優先施放三重矢；否則一般攻擊；攻擊後判定連射

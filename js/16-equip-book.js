@@ -28,6 +28,8 @@ const EQUIP_CATEGORIES = [
     // 防具
     { key: 'helm',     name: '頭盔',   group: '防具' },
     { key: 'armor',    name: '盔甲',   group: '防具' },
+    { key: 'shin',     name: '脛甲',   group: '防具' },
+    { key: 'tshirt',   name: '內衣',   group: '防具' },
     { key: 'cloak',    name: '斗篷',   group: '防具' },
     { key: 'boots',    name: '長靴',   group: '防具' },
     { key: 'gloves',   name: '手套',   group: '防具' },
@@ -63,6 +65,7 @@ const EQUIP_CAT_BONUS = {
     // 防具
     helm:     { stat: 'dr',     val: 1,  label: '傷害減免 +1' },
     armor:    { stat: 'ac',     val: 1,  label: 'AC -1' },
+    shin:     { stat: 'dr',     val: 1,  label: '傷害減免 +1' },
     cloak:    { stat: 'mr',     val: 1,  label: 'MR +1' },
     boots:    { stat: 'er',     val: 1,  label: 'ER +1' },
     gloves:   { stat: 'dr',     val: 1,  label: '傷害減免 +1' },
@@ -108,6 +111,8 @@ function equipCatKey(id, d) {
         if (d.armguard) return 'armguard';                           // 臂甲（slot:shield 但 armguard 旗標）
         if (d.slot === 'helm') return 'helm';
         if (d.slot === 'armor') return 'armor';
+        if (d.slot === 'shin') return 'shin';   // 🦵 脛甲（盔甲下方·額外防具）
+        if (d.slot === 'tshirt') return 'tshirt';   // 🏺 內衣（T恤）：供遺物 T恤 分類（一般 T恤亦一併納入裝備收集冊）
         if (d.slot === 'cloak') return 'cloak';
         if (d.slot === 'boots') return 'boots';
         if (d.slot === 'gloves') return 'gloves';
@@ -134,6 +139,7 @@ const EQUIP_ITEM_CAT = {};    // itemId -> catKey
     for (let id in DB.items) {
         let d = DB.items[id];
         if (!d || (d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc')) continue;
+        if (typeof isRelic === 'function' && isRelic(d)) continue;   // 🏺 遺物不進「裝備收集冊」→ 改進「遺物收集冊」(js/21)
         let ck = equipCatKey(id, d);
         if (!ck || !EQUIP_CAT_ITEMS[ck]) continue;
         EQUIP_CAT_ITEMS[ck].push(id);

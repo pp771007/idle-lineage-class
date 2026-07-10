@@ -88,6 +88,28 @@
             0%, 100% { filter: drop-shadow(0 0 4px rgba(56,189,248,0.75)); }
             50%      { filter: drop-shadow(0 0 9px rgba(56,189,248,1)) drop-shadow(0 0 16px rgba(37,99,235,0.7)); }
         }
+        /* 🏺 遺物：海藍色名稱＋海藍色圖示呼吸光芒 */
+        .c-relic { color: #38bdf8 !important; font-weight: bold; text-shadow: 0 0 4px rgba(56,189,248,0.7), 0 0 10px rgba(2,132,199,0.5); }
+        /* 🏺 遺物 ①強化光暈：更大更亮的呼吸藍光（比傳說金光更醒目·背包/裝備視窗/收集冊/商店全通用） */
+        .relic-glow { animation: relicGlow 2s ease-in-out infinite; }
+        @keyframes relicGlow {
+            0%, 100% { filter: drop-shadow(0 0 5px rgba(56,189,248,0.9)) drop-shadow(0 0 10px rgba(56,189,248,0.5)); }
+            50%      { filter: drop-shadow(0 0 12px rgba(56,189,248,1)) drop-shadow(0 0 24px rgba(2,132,199,0.85)); }
+        }
+        /* 🏺 遺物 ④星芒閃爍：容器含 .relic-glow 圖示(背包.classic-icon-box／裝備視窗.equipment-visual-slot)或 .relic-glow-wrap(遺物收集冊)→ 左上／右下雙星芒交錯閃爍 */
+        .classic-icon-box:has(.relic-glow) { position: relative; overflow: visible; }
+        .equipment-visual-slot:has(.relic-glow) { overflow: visible; }
+        .relic-glow-wrap { position: relative; display: inline-block; line-height: 0; overflow: visible; }
+        .classic-icon-box:has(.relic-glow)::before, .classic-icon-box:has(.relic-glow)::after,
+        .equipment-visual-slot:has(.relic-glow)::before, .equipment-visual-slot:has(.relic-glow)::after,
+        .relic-glow-wrap::before, .relic-glow-wrap::after {
+            content: "\2726"; position: absolute; color: #e0f2fe; font-size: 12px; line-height: 1;
+            pointer-events: none; z-index: 6; text-shadow: 0 0 5px #38bdf8, 0 0 9px #7dd3fc;
+            animation: relicSpark 1.7s ease-in-out infinite;
+        }
+        .classic-icon-box:has(.relic-glow)::before, .equipment-visual-slot:has(.relic-glow)::before, .relic-glow-wrap::before { top: 0; left: 0; }
+        .classic-icon-box:has(.relic-glow)::after, .equipment-visual-slot:has(.relic-glow)::after, .relic-glow-wrap::after { bottom: 0; right: 0; font-size: 10px; animation-delay: .85s; }
+        @keyframes relicSpark { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(90deg); } }
         /* 🔮 席琳套裝效果：鮮綠名稱＋呼吸式綠光（凌駕其他詞綴顏色；動態光暈為非詞綴類專屬特效） */
         .c-sherine { color: #4ade80 !important; animation: sherineName 2.2s ease-in-out infinite; }
         @keyframes sherineName {

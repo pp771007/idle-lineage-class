@@ -430,6 +430,225 @@
         '巨大守護螞蟻': [['wpn_ancient_darkelf_sword',0.001],['wpn_ancient_elf_xbow',0.001],['arm_108',0.6],['bk_elf_groundtrap',0.3]],
     };
 
+    // 🏺 遺物掉落（各為單一怪物專屬·極低機率）。用 push 併入既有掉落陣列（避免同名 key 覆蓋 footgun）；無既有掉落者自動新建陣列。
+    [
+        ['妖魔', 'relic_orc_lid', 0.0001],
+        ['哥布林', 'relic_goblin_blade', 0.0001],
+        ['妖魔弓箭手', 'relic_orcarcher_bow', 0.0001],
+        ['地靈', 'relic_gremlin_club', 0.0001],
+        ['蘑菇', 'relic_mushroom_cap', 0.0001],
+        ['污染的地精靈', 'relic_gnomeearth_tshirt', 0.0001],
+        ['狼', 'relic_wolf_shawl', 0.0001],
+        ['哈士奇', 'relic_husky_bone', 0.0001],
+        ['侏儒', 'relic_dwarf_sheet', 0.0001],
+        ['熊', 'relic_bear_fishbone', 0.0001],
+        ['牧羊犬', 'relic_shepherd_boots', 0.0001],
+        ['人形殭屍', 'relic_zombie_shin', 0.0001],
+        ['杜賓狗', 'relic_doberman_fang', 0.0001],
+        ['安普長老', 'relic_amp_staff', 0.0001],
+        ['污染的安特', 'relic_ent_bark', 0.0001],
+        ['漂浮之眼', 'relic_eye_crystal', 0.0001],
+        ['妖魔鬥士', 'relic_gladiator_scimitar', 0.0001],
+        ['冰原狼人', 'relic_icefield_pick', 0.0001],
+        ['怪手', 'relic_monsterhand_skin', 0.0001],
+        ['狼人', 'relic_werewolf_mace', 0.0001],
+        ['侏儒戰士', 'relic_dwarf_chainmail', 0.0001],
+        ['骷髏', 'relic_weathered_skull', 0.0001],
+        ['妖魔殭屍', 'relic_orc_nail', 0.0001],
+        ['甘地妖魔', 'relic_orc_gloves', 0.0001],
+        ['污染的潘', 'relic_pan_staff', 0.0001],
+        ['鱷魚', 'relic_croc_tshirt', 0.0001],
+        ['冰之女王侍女', 'relic_maid_gift', 0.0001],
+        ['巨蟻', 'relic_giantant_antenna', 0.0001],
+        ['妖魔法師', 'relic_orcmage_cloth', 0.0001],
+        ['骷髏弓箭手', 'relic_elastic_rib', 0.0001],
+        ['蟑螂人', 'relic_roach_shell', 0.0001],
+        ['石頭高崙', 'relic_golem_fist', 0.0001],
+        ['羅孚妖魔', 'relic_orc_cleaver', 0.0001],
+        ['骷髏斧手', 'relic_strong_femur', 0.0001],
+        ['骷髏斧手', 'relic_forgotten_spear', 0.0001],
+        ['夏洛伯', 'relic_spider_claw', 0.0001],
+        ['妖魔巡守', 'relic_scout_scope', 0.0001],
+        ['哈柏哥布林', 'relic_hobgoblin_grinder', 0.0001],
+        ['阿吐巴妖魔', 'relic_orc_butcher', 0.0001],
+        ['都達瑪拉妖魔', 'relic_orc_pole', 0.0001],
+        ['歐熊', 'relic_bear_fur', 0.0001],
+        ['蜥蜴人', 'relic_lizard_shield', 0.0001],
+        ['穴居人', 'relic_caveman_webbing', 0.0001],
+        ['史巴托', 'relic_sparta_grudge', 0.0001],
+        ['食屍鬼', 'relic_ghoul_bracelet', 0.0001],
+        ['鯊魚', 'relic_shark_teeth', 0.0001],
+        ['黑騎士', 'relic_guard_towershield', 0.0001],
+        // 🏺 遺物 第二批（v3.1.1·29 件）
+        ['黑騎士搜索隊', 'relic_guard_spear', 0.0001],
+        ['人魚', 'relic_mermaid_tear', 0.0001],
+        ['那魯加妖魔', 'relic_orc_loincloth', 0.0001],
+        ['萊肯', 'relic_crescent_earring', 0.0001],
+        ['楊果里恩', 'relic_ungoliant_plate', 0.0001],
+        ['蟹人', 'relic_crab_claw', 0.0001],
+        ['狂野之毒', 'relic_wild_mane_coat', 0.0001],
+        ['狂野毒牙', 'relic_venom_fang', 0.0001],
+        ['歐姆', 'relic_ohm_shackle', 0.0001],
+        ['巨大兵蟻', 'relic_soldierant_carapace', 0.0001],
+        ['鼠人', 'relic_ratman_skewer', 0.0001],
+        ['海星', 'relic_starfish_arm', 0.0001],
+        ['遺忘之島鱷魚', 'relic_croc_soul', 0.0001],
+        ['遺忘之島蜥蜴人', 'relic_lizard_scale', 0.0001],
+        ['狂暴蜥蜴人', 'relic_veteran_lizard_gauntlet', 0.0001],
+        ['狂野之魔', 'relic_black_gale', 0.0001],
+        ['長老', 'relic_elder_thunder', 0.0001],
+        ['卡司特', 'relic_green_imp_nail', 0.0001],
+        ['狂暴的歐姆', 'relic_ohm_hidepants', 0.0001],
+        ['食人妖精', 'relic_ogre_mawashi', 0.0001],
+        ['蛇女', 'relic_lamia_tailscale', 0.0001],
+        ['魔蝙蝠', 'relic_bat_wing', 0.0001],
+        ['底比斯 曼陀羅草(白)', 'relic_mandra_spirit', 0.0001],
+        ['歐姆裝甲兵', 'relic_ohm_heavyarmor', 0.0001],
+        ['地獄犬', 'relic_cerberus_wand', 0.0001],
+        ['希爾黛斯', 'relic_watersprite_string', 0.0001],
+        ['龍龜', 'relic_dragonturtle_shell', 0.0001],
+        ['藍尾蜥蜴', 'relic_bluetail_tail', 0.0001],
+        ['重裝蜥蜴人', 'relic_lizardman_cleaver', 0.0001],
+        // 🏺 遺物 第三批（v3.1.2·19 件）
+        ['狂暴的歐姆裝甲兵', 'relic_ohm_maul', 0.0001],
+        ['闇之精靈', 'relic_darkspirit_shroud', 0.0001],
+        ['犰狳', 'relic_armadillo_helm', 0.0001],
+        ['白螞蟻群', 'relic_whiteant_shell', 0.0001],
+        ['高等蜥蜴人', 'relic_high_lizard_armguard', 0.0001],
+        ['奇異鸚鵡', 'relic_parrot_beak', 0.0001],
+        ['海賊骷髏', 'relic_pirate_scimitar', 0.0001],
+        ['毒蠍', 'relic_scorpion_sting', 0.0001],
+        ['哈維', 'relic_harvey_claw', 0.0001],
+        ['底比斯 曼陀羅草', 'relic_death_leaf', 0.0001],
+        ['黑暗妖精魔法學徒', 'relic_apprentice_wand', 0.0001],
+        ['魔熊', 'relic_bear_vitality', 0.0001],
+        ['歐姆民兵', 'relic_militia_armor', 0.0001],
+        ['骷髏神射手', 'relic_sharpshooter_bow', 0.0001],
+        ['骷髏警衛', 'relic_guard_pike', 0.0001],
+        ['黑暗精靈', 'relic_whirlwind_xbow', 0.0001],
+        ['黑暗妖精殘兵(弓)', 'relic_darkremnant_boots', 0.0001],
+        ['歐吉', 'relic_ogi_greataxe', 0.0001],
+        ['多羅', 'relic_doro_vitality', 0.0001],
+        // 🏺 遺物 第四批（v3.1.4）
+        ['伊萊克頓', 'relic_deepfish_skin', 0.0001],
+        ['強盜', 'relic_bandit_token', 0.0001],
+        ['雪人', 'relic_yeti_fist', 0.0001],
+        ['雪人', 'arm_yeti_gloves', 0.01],   // 一般防具 雪人手套（非遺物·0.01%）
+        ['紙人', 'relic_paper_cloak', 0.0001],
+        ['黑暗妖精盜賊', 'relic_darkthief_claw', 0.0001],
+        ['闇精靈王', 'relic_darkelf_chainsword', 0.0001],
+        ['海賊骷髏士兵', 'relic_seawater_shirt', 0.0001],
+        ['骷髏鬥士', 'relic_fighter_axe', 0.0001],
+        ['奎斯坦修', 'relic_hermitcrab_shell', 0.0001],
+        ['爆彈花', 'relic_bombflower_core', 0.0001],
+        ['底比斯 聖甲蟲', 'relic_scarab_shin', 0.0001],
+        ['黑暗妖精殘兵(劍)', 'relic_darkelf_grindblade', 0.0001],
+        ['黑暗妖精殘兵(十字弓)', 'relic_darkelf_shootglove', 0.0001],
+        ['巨人', 'relic_giant_clubfrag', 0.0001],
+        ['食人妖精王', 'relic_ogreking_collar', 0.0001],
+        ['莫妮亞', 'relic_monia_sandals', 0.0001],
+        ['艾爾摩士兵', 'relic_wornout_underwear', 0.0001],
+        ['夢幻之島蘑菇', 'relic_dream_mushroom_soul', 0.0001],
+        // 🏺 遺物 第六批（v3.1.13·11 件）
+        ['夢幻之島鬼火', 'relic_wisp_remnant', 0.0001],
+        ['冰人', 'relic_frostdeath_breath', 0.0001],
+        ['黑暗妖精殘兵(法師)', 'relic_remnant_barrier', 0.0001],
+        ['喚獸師', 'relic_summoner_whip', 0.0001],
+        ['金屬蜈蚣', 'relic_metalshell_shin', 0.0001],
+        ['格利芬', 'relic_griffin_claw', 0.0001],
+        ['艾爾摩法師', 'relic_wither_amulet', 0.0001],
+        ['密密', 'relic_stalker_chest', 0.0001],
+        ['強化巨蟻', 'relic_giantant_eye', 0.0001],
+        ['巨大鱷魚', 'relic_croc_fang', 0.0001],
+        ['冰石高崙', 'relic_icestone_maul', 0.0001],
+        ['底比斯 聖甲蟲(藍)', 'relic_scarab_nest', 0.0001],   // 🏺 v3.1.16：聖甲蟲的孵育巢（aggroHide 迴避仇恨盾）
+        // 🏺 遺物 第七批（v3.1.18·17 件）
+        ['黑法師', 'relic_blackmage_pants', 0.0001],
+        ['變種蛇女', 'relic_mutant_lamia_scale', 0.0001],
+        ['海賊骷髏刀手', 'relic_pirate_bandana', 0.0001],
+        ['海賊骷髏首領', 'relic_pirate_ring', 0.0001],
+        ['巨人戰士', 'relic_giant_toothpick', 0.0001],
+        ['巨人長老', 'relic_giant_throwstone', 0.0001],
+        ['卡司特王', 'relic_redimp_nail', 0.0001],
+        ['活鎧甲', 'relic_armor_spareblade', 0.0001],
+        ['多眼怪', 'relic_beholder_gaze', 0.0001],
+        ['龍蠅', 'relic_fly_curse', 0.0001],
+        ['冰原老虎', 'relic_whitetiger_coat', 0.0001],
+        ['雪怪', 'relic_yeti_foot', 0.0001],
+        ['變形怪', 'relic_shapeshifter_underwear', 0.0001],
+        ['黑暗妖精殘兵(雙手劍)', 'relic_veteran_greatsword', 0.0001],
+        ['變種楊果里恩', 'relic_thorn_needle', 0.0001],
+        ['黑暗棲林者', 'relic_thorn_curse', 0.0001],
+        ['亞力安', 'relic_cockatrice_gaze', 0.0001],
+        // 🏺 遺物 第八批（v3.1.21·3 件）
+        ['遺忘之島狼人', 'relic_moonhowl_helm', 0.0001],
+        ['遺忘之島夏洛伯', 'relic_poison_vial', 0.0001],
+        ['強化白螞蟻群', 'relic_ant_incubessence', 0.0001],
+        // 🏺 遺物 第九批（v3.1.28·10 件）
+        ['阿魯巴', 'relic_aruba_haste', 0.0001],
+        ['火焰戰士', 'relic_ashwarrior_flamesword', 0.0001],
+        ['艾爾摩將軍', 'relic_deadgeneral_greatsword', 0.0001],
+        ['鋼鐵高崙', 'relic_steel_bulwark', 0.0001],
+        ['強盜頭目', 'relic_raider_belt', 0.0001],
+        ['底比斯 凱比斯(黑)', 'relic_darkscorpion_pincers', 0.0001],
+        ['遺忘之島黑暗精靈', 'relic_forgotten_sniperbow', 0.0001],
+        ['遺忘之島歐熊', 'relic_arrowfur_cloak', 0.0001],
+        ['邪惡蜥蜴', 'relic_evillizard_eye', 0.0001],
+        ['火焰弓箭手', 'relic_flamearcher_bracer', 0.0001],   // 🏺 烈焰射手的護腕：spec 掉落源寫成物品名·取同義同級的 火焰弓箭手(fire_archer)
+        // 🏺 遺物 第十批（v3.1.32·5 件）
+        ['黑暗妖精警衛(十字弓)', 'relic_modded_crossbow', 0.0001],
+        ['梅杜莎', 'relic_medusa_stinger', 0.0001],
+        ['遺忘之島卡司特', 'relic_silent_venom', 0.0001],
+        ['思克巴', 'relic_charm_heart', 0.0001],
+        ['死亡之劍', 'relic_swordsman_underwear', 0.0001],
+        // 🏺 遺物 第十一批（v3.1.33·5 件）
+        ['恐怖的火炎蛋', 'relic_fireegg_orb', 0.0001],
+        ['遺忘之島蛇女', 'relic_venom_avatar', 0.0001],
+        ['遺忘之島萊肯', 'relic_lycan_swiftlegs', 0.0001],
+        ['遺忘之島巨斧牛人', 'relic_axetaurus_brutalaxe', 0.0001],
+        ['遺忘之島食人妖精', 'relic_troll_belly', 0.0001],
+        // 🏺 遺物 第五批新增（v3.1.52·19 件）
+        ['炎魔的思克巴', 'relic_burning_love', 0.0001],
+        ['巨大突擊螞蟻', 'relic_fearless_charge', 0.0001],
+        ['火蜥蜴', 'relic_lizard_tongue', 0.0001],
+        ['夢幻之島火蜥蜴', 'relic_flame_avatar', 0.0001],
+        ['夢幻之島殺人蜂', 'relic_killerbee_sting', 0.0001],
+        ['夢幻之島暴走兔', 'relic_runaway_carrot', 0.0001],
+        ['夢幻之島冰人', 'relic_frost_avatar', 0.0001],
+        ['黑暗妖精巡守', 'relic_handy_quiver', 0.0001],
+        ['黑暗妖精士兵', 'relic_soldier_medal', 0.0001],
+        ['邪惡密密', 'relic_evilchest_relic', 0.0001],
+        ['遺忘之島楊果里恩', 'relic_ancient_spider_claw', 0.0001],
+        ['火炎蛋', 'relic_flame_belt', 0.0001],
+        ['夢幻之島閃電球', 'relic_thunder_crown', 0.0001],
+        ['夢幻之島鎧甲守衛', 'relic_guardian_greatsword', 0.0001],
+        ['夢幻之島火炎蛋', 'relic_dream_flamesoul', 0.0001],
+        ['夢幻之島冰石高崙', 'relic_frost_stone_shield', 0.0001],
+        ['底比斯 凱比斯(紅)', 'relic_redscorpion_ring', 0.0001],
+        ['奇美拉', 'relic_cerberus_horn', 0.0001],
+        ['邪惡多眼怪', 'relic_lightbeam_wand', 0.0001],
+        // 🐍 蛇神降臨·提卡爾：寶箱碎片(初級 上/下·高級 上/下)/時空裂痕碎片 10%/龍騎士書板/祭壇鑰匙 2% + 遺物 0.0001%
+        ['提卡爾艾庫阿茲特', 'mat_kukulkan_basic_up', 5], ['提卡爾艾庫阿茲特', 'mat_rift_shard', 10], ['提卡爾艾庫阿茲特', 'bk_dragon_awaken_falion', 0.5], ['提卡爾艾庫阿茲特', 'relic_azt_mirror', 0.0001],
+        ['提卡爾艾庫阿茲特(黃)', 'mat_kukulkan_basic_down', 5], ['提卡爾艾庫阿茲特(黃)', 'mat_rift_shard', 10], ['提卡爾艾庫阿茲特(黃)', 'relic_azt_prism', 0.0001],
+        ['提卡爾艾庫尤卡(藍)', 'mat_kukulkan_basic_up', 5], ['提卡爾艾庫尤卡(藍)', 'mat_rift_shard', 10], ['提卡爾艾庫尤卡(藍)', 'relic_yuka_blowdart', 0.0001],
+        ['提卡爾艾庫尤卡(白)', 'mat_kukulkan_basic_down', 5], ['提卡爾艾庫尤卡(白)', 'mat_rift_shard', 10], ['提卡爾艾庫尤卡(白)', 'relic_yuka_quiver', 0.0001],
+        ['提卡爾艾庫卡伊拉(藍)', 'mat_kukulkan_basic_up', 5], ['提卡爾艾庫卡伊拉(藍)', 'bk_dragon_awaken_antares', 0.5], ['提卡爾艾庫卡伊拉(藍)', 'mat_rift_shard', 10], ['提卡爾艾庫卡伊拉(藍)', 'relic_kaira_fang', 0.0001],
+        ['提卡爾艾庫卡伊拉(黃)', 'mat_kukulkan_basic_down', 5], ['提卡爾艾庫卡伊拉(黃)', 'bk_dragon_awaken_antares', 0.5], ['提卡爾艾庫卡伊拉(黃)', 'mat_rift_shard', 10], ['提卡爾艾庫卡伊拉(黃)', 'relic_kaira_hood', 0.0001],
+        ['提卡爾艾庫巴拉', 'mat_kukulkan_basic_up', 5], ['提卡爾艾庫巴拉', 'mat_rift_shard', 10], ['提卡爾艾庫巴拉', 'relic_bara_wing', 0.0001],
+        ['提卡爾艾庫巴拉(紅)', 'mat_kukulkan_basic_down', 5], ['提卡爾艾庫巴拉(紅)', 'mem_cube_quake', 0.5], ['提卡爾艾庫巴拉(紅)', 'mat_rift_shard', 10], ['提卡爾艾庫巴拉(紅)', 'relic_bara_eye', 0.0001],
+        ['提卡爾艾庫艾托', 'mat_kukulkan_basic_up', 5], ['提卡爾艾庫艾托', 'bk_dragon_lavabolt', 0.5], ['提卡爾艾庫艾托', 'mat_rift_shard', 10], ['提卡爾艾庫艾托', 'relic_eto_whip', 0.0001],
+        ['提卡爾艾庫艾托(枯竭)', 'mat_kukulkan_basic_down', 5], ['提卡爾艾庫艾托(枯竭)', 'bk_dragon_lavabolt', 0.5], ['提卡爾艾庫艾托(枯竭)', 'mat_rift_shard', 10], ['提卡爾艾庫艾托(枯竭)', 'relic_eto_wand', 0.0001],
+        ['提卡爾薩德泥偶', 'mat_kukulkan_high_up', 5], ['提卡爾薩德泥偶', 'item_tikal_altar_key', 2], ['提卡爾薩德泥偶', 'mat_rift_shard', 10], ['提卡爾薩德泥偶', 'relic_mud_idol', 0.0001],
+        ['提卡爾薩德泥偶(黑)', 'mat_kukulkan_high_down', 5], ['提卡爾薩德泥偶(黑)', 'item_tikal_altar_key', 2], ['提卡爾薩德泥偶(黑)', 'mat_rift_shard', 10], ['提卡爾薩德泥偶(黑)', 'relic_mud_jar', 0.0001],
+        ['提卡爾薩德司卡(紫)', 'mat_kukulkan_high_up', 5], ['提卡爾薩德司卡(紫)', 'item_tikal_altar_key', 2], ['提卡爾薩德司卡(紫)', 'mat_rift_shard', 10], ['提卡爾薩德司卡(紫)', 'relic_ska_soul', 0.0001],
+        ['提卡爾薩德司卡(紅)', 'mat_kukulkan_high_down', 5], ['提卡爾薩德司卡(紅)', 'item_tikal_altar_key', 2], ['提卡爾薩德司卡(紅)', 'mat_rift_shard', 10], ['提卡爾薩德司卡(紅)', 'relic_ska_armguard', 0.0001],
+        ['提卡爾薩德提歐(藍)', 'mat_kukulkan_high_up', 5], ['提卡爾薩德提歐(藍)', 'item_tikal_altar_key', 2], ['提卡爾薩德提歐(藍)', 'bk_dragon_deathlightning', 0.5], ['提卡爾薩德提歐(藍)', 'mat_rift_shard', 10], ['提卡爾薩德提歐(藍)', 'relic_teo_hammer', 0.0001],
+        ['提卡爾薩德提歐(黃)', 'mat_kukulkan_high_down', 5], ['提卡爾薩德提歐(黃)', 'item_tikal_altar_key', 2], ['提卡爾薩德提歐(黃)', 'bk_dragon_deathlightning', 0.5], ['提卡爾薩德提歐(黃)', 'mat_rift_shard', 10], ['提卡爾薩德提歐(黃)', 'relic_teo_footprint', 0.0001],
+        ['提卡爾杰弗雷庫(雄)', 'amu_str', 8], ['提卡爾杰弗雷庫(雄)', 'acc_120', 8], ['提卡爾杰弗雷庫(雄)', 'amu_int', 8], ['提卡爾杰弗雷庫(雄)', 'acc_122', 8], ['提卡爾杰弗雷庫(雄)', 'acc_121', 8], ['提卡爾杰弗雷庫(雄)', 'amu_cha', 8], ['提卡爾杰弗雷庫(雄)', 'acc_demonbane', 10], ['提卡爾杰弗雷庫(雄)', 'rng_mr', 25], ['提卡爾杰弗雷庫(雄)', 'acc_117', 5], ['提卡爾杰弗雷庫(雄)', 'acc_summon_ctrl', 5], ['提卡爾杰弗雷庫(雄)', 'acc_116', 5], ['提卡爾杰弗雷庫(雄)', 'mat_tikal_fang', 3], ['提卡爾杰弗雷庫(雄)', 'mat_tikal_eye', 3], ['提卡爾杰弗雷庫(雄)', 'scroll_armor', 30], ['提卡爾杰弗雷庫(雄)', 'scroll_weapon', 30], ['提卡爾杰弗雷庫(雄)', 'item_kukulkan_box_high', 100], ['提卡爾杰弗雷庫(雄)', 'mat_crack_core', 100], ['提卡爾杰弗雷庫(雄)', 'relic_serpent_fang', 0.0001],
+        ['提卡爾杰弗雷庫(雌)', 'amu_str', 8], ['提卡爾杰弗雷庫(雌)', 'acc_120', 8], ['提卡爾杰弗雷庫(雌)', 'amu_int', 8], ['提卡爾杰弗雷庫(雌)', 'acc_122', 8], ['提卡爾杰弗雷庫(雌)', 'acc_121', 8], ['提卡爾杰弗雷庫(雌)', 'amu_cha', 8], ['提卡爾杰弗雷庫(雌)', 'acc_demonbane', 10], ['提卡爾杰弗雷庫(雌)', 'rng_mr', 25], ['提卡爾杰弗雷庫(雌)', 'acc_117', 5], ['提卡爾杰弗雷庫(雌)', 'acc_summon_ctrl', 5], ['提卡爾杰弗雷庫(雌)', 'acc_116', 5], ['提卡爾杰弗雷庫(雌)', 'mat_tikal_fang', 3], ['提卡爾杰弗雷庫(雌)', 'mat_tikal_eye', 3], ['提卡爾杰弗雷庫(雌)', 'scroll_armor', 30], ['提卡爾杰弗雷庫(雌)', 'scroll_weapon', 30], ['提卡爾杰弗雷庫(雌)', 'item_kukulkan_box_high', 100], ['提卡爾杰弗雷庫(雌)', 'mat_crack_core', 100], ['提卡爾杰弗雷庫(雌)', 'relic_serpent_gaze', 0.0001],
+    ].forEach(function (r) { (MOB_DROPS[r[0]] = MOB_DROPS[r[0]] || []).push([r[1], r[2]]); });
+    // 🏺 v3.1.15：潛行者的祕密箱子 改由「密密」掉落（原艾爾摩法師取消，該怪僅保留凋零法師的護身符）；巨大鱷魚的狩獵牙 改由「巨大鱷魚」掉落（原格利芬取消，該怪僅保留獅鷲的鋒利鷹爪）。
+
     // 區域額外掉落（眠龍洞穴1~3樓=zone_15/16/17、妖精森林周邊=zone_01 所有怪物）
     // 粗糙的米索莉塊 / 精靈玉 / 元素石，各 20%；學會「世界樹的呼喚」則各 30%
     const AREA_BONUS_MAPS = ['zone_15', 'zone_16', 'zone_17', 'zone_01'];
@@ -535,9 +754,10 @@ const SHERINE_SET_TEXT = {
 // 🔮 席琳套裝效果「可附加部位」判定（唯一真相；gainItem 掉落/製作 與 試煉席琳兌換 共用）
 //   合法部位：武器（非箭矢）/頭盔/盔甲/手套/長靴/斗篷/腰帶；盾牌(slot:shield)等不符 → 不可附帶套裝效果。
 function sherineSetEligible(d) {
+    if (isRelic(d)) return false;   // 🏺 遺物永不附帶席琳套裝詞綴（席琳的世界亦然）→ 永遠維持單一能力
     return !!(d && (
         (d.type === 'wpn' && !d.isArrow)
-        || (d.type === 'arm' && ['helm','armor','gloves','boots','cloak','shield'].includes(d.slot))   // 🛡️ shield 槽＝盾牌＋臂甲（副手）：可附席琳套裝詞綴
+        || (d.type === 'arm' && ['helm','armor','shin','gloves','boots','cloak','shield'].includes(d.slot))   // 🛡️ shield 槽＝盾牌＋臂甲（副手）：可附席琳套裝詞綴；🦵 shin=脛甲
         || ((d.type === 'acc' || d.type === 'arm') && d.slot === 'belt')
     ));
 }
@@ -887,7 +1107,7 @@ function flushAwaySummary() {
 let player = {
     cls: null, name: null, lv: 1, exp: 0, gold: 1000, hp: 0, mhp: 0, mp: 0, mmp: 0, blessings: {}, blessingAuto: {},
     base: { str:0, dex:0, con:0, int:0, wis:0, cha:8 }, bonus: 0, alloc: { str:0, dex:0, con:0, int:0, wis:0, cha:0 }, panacea: { str:0, dex:0, con:0, int:0, wis:0, cha:0 }, panaceaUsed: 0, junkPrefs: {}, bloodPledge: null, magicShieldCd: 0, lastMapByCat: {}, tracking: null, ismaelAccUsed: false, sherineWorld: false, masteryQuest: null, mastery: null, masteryChangeCnt: 0, siege: { active:false, gateKilled:false, towerKilled:false, endTime:0, kills:0, result:null, cooldownUntil:0, rewardPending:false, victoryUntil:0, accCdUntil:0 },
-    inv: [], eq: { wpn: null, arrow: null, helm: null, armor: null, shield: null, cloak: null, tshirt: null, gloves: null, boots: null, ring1: null, ring2: null, ring3: null, ring4: null, amulet: null, ear1: null, ear2: null, belt: null, pet: null, doll: null },
+    inv: [], eq: { wpn: null, arrow: null, helm: null, armor: null, shin: null, shield: null, cloak: null, tshirt: null, gloves: null, boots: null, ring1: null, ring2: null, ring3: null, ring4: null, amulet: null, ear1: null, ear2: null, belt: null, pet: null, doll: null },
     skills: [], buffs: { haste: 0, brave: 0, blue: 0, cautious: 0, elfcookie: 0, poly: 0, shield: 0, sk_magic_shield: 0 }, poly: null, allies: [],
     summon: null, charmed: null, manualCd: {}, elfEle: null, hot: null,
     cds: { pot: 0, atkSk: 0, healSk: 0, purifySk: 0 }, dead: false, statuses: { stun: 0, freeze: 0, stone: 0, poison: 0, poisonDmg: 0, poisonTick: 0, burn: 0, burnDmg: 0, burnTick: 0, scald: 0, scaldDmg: 0, scaldTick: 0, bleed: 0, bleedDmg: 0, bleedTick: 0, sleep: 0, silence: 0, paralyze: 0, magicseal: 0, armorBreak: 0, slowAtk: 0, cleave: 0 },
@@ -931,11 +1151,34 @@ const PET_DEF = {
 // 🦴 寵物裝備加成：裝在 player.eq.pet 的「之牙」→ 夥伴額外傷害/命中（含強化：每+1 各+1，飾品上限+5）
 function petGearBonus() {
     let _collHit = (player._equipPetHit || 0);   // 🗡️ 裝備收集冊：寵物裝備部位全收集 → 夥伴命中加成（不需裝備之牙也生效）
+    // 🏺 遺物「所有項圈夥伴額外傷害/命中」：掃玩家全部裝備欄的 petDmgAll/petHitAll 加總（牧神的放牧棍 傷害+3；食人妖精王的尖刺項圈 傷害/命中各+3；即使非寵物裝備欄的武器/防具/腰帶亦生效）
+    let _allDmg = 0, _allHit = 0;
+    if (player.eq) { for (let _k in player.eq) { let _e = player.eq[_k]; if (!_e) continue; let _dd = DB.items[_e.id]; if (_dd && _dd.petDmgAll) _allDmg += _dd.petDmgAll; if (_dd && _dd.petHitAll) _allHit += _dd.petHitAll; } }
     let inst = player.eq && player.eq.pet;
     let d = inst ? DB.items[inst.id] : null;
-    if(!inst || !d) return { dmg:0, hit:_collHit };
+    if(!inst || !d) return { dmg:_allDmg, hit:_collHit + _allHit };
     let en = capEn(inst.en || 0, d);   // 飾品上限 +5
-    return { dmg: (d.petDmg || 0) + en, hit: (d.petHit || 0) + en + _collHit };
+    return { dmg: (d.petDmg || 0) + en + _allDmg, hit: (d.petHit || 0) + en + _collHit + _allHit };
+}
+// 🐾 召喚物裝備加成（喚獸師的訓練鞭 summonDmg/summonHit）：掃 owner(玩家或傭兵) 全部裝備欄加總，餵給 summonAttack 的命中/傷害。
+function summonGearBonus(owner) {
+    let o = owner || player, dmg = 0, hit = 0;
+    if (o && o.eq) { for (let k in o.eq) { let e = o.eq[k]; if (!e) continue; let d = DB.items[e.id]; if (d && d.summonDmg) dmg += d.summonDmg; if (d && d.summonHit) hit += d.summonHit; } }
+    return { dmg: dmg, hit: hit };
+}
+// 🏺 遺物屬性洞察（巨大螞蟻的複眼）：屬性名/色對照＋掃玩家裝備欄是否含 showMobEle（怪卡顯示敵人屬性）。
+const RELIC_ELE_LABEL = { fire: '火', water: '水', earth: '地', wind: '風' };
+const RELIC_ELE_COLOR = { fire: '#fca5a5', water: '#7dd3fc', earth: '#fcd34d', wind: '#86efac' };
+function _relicShowMobEle() {
+    if (!player || !player.eq) return false;
+    for (let k in player.eq) { let e = player.eq[k]; if (e) { let d = DB.items[e.id]; if (d && d.showMobEle) return true; } }
+    return false;
+}
+// 🏺 遺物「以敵人弱點屬性攻擊命中→額外固定傷害」（複眼 weakHitBonus）：掃 entity(玩家/傭兵) 全部裝備欄加總。
+function _relicWeakHitBonus(entity) {
+    let o = entity || player; if (!o || !o.eq) return 0; let s = 0;
+    for (let k in o.eq) { let e = o.eq[k]; if (e) { let d = DB.items[e.id]; if (d && d.weakHitBonus) s += d.weakHitBonus; } }
+    return s;
 }
 // 🐾 夥伴觸發法術傷害：比照「玩家自身施放該法術」的數值（沿用攻擊魔法公式 spCoef×mageMult、吃怪物魔抗、不計爆擊/元素固定加成）
 function petProcSpellDamage(skId, target) {
@@ -1343,7 +1586,7 @@ function logSys(msg) {
 // calcStats()：維持原有對外介面 = recomputeStats() + UI 刷新（applyElfBorder/updateUI），既有呼叫點行為不變。
 // 不需要刷畫面的場合（如 buildAlly 換身重算）請呼叫 recomputeStats()。
 // ===== 🔧 負重系統：計入負重的裝備欄位 + 物品重量表（依名稱）=====
-const WEIGHT_COUNT_SLOTS = ['wpn','offwpn','shield','helm','armor','tshirt','cloak','gloves','boots','amulet','ear1','ear2','ring1','ring2','ring3','ring4','belt','pet','doll'];   // ⚔️ offwpn=迅猛雙斧副手武器，計入負重；ear1/ear2=耳環；doll=魔法娃娃
+const WEIGHT_COUNT_SLOTS = ['wpn','offwpn','shield','helm','armor','shin','tshirt','cloak','gloves','boots','amulet','ear1','ear2','ring1','ring2','ring3','ring4','belt','pet','doll'];   // 🦵 shin=脛甲（盔甲下方·額外防具）   // ⚔️ offwpn=迅猛雙斧副手武器，計入負重；ear1/ear2=耳環；doll=魔法娃娃
 const ITEM_WEIGHTS = {"混沌之刺":10,"混沌頭盔":5,"混沌斗篷":5,"混沌法袍":15,"混沌手套":5,"死亡斗篷":10,"死亡盔甲":100,"死亡手套":5,"死亡之盾":20,"惡魔王矛":20,"惡魔王雙刀":20,"惡魔王雙手劍":40,"惡魔王魔杖":20,"惡魔王弓":10,"亞連":10,"武士刀":40,"長劍":40,"斧":60,"雙手劍":150,"屠龍劍":180,"騎士范德之劍":100,"釘錘":30,"弓":30,"矛":80,"戰斧":120,"巴迪須":120,"柴刀":120,"精靈弓":30,"歐西斯弓":30,"闊劍":70,"木棒":30,"精靈匕首":10,"歐西斯匕首":10,"匕首":10,"貝卡合金":100,"法丘":60,"弗萊爾":15,"闊矛":75,"吉薩":80,"戟":150,"槍":180,"露西錘":150,"戰錘":50,"流星錘":120,"帕提森":80,"彎刀":40,"侏儒鐵斧":280,"精靈之矛":30,"歐西斯之矛":30,"小侏儒短劍":40,"精靈短劍":20,"歐西斯短劍":30,"短劍":30,"三叉戟":25,"瑟魯基之劍":120,"尤米弓":40,"短弓":20,"十字弓":50,"獵人之弓":30,"熾炎天使弓":25,"紅騎士之劍":40,"侵略者之劍":40,"骰子匕首":10,"大馬士革刀":45,"短劍的劍身":20,"長劍的劍身":30,"奧里哈魯根的劍身":35,"細劍":60,"鎖子甲破壞者":40,"銀長劍":50,"銀劍":40,"橡木魔法杖":15,"美基魔法杖":20,"巫術魔法杖":15,"力量魔法杖":15,"瑪那魔杖":15,"水晶魔杖":15,"失去魔力的巴列斯魔杖":15,"巴列斯魔杖":15,"潘的角":9,"覆上米索莉的角":24,"覆上奧里哈魯根的角":55,"巨斧":250,"狂戰士斧":200,"銀斧":270,"青銅鋼爪":20,"鋼鐵鋼爪":30,"暗影鋼爪":30,"銀光鋼爪":20,"黑暗鋼爪":20,"幽暗鋼爪":30,"大馬士革鋼爪":40,"青銅雙刀":20,"鋼鐵雙刀":30,"銀光雙刀":20,"幽暗雙刀":30,"黑暗雙刀":20,"暗影雙刀":30,"大馬士革雙刀":40,"黑暗十字弓":30,"幽暗十字弓":40,"魔力短劍":30,"拉斯塔巴德十字弓":70,"拉斯塔巴德弓":50,"小武士刀":30,"拉斯塔巴德長劍":30,"拉斯塔巴德短劍":20,"拉斯塔巴德魔杖":15,"拉斯塔巴德雙刀":40,"拉斯塔巴德重十字弓":100,"拉斯塔巴德矛":80,"拉斯塔巴德圓盾":50,"武官雙手劍":150,"武官手套":45,"武官長靴":54,"黑暗腰帶":40,"精靈皮盔":3,"歐西斯頭盔":30,"侏儒鐵盔":40,"頭盔":30,"騎士面甲":40,"抗魔法頭盔":35,"艾爾穆的祝福":13,"治癒魔法頭盔":50,"敏捷魔法頭盔":50,"力量魔法頭盔":50,"皮帽子":10,"銀釘皮帽":20,"皮頭盔":30,"骷髏頭盔":30,"鋼鐵頭盔":50,"法師之帽":20,"死亡騎士頭盔":50,"木乃伊王的王冠":20,"精靈敏捷頭盔":13,"精靈體質頭盔":13,"騎士頭巾":0,"紅騎士頭巾":20,"巴土瑟之帽":20,"卡士柏之帽":20,"馬庫爾之帽":20,"西瑪之帽":20,"克特頭盔":50,"淨化頭飾":0,"金屬盔甲":450,"水晶盔甲":350,"青銅盔甲":450,"藤甲":400,"皮甲":350,"鏈甲":300,"歐西斯鏈甲":300,"鱗甲":250,"銀釘皮甲":150,"環甲":250,"歐西斯環甲":250,"小藤甲":70,"皮夾克":30,"抗魔法鏈甲":300,"綿質長袍":10,"木甲":80,"精靈護胸金屬板":100,"精靈金屬盔甲":250,"精靈鏈甲":150,"木製的夾克":40,"皮背心":30,"皮盔甲":50,"銀釘皮背心":130,"硬皮背心":150,"骷髏盔甲":150,"鋼鐵金屬盔甲":470,"法師長袍":60,"水龍鱗盔甲":300,"地龍鱗盔甲":300,"火龍鱗盔甲":300,"風龍鱗盔甲":300,"死亡騎士盔甲":250,"黑長者長袍":30,"克特盔甲":250,"T恤":5,"精靈T恤":5,"精靈斗篷":10,"歐西斯斗篷":10,"侏儒斗篷":10,"保護者斗篷":10,"隱身斗篷":10,"抗魔法斗篷":10,"瑪那斗篷":10,"短統靴":10,"長靴":15,"巴列斯長靴":10,"皮涼鞋":8,"銀釘皮涼鞋":10,"皮長靴":10,"鋼鐵長靴":50,"深水長靴":15,"死亡騎士長靴":15,"黑長者涼鞋":10,"克特長靴":15,"手套":10,"水晶手套":20,"腕甲":10,"力量手套":18,"鋼鐵手套":40,"死亡騎士手套":15,"影子手套":10,"影子面具":10,"影子長靴":10,"拉斯塔巴德皮盔甲":70,"拉斯塔巴德長靴":10,"黑暗斗篷":20,"拉斯塔巴德長袍":30,"克特手套":15,"保護者手套":10,"小盾牌":30,"精靈盾牌":50,"阿克海盾牌":50,"大盾牌":100,"侏儒圓盾":100,"反射之盾":50,"伊娃之盾":50,"塔盾":120,"木盾":25,"銀騎士之盾":100,"皮盾牌":25,"銀釘皮盾":35,"骷髏盾牌":30,"紅騎士盾牌":50,"鋼鐵盾牌":140,"受詛咒的魔法書":0,"魔法能量之書":20,"傳送控制戒指":3,"變形控制戒指":3,"召喚控制戒指":3,"地靈戒指":3,"水靈戒指":3,"風靈戒指":3,"火靈戒指":3,"抗魔戒指":3,"滅魔戒指":3,"多羅戒指":3,"守護戒指":3,"長者戒指":3,"力量項鍊":5,"敏捷項鍊":5,"體質項鍊":5,"智力項鍊":5,"精神項鍊":5,"妖魔戰士項鍊":5,"守護項鍊":3,"長老項鍊":3,"抗魔項鍊":3,"老舊的身體腰帶":50,"老舊的精神腰帶":50,"老舊的靈魂腰帶":50,"身體腰帶":50,"精神腰帶":50,"靈魂腰帶":50,"多羅皮帶":50,"歐吉皮帶":50,"勇敢皮帶":50,"光明身體腰帶":50,"光明精神腰帶":50,"光明靈魂腰帶":50,"守護皮帶":50,"抗魔皮帶":50,"魔獸軍王之爪":100,"巴蘭卡鋼爪":40,"武官頭盔":45,"巴蘭卡頭盔":50,"武官護鎧":180,"巴蘭卡盔甲":450,"巴蘭卡手套":5,"魔獸軍王長靴":30,"巴蘭卡長靴":10,"冥法軍王斗篷":10,"法令軍王長袍":20,"暗殺軍王手套":25,"血色巨劍":160,"黑暗之劍":100,"紅水晶魔杖":60,"神官頭飾":18,"神官法袍":45,"黑暗披肩":20,"神官長靴":18,"神官斗篷":9,"神官手套":18,"死亡騎士的烈炎之劍":40,"克特之劍":40,"巨蟻女皇的金翅膀":1,"巨蟻女皇的銀翅膀":1,"暗殺軍王之痕":20,"神官魔杖":70,"蕾雅魔杖":15,"神官魔法書":27,"冥法軍王之戒":5,"蕾雅長袍":30,"蕾雅項鍊":5,"法令軍王之鍊":5,"蕾雅戒指":1,"冰之女王魔杖":20,"惡魔鐮刀":10,"魅力項鍊":5,"艾莉絲項鍊":5,"梅杜莎盾牌":80,"水晶短劍":45,"潔尼斯戒指":1,"地屬性斗篷":20,"水屬性斗篷":20,"火屬性斗篷":20,"風屬性斗篷":20,"黑暗長靴":15,"黑暗頭飾":5,"幻象眼魔的心眼":50,"馬昆斯斗篷":15,"銀光斗篷":30,"巫妖斗篷":30,"惡魔盔甲":250,"惡魔頭盔":50,"惡魔手套":15,"惡魔長靴":15,"暗黑雙刀":40,"暗黑鋼爪":40,"暗黑十字弓":50,"死神之手":30,"地靈手套":18,"風靈手套":18,"水靈手套":18,"火靈手套":18,"曼波帽子":10,"曼波外套":10,"金屬蜈蚣皮盔甲":250,"黑暗棲林者盔甲":30,"黑暗棲林者長靴":10,"黑虎皮斗篷":5,"狼皮斗篷":5,"熊戒指":3,"深淵戒指":3,"米索莉短劍":50,"奧里哈魯根短劍":50,"深紅長矛":100,"惡魔斧頭":180,"復仇之劍":40,"恨之鋼爪":30,"惡魔之劍":40,"惡魔雙刀":40,"惡魔鋼爪":30,"惡魔十字弓":30,"失去魔力的巴風特魔杖":15,"巴風特魔杖":15,"巴風特盔甲":30,"炎魔的血光斗篷":10,"墮落斗篷":10,"墮落長袍":25,"墮落手套":18,"墮落長靴":10,"黑焰之劍":50,"赤焰之弓":30,"赤焰之劍":40,"瑪那水晶球":50,"死亡之指":20,"獵犬之牙":60,"鋼鐵之牙":50,"破滅之牙":150,"勝利之牙":100,"守護者臂甲":30,"法師臂甲":30,"體力臂甲":30,"巨劍":150,"牛人斧頭":250,"沙哈之弓":30,"風之頭盔":50,"黑暗妖精頭箍":30,"黑暗妖精鱗甲":60,"黑暗妖精涼鞋":30,"哈維戒指":3,"古代神射臂甲":30,"古代鬥士臂甲":30,"古老的劍":30,"古老的巨劍":70,"古老的弩槍":30,"古老的金屬盔甲":280,"古老的鱗甲":200,"古老的皮盔甲":180,"古老的長袍":30,"古代神之槍":40,"古代神之斧":40,"古代黑暗妖精之劍":20,"古代妖精弩槍":30,"隱藏的魔族之劍":35,"隱藏的魔族弓箭":35,"隱藏的魔族魔杖":35,"隱藏的魔族鋼爪":35,"隱藏的魔族鎖鏈劍":35,"隱藏的魔族奇古獸":35,"泰坦皮帶":50,"古代巨人戒指":50,"黑曜石奇古獸":10,"冥想奇古獸":35,"共鳴奇古獸":35,"寒冰奇古獸":35,"藍寶石奇古獸":10,"幻術士魔杖":15,"幻術士法書":30,"幻術士斗篷":10,"龍騎士雙手劍":80,"消滅者鎖鏈劍":50,"破滅者鎖鏈劍":50,"嗜血者鎖鏈劍":50,"共鳴鎖鏈劍":80,"寒冰鎖鏈劍":80,"龍鱗臂甲":30,"龍騎士斗篷":18,"底比斯歐西里斯弓":5,"底比斯歐西里斯雙刀":30,"底比斯歐西里斯雙手劍":100,"底比斯歐西里斯魔杖":100,"底比斯歐西里斯腰帶":50,"底比斯賀洛斯戒指":5,"底比斯阿努比斯戒指":5,"試煉斧頭":100,"大匠的斧頭":50,"戰士團頭盔":30,"戰士團斗篷":15,"神聖執行團的頭盔":30,"神聖執行團的斗篷":15,"魔物的斧頭":100,"鐵斧頭":100,"巨人的斧頭":100,"歐林的項鍊":1,"西瑪戒指":1,"黃金權杖":50,"紅色斗篷":10,"君主的威嚴":10,"守護者的戒指":3,"冰之女王魅力頭飾":10,"冰之女王魅力禮服":30,"冰之女王魅力涼鞋":30,"寒冰頭盔":45,"寒冰盔甲":100,"寒冰長靴":45,"破壞雙刀":40,"破壞鋼爪":35,"血紅慾望短劍":20,"榮耀之劍":50,"短刀":50,"海賊彎刀":60,"深淵雙刀":20,"漆黑水晶球":15,"寂靜十字弓":50,"信念之盾":50,"藍海賊長靴":15,"藍海賊頭巾":15,"藍海賊皮盔甲":150,"藍海賊手套":15,"藍海賊斗篷":10,"詛咒的紅色耳環":1,"詛咒的藍色耳環":1,"詛咒的綠色耳環":1,"淨化之耳環":15,"冰之女王的耳環 Lv0":5,"冰之女王的耳環 Lv1":5,"冰之女王的耳環 Lv2":5,"冰之女王的耳環 Lv3":5,"冰之女王的耳環 Lv4":5,"冰之女王的耳環 Lv5":5,"冰之女王的耳環 Lv6":5,"冰之女王的耳環 Lv7":5,"冰之女王的耳環 Lv8 力量":5,"冰之女王的耳環 Lv8 敏捷":5,"冰之女王的耳環 Lv8 智力":5,"冰之女王的耳環 Lv8 體質":5,"冰之女王的耳環 Lv8 精神":5,"冰之女王的耳環 Lv8 魅力":5,"受詛咒的鑽石戒指":1,"受詛咒的紅寶石戒指":1,"受詛咒的藍寶石戒指":1,"受詛咒的綠寶石戒指":1,"智慧耳環":3,"真實耳環":3,"支配耳環":3,"憤怒耳環":3,"勇猛耳環":3,"不死耳環":3,"熱情耳環":3,"名譽耳環":3,"寬容耳環":3,"舞動耳環":15,"雙子耳環":15,"慶典耳環":15,"絕頂耳環":15,"暴走耳環":15,"幻魔耳環":15,"族群耳環":15,"奴隸耳環":15,"尖刺雙刀":30,"武官之刃":120,"武官斗篷":9,"黑暗手套":10,"真．冥皇執行劍":100,"風刃短劍":60,"紅影雙刀":50,"獸王鋼爪":70,"聖晶魔杖":60,"魔力戒指":3,"力量戒指":3,"敏捷戒指":3,"知識戒指":3,"火精靈的皮帶":50,"水精靈的皮帶":50,"地精靈的皮帶":50,"風精靈的皮帶":50,"神意長靴":15,"勇氣長靴":15,"賽菲亞長靴":15,"瑪那長靴":15};
 // 🪆 魔法娃娃重量（spec 各 重量1）：以 Object.assign 補進，免動上方巨型字面
 // ⚡ 元素施放傳說武器重量
@@ -1359,6 +1602,10 @@ function dollFieldVal(field){ let e = player.eq && player.eq.doll; let dd = e ? 
 const ENHANCE_CAP = { wpn: 20, arm: 15, acc: 5 };
 function enhanceCap(d) { return (d && ENHANCE_CAP[d.type]) || 10; }                          // 依物品類型取強化上限
 function isMaxEnhanced(item) { let d = DB.items[item.id]; return !!d && (Number(item.en) || 0) >= enhanceCap(d); }
+// 🏺 遺物判定（單一真相）：relic:true。維持 wpn/arm/acc 型別（供 equipCatKey 分類·遺物圖鑑）但用此旗標排除 強化/祝福/賦予/潘朵拉，並套海藍色。
+function isRelic(d) { return !!(d && d.relic); }
+// 🏺 遺物「夥伴專屬命中」加成：掃玩家所有裝備欄，回傳 partnerHit[petName] 總和（哈士奇的骨棒：夥伴哈士奇 命中+6）。
+function _relicPartnerHit(petName) { if (!petName || typeof player === 'undefined' || !player || !player.eq) return 0; let s = 0; for (let k in player.eq) { let e = player.eq[k]; if (!e) continue; let dd = DB.items[e.id]; if (dd && dd.partnerHit && dd.partnerHit[petName]) s += dd.partnerHit[petName]; } return s; }
 // 🔧 強化值上限夾擠：凡「隨強化提升」的基本能力與特效（額外傷害/命中、MP自然恢復、吸取MP、觸發機率、特效傷害…）
 //    一律以淬鍊上限計算——武器超過 +20 以 +20 計、防具超過 +15 以 +15 計、飾品超過 +5 以 +5 計。
 function capEn(en, d) { return Math.min(Math.max(0, Number(en) || 0), enhanceCap(d)); }

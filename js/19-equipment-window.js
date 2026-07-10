@@ -23,6 +23,7 @@
             { k: 'pet',     x: 52.9, y: 53.4, w: 11.1, h: 9.1 },
             { k: 'arrow',   x: 83.9, y: 49.0, w: 11.7, h: 9.7 },
             { k: 'ring4',   x: 83.0, y: 59.4, w: 11.5, h: 9.5 },
+            { k: 'shin',    x: 69.4, y: 45.6, w: 11.6, h: 9.1 },
             { k: 'doll',    x: 82.3, y: 84.9, w: 11.8, h: 10.0 }
         ]
     ];
@@ -200,6 +201,7 @@
                 img.alt = data.n || pos.k;
                 img.draggable = false;
                 img.onerror = function () { this.style.display = 'none'; };
+                if (typeof isRelic === 'function' && isRelic(data)) img.classList.add('relic-glow');   // 🏺 已裝備遺物：藍光呼吸＋星芒（與背包一致）
                 slot.appendChild(img);
                 if (item.en) {
                     const badge = document.createElement('span');

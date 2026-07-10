@@ -21,6 +21,8 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     if (typeof registerEquipObtained === 'function') registerEquipObtained(id);
     // 🧰 道具收集冊：獲得任何可分類道具即登錄（藥水/卷軸/技能書/材料/其他）
     if (typeof registerMiscObtained === 'function') registerMiscObtained(id);
+    // 🏺 遺物收集冊：獲得任何遺物即登錄（永久·只增不減）
+    if (typeof registerRelicObtained === 'function') registerRelicObtained(id);
 
     // 🔧 持有上限 maxHold（如精靈的私語=10）：裁切本次獲得量使總持有不超過上限；已達上限則不獲得
     if (d && d.maxHold) {
@@ -33,7 +35,7 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     let anc = false;
     let attr = false;   
     
-    if (!forceNormal && !_noAffixCtx && d && ((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc')) {   // 🦴 _noAffixCtx：白板（寵物裝備製作）→ 不附詞綴（強化值另由下方 _tradLootCtx 區段放行）
+    if (!forceNormal && !_noAffixCtx && d && !isRelic(d) && ((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc')) {   // 🦴 _noAffixCtx：白板（寵物裝備製作）→ 不附詞綴（強化值另由下方 _tradLootCtx 區段放行）；🏺 遺物永不附詞綴（不會祝福/賦予）
         // 詞綴：怪物掉落/製作走新制(單1%/雙0.1%/三0.01%)；潘朵拉/血盟(affixOld=true)沿用舊制(各1%)。箭矢不附加。
         let _af = affixOld ? rollAffixesOld() : rollAffixesNew();
         attr = _af.attr; bless = _af.bless; anc = _af.anc;
@@ -147,6 +149,8 @@ function elementCounterMult(atkEle, defEle) {
 
 function getItemColor(item) {
     let d = DB.items[item.id];
+    // 🏺 遺物：海藍色名稱（遺物永無詞綴/套裝，優先判定）
+    if (d && d.relic) return 'c-relic';
     // 🏅 傳說武器：琥珀金，優先於套裝與所有詞綴（即使帶套裝效果，名稱仍為琥珀金）
     if (d && d.legend) return 'c-legend';
     // 🔮 席琳套裝效果：鮮綠＋呼吸綠光，優先於所有詞綴顏色
@@ -169,6 +173,7 @@ function getGlowClass(item, d) {
     // 🔮 席琳套裝效果裝備：套裝光芒優先於傳說圖示光（名稱仍由 getItemColor 決定為琥珀金）
     if (item && item.seteff) return 'sherine-glow-icon';
     if ((item && item.id === 'wpn_manadagger') || (d && d.n === '魔力短劍')) return 'mana-glow';   // 🔧 魔力短劍：專屬藍色圖示光芒（凌駕傳說琥珀金光）
+    if (d && d.relic) return 'relic-glow';   // 🏺 遺物：海藍色圖示光芒
     if (d && d.legend) return 'legend-glow';   // 🏅 傳說武器：琥珀金圖示光芒
     let bless = (item && item.bless) || (d && d.isB);
     let cursed = !!(item && item.bless === 'cursed') || !!(d && d.isC);   // 詛咒裝備或詛咒卷軸：紅光
@@ -641,6 +646,7 @@ function royalEquipOk(d, id) {
 function checkCanEquip(item) {
     let d = DB.items[item.id];
     if (d && d.reqAvatar && player && player.avatar && player.avatar !== d.reqAvatar) return false;   // 👸 性別頭像限定（公主/王子…）：單一真實裝備閘，套用於所有職業；缺 avatar(舊檔)不硬擋。職業適用顯示走 *EquipOk（純粹·不讀玩家狀態）
+    if (isRelic(d)) return reqAllowsClass(d, player.cls);   // 🏺 遺物：職業限制純以 req 白名單為準（略過各職業專屬 *EquipOk 武器/防具清單，否則戰士等會被拒）
     if (player.cls === 'dark') return darkEquipOk(d, item.id);   // 🔧 黑暗妖精專屬裝備規則
     if (player.cls === 'illusion') return illusionEquipOk(d, item.id);   // 🔮 幻術士專屬裝備規則（除匕首外的全職業裝備＋開放清單）
     if (player.cls === 'dragon') return dragonEquipOk(d, item.id);   // 🐉 龍騎士專屬裝備規則（除匕首外的全職業裝備＋開放清單）
@@ -874,6 +880,7 @@ function doEnhance(targetUid, isEq = true) {
     if(!target) return;
 
     let d = DB.items[target.id];
+    if (isRelic(d) || (d && d.noEnhance)) { logSys(`<span class="c-relic">${getItemFullName(target)} 無法強化。</span>`); activeScroll = null; if (typeof closeModal === 'function') closeModal(); return; }   // 🏺 遺物/noEnhance：無法強化（防呆·直點路徑保險）
     let _cap = enhanceCap(d);   // 🔧 強化上限：武器+20 / 防具+15 / 飾品+10
     if ((Number(target.en) || 0) >= _cap) {   // 已達上限：不消耗卷軸，提示後返回
         logSys(`<span class="text-amber-300">${getItemFullName(target)} 已達強化上限（+${_cap}），無法再強化。</span>`);

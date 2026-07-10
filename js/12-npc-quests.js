@@ -112,16 +112,18 @@ function saveWarehouse(w){
 const CARDDEX_KEY = 'lineage_idle_carddex';
 const EQUIPDEX_KEY = 'lineage_idle_equipdex';
 const MISCDEX_KEY = 'lineage_idle_miscdex';   // 🧰 道具收集冊共用桶（同模式角色共用·布林聯集·見 js/18）
+const RELICDEX_KEY = 'lineage_idle_relicdex';   // 🏺 遺物收集冊共用桶（同模式角色共用·布林聯集·見 js/21）
 function _dexKey(base, p){ let _p = (p !== undefined) ? p : player; return base + modeSuffix(!!(_p && _p.classicMode), !!(_p && _p.traditionalMode)); }   // 🏛️🎮 四模式各自獨立桶（同 whKey 規則·見 modeSuffix）
 function _readDex(base){ try { let s = _lzGet(_dexKey(base)); if (s) { let o = JSON.parse(s); if (o && typeof o === 'object') return o; } } catch(e){} return {}; }
 // 🔄 多開同步：回寫前先讀桶現值並合併（卡片取較高分、_v:2＝積分制；裝備布林聯集），避免用本分頁快照覆蓋其他分頁的進度（lost-update）
 // 🚀 快轉(離線補跑)時延後寫入：每次登錄都「讀桶+解壓+合併+壓縮+寫」很貴（LZString），掉寶密集的補跑會白付上千次。
 //    進度都在記憶體(player.cardDex/equipDex/miscDex)，ff 時只標 dirty，saveGame 時統一補寫（結算尾聲必呼叫 saveGame）。
-let _dexFfDirty = { card:false, equip:false, misc:false };
+let _dexFfDirty = { card:false, equip:false, misc:false, relic:false };
 function _dexFlushFf(){
     if (_dexFfDirty.card)  { _dexFfDirty.card  = false; saveCardDex();  }
     if (_dexFfDirty.equip) { _dexFfDirty.equip = false; saveEquipDex(); }
     if (_dexFfDirty.misc)  { _dexFfDirty.misc  = false; saveMiscDex();  }
+    if (_dexFfDirty.relic) { _dexFfDirty.relic = false; saveRelicDex(); }
 }
 function saveCardDex(){
     if (!player || !player.cardDex) return;
@@ -154,10 +156,19 @@ function saveMiscDex(){   // 🧰 道具收集冊：布林聯集回寫共用桶�
         _lzSet(_dexKey(MISCDEX_KEY), JSON.stringify(out));
     } catch(e){}
 }
+function saveRelicDex(){   // 🏺 遺物收集冊：布林聯集回寫共用桶（同 saveEquipDex）
+    if (!player || !player.relicDex) return;
+    if (state.ff) { _dexFfDirty.relic = true; return; }   // 🚀 快轉：延後到 saveGame 統一寫
+    try {
+        let out = Object.assign({}, _readDex(RELICDEX_KEY));
+        for (let k in player.relicDex) if (player.relicDex[k]) out[k] = true;
+        _lzSet(_dexKey(RELICDEX_KEY), JSON.stringify(out));
+    } catch(e){}
+}
 // 讀檔／創角時呼叫：把共用桶併進 player.cardDex/equipDex（卡片取較高分·裝備取聯集·只增不減），並回寫共用桶（種子化＋遷移舊存檔 per-character 資料·不丟失）
 function loadSharedCollections(){
     if (!player) return;
-    let shRaw = _readDex(CARDDEX_KEY), shEquip = _readDex(EQUIPDEX_KEY), shMisc = _readDex(MISCDEX_KEY);
+    let shRaw = _readDex(CARDDEX_KEY), shEquip = _readDex(EQUIPDEX_KEY), shMisc = _readDex(MISCDEX_KEY), shRelic = _readDex(RELICDEX_KEY);
     // 🎴 卡片積分制遷移（一次性）：舊階級(1/2/3)→積分(1/10/100)。共用桶以 _v 標記、玩家存檔以 cardDexV 標記。
     let _mig = (typeof cardTierToScore === 'function') ? cardTierToScore : function(v){ return v || 0; };
     let _bucketOld = (shRaw && shRaw._v !== 2);
@@ -169,27 +180,33 @@ function loadSharedCollections(){
     player.cardDex = mC;
     player.equipDex = Object.assign({}, shEquip, player.equipDex || {});   // 🗡️ 裝備：布林聯集
     player.miscDex = Object.assign({}, shMisc, player.miscDex || {});      // 🧰 道具：布林聯集
-    saveCardDex(); saveEquipDex(); saveMiscDex();
+    player.relicDex = Object.assign({}, shRelic, player.relicDex || {});   // 🏺 遺物：布林聯集
+    saveCardDex(); saveEquipDex(); saveMiscDex(); saveRelicDex();
 }
 // 🔄 多開同步：把「同模式」共用桶併回本分頁 player.cardDex/equipDex（只增不減）；回傳是否有變更。不回寫桶（避免分頁間 ping-pong）。which: 'card'|'equip'|undefined(兩者)
 function mergeSharedIntoPlayer(which){
     if (!player) return false;
     let changed = false;
-    if (which !== 'equip' && which !== 'misc') {
+    if (which !== 'equip' && which !== 'misc' && which !== 'relic') {
         if (!player.cardDex) player.cardDex = {};
         let cur = _readDex(CARDDEX_KEY), _old = (cur && cur._v !== 2);
         let _mig = (typeof cardTierToScore === 'function') ? cardTierToScore : function(v){ return v || 0; };
         for (let k in cur) { if (k === '_v') continue; let v = _old ? _mig(cur[k]) : (cur[k] || 0); if (v > (player.cardDex[k] || 0)) { player.cardDex[k] = v; changed = true; } }
     }
-    if (which !== 'card' && which !== 'misc') {
+    if (which !== 'card' && which !== 'misc' && which !== 'relic') {
         if (!player.equipDex) player.equipDex = {};
         let cur = _readDex(EQUIPDEX_KEY);
         for (let k in cur) if (cur[k] && !player.equipDex[k]) { player.equipDex[k] = true; changed = true; }
     }
-    if (which !== 'card' && which !== 'equip') {   // 🧰 道具：'misc' 或 undefined(全併) 時併入
+    if (which !== 'card' && which !== 'equip' && which !== 'relic') {   // 🧰 道具：'misc' 或 undefined(全併) 時併入
         if (!player.miscDex) player.miscDex = {};
         let cur = _readDex(MISCDEX_KEY);
         for (let k in cur) if (cur[k] && !player.miscDex[k]) { player.miscDex[k] = true; changed = true; }
+    }
+    if (which !== 'card' && which !== 'equip' && which !== 'misc') {   // 🏺 遺物：'relic' 或 undefined(全併) 時併入
+        if (!player.relicDex) player.relicDex = {};
+        let cur = _readDex(RELICDEX_KEY);
+        for (let k in cur) if (cur[k] && !player.relicDex[k]) { player.relicDex[k] = true; changed = true; }
     }
     return changed;
 }
@@ -199,14 +216,15 @@ function _refreshAfterDexSync(){
     if (typeof _cardBookOpen !== 'undefined' && _cardBookOpen && typeof renderCardBook === 'function') renderCardBook();
     if (typeof _equipBookOpen !== 'undefined' && _equipBookOpen && typeof renderEquipBook === 'function') renderEquipBook();
     if (typeof _miscBookOpen !== 'undefined' && _miscBookOpen && typeof renderMiscBook === 'function') renderMiscBook();   // 🧰 道具收集冊開啟中→同步重繪
+    if (typeof _relicBookOpen !== 'undefined' && _relicBookOpen && typeof renderRelicBook === 'function') renderRelicBook();   // 🏺 遺物收集冊開啟中→同步重繪
 }
 // storage 事件：其他分頁更新了「同模式」桶 → 立即併回並刷新（一般/經典_classic/傳統_trad 各自獨立，互不同步）。
 //  ⚠️ file:// 跨分頁不保證觸發 storage 事件→另在 openCardBook/openEquipBook 開頭 re-merge 作兜底。
 function _syncSharedFromStorage(ev){
     if (!ev || !player || !player.cls) return;   // player 在標題/載入畫面是 cls:null 的 stub（js/01 createBase 前）→尚未開始遊戲，不對空 player 跑 merge/recompute/render
-    let ck = _dexKey(CARDDEX_KEY), ek = _dexKey(EQUIPDEX_KEY), mk = _dexKey(MISCDEX_KEY);
-    if (ev.key !== ck && ev.key !== ek && ev.key !== mk) return;
-    if (mergeSharedIntoPlayer(ev.key === ck ? 'card' : (ev.key === ek ? 'equip' : 'misc'))) _refreshAfterDexSync();
+    let ck = _dexKey(CARDDEX_KEY), ek = _dexKey(EQUIPDEX_KEY), mk = _dexKey(MISCDEX_KEY), rk = _dexKey(RELICDEX_KEY);
+    if (ev.key !== ck && ev.key !== ek && ev.key !== mk && ev.key !== rk) return;
+    if (mergeSharedIntoPlayer(ev.key === ck ? 'card' : (ev.key === ek ? 'equip' : (ev.key === mk ? 'misc' : 'relic')))) _refreshAfterDexSync();
 }
 if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('storage', _syncSharedFromStorage);
 function _whStackFind(arr, it){ return ((it.en||0)===0 && !it.lock) ? arr.find(x => !x.lock && (x.en||0)===0 && sameItemSig(x, it)) : null; }   // 🔧 架構#3：統一簽章比對
@@ -291,6 +309,7 @@ function whWithdraw(uidv, qty){
     // 🗡️🧰 v3.0.61 收集冊：「提領＝獲得」也登錄圖鑑（原本只在 gainItem 登錄→倉庫提領不點亮；傳統模式裝備自帶強化、常整批進出倉庫最易踩到）
     if (typeof registerEquipObtained === 'function') registerEquipObtained(it.id);
     if (typeof registerMiscObtained === 'function') registerMiscObtained(it.id);
+    if (typeof registerRelicObtained === 'function') registerRelicObtained(it.id);   // 🏺 提領＝獲得：遺物也登錄
     // 🔧 先存玩家存檔（已收到物品）再存倉庫（已移除物品）：萬一第二次寫入失敗（如 localStorage 容量爆），
     //    結果是「物品重複」而非「庫存消失卻沒領到」，避免領取時遺失物品。
     saveGame(); saveWarehouse(w); renderTabs(true); updateUI();

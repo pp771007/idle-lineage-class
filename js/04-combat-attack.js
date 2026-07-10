@@ -556,7 +556,7 @@ function allyDollDamageReduced(ally, dmg) {
 function _procWeaponSpellHit(t, sp, en) {
     if (!t || t.curHp <= 0) return false;
     let base = roll(sp.dice[0], sp.dice[1]) + (sp.flat || 0);   // 🔧 基礎傷害（含 sp.flat 固定加值·如電光衝擊/水之矛/火焰之陣的 +5/+6；強化改吃 +11 最終倍率·原 ×(1+強化/20) 移除）
-    let core = base * (1 + 3 * (player.d.magicDmg || 0) / 16);            // 受魔法傷害影響（同一般魔法的魔攻係數）
+    let core = sp.noMagicDmg ? base : base * (1 + 3 * (player.d.magicDmg || 0) / 16);   // 受魔法傷害影響（同一般魔法的魔攻係數）；🧊⚡ noMagicDmg：酷寒之矛/雷雨之劍用固定骰值，不吃魔法傷害加成
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
     let _cm = elementCounterMult(sp.ele, t.e);   // ⚔️ 屬性剋制倍率 ×1.4(剋)/×0.6(被剋)/×1

@@ -871,7 +871,7 @@ function _allyProcWeaponSpellHit(ally, t, sp, en) {
     if (!t || t.curHp <= 0) return;
     let d = ally.d || {};
     let base = roll(sp.dice[0], sp.dice[1]) + (sp.flat || 0);   // 🔧 基礎傷害（含 sp.flat 固定加值·與玩家版一致；強化改吃 +11 最終倍率·原 ×(1+強化/20) 移除）
-    let core = base * (1 + 3 * (d.magicDmg || 0) / 16);
+    let core = sp.noMagicDmg ? base : base * (1 + 3 * (d.magicDmg || 0) / 16);   // 🧊⚡ noMagicDmg：不吃魔法傷害加成（傭兵鏡像玩家）
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
     let _cm = elementCounterMult(sp.ele, t.e);   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）

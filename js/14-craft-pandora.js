@@ -1195,7 +1195,9 @@ function refreshPandoraMarket(force) {
     }
     try { renderPandoraBanner(); } catch (e) {}
     try { renderSyslogPandora(); } catch (e) {}
-    if (_pandoraDiv && document.body.contains(_pandoraDiv)) { try { pandoraRenderMarket(_pandoraDiv); } catch (e) {} }   // 面板開著時即時反映輪換
+    // 🐛 面板容器 interaction-content 是所有 NPC 共用;只有「仍在顯示黑市」(內含 #pandora-msg 標記)時才即時重繪,避免切到傭兵公會/其他 NPC 後被黑市洗版。切走或關閉→放棄快取。
+    if (_pandoraDiv && document.body.contains(_pandoraDiv) && _pandoraDiv.querySelector('#pandora-msg')) { try { pandoraRenderMarket(_pandoraDiv); } catch (e) {} }   // 面板開著且仍是黑市→即時反映輪換
+    else { _pandoraDiv = null; }
     return true;
 }
 

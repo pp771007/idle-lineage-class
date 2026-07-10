@@ -1008,7 +1008,6 @@
       'body.m-mobile #main-menu > button{width:100% !important;font-size:16px !important;padding:14px 12px !important;}',
       'body.m-mobile #main-menu > p{width:100% !important;margin:8px 0 0 !important;font-size:13px !important;line-height:1.5 !important;}',
       'body.m-mobile #login-meta-layer{position:relative !important;left:auto !important;top:auto !important;width:100% !important;max-width:330px !important;margin:6vh auto 0 !important;text-align:center !important;z-index:3 !important;}',
-      'body.m-mobile #login-version{font-size:15px !important;}',
       'body.m-mobile #login-disclaimer{font-size:11px !important;}',
       'body.m-mobile #creation-panel{flex-direction:column !important;gap:12px !important;align-items:stretch !important;}',
       'body.m-mobile .m-cre-avatar{width:100% !important;height:220px !important;}',

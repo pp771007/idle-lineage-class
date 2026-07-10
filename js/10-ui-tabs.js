@@ -102,6 +102,11 @@ function classicSkillSyncTierFromScroll(view) {
     }
     if (tier !== classicSkillBookState.tier) classicSkillSelectTier(tier);
 }
+function classicSkillScrollRows(direction) {
+    let view = document.querySelector('#tab-skill .classic-skill-grid-scroll');
+    if (!view) return;
+    view.scrollBy({ top:(direction < 0 ? -1 : 1) * (view.clientHeight / 8), behavior:'smooth' });
+}
 function classicSkillChooseMode(mode) {
     classicSkillBookState.mode = mode;
     classicSkillBookState.page = 0;
@@ -177,6 +182,8 @@ function renderClassicSkillBook(sDiv) {
         + '<div class="classic-skill-mode">' + modeButtons + '</div>'
         + '<div class="classic-skill-tier-strip" style="background-image:url(\'assets/ui/skill-level/' + sprite + '.png\')">' + tierButtons + '</div>'
         + '<div class="classic-skill-grid-scroll" onscroll="classicSkillSyncTierFromScroll(this)"><div class="classic-skill-grid">' + cells + '</div></div>'
+        + '<button type="button" class="classic-skill-scroll classic-skill-scroll-up" aria-label="技能向上捲動" onclick="classicSkillScrollRows(-1)"></button>'
+        + '<button type="button" class="classic-skill-scroll classic-skill-scroll-down" aria-label="技能向下捲動" onclick="classicSkillScrollRows(1)"></button>'
         + '<div class="classic-skill-stat classic-skill-stat-sp">' + _spv + '</div>'
         + '<div class="classic-skill-stat classic-skill-stat-mr">' + _mrv + '</div>'
         + '</div>';

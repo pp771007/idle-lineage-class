@@ -541,6 +541,68 @@ function returnToTown() {
     // 🔧 自軍王之室手動回城／回村：同樣將「特殊」記憶位置改為新兵修練場（避免下次自動回到需鑰匙的軍王之室）
     if (_wasKingRoom) { if (!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat.special = 'training'; saveGame(); }
 }
+// ===== ⌨️ 鍵盤快捷鍵（v3.1.13）=====
+//  Tab       → 背包三分頁輪替：武器 → 防具 → 道具 → 武器…（不在三分頁時→武器）
+//  Ctrl+S    → 技能欄　  Ctrl+A → 裝備欄　  Ctrl+B → 圖鑑（收藏）選單
+//  Ctrl+C    → 立即返回血盟據點（攻城獲勝→城堡）；未加入血盟則提示。有選取文字時放行瀏覽器複製。
+//  ⚠️ 只在遊戲畫面(game-screen 顯示中·已有職業)且焦點不在輸入框時生效；避免攔截打字/登入頁。
+function _hkInGame() {
+    let gs = document.getElementById('game-screen');
+    return !!(gs && !gs.classList.contains('hidden') && typeof player !== 'undefined' && player && player.cls);
+}
+function _hkTyping(el) {
+    if (!el) return false;
+    let tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+}
+// 依分頁名找到對應切換按鈕並呼叫 switchTab（沿用既有 UI 流程·同步 active 樣式）
+function _hkSwitchTab(name) {
+    let btn = document.querySelector('[onclick*="switchTab(\'' + name + '\'"]');
+    if (btn && typeof switchTab === 'function') switchTab(name, btn);
+}
+// Tab：武器 → 防具 → 道具 → 武器 輪替（找出目前顯示中的三分頁·切下一個；都沒顯示→武器）
+function hotkeyCycleInventory() {
+    let order = ['weapons', 'armors', 'items'];
+    let cur = order.findIndex(id => { let e = document.getElementById('tab-' + id); return e && !e.classList.contains('hidden'); });
+    _hkSwitchTab(order[(cur < 0) ? 0 : (cur + 1) % order.length]);
+}
+// Ctrl+C：返回血盟據點（getHomeTown 已含「血盟優先回盟主村莊」）；攻城獲勝 24h→城堡。未入盟→提示。
+function returnToPledgeBase() {
+    if (!player || !player.bloodPledge) { logSys('<span class="text-amber-300">你尚未加入任何血盟，沒有可返回的據點。</span>'); return; }
+    // 受控限制（比照回村）：石化／麻痺／冰凍／暈眩／睡眠時不可傳送
+    if (player.statuses && (player.statuses.stone > 0 || player.statuses.paralyze > 0 || player.statuses.freeze > 0 || player.statuses.stun > 0 || player.statuses.sleep > 0)) {
+        logSys('你目前無法行動（石化／麻痺／冰凍／暈眩），無法返回據點。');
+        return;
+    }
+    if (state.riftRun && mapState.current === 'rift_battle') { logSys('<span class="text-violet-300">時空裂痕緊緊纏繞著你，唯有戰死方能離開，無法返回據點。</span>'); return; }
+    let _wasKingRoom = !!KING_ROOMS[mapState.current];
+    if (state.oblivion) { state.oblivion = null; state._oblivionAdvance = false; }   // 🏝️ 返回即結束遺忘之島旅程
+    let _victory = siegeVictoryActive();
+    setMapSelectors(_victory ? victoryCityCfg().castle : getHomeTown());
+    changeMap();
+    if (_wasKingRoom) { if (!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat.special = 'training'; saveGame(); }
+    logSys('<span class="text-emerald-300">⌨️ 已返回' + (_victory ? '城堡' : '血盟據點') + '。</span>');
+}
+if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('keydown', function (e) {
+        if (!_hkInGame() || _hkTyping(e.target)) return;
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {   // 只吃「純 Ctrl/⌘＋鍵」；放行 Ctrl+Shift+* 瀏覽器快捷（開發者工具／強制重載）
+            let k = (e.key || '').toLowerCase();
+            if (k === 's') { e.preventDefault(); _hkSwitchTab('skill'); return; }
+            if (k === 'a') { e.preventDefault(); _hkSwitchTab('equip'); return; }
+            if (k === 'b') { e.preventDefault(); if (typeof openCollectionPanel === 'function') openCollectionPanel(); return; }
+            if (k === 'c') {
+                let sel = (typeof window.getSelection === 'function') ? String(window.getSelection() || '') : '';
+                if (sel) return;   // 有選取文字→放行瀏覽器複製，不攔截
+                e.preventDefault(); returnToPledgeBase(); return;
+            }
+            return;
+        }
+        if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); hotkeyCycleInventory(); }
+    }, false);
+}
+
+
 // 🔧 村莊「出發」按鈕：一鍵回到上一張戰鬥地圖。軍王之室需鑰匙，無鑰匙顯示鑰匙不足。
 function departToLastBattle() {
     if (player.statuses && (player.statuses.stone > 0 || player.statuses.paralyze > 0 || player.statuses.freeze > 0 || player.statuses.stun > 0 || player.statuses.sleep > 0)) {

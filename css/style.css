@@ -545,6 +545,11 @@ button.classic-skill-cell { cursor:pointer; }
 .classic-skill-stat { position:absolute; z-index:5; display:flex; align-items:center; justify-content:center; color:#e4ecff; font-weight:700; font-size:clamp(8px,1vw,15px); text-shadow:0 1px 2px #000,0 0 4px #000; pointer-events:none; letter-spacing:.02em; }
 .classic-skill-stat-sp { left:33.7%; top:91.4%; width:12.9%; height:3.9%; }
 .classic-skill-stat-mr { left:70.7%; top:90.4%; width:13.5%; height:4.6%; }
+/* ⌨️ 技能視窗隱形捲動鈕(v3.1.x):疊在底圖右側上下箭頭圖樣上,平時近乎透明、hover 微亮 */
+.classic-skill-scroll { position:absolute; z-index:8; right:3.8%; width:6.2%; height:5.2%; padding:0; border:0; border-radius:50%; background:transparent; opacity:.01; }
+.classic-skill-scroll:hover { opacity:.18; background:#fff3b0; }
+.classic-skill-scroll-up { top:4.4%; }
+.classic-skill-scroll-down { bottom:5.8%; }
 
 /* ===== 🎨 v3.0.40 登入首頁：310 固定底圖＋273～300 左下逐幀動畫（移植自參考版） ===== */
 #creation-screen { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; overflow:auto; padding:0; background:#050505; }

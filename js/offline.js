@@ -524,6 +524,27 @@
     var lastLv = player.lv;
     var _junkEvery = (typeof JUNK_AUTOSELL_TICKS !== 'undefined') ? JUNK_AUTOSELL_TICKS : 100;
 
+    // ═══ 💾 結算統計快取(2026-07-10,使用者核可) ═══════════════════════════════
+    // 結算量到的統計(殺速/每種 BOSS 實測/消耗率)存進存檔(player._offStats)帶簽章;下次同簽章
+    // 直接進快速段 → 跳過 5 分鐘取樣與每種 BOSS 首打,同圖同實力的每日結算恆定秒級。
+    // 簽章=引擎版+地圖+等級+世界模式(席琳/瘋狂/經典/傳統)+全裝備(id+強化) → 任一變動即失效重取樣;
+    // 另設 72h 時效(防遊戲平衡改版後舊統計久留);撞死時清除(這套統計不可信)。
+    var OFFSTATS_MAX_AGE_MS = 72 * 3600 * 1000;
+    function offStatsSig() {
+      var eq = [];
+      try { for (var k in player.eq) { var e = player.eq[k]; if (e && e.id) eq.push(k + ':' + e.id + ':' + (e.en || 0)); } } catch (e) {}
+      eq.sort();
+      return ['v1', mapState.current, player.lv, player.sherineWorld ? 1 : 0, player.sherineMad ? 1 : 0,
+        player.classicMode ? 1 : 0, player.traditionalMode ? 1 : 0, eq.join(',')].join('|');
+    }
+    function saveOffStats() {   // 量到新統計就更新快取(隨檢查點/結算尾的 saveGame 固化進存檔)
+      try {
+        if (!(svcPerKill > 0)) return;
+        player._offStats = { v: 1, sig: offStatsSig(), svc: svcPerKill, consume: consumePerTick || {}, boss: bossStats, savedAt: Date.now() };
+      } catch (e) {}
+    }
+    // ═══ 結算統計快取(宣告結束) ═══════════════════════════════════════════════
+
     function invCntMap() {   // 全部持有量(背包+裝備欄,箭矢掛在 eq.arrow 的 cnt 上)
       var m = {};
       try {
@@ -564,6 +585,7 @@
         if (used > 0) consumePerTick[k] = used / winTicks;   // 每「拍」速率:消耗跟時間走(BOSS 一場耗時長、耗得多,按殺算會低估)
       }
       fastMode = true;
+      saveOffStats();   // 💾 新量到的殺速/消耗率 → 更新統計快取
       console.info('[AFK] ⚡ 快速結算啟動(事件驅動):平均純戰鬥 ' + svcPerKill.toFixed(1) + ' 拍/殺,每拍消耗 ' + JSON.stringify(consumePerTick));
     }
     function fastRefill(id) {   // 斷貨 → 比照原作 autoActions / 外掛 autobuy 的自動購買;補不了 → false(退回全模擬)
@@ -727,7 +749,18 @@
       } catch (e) { console.warn('[AFK] 快速結算步驟出錯,退回全模擬:', e); return false; }
       return fastAdvance(svcPerKill);
     }
-    if (fastEligible) beginSample(0);
+    // 💾 統計快取命中 → 直接進快速段(跳過取樣與 BOSS 首打);未命中 → 照常從取樣開始
+    if (fastEligible && player._offStats && player._offStats.v === 1 && player._offStats.svc > 0
+        && player._offStats.sig === offStatsSig()
+        && (Date.now() - (player._offStats.savedAt || 0)) < OFFSTATS_MAX_AGE_MS) {
+      svcPerKill = player._offStats.svc;
+      consumePerTick = {}; for (var _ck in player._offStats.consume) consumePerTick[_ck] = player._offStats.consume[_ck];
+      consumeAcc = {};
+      bossStats = player._offStats.boss || {};
+      fastMode = true;
+      console.info('[AFK] 💾 統計快取命中:跳過取樣與 BOSS 首打,直接快速結算(svc=' + svcPerKill.toFixed(1) + ' 拍/殺,BOSS 快取 ' + Object.keys(bossStats).length + ' 種)。');
+    }
+    if (fastEligible && !fastMode) beginSample(0);
     // ═══ 混合快速結算(宣告結束;主迴圈內 fastMode 分支使用) ═════════════════════
 
     var done = 0, died = false;
@@ -802,6 +835,7 @@
                 var _safeB = fastBossMinHp >= hpFloorNow();   // 安全線跟取樣共用同一條門檻(隨存活時間降到 0):撐滿 20 分鐘後 BOSS 首遇打得贏就 safe → 秒殺
                 var _minorB = Math.max(0, (tallySum(killTally) - fastBossKills0) - 1);   // 對戰期間總殺數 − BOSS 本身 1 = 同場被 AOE/傭兵/寵物清掉的小怪數
                 bossStats[fastBossName] = { ticks: _durB, safe: _safeB, minor: _minorB };
+                saveOffStats();   // 💾 新量到的 BOSS 實測 → 更新統計快取(下次同簽章連首打都免)
                 console.info('[AFK] ⚔ BOSS「' + fastBossName + '」倒下:實測 ' + Math.round(_durB) + ' 拍、同場小怪 ' + _minorB + ' 隻' + (_safeB ? ',之後同名 BOSS 即殺、時間按此推進並補回小怪。' : ',對打時血量偏低(' + Math.round(fastBossMinHp * 100) + '%) → 之後每次都真打。'));
               }
               if (fastBossUid == null && player.lv !== lastLv) {   // BOSS 經驗大,常直接升級 → 重新取樣殺速
@@ -864,6 +898,7 @@
 
     // 結算後落點:陣亡(或拿不到狩獵圖)→ 回村莊甦醒;存活 → 接回原本掛機的位置繼續掛。
     // 回狩獵圖前先補滿 HP/MP(等同「甦醒」),避免一上圖就低血暴斃。
+    if (died) { try { delete player._offStats; } catch (e) {} }   // 💾 撞死 → 這套統計不可信(快取簽章代表的配置會死),清除、下次照常取樣
     player.dead = false;
     if (isClimb) {
       if (died) {

@@ -674,6 +674,11 @@
          遊戲的數字輸入(商店數量/自動喝水%/倉庫/製作…)幾乎都是 13~14px → 一點就放大。
          統一提到 16px 門檻就不觸發;touch-action 順便取消雙擊縮放判定的 300ms 等待。 */
       'body.m-mobile input[type="number"],body.m-mobile input[type="text"],body.m-mobile input:not([type]),body.m-mobile select,body.m-mobile textarea{font-size:16px !important;touch-action:manipulation;}',
+      /* 雙擊縮放全域取消:連點按鈕(娃娃合成/NPC 兌換…)會觸發 iOS 雙擊放大——上面那條只蓋輸入元件,
+         按鈕類漏網之魚補不完 → 直接對 body 設 manipulation,效果沿觸控鏈「交集」生效:全站取消雙擊縮放、
+         雙指縮放(無障礙)保留、既有 touch-action:none 的拖曳把手(交集後仍 none)不受影響;
+         背包「雙擊=裝備/使用」的 dblclick 事件照發(manipulation 只擋縮放手勢與 300ms 延遲)。 */
+      'body.m-mobile{touch-action:manipulation;}',
       /* 🖥️→📱 中和作者 2026-06 新增的「1920×1080 固定設計舞台」#app-stage:它用 fitStage() 對舞台
          下 transform:scale(min(vw/1920,vh/1080)) 等比縮小整個桌機版面——手機上會把我們自建的版面
          一起縮成中央一小塊(0.2~0.8×),且 transform/will-change 會讓我們 fixed 的 #game-screen 改以

@@ -1410,7 +1410,7 @@ function witchIceLance() {
 }
 // 🔧 水之元氣（sk_elf_watervital）：buff 期間內，下次受到「治癒術」（玩家自身瞬間治癒，不含持續回復 HoT）治癒時恢復量加倍，觸發後 7 秒冷卻（player._waterVitalCd，每秒遞減）。
 function waterVitalHeal(heal) {
-    if (heal > 0 && player.buffs && player.buffs.sk_elf_watervital > 0 && (player._waterVitalCd || 0) <= 0) {
+    if (heal > 0 && _teamAuraHas('sk_elf_watervital') && (player._waterVitalCd || 0) <= 0) {   // 🌟 v3.0.99 任一隊員(玩家/傭兵)維持水之元氣即生效·player._waterVitalCd 為全隊共用冷卻
         player._waterVitalCd = 7;   // 觸發後 7 秒冷卻
         logCombat('💧 水之元氣發動：本次治療恢復量加倍！', 'heal');
         return heal * 2;

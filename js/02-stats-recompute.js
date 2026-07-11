@@ -901,6 +901,20 @@ const OSIRIS_BOX_HIGH = [
     ['new_item_151', 14], ['new_item_154', 14], ['new_item_160', 14], ['new_item_157', 14],
     ['new_item_152', 8], ['new_item_155', 8], ['new_item_158', 8], ['new_item_161', 8]
 ];
+// 🐍 提卡爾 庫庫爾坎寶箱：4 傳說裝(初級 0.25%/高級 0.75%)＋卷軸＋寶石（結構同歐西里斯寶箱）
+const KUKULKAN_BOX_BASIC = [
+    ['wpn_kukulkan_spear', 0.25], ['wpn_kukulkan_gauntlet', 0.25], ['shd_kukulkan', 0.25], ['hlm_kukulkan', 0.25],
+    ['scroll_weapon', 3], ['scroll_armor', 4],
+    ['new_item_151', 15], ['new_item_154', 15], ['new_item_160', 15], ['new_item_157', 15],
+    ['new_item_152', 8], ['new_item_155', 8], ['new_item_158', 8], ['new_item_161', 8]
+];
+const KUKULKAN_BOX_HIGH = [
+    ['wpn_kukulkan_spear', 0.75], ['wpn_kukulkan_gauntlet', 0.75], ['shd_kukulkan', 0.75], ['hlm_kukulkan', 0.75],
+    ['scroll_weapon', 4], ['scroll_armor', 5],
+    ['new_item_151', 14], ['new_item_154', 14], ['new_item_160', 14], ['new_item_157', 14],
+    ['new_item_152', 8], ['new_item_155', 8], ['new_item_158', 8], ['new_item_161', 8]
+];
+const BOX_LOOT_BY_ID = { item_osiris_box_basic: OSIRIS_BOX_BASIC, item_osiris_box_high: OSIRIS_BOX_HIGH, item_kukulkan_box_basic: KUKULKAN_BOX_BASIC, item_kukulkan_box_high: KUKULKAN_BOX_HIGH };
 function osirisBoxRoll(table) {
     if (tradNoScrolls()) table = table.filter(e => !TRAD_NO_SCROLLS[e[0]]);   // 🏛️ 僅經典+傳統：寶箱不開出施法卷軸（改抽其餘獎品，不浪費龜裂之核）；一般+傳統照常
     let total = 0; for (let e of table) total += e[1];   // 過濾後重算總權重（一般情況=100）
@@ -939,7 +953,7 @@ function doOpenOsirisBox(uid, n) {
     let item = player.inv.find(i => i.uid === uid);
     if (!item) { closeOsirisBoxModal(); return; }
     let d = DB.items[item.id];
-    let table = (d.boxTier === 'high') ? OSIRIS_BOX_HIGH : OSIRIS_BOX_BASIC;
+    let table = BOX_LOOT_BY_ID[item.id] || ((d.boxTier === 'high') ? OSIRIS_BOX_HIGH : OSIRIS_BOX_BASIC);   // 🐍 依寶箱 id 選 loot 表（歐西里斯/庫庫爾坎），未列則回退 boxTier
     n = Math.max(1, Math.floor(n));
     let opened = 0, gained = {};
     let _svTrad = _tradLootCtx; _tradLootCtx = true;   // 🏛️ 傳統模式：寶箱開出的底比斯裝備比照掉落/製作，自帶隨機強化值（gainItem 內 traditionalActive() 閘·非傳統恆 +0；強化值走 committed lootRng 防 SL）

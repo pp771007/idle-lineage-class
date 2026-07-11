@@ -578,9 +578,11 @@ const KING_ROOMS = {
     necro_king_room:    { boss: 'de_king_heruby',  minion: 'de_necro_warlock',   name: '冥法軍王之室' },
     assassin_king_room: { boss: 'de_king_slayer',  minion: 'de_gate_soldier',    name: '暗殺軍王之室' },
     // 🏛️ 底比斯歐西里斯祭壇：雙BOSS（賀洛斯＋阿努比斯），兩隻皆亡後 5 秒同時復活；入場與再臨各消耗 1 把祭壇鑰匙
-    thebes_temple:      { dual: true, bosses: ['thebes_horus', 'thebes_anubis'], key: 'item_thebes_altar_key', name: '底比斯歐西里斯祭壇' }
+    thebes_temple:      { dual: true, bosses: ['thebes_horus', 'thebes_anubis'], key: 'item_thebes_altar_key', name: '底比斯歐西里斯祭壇' },
+    // 🐍 提卡爾 庫庫爾坎祭壇：雙BOSS（杰弗雷庫雄＋雌），入場與再臨各消耗 1 把提卡爾庫庫爾坎祭壇鑰匙
+    tikal_altar:        { dual: true, bosses: ['tikal_boss_m', 'tikal_boss_f'], key: 'item_tikal_altar_key', name: '提卡爾 庫庫爾坎祭壇' }
 };
-const PURE_BOSS_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room', 'thebes_temple'];
+const PURE_BOSS_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room', 'thebes_temple', 'tikal_altar'];
 const BOSS_BIG_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair'];   // 👑 方案B放大版面只套用這3個龍窟(不含底比斯祭壇等其餘純BOSS房)
 
 // 🆕 後排雙格：一般狩獵地圖在原本三格(前排)之外，再追加兩格「後排」小怪→場上最多同時 5 隻。

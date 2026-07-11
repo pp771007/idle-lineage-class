@@ -66,6 +66,8 @@ const CRAFT_RECIPES = {
         { result: 'mat_crack_core', req: [{ id: 'mat_rift_shard', cnt: 100 }] },
         { result: 'item_osiris_box_basic', req: [{ id: 'mat_osiris_basic_up', cnt: 1 }, { id: 'mat_osiris_basic_down', cnt: 1 }] },
         { result: 'item_osiris_box_high', req: [{ id: 'mat_osiris_high_up', cnt: 1 }, { id: 'mat_osiris_high_down', cnt: 1 }] },
+        { result: 'item_kukulkan_box_basic', req: [{ id: 'mat_kukulkan_basic_up', cnt: 1 }, { id: 'mat_kukulkan_basic_down', cnt: 1 }] },   // 🐍 提卡爾 初級寶箱
+        { result: 'item_kukulkan_box_high', req: [{ id: 'mat_kukulkan_high_up', cnt: 1 }, { id: 'mat_kukulkan_high_down', cnt: 1 }] },   // 🐍 提卡爾 高級寶箱
         { result: 'wpn_qigu_obsidian', req: [
             { id: 'new_item_153', cnt: 10 }, { id: 'new_item_159', cnt: 10 }, { id: 'new_item_162', cnt: 10 }, { id: 'new_item_156', cnt: 10 },
             { id: 'mat_crack_core', cnt: 2 }, { id: 'mat_rough_stone', cnt: 30 }, { id: 'new_item_170', cnt: 30 }, { id: 'gold', cnt: 1000000 }

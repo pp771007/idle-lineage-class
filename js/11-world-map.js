@@ -63,7 +63,10 @@ const MAP_CATEGORIES = {
         {v:'town_rift', t:'時空裂痕入口', c:'#a78bfa'},
         {v:'thebes_desert', t:'底比斯 沙漠', c:'#fcd34d'},
         {v:'thebes_pyramid', t:'底比斯 金字塔內部', c:'#fcd34d'},
-        {v:'thebes_temple', t:'底比斯 歐西里斯祭壇', c:'#f87171', needKey:'item_thebes_altar_key'}
+        {v:'thebes_temple', t:'底比斯 歐西里斯祭壇', c:'#f87171', needKey:'item_thebes_altar_key'},
+        {v:'tikal_area', t:'提卡爾神廟地區', c:'#86efac'},
+        {v:'tikal_deep', t:'提卡爾神廟地區深處', c:'#86efac'},
+        {v:'tikal_altar', t:'提卡爾 庫庫爾坎祭壇', c:'#f87171', needKey:'item_tikal_altar_key'}
     ],
     // 🏴‍☠️ 海賊島：村莊（安全區）＋ 野外（背景＝古魯丁）＋ 地監（背景＝說話之島地監1樓）
     pirate_island: [
@@ -143,7 +146,8 @@ const MAP_REGIONS = [
         {v:'king_baranka_room', t:'魔獸君王之室'}, {v:'law_king_room', t:'法令君王之室'}, {v:'necro_king_room', t:'冥法君王之室'}, {v:'assassin_king_room', t:'暗殺君王之室'}
     ]},
     { key: 'rift', label: '時空裂痕', maps: [
-        {v:'town_rift', t:'時空裂痕入口'}, {v:'thebes_desert', t:'底比斯 沙漠'}, {v:'thebes_pyramid', t:'底比斯 金字塔內部'}, {v:'thebes_temple', t:'底比斯 歐西里斯祭壇'}
+        {v:'town_rift', t:'時空裂痕入口'}, {v:'thebes_desert', t:'底比斯 沙漠'}, {v:'thebes_pyramid', t:'底比斯 金字塔內部'}, {v:'thebes_temple', t:'底比斯 歐西里斯祭壇'},
+        {v:'tikal_area', t:'提卡爾神廟地區'}, {v:'tikal_deep', t:'提卡爾神廟地區深處'}, {v:'tikal_altar', t:'提卡爾 庫庫爾坎祭壇'}
     ]},
     { key: 'sherine', label: '席琳神殿', maps: [
         {v:'town_sherine', t:'席琳神殿'}

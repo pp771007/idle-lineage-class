@@ -1080,7 +1080,7 @@ function killPlayer() {
 function castMobMagic(mob, sk) {
     if (!sk) return;
     if (mob && mob.curHp > 0 && typeof _mobAnimTrigger === 'function') _mobAnimTrigger(mob, 'skill');   // 🎞️ 序列幀：技能動作（🔒 鎖定·強制放完·播放中的新觸發被忽略）
-    let redirectable = !!sk.dmg || ['stone', 'paralyze', 'silence', 'magicseal', 'freeze', 'scald', 'stun', 'slowatk', 'poison', 'burn'].includes(sk.type);
+    let redirectable = !!sk.dmg || ['stone', 'paralyze', 'silence', 'magicseal', 'freeze', 'scald', 'stun', 'slowatk', 'poison', 'burn', 'frost_breath'].includes(sk.type);   // ❄️ v3.1.54 寒冰吐息(frost_breath)納入可轉向→'寒冰吐息' 已在 MOB_PARTY_AOE_SKILLS→全體(玩家+傭兵)驅散增益＋緩速
     if (!redirectable) { applyMobMagic(mob, sk); return; }
     let allies = (player.allies || []).filter(a => a && !a._downed && (a.curHp || 0) > 0);
     if ((typeof MOB_PARTY_AOE_SKILLS !== 'undefined') && MOB_PARTY_AOE_SKILLS.has(sk.skn)) {   // 全體：玩家＋全部非倒地傭兵
@@ -1119,6 +1119,18 @@ function applyMobMagicToAlly(mob, sk, ally) {
     if (sk.type === 'scald') { if (Math.random() * 100 < _ch(200)) { st.scald = (sk.dur || 15) * 10; st.scaldDmg = _shMul * (sk.d || 100); st.scaldTick = (sk.tick || 3) * 10; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，${nm} 被燙傷了！`, 'enemy'); } return; }
     if (sk.type === 'poison') { if (d.immPoison) return; if (Math.random() * 100 < _ch(100)) { st.poison = sk.dur * 10; st.poisonDmg = _shMul * sk.d; st.poisonTick = sk.tick * 10; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，${nm} 中毒了！`, 'enemy'); } return; }
     if (sk.type === 'burn') { st.burn = sk.dur * 10; st.burnDmg = _shMul * sk.d; st.burnTick = sk.tick * 10; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，${nm} 陷入灼燒！`, 'enemy'); return; }
+    // ❄️ 寒冰吐息：(pbase − 傭兵MR)/2 % 機率驅散該傭兵所有增益（保留變身/迷魅/誘捕/召喚），並使其攻擊速度減慢100%（比照玩家 frost_breath 分支·全體 AoE 同時打玩家與各傭兵）
+    if (sk.type === 'frost_breath') {
+        let chance = Math.max(0, ((sk.pbase !== undefined ? sk.pbase : 200) - mr) / 2);
+        if (Math.random() * 100 < chance) {
+            if (ally.buffs) { let kept = {}; for (let k in ally.buffs) { let skd = DB.skills[k]; if (k === 'sk_charm' || k === 'taming' || k === 'poly' || (skd && skd.summon)) kept[k] = ally.buffs[k]; } ally.buffs = kept; }
+            let _slowed = !allyStatusResisted(ally, 'slow');
+            if (_slowed) st.slowAtk = (sk.dur || 8) * 10;
+            if (typeof _allyLevelRecompute === 'function') _allyLevelRecompute(ally);   // 驅散後即時重算 ally.d（否則增益效果殘留到下次 allyMaintainBuffs）
+            logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '寒冰吐息'}，驅散了 ${nm} 的增益狀態${_slowed ? '，並使其攻擊速度大幅減慢！' : '。'}`, 'enemy');
+        }
+        return;
+    }
     if (sk.dmg) {
         let _asleepA = st.sleep > 0;   // 🆕 v2.6.13 #5b 魔法迴避層（比照玩家·作用於傷害魔法；睡眠中不可迴避）
         if (!_asleepA && ally._setMoon5 && roll(1, 100) <= effResistPct((d.er || 0))) { logCombat(`<span class="font-bold" style="color:#c4b5fd;">【月光 5/5】</span>協力·${ally._allyName} 迴避掉 <span class="${getMobColor(mob.lv)}">${mob.n}</span> 的 ${sk.skn || '魔法'}。`, 'evade', 'enemy'); return; }   // 🔮 月光5：ER 也能閃魔法

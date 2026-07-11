@@ -1,0 +1,37 @@
+canvas 155x140, lattice origin at (53,84)
+  attack: 12 frames, palette truecolor, blocks 143, header-bbox self-check MISMATCH
+  attack_s: 12 frames, palette truecolor, blocks 55, header-bbox self-check ALL OK
+  attack_w: 12 frames, palette truecolor, blocks 235, header-bbox self-check MISMATCH
+  death: 17 frames, palette truecolor, blocks 275, header-bbox self-check ALL OK
+  death_s: 17 frames, palette truecolor, blocks 117, header-bbox self-check ALL OK
+  death_w: 17 frames, palette truecolor, blocks 263, header-bbox self-check MISMATCH
+  hurt: 2 frames, palette truecolor, blocks 21, header-bbox self-check ALL OK
+  hurt_s: 2 frames, palette truecolor, blocks 8, header-bbox self-check ALL OK
+  hurt_w: 2 frames, palette truecolor, blocks 20, header-bbox self-check ALL OK
+  idle: 12 frames, palette truecolor, blocks 120, header-bbox self-check ALL OK
+  idle_s: 12 frames, palette truecolor, blocks 47, header-bbox self-check ALL OK
+  idle_w: 12 frames, palette truecolor, blocks 79, header-bbox self-check ALL OK
+  skill: 10 frames, palette truecolor, blocks 149, header-bbox self-check MISMATCH
+  skill_s: 10 frames, palette truecolor, blocks 46, header-bbox self-check ALL OK
+  skill_w: 10 frames, palette truecolor, blocks 162, header-bbox self-check MISMATCH
+warnings (23):
+  attack.spr f3: header bbox mismatch: decoded top=-80 right=37 bottom=-23 vs A-12=-80 B-1=37 C-13=65513
+  attack.spr f4: header bbox mismatch: decoded top=-83 right=37 bottom=-26 vs A-12=-83 B-1=37 C-13=65510
+  attack.spr f5: header bbox mismatch: decoded top=-84 right=38 bottom=-28 vs A-12=-84 B-1=38 C-13=65508
+  attack.spr f6: header bbox mismatch: decoded top=-82 right=40 bottom=-22 vs A-12=-82 B-1=40 C-13=65514
+  attack_w.spr f3: header bbox mismatch: decoded top=-67 right=37 bottom=-31 vs A-12=-67 B-1=37 C-13=65505
+  attack_w.spr f4: header bbox mismatch: decoded top=-73 right=37 bottom=-36 vs A-12=-73 B-1=37 C-13=65500
+  attack_w.spr f5: header bbox mismatch: decoded top=-76 right=38 bottom=-38 vs A-12=-76 B-1=38 C-13=65498
+  attack_w.spr f6: header bbox mismatch: decoded top=-75 right=41 bottom=-31 vs A-12=-75 B-1=41 C-13=65505
+  death_w.spr f2: header bbox mismatch: decoded top=-21 right=34 bottom=-14 vs A-12=-21 B-1=34 C-13=65522
+  death_w.spr f3: header bbox mismatch: decoded top=-48 right=33 bottom=-15 vs A-12=-48 B-1=33 C-13=65521
+  death_w.spr f13: empty frame
+  death_w.spr f13: header bbox mismatch: decoded top=0 right=0 bottom=0 vs A-12=108 B-1=65407 C-13=65403
+  death_w.spr f14: empty frame
+  death_w.spr f14: header bbox mismatch: decoded top=0 right=0 bottom=0 vs A-12=108 B-1=65407 C-13=65403
+  death_w.spr f15: empty frame
+  death_w.spr f15: header bbox mismatch: decoded top=0 right=0 bottom=0 vs A-12=108 B-1=65407 C-13=65403
+  death_w.spr f16: empty frame
+  death_w.spr f16: header bbox mismatch: decoded top=0 right=0 bottom=0 vs A-12=108 B-1=65407 C-13=65403
+  skill.spr f3: header bbox mismatch: decoded top=-73 right=38 bottom=-16 vs A-12=-73 B-1=38 C-13=65520
+  skill.spr f4: header bbox mismatch: decoded top=-78 right=39 bottom=-21 vs A-12=-78 B-1=39 C-13=65515

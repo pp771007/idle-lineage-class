@@ -1192,7 +1192,7 @@ function allyReactCounter(mob, blocked) {
     if (!player.allies || !player.allies.length) return;
     player.allies.forEach(ally => {
         if (!ally || !ally.eq || !ally.eq.wpn) return;
-        if (ally.classicMode) return;   // 🎮 經典模式：傭兵停用反擊
+        if (ally.classicMode && !(ally.buffs && ally.buffs.sk_counter_barrier > 0)) return;   // 🎮 經典模式預設停用反擊；🛡️ 帶「反擊屏障」增益時放行（鏡像玩家 js/03 procCounter）
         if (!mob || mob._dead || mob.curHp <= 0) return;   // 攻擊者已被前一位傭兵反殺則停止
         if (!(getWeaponTags(ally.eq.wpn.id).includes('單手劍') || (ally.buffs && ally.buffs.sk_counter_barrier > 0 && DB.items[ally.eq.wpn.id] && DB.items[ally.eq.wpn.id].w2h))) return;   // 🛡️ v2.6.22 反擊屏障：雙手武器亦可發動反擊（鏡像玩家 js/04:796）
         if (getWeaponTags(ally.eq.wpn.id).includes('武士刀') && !(ally.eq.shield && !_isArmguard(ally.eq.shield))) return;   // 🛡️ 反擊/居合雙標籤武器「無真盾牌(空手或臂甲)」時→走居合、不發動反擊（唯獨裝真盾牌才反擊）
@@ -1212,7 +1212,7 @@ function allyReactIai(mob) {
     if (!player.allies || !player.allies.length) return;
     player.allies.forEach(ally => {
         if (!ally || !ally.eq || !ally.eq.wpn || (ally.eq.shield && !_isArmguard(ally.eq.shield))) return;
-        if (ally.classicMode) return;   // 🎮 經典模式：傭兵停用居合
+        if (ally.classicMode && !(ally.buffs && ally.buffs.sk_counter_barrier > 0)) return;   // 🎮 經典模式預設停用居合；🛡️ 帶「反擊屏障」增益時放行（鏡像玩家 js/03 procIai）
         if (!mob || mob._dead || mob.curHp <= 0) return;
         if (!getWeaponTags(ally.eq.wpn.id).includes('武士刀')) return;
         let _iai = allyHasMastery(ally, 'k_counter');   // 🔧 傭兵反擊精通：居合必定發動、傷害+30%

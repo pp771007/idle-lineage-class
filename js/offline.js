@@ -838,7 +838,7 @@
     if (fastEligible && !fastMode) beginSample(0);
     // ═══ 混合快速結算(宣告結束;主迴圈內 fastMode 分支使用) ═════════════════════
 
-    var done = 0, died = false;
+    var done = 0, died = false, _runErr = null;
 
     // ═══ 💾 分段檢查點 ══════════════════════════════════════════════════════
     // 每 CKPT_MS 真實毫秒把「已結算到的收益」saveGame 固化,並把錨點推進到「closeTs + 已結算拍數」
@@ -987,6 +987,9 @@
         if (_holdStart && (performance.now() - _holdStart) >= HOLD_MS) _abortCatchup = true;
       }
     } catch (e) {
+      // ⚠ 例外＝結算就此中止,收益只算到中斷處(常常是 0 分鐘)。只寫 console 的話手機玩家永遠看不到,
+      //   畫面上只剩一句「離線掛機 0 分鐘」,死因無從查起 → 留到摘要後印在日誌上(結算期間 logSys 靜音,此處印不出來)。
+      _runErr = e;
       console.error('[AFK] 離線補跑發生例外，已中止:', e);
     } finally {
       killTicker();   // 補跑結束(完成/死亡/例外)→ 關掉背景節拍器 Worker,不殘留
@@ -1057,6 +1060,16 @@
     }
     if (climbSegs && climbSegs.length) summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
     else summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap, kingInfo);   // 遺忘之島:用實際結束地圖顯示地圖名;軍王之室:附帶擊敗輪數/鑰匙消耗摘要
+    if (_runErr) {   // 結算中途拋例外 → 把死因印出來(見上方 catch);沒這行的話玩家只看得到「離線掛機 0 分鐘」,完全不知道發生什麼事
+      var _eEsc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+      var _eMsg = _eEsc((_runErr && _runErr.message) ? _runErr.message : _runErr);
+      var _eAt = (_runErr && _runErr.stack) ? _eEsc((_runErr.stack.split('\n')[1] || '').trim()) : '';
+      try {
+        if (typeof logSys === 'function') logSys('<span class="text-red-400 font-bold">⚠ 離線結算中斷：' + _eMsg + '</span>'
+          + (_eAt ? '<br><span style="color:#94a3b8;font-size:.85em;">' + _eAt + '</span>' : '')
+          + '<br><span style="color:#94a3b8;font-size:.85em;">收益只結算到中斷前。請把這段訊息回報給作者。</span>');
+      } catch (e) {}
+    }
     if (_abortCatchup) {   // 玩家長按放棄:標一句「已略過剩餘」(收益只算到放棄當下,剩餘時間不再結算、不會重算)
       var _skipMin = Math.max(0, Math.round((totalTicks - done) * TICK_MS / 60000));
       try { if (typeof logSys === 'function') logSys('<span style="color:#fca5a5;font-weight:bold;">⏭ 已放棄剩餘約 ' + _skipMin + ' 分鐘的離線收益（你提前結束了結算）。</span>'); } catch (e) {}

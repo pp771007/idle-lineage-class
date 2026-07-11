@@ -967,6 +967,9 @@ function _renderPowerSaveRows() {
 }
 function _togglePowerSaveItem(i) { let it = _POWER_SAVE_ITEMS[i]; if (it) it.toggle(); _renderPowerSaveRows(); }
 function closePowerSaveModal() { let m = document.getElementById('powersave-modal'); if (m) m.classList.add('hidden'); }
+// 🔋 立即套用（本檔排在 </body> 前，#btn-powersave 已在 DOM）：偏好不可等 window.onload——onload 要等頁面所有圖載完（慢網路／冷快取數秒起跳），
+//    但「載入遊戲進度」鈕一開始就能按 → 玩家在 onload 前進場的話，那段期間旗標仍是 undefined＝全效果照開，標題鈕也顯示不出已選的省電項目。
+_applyVfxPref();
 
 // ✨ VFX：包裝 castSkill → 對本次「攻擊魔法」施法中掉血的目標各射一發拋射物（用 HP 差比對，與內部實作無關；僅有屬性、非武器/投擲類技能觸發）
 if (typeof castSkill === 'function' && !castSkill._vfxWrapped) {

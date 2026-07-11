@@ -1183,7 +1183,10 @@ function rapidfireProc(arrowData) {
 function _isArmguard(shRef) { return !!(shRef && DB.items[shRef.id] && DB.items[shRef.id].armguard); }
 // ===== 反擊（單手劍）：對攻擊者打一次「必定命中、必定非重擊、傷害 50%」的一般攻擊；只打攻擊者，不轉移 =====
 function procCounter(t) {
-    if (player.classicMode) return;   // 🎮 經典模式：停用反擊
+    // 🎮 經典模式預設停用反擊；🛡️ 例外：帶「反擊屏障」增益時放行。
+    //   否則該技能在經典模式是純陷阱——技能書照樣從怪物掉落(安塔瑞斯/法利昂/死亡騎士/闇黑的騎士范德)、
+    //   學得起來、施放照扣 MP，卻永遠不觸發(它的效果全建立在反擊/居合之上)。全遊戲只有這一個技能中招。
+    if (player.classicMode && !(player.buffs.sk_counter_barrier > 0)) return;
     if (!t || t.curHp <= 0) return;
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     let dice = wpn ? (t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
@@ -1204,7 +1207,7 @@ function procCounter(t) {
 }
 // ===== 居合（武士刀）：對攻擊者打一次「必定命中、可自然重擊/爆擊」的一般攻擊；只打攻擊者 =====
 function procIai(t) {
-    if (player.classicMode) return;   // 🎮 經典模式：停用居合
+    if (player.classicMode && !(player.buffs.sk_counter_barrier > 0)) return;   // 🎮 經典模式預設停用居合；🛡️ 帶「反擊屏障」增益時放行（同 procCounter）
     if (!t || t.curHp <= 0) return;
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     let dice = wpn ? (t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;

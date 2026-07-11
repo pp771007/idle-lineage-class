@@ -807,6 +807,11 @@
          維持原生像素。55px≈徽章/血條/狀態列的高度,與戰鬥框高 max(56.25vw,300px) 那條連動。 */
       'body.m-mobile #battle-view.area-fit .mob-img-inner.mob-anim img{max-height:calc(max(56.25vw,300px) - 55px) !important;max-width:96vw !important;}',
       'body.m-mobile #battle-view:not(.area-fit) .mob-img-inner.mob-anim img{max-height:185px !important;max-width:96vw !important;}',
+      /* 🎭 戰鬥框自成 stacking context:內部 sprite 的 z-index(主角100/傭兵62~88/頭目≤50·見 js/09 疊層)本來會
+         「逃出」#battle-view、跟同層的浮動日誌(#m-log-sheet z50)/彈窗/特效層(#vfx-layer z45)比大小 → 主角(z100)
+         蓋住日誌與特效(使用者回報 2026-07-11)。isolation:isolate 把這些 z 全鎖在框內,整個戰鬥框以單一低層級參與
+         外層堆疊 → 日誌/彈窗/特效一律蓋在戰鬥框之上,框內主角>傭兵>怪物的相對順序不受影響。 */
+      'body.m-mobile #battle-view{isolation:isolate;}',
       /* 🧊 特效層 #vfx-layer 是全螢幕 fixed(z-45,螢幕座標):桌機戰鬥框永遠在畫面上沒事;手機切到隊伍/背包分頁後
          戰鬥畫面隱藏,怪物矩形量不到(r.width===0 → 引擎跳過更新),冰凍貼圖/死亡殘影/傷害數字就凍在原座標
          蓋住介面,要等特效時限到才消失(使用者回報)。手機在「非戰鬥分頁」與「村莊」直接藏整層;display:none

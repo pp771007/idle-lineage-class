@@ -460,7 +460,8 @@ function settleDeadMobs() {
 }
 // 🔧 魔獸軍王之室：擊敗巴蘭卡後的傳送（目的地同「回村/回城」按鈕：攻城獲勝→獲勝城池城堡，否則→上一個待過的安全區·無紀錄回起始村）
 function kbVictoryTeleport() {
-    logSys('<span class="text-amber-300 font-bold">⚔ 你擊敗了軍王！封印之力消散，將你送回了安全之地。</span>');
+    let _kvr = KING_ROOMS[mapState.current];
+    logSys(`<span class="text-amber-300 font-bold">⚔ 你擊敗了${(_kvr && _kvr.dual) ? '神祇' : '軍王'}！封印之力消散，將你送回了安全之地。</span>`);   // 🔑 祭壇(dual)＝神祇、軍王之室＝軍王
     setMapSelectors(siegeVictoryActive() ? victoryCityCfg().castle : getLastTown());   // 🏘️ v3.0.94 與「回村」按鈕一致：回上一個待過的安全區
     changeMap(true);   // force：略過受控狀態檢查與鑰匙消耗
     // 🔧 自軍王之室回城後，將「特殊」分類的記憶位置改為新兵修練場（下次選特殊優先進入，不會自動回到需鑰匙的軍王之室）

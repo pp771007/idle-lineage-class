@@ -372,15 +372,18 @@
     line += parts.length ? parts.join('、') : '（無明顯收益）';
     line += '。';
     try { logSys(line); } catch (e) { console.log('[AFK]', line.replace(/<[^>]+>/g, '')); }
-    // ⚔ 軍王之室:附帶「擊敗輪數 / 消耗鑰匙」;若因鑰匙用完被傳回村,多一行提示
+    // ⚔ 鑰匙房(軍王之室／祭壇):附帶「擊敗輪數 / 消耗鑰匙」;若因鑰匙用完被傳回村,多一行提示。
+    //   房型與鑰匙名走核心 kingRoomLabel/kingRoomKeyName 通用文案(祭壇不是軍王之室、鑰匙也各異)。
+    var _krLabel = (typeof kingRoomLabel === 'function') ? kingRoomLabel(huntMap) : '軍王之室';
+    var _krKey = (typeof kingRoomKeyName === 'function') ? kingRoomKeyName(huntMap) : '軍王的鑰匙';
     if (kingInfo && kingInfo.kills > 0) {
-      var kl = `<span class="text-amber-300">⚔ 軍王之室：本次擊敗軍王 <b>${kingInfo.kills}</b> 輪`
-        + (kingInfo.keysUsed > 0 ? `，消耗 <b>${kingInfo.keysUsed}</b> 把軍王的鑰匙` : ``) + `。</span>`;
+      var kl = `<span class="text-amber-300">⚔ ${_krLabel}：本次擊敗頭目 <b>${kingInfo.kills}</b> 輪`
+        + (kingInfo.keysUsed > 0 ? `，消耗 <b>${kingInfo.keysUsed}</b> 把${_krKey}` : ``) + `。</span>`;
       try { logSys(kl); } catch (e) { console.log('[AFK]', kl.replace(/<[^>]+>/g, '')); }
     }
     if (kingInfo && kingInfo.depleted) {
-      try { logSys('<span class="text-amber-300 font-bold">🔑 軍王的鑰匙已用完，已自動傳回村莊。</span>'); }
-      catch (e) { console.log('[AFK] 軍王的鑰匙已用完，已自動傳回村莊。'); }
+      try { logSys(`<span class="text-amber-300 font-bold">🔑 ${_krKey}已用完，已自動傳回村莊。</span>`); }
+      catch (e) { console.log('[AFK] ' + _krKey + '已用完，已自動傳回村莊。'); }
     }
     // 平均效率(對齊遊戲「本圖效率統計」的 經驗/10分、金幣/10分):用實際補跑時間換算
     var preciseMin = doneTicks * TICK_MS / 60000;

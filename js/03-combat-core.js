@@ -582,6 +582,18 @@ const KING_ROOMS = {
     // 🐍 提卡爾 庫庫爾坎祭壇：雙BOSS（杰弗雷庫雄＋雌），入場與再臨各消耗 1 把提卡爾庫庫爾坎祭壇鑰匙
     tikal_altar:        { dual: true, bosses: ['tikal_boss_m', 'tikal_boss_f'], key: 'item_tikal_altar_key', name: '提卡爾 庫庫爾坎祭壇' }
 };
+// 🔑 KING_ROOMS 通用文案（別再各處寫死「軍王之室／軍王的鑰匙」）：KING_ROOMS 同時含 4 間軍王之室與 2 個祭壇
+//    （底比斯歐西里斯／提卡爾庫庫爾坎），機制相同但名稱不同——祭壇不是軍王之室、鑰匙也各異。凡是要對「鑰匙房」
+//    顯示房型或鑰匙名的地方（離線摘要／紀錄／任何提示），一律走這兩支，才不會把祭壇誤標成軍王之室。
+function kingRoomLabel(mapId) {   // 房型短語：軍王之室 / 祭壇（依 KING_ROOMS[map].name 是否含「祭壇」）
+    var kr = KING_ROOMS[mapId];
+    return (kr && kr.name && kr.name.indexOf('祭壇') >= 0) ? '祭壇' : '軍王之室';
+}
+function kingRoomKeyName(mapId) {   // 進場鑰匙名：4 間軍王之室共用「軍王的鑰匙」(item_king_key)；祭壇用自己的 kr.key
+    var kr = KING_ROOMS[mapId];
+    var keyId = (kr && kr.key) || 'item_king_key';
+    return (typeof DB !== 'undefined' && DB.items && DB.items[keyId]) ? DB.items[keyId].n : '軍王的鑰匙';
+}
 const PURE_BOSS_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room', 'thebes_temple', 'tikal_altar'];
 const BOSS_BIG_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair'];   // 👑 方案B放大版面只套用這3個龍窟(不含底比斯祭壇等其餘純BOSS房)
 

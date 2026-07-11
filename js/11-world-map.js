@@ -1155,7 +1155,7 @@ function changeMap(force) {
         for (let _cat in MAP_CATEGORIES) { let _e = (MAP_CATEGORIES[_cat] || []).find(m => m.v === _tgt); if (_e) { _need = _e.needKey; break; } }
         if (!force && _need && _tgt !== _prev) {
             let _ki = player.inv.findIndex(i => i.id === _need && (i.cnt || 1) >= 1);
-            if (_ki < 0) { syncMapSelectors(); logSys('<span class="text-red-400">沒有 軍王的鑰匙，無法進入。</span>'); return; }
+            if (_ki < 0) { syncMapSelectors(); logSys(`<span class="text-red-400">沒有 ${(DB.items[_need] && DB.items[_need].n) || '鑰匙'}，無法進入。</span>`); return; }   // 🔑 用該地圖實際需要的鑰匙名（祭壇非軍王鑰匙）
             let _kit = player.inv[_ki];
             if ((_kit.cnt || 1) > 1) _kit.cnt -= 1; else player.inv.splice(_ki, 1);
             logSys(`<span class="text-amber-300">你消耗了 1 把 ${DB.items[_need] ? DB.items[_need].n : '鑰匙'}，開啟了大門。</span>`);

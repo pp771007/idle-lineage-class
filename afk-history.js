@@ -109,10 +109,16 @@
     return info ? ('存檔 ' + slot + ' · ' + info.name + '（' + info.cls + ' Lv.' + info.lv + '）') : ('存檔 ' + slot);
   }
 
-  function kindBadge(kind) {
+  function kindBadge(r) {
+    var kind = r.kind;
     if (kind === 'climb') return '<span class="m-hist-badge bg-sky">攀登</span>';
     if (kind === 'oblivion') return '<span class="m-hist-badge bg-teal">遺忘之島</span>';
-    if (kind === 'king') return '<span class="m-hist-badge bg-amber">軍王之室</span>';
+    // 🐍 KING_ROOMS 同時涵蓋「軍王之室」與「祭壇」(底比斯/提卡爾)兩種鑰匙房——offline 一律記 kind='king',
+    //    但祭壇不是軍王之室。地點名(r.map)已含正確字樣(…祭壇 / …軍王之室),直接依它標對的 badge(也修好舊紀錄)。
+    if (kind === 'king') {
+      var label = (r.map && r.map.indexOf('祭壇') >= 0) ? '祭壇' : '軍王之室';
+      return '<span class="m-hist-badge bg-amber">' + label + '</span>';
+    }
     return '';
   }
 
@@ -135,7 +141,7 @@
     if (r.died) html += '<span class="m-hist-flag flag-died">陣亡</span>';
     html += '</div>';
     // 地點(永遠顯示)
-    html += '<div class="m-hist-map">📍 ' + esc(r.map || '?') + ' ' + kindBadge(r.kind) + '</div>';
+    html += '<div class="m-hist-map">📍 ' + esc(r.map || '?') + ' ' + kindBadge(r) + '</div>';
     // 經驗 / 升級 / 金錢(升級跟著「經驗」一起開關)
     var stats = [];
     if (fState.exp && r.exp > 0) stats.push('<span class="m-hist-stat"><span class="lbl">經驗</span> <b class="v-exp">+' + fmtNum(r.exp) + '</b>'

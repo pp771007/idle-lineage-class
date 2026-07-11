@@ -264,6 +264,9 @@ function migrateSaves(){
     let oldS = _lsGet('lineage_idle_save');
     if(oldS && !_lsGet('lineage_idle_save_1')) _lsSet('lineage_idle_save_1', oldS);
 }
+// 載入時立即搬（有才搬、冪等）：不可等 window.onload——onload 要等整頁的圖載完，但「載入遊戲進度」鈕一開始就能按，
+// 老玩家在那之前開選檔清單會看到 16 格全空（舊存檔還沒搬進第 1 格），誤以為存檔不見、甚至在第 1 格重開新角色。
+migrateSaves();
 const SAVE_SLOT_MAX = 16;   // 存檔位總數（選檔清單/anySaveExists/傭兵招募 allySlotList/小百科選角共用；調整格數只改這裡）
 function anySaveExists(){ for(let n = 1; n <= SAVE_SLOT_MAX; n++){ if(_lsGet('lineage_idle_save_' + n)) return true; } return false; }
 function _summaryFromRaw(s){

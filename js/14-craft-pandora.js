@@ -1608,7 +1608,6 @@ function cancelEditName() {
 }
 
 window.onload = () => {
-    migrateSaves();
     if (anySaveExists()) document.getElementById('btn-load').classList.remove('hidden');
     try { if (typeof wireBuffEnders === 'function') wireBuffEnders(); } catch (e) {}   // 🔧 藥水/卷軸維持型增益勾選框：取消打勾即立即結束
 };

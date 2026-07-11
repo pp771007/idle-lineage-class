@@ -500,13 +500,16 @@
       });
     });
   }
-  // 歐西里斯寶箱開出的物品(讀遊戲獎勵池 OSIRIS_BOX_*,作者改池自動跟上);底比斯武器只此來源,否則會誤標「沒有固定取得途徑」
-  var _boxBy = null;   // itemId -> { 初級, 高級 }
+  // 寶箱開出的物品(讀遊戲獎勵池 BOX_LOOT_BY_ID:歐西里斯/庫庫爾坎全寶箱,作者改池自動跟上);底比斯/提卡爾武器只此來源,否則會誤標「沒有固定取得途徑」
+  var _boxBy = null;   // itemId -> { <寶箱全名>: 1 }
   function buildBoxBy() {
     _boxBy = {};
     function add(tbl, label) { if (typeof tbl === 'undefined' || !tbl) return; tbl.forEach(function (e) { var iid = e[0]; if (!iid) return; (_boxBy[iid] = _boxBy[iid] || {})[label] = 1; }); }
-    try { add(OSIRIS_BOX_BASIC, '初級'); } catch (e) {}
-    try { add(OSIRIS_BOX_HIGH, '高級'); } catch (e) {}
+    try {   // 🐍 新結構:BOX_LOOT_BY_ID(寶箱物品 id → loot 表);標籤=寶箱顯示名(上鎖的歐西里斯初級寶箱…)
+      if (typeof BOX_LOOT_BY_ID !== 'undefined') { Object.keys(BOX_LOOT_BY_ID).forEach(function (bid) { var bd = (typeof DB !== 'undefined' && DB.items) ? DB.items[bid] : null; add(BOX_LOOT_BY_ID[bid], (bd && bd.n) || bid); }); return; }
+    } catch (e) {}
+    try { add(OSIRIS_BOX_BASIC, '上鎖的歐西里斯初級寶箱'); } catch (e) {}   // 舊後備:沒有 BOX_LOOT_BY_ID 時仍列歐西里斯兩箱
+    try { add(OSIRIS_BOX_HIGH, '上鎖的歐西里斯高級寶箱'); } catch (e) {}
   }
   function boxTiersOf(id) { if (_boxBy === null) buildBoxBy(); return _boxBy[id] ? Object.keys(_boxBy[id]) : null; }
   // 各種「試煉／兌換設定結構」的成品(讀遊戲全域設定,作者改設定自動跟上)。這些不在 MOB_DROPS/商店/製作,
@@ -551,7 +554,7 @@
     }
     var tiers = boxTiersOf(id);
     if (tiers && tiers.length) {
-      parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎁 寶箱開出</div><div class="m-dex-craft-mats">開「上鎖的歐西里斯寶箱（' + tiers.join('／') + '）」隨機獲得，每開消耗 1 顆 龜裂之核（寶箱由碎片合成；碎片／高級寶箱由底比斯怪掉落）</div></div>');
+      parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎁 寶箱開出</div><div class="m-dex-craft-mats">開「' + tiers.map(esc).join('／') + '」隨機獲得，每開消耗 1 顆 龜裂之核（寶箱由碎片合成；碎片／高級寶箱由對應狩獵區怪物掉落）</div></div>');
     }
     var ts = (exa && exa.short) ? null : trialSourceOf(id);   // 已有手動 note 就不重複;否則補試煉/兌換來源
     if (ts) parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts) + '</div></div>');
@@ -599,7 +602,7 @@
     var exAcq = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
     var tiers = boxTiersOf(id);
     if (exAcq && exAcq.short) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🔑 取得方式</div><div class="m-dex-craft-mats">' + esc(exAcq.short) + '</div></div>';
-    if (tiers && tiers.length) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎁 寶箱開出</div><div class="m-dex-craft-mats">開「上鎖的歐西里斯寶箱（' + tiers.join('／') + '）」隨機獲得（每開消耗 1 顆 龜裂之核）</div></div>';
+    if (tiers && tiers.length) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎁 寶箱開出</div><div class="m-dex-craft-mats">開「' + tiers.map(esc).join('／') + '」隨機獲得（每開消耗 1 顆 龜裂之核）</div></div>';
     var ts2 = (exAcq && exAcq.short) ? null : trialSourceOf(id);
     if (ts2) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts2) + '</div></div>';
     if (!(exAcq && exAcq.short) && !(tiers && tiers.length) && !ts2 && !hasFixedSource(id)) acq += '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">取得方式：目前沒有固定取得途徑</div></div>';

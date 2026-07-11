@@ -1,0 +1,9 @@
+canvas 461x415, lattice origin at (265,368)
+  attack: 12 frames, palette truecolor, blocks 2607, header-bbox self-check ALL OK
+  attack_s: 12 frames, palette truecolor, blocks 739, header-bbox self-check ALL OK
+  death: 15 frames, palette truecolor, blocks 3122, header-bbox self-check ALL OK
+  death_s: 19 frames, palette truecolor, blocks 878, header-bbox self-check ALL OK
+  idle: 14 frames, palette truecolor, blocks 2652, header-bbox self-check ALL OK
+  idle_s: 14 frames, palette truecolor, blocks 670, header-bbox self-check ALL OK
+  skill: 13 frames, palette truecolor, blocks 2748, header-bbox self-check ALL OK
+  skill_s: 13 frames, palette truecolor, blocks 815, header-bbox self-check ALL OK

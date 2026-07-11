@@ -939,6 +939,7 @@ function aggroVictimPool(allies) {
 }
 // 🤝 Phase 3：怪物一般攻擊的「受害者選擇」——玩家與每名非倒地傭兵各依 mercAggroWeight 加權隨機（不分玩家/傭兵）；魔法/狀態攻擊不在此（仍只打玩家）。
 function enemyAttackChooseVictim(mob, idx) {
+    try { if (typeof playMobAttack === 'function') playMobAttack(mob); } catch (e) {}   // 🔊 怪物一般攻擊音（每次普攻動作一次·不分打玩家/傭兵·查無對應則靜音·函式內 _sfxAudible 含 state.ff 守衛）
     if (player.dead) { enemyPhysicalAttack(mob, idx); return; }   // 玩家已死：照舊（enemyPhysicalAttack 內部即 return）
     let allies = (player.allies || []).filter(a => a && !a._downed && (a.curHp || 0) > 0);
     if (!allies.length && !_hasAggroHide(player)) { enemyPhysicalAttack(mob, idx); return; }   // 無傭兵且玩家未裝孵育巢：照舊打玩家（快速路徑）
@@ -1079,6 +1080,8 @@ function killPlayer() {
 function castMobMagic(mob, sk) {
     if (!sk) return;
     if (mob && mob.curHp > 0 && typeof _mobAnimTrigger === 'function') _mobAnimTrigger(mob, 'skill');   // 🎞️ 序列幀：技能動作（🔒 鎖定·強制放完·播放中的新觸發被忽略）
+    if (mob && mob.curHp > 0) { try { if (typeof playMobSkill === 'function') playMobSkill(mob); } catch (e) {} }   // 🔊 怪物技能(施法)音（查 MOB_SKILL_SFX·查無/缺檔靜音·函式內 _sfxAudible 含 state.ff 守衛）
+    if (mob && mob.curHp > 0 && mob.n === '死亡騎士') { try { if (typeof vfxCastShake === 'function') vfxCastShake(); } catch (e) {} }   // ✨ 死亡騎士施法→整個戰場震動（cosmetic·吃 _vfxOff()＝省電+state.ff）
     let redirectable = !!sk.dmg || ['stone', 'paralyze', 'silence', 'magicseal', 'freeze', 'scald', 'stun', 'slowatk', 'poison', 'burn', 'frost_breath'].includes(sk.type);   // ❄️ v3.1.54 寒冰吐息(frost_breath)納入可轉向→'寒冰吐息' 已在 MOB_PARTY_AOE_SKILLS→全體(玩家+傭兵)驅散增益＋緩速
     if (!redirectable) { applyMobMagic(mob, sk); return; }
     let allies = (player.allies || []).filter(a => a && !a._downed && (a.curHp || 0) > 0);

@@ -384,8 +384,8 @@
         .tri-glow { animation: triGlow 2.4s infinite linear; }
 
         /* ===== ✨ 戰鬥特效層 VFX（純視覺，不影響任何遊戲數值/邏輯） ===== */
-        #vfx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 45; overflow: hidden; }
-        /* 🔧 v3.1.48 修：收藏面板用的 Tailwind 任意值 class `z-[46]` 未被預編譯 tailwind-built.css 收錄(z-[45] 有)→computed z:auto→掉進與戰鬥 sprite 同一 stacking context,被玩家/傭兵 sprite(z:2~30)蓋過。ID 選擇器明確給值。 */
+        #vfx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 35; overflow: hidden; }   /* 🎚️ v3.0.73 掛在 #app-stage 內(見 js/09 _vfxLayer)：z-index 35＝高於戰鬥內容(怪/站位/狀態列 z≤30)、低於所有開啟式 UI(收集冊45/收藏46/物品modal50/浮動裝備70/浮動倉庫72)→死亡殘影等狩獵動畫不再蓋到這些介面·無 UI 時仍正常疊在背景/怪之上 */
+        /* 🔧 v3.1.48 修：收藏面板 #collection-panel 用的 Tailwind 任意值 class `z-[46]` 未被預編譯靜態 CSS 收錄(z-[45] 有→四本收集冊正常)→computed z:auto→掉到與戰鬥 sprite 同一 #app-stage stacking context 且被其 positive z(玩家 sprite z:2、怪 z:1~5)蓋過→面板與背景模糊都被角色/怪物動態壓在下面。改用 ID 選擇器明確給 z-index(特異性勝過任何 class)，確保收藏面板(含 backdrop-blur)蓋在所有戰鬥動態之上。 */
         #collection-panel { z-index: 46; }
         .vfx-dmg { position: absolute; transform: translate(-50%,-50%); font-weight: 900; font-family: 'Arial Black','Segoe UI',system-ui,sans-serif; white-space: nowrap; letter-spacing: .5px; will-change: transform,opacity; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 7px rgba(0,0,0,.55); animation: vfxFloat .85s ease-out forwards; }
         .vfx-dmg.vfx-crit { animation: vfxCrit 1.05s cubic-bezier(.18,.85,.25,1) forwards; -webkit-text-stroke: 1px rgba(0,0,0,.45); }
@@ -403,6 +403,7 @@
             100% { opacity: 0; transform: translate(-50%,-235%) scale(1); }
         }
         .vfx-particle { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); will-change: transform,opacity; }
+        .vfx-blood { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); will-change: transform,opacity; pointer-events: none; }   /* 🩸 命中濺血小血滴：小顆、不上發光陰影→不搶眼 */
         /* ✨ 怪物死亡：衝擊波環 + 白閃殘影（vfxKill 以 element.animate 驅動·邊框色/尺寸由 JS 內聯指定） */
         .vfx-killring { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); border: 4px solid #ff8a5c; pointer-events: none; will-change: transform,opacity; }
         .vfx-ghost { position: absolute; transform: translate(-50%,-50%); object-fit: contain; pointer-events: none; will-change: transform,opacity,filter; }

@@ -9,9 +9,17 @@ const _VFX_PROJECTILE_SKILLS = { sk_lightarrow:'magic', sk_disintegrate:'magic',
 const _PM_ATTACK_SKILLS = { sk_dragon_slaughter: true, sk_elf_triple: true, sk_warrior_throwaxe: true, sk_shock_stun: true };   // 玩家端：以技能 id 判斷·次數讀 DB.skills[id].hits
 const _PM_ATTACK_SKILL_NAMES = { '屠宰者': 3, '三重矢': 3, '戰斧投擲': 1, '衝擊之暈': 1 };   // 傭兵端：以技能名判斷(js/06 傳 sk.n)·值=連擊次數(1＝單次揮擊·不進 burst)
 function _vfxLayer() {
+    // 🎚️ v3.0.73 vfx 圖層改掛進 #app-stage（與 item-modal/收集冊/浮動裝備視窗/浮動倉庫 同一 stacking context）→ 其 z-index(35) 才排得進這些 UI(z45~72)之下；先前掛 document.body(root context)時 z-index:45 正值恆蓋在 #app-stage(position:fixed→自成 stacking context·z-auto)之上，使死亡殘影蓋掉所有 UI。#app-stage 為 position:fixed 且無 transform/filter→其 position:fixed 子層仍以「視窗」為容器塊(getBoundingClientRect 螢幕座標定位不變)。
+    let host = document.getElementById('app-stage') || document.body;
     let l = document.getElementById('vfx-layer');
-    if (!l) { l = document.createElement('div'); l.id = 'vfx-layer'; document.body.appendChild(l); }
+    if (!l) { l = document.createElement('div'); l.id = 'vfx-layer'; host.appendChild(l); }
+    else if (l.parentElement !== host) host.appendChild(l);   // 舊狀態若曾掛 body→搬進 app-stage
     return l;
+}
+function _vfxClearAll() {   // 🎚️ v3.0.73 換地圖/回城即清空狩獵區殘留特效（死亡殘影 vfx-ghost／法術 vfx-spell／冰凍／怪技能特效）→上一張地圖尚在播放的死亡動畫不會殘留、蓋到村莊或新地圖介面。冰凍/怪技能追蹤 dict 一併清鍵避免孤兒元素。
+    try { let l = document.getElementById('vfx-layer'); if (l) while (l.firstChild) l.removeChild(l.firstChild); } catch (e) {}
+    try { if (typeof _freezeFx !== 'undefined' && _freezeFx) for (let k in _freezeFx) delete _freezeFx[k]; } catch (e) {}
+    try { if (typeof _mobSkillFx !== 'undefined' && _mobSkillFx) for (let k in _mobSkillFx) delete _mobSkillFx[k]; } catch (e) {}
 }
 // 🚫 特效總閘：玩家設定(window.__vfxOff / __vfxNumOff，標題畫面切換、存 localStorage) || 快轉中(state.ff)。
 //    離線/背景補跑逐拍跑完 24h≈86 萬拍，跳傷害數字/粒子既洗畫面又白吃效能 → 一律視為關閉。
@@ -31,37 +39,47 @@ function _vfxNumOff() { return window.__vfxNumOff || state.ff; }
 const SPELL_FX_REF_MSCALE_K = 1.095 / 112;   // proj: mScale = r.height × 此（帶高112→1.095·與妖魔鬥士當前一致）
 const SPELL_FX_REF_W_K = 105 / 112;          // w驅動: 基準寬 = r.height × 此（帶高112→105）
 const SPELL_FX = {
-    '極道落雷': { dir: '極道落雷', prefix: 'fx',    n: 6,  fps: 14, blend: 'screen', h: 2.0, ax: 0.60, ay: 0.98 },   // gfx10 lightning：加亮發光·頂天劈下(高度驅動)
-    '地裂術':   { dir: '地裂術',   prefix: '129-1', n: 10, fps: 14, w: 0.85, ax: 0.50, ay: 0.82, targetVc: 0.92, shadowPrefix: '129-1_s' },   // gfx129 earthquake：不透明岩石(無 blend)＋地面裂痕影子層·寬度驅動(寬≈怪寬×0.85)·erupt 自腳底
-    '極光雷電': { dir: '極光雷電', prefix: '170-1', n: 6,  fps: 14, blend: 'screen', proj: true, nw: 122, nh: 255, projScale: 0.5, ax: 0.50, ay: 0.50 },   // v3.0.20 gfx170：改「由玩家朝向怪物發射的雷電光束」(飛行投射物·原生122×255×怪物縮放×0.5·加亮)·取代原頂天劈下柱
-    '火箭':     { dir: '火箭',     prefix: '171-1', n: 5,  fps: 12, blend: 'screen', proj: true, nw: 43, nh: 49, ax: 0.50, ay: 0.50 },   // gfx171 fireball：飛行投射物(取代丟出的火球)·原生尺寸×怪物顯示縮放(對等大小)·加亮
-    '冰箭':     { dir: '冰箭',     prefix: '167-1', n: 4,  fps: 12, blend: 'screen', proj: true, nw: 32, nh: 40, ax: 0.50, ay: 0.50 },   // gfx167 energy bolt：飛行投射物·原生尺寸×怪物縮放·加亮
-    '光箭':     { dir: '冰箭',     prefix: '167-1', n: 4,  fps: 12, blend: 'screen', proj: true, nw: 32, nh: 40, ax: 0.50, ay: 0.50 },   // gfx167 energy bolt：光箭與冰箭同 spr(167 也作用於光箭)→複用已部署 167 幀·飛行投射物·原生尺寸×怪物縮放
-    // 🔮 v2.7.39 攻擊/減益型法術特效批次(13 支·來源 spr彙整/fx/·單檔 --luma-alpha 去黑邊·screen 加亮·觸發免寫=js/07 castSkillInner 逐目標迴圈通用·名字對上技能 n 自動播)：
-    '冰矛圍籬':   { dir: '冰矛圍籬',   prefix: '1809-2', n: 3,  fps: 10, blend: 'screen', proj: true, nw: 70, nh: 48, ax: 0.50, ay: 0.50 },   // v3.0.4 飛行投射物·原生70×48×怪物縮放(對等大小)
-    '冰錐':       { dir: '冰錐',       prefix: '1797-1', n: 4,  fps: 12, blend: 'screen', proj: true, nw: 15, nh: 21, ax: 0.50, ay: 0.50 },   // v3.0.4 飛行投射物·原生15×21×怪物縮放(對等大小)
-    '冰雪暴':     { dir: '冰雪暴',     prefix: '757-0', n: 23, fps: 16, blend: 'screen', h: 1.35, ax: 0.50, ay: 0.55 },   // gfx757 blizzard·大範圍冰暴蓋身
-    '寒冷戰慄':   { dir: '寒冷戰慄',   prefix: '236-1', n: 6,  fps: 12, blend: 'screen', h: 1.00, ax: 0.50, ay: 0.55 },   // gfx236·寒氣直立
-    '毒咒':       { dir: '毒咒',       prefix: '745-0', n: 8,  fps: 12, blend: 'screen', h: 0.80, ax: 0.50, ay: 0.55 },   // gfx745 poison·綠毒霧
-    '流星雨':     { dir: '流星雨',     prefix: '762-0', n: 20, fps: 16, blend: 'screen', h: 1.90, ax: 0.50, ay: 0.88 },   // gfx762 meteor·天降(高柱·錨近底=衝擊點)
-    '烈炎術':     { dir: '烈炎術',     prefix: '1811-0', n: 19, fps: 16, blend: 'screen', h: 1.20, ax: 0.50, ay: 0.55 },   // v2.7.41 換 gfx1811(原764)·317×240
-    '燃燒的火球': { dir: '燃燒的火球', prefix: '1669-1', n: 6, fps: 12, blend: 'screen', h: 1.00, ax: 0.50, ay: 0.55 },   // gfx1669 fireball·火球衝擊
-    '龍捲風':     { dir: '龍捲風',     prefix: '758-0', n: 20, fps: 16, blend: 'screen', h: 1.50, ax: 0.50, ay: 0.82, targetVc: 0.90 },   // gfx758 tornado·自腳底捲起(錨近腳底)
-    '吸血鬼之吻': { dir: '吸血鬼之吻', prefix: '235-1', n: 6, fps: 12, blend: 'screen', h: 1.00, ax: 0.50, ay: 0.55 },   // gfx235·紅色吸血
-    '魔法封印':   { dir: '魔法封印',   prefix: '761-0', n: 10, fps: 14, blend: 'screen', h: 1.00, ax: 0.50, ay: 0.55 },   // gfx761 seal(vacuum/沉默)·寬幅符陣
-    '緩速術':     { dir: '緩速術',     prefix: '752-0', n: 8,  fps: 12, blend: 'screen', h: 0.85, ax: 0.50, ay: 0.55 },   // gfx752 slow·藍色減速
-    '起死回生術': { dir: '起死回生術', prefix: '754-0', n: 21, fps: 16, blend: 'screen', h: 1.30, ax: 0.50, ay: 0.55 },   // gfx754·對不死系 instakill·聖光
-    // 🔮 v2.7.41 新增攻擊/proc 型法術特效(來源 spr彙整/fx·單檔 --luma-alpha·screen·觸發免寫=castSkillInner + 武器proc 逐目標通用)：
-    '地獄之牙':   { dir: '地獄之牙',   prefix: '1801-0', n: 9,  fps: 14, blend: 'screen', h: 0.70, ax: 0.50, ay: 0.55 },   // gfx1801·橫向獠牙(101×44 寬)
-    '寒冰氣息':   { dir: '寒冰氣息',   prefix: '1804-0', n: 21, fps: 16, blend: 'screen', h: 1.20, ax: 0.50, ay: 0.55 },   // gfx1804·冰霜吐息 198×153
-    '岩牢':       { dir: '岩牢',       prefix: '1805-0', n: 17, fps: 14, blend: 'screen', h: 1.20, ax: 0.50, ay: 0.55 },   // gfx1805·岩石囚牢包身 85×72
-    '火風暴':     { dir: '火風暴',     prefix: '1819-0', n: 14, fps: 14, blend: 'screen', h: 1.30, ax: 0.50, ay: 0.55 },   // gfx1819·火焰風暴 149×165
-    '風刃':       { dir: '風刃',       prefix: '1799-0', n: 5,  fps: 12, blend: 'screen', proj: true, nw: 36, nh: 26, ax: 0.50, ay: 0.50 },   // gfx1799·飛行投射物(風刃 36×26)·原生尺寸×怪物縮放·加亮
-    '黑闇之影':   { dir: '黑闇之影',   prefix: '1803-0', n: 9,  fps: 14, blend: 'screen', h: 1.00, ax: 0.50, ay: 0.55 },   // gfx1803·暗影 67×53
-    // 🎇 v2.7.41 多層同步特效(cfg.layers=額外前綴·3 spr 同畫布 --multi 同時播·screen 疊亮)：
-    '究極光裂術': { dir: '究極光裂術', prefix: '1815-0', layers: ['1816-0', '1817-0'], n: 21, fps: 16, blend: 'screen', h: 1.90, ax: 0.50, ay: 0.85 },   // sk_integrate tier10·天降聖光 395×568(3層)
-    '震裂術':     { dir: '震裂術',     prefix: '1812-0', layers: ['1813-0', '1814-0'], n: 16, fps: 16, blend: 'screen', h: 1.25, ax: 0.50, ay: 0.60 },   // spellProc earth aoe·地震裂 278×188(3層)
-    // 🔮 v2.7.44 屬性變體特效(cfg.byEle·依目標怪 mob.e 選幀組)：能量感測(sk_energy_sense manual·js/07 sense 分支掛點)→火/水/地/風 各 8 幀·目標無屬性不播
+    '光箭': { dir:'光箭', dirPrefix:'167-', dirs:4, n:4, fps:12, blend:'screen', proj:true, nw:32, nh:40, ax:0.50, ay:0.50 },
+    '冰矛圍籬': { dir:'冰矛圍籬', dirPrefix:'756-', dirs:8, n:4, fps:12, blend:'screen', proj:true, nw:49, nh:44, ax:0.50, ay:0.50 },
+    '冰箭': { dir:'冰箭', dirPrefix:'1797-', dirs:8, n:4, fps:12, blend:'screen', proj:true, nw:15, nh:21, ax:0.50, ay:0.50 },
+    '冰錐': { dir:'冰錐', dirPrefix:'1809-', dirs:8, n:3, fps:12, blend:'screen', proj:true, nw:35, nh:59, ax:0.50, ay:0.50 },
+    '冰雪暴': { dir:'冰雪暴', prefix:'757-0', n:23, fps:16, blend:'screen', h:1.35, ax:0.50, ay:0.55 },
+    '吸血鬼之吻': { dir:'吸血鬼之吻', dirPrefix:'236-', dirs:8, n:6, fps:12, blend:'screen', proj:true, nw:63, nh:96, ax:0.50, ay:0.50 },
+    '呼喚盟友': { dir:'呼喚盟友', prefix:'2281-0', n:7, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '地獄之牙': { dir:'地獄之牙', prefix:'1801-0', n:9, fps:14, blend:'screen', h:0.7, ax:0.50, ay:0.55 },
+    '地裂術': { dir:'地裂術', prefix:'129-1', n:10, fps:14, w:0.85, ax:0.50, ay:0.82, targetVc:0.92 },
+    '地面障礙': { dir:'地面障礙', prefix:'2250-0', n:13, fps:14, blend:'screen', w:0.9, ax:0.50, ay:0.82, targetVc:0.9 },
+    '壞物術': { dir:'壞物術', prefix:'172-0', n:15, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '寒冰氣息': { dir:'寒冰氣息', prefix:'1804-0', n:21, fps:16, blend:'screen', h:1.2, ax:0.50, ay:0.55 },
+    '寒冷戰慄': { dir:'寒冷戰慄', dirPrefix:'252-', dirs:8, n:6, fps:12, blend:'screen', proj:true, nw:63, nh:96, ax:0.50, ay:0.50 },
+    '封印禁地': { dir:'封印禁地', prefix:'2241-0', n:13, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '岩牢': { dir:'岩牢', prefix:'1805-0', n:17, fps:14, blend:'screen', h:1.2, ax:0.50, ay:0.55 },
+    '弱化術': { dir:'弱化術', prefix:'2228-0', n:9, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '會心一擊': { dir:'會心一擊', prefix:'2952-0', n:16, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '木乃伊的詛咒': { dir:'木乃伊的詛咒', prefix:'746-0', n:8, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '極光雷電': { dir:'極光雷電', dirPrefix:'170-', dirs:8, n:6, fps:12, blend:'screen', proj:true, nw:122, nh:255, projScale:0.5, ax:0.50, ay:0.50 },
+    '極道落雷': { dir:'極道落雷', prefix:'10-0', n:6, fps:14, blend:'screen', h:2, ax:0.50, ay:0.98 },
+    '毒咒': { dir:'毒咒', prefix:'745-0', n:8, fps:14, blend:'screen', h:0.8, ax:0.50, ay:0.55 },
+    '沉睡之霧': { dir:'沉睡之霧', prefix:'760-0', n:21, fps:16, blend:'screen', h:0.9, ax:0.50, ay:0.55 },
+    '流星雨': { dir:'流星雨', prefix:'762-0', n:20, fps:16, blend:'screen', h:1.9, ax:0.50, ay:0.88 },
+    '火箭': { dir:'火箭', dirPrefix:'1583-', dirs:4, n:4, fps:12, blend:'screen', proj:true, nw:31, nh:40, ax:0.50, ay:0.50 },
+    '火風暴': { dir:'火風暴', prefix:'1819-0', n:14, fps:14, blend:'screen', h:1.3, ax:0.50, ay:0.55 },
+    '烈炎術': { dir:'烈炎術', prefix:'1811-0', n:19, fps:16, blend:'screen', h:1.2, ax:0.50, ay:0.55 },
+    '燃燒的火球': { dir:'燃燒的火球', dirPrefix:'171-', dirs:8, n:5, fps:12, blend:'screen', proj:true, nw:43, nh:49, ax:0.50, ay:0.50 },
+    '疾病術': { dir:'疾病術', prefix:'2230-0', n:11, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '究極光裂術': { dir:'究極光裂術', prefix:'1815-0', layers:['1816-0', '1817-0'], n:21, fps:16, blend:'screen', h:1.9, ax:0.50, ay:0.85 },
+    '緩速術': { dir:'緩速術', prefix:'752-0', n:8, fps:14, blend:'screen', h:0.85, ax:0.50, ay:0.55 },
+    '衝擊之暈': { dir:'衝擊之暈', prefix:'4434-0', n:6, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '起死回生術': { dir:'起死回生術', prefix:'754-0', n:21, fps:16, blend:'screen', h:1.3, ax:0.50, ay:0.55 },
+    '迷魅術': { dir:'迷魅術', prefix:'228-0', n:7, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '闇盲咒術': { dir:'闇盲咒術', prefix:'746-0', n:8, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '雷霆風暴': { dir:'雷霆風暴', prefix:'3924-0', n:13, fps:14, blend:'screen', h:1.3, ax:0.50, ay:0.55 },
+    '震裂術': { dir:'震裂術', prefix:'1812-0', n:16, fps:14, blend:'screen', h:1.25, ax:0.50, ay:0.6 },
+    '風刃': { dir:'風刃', prefix:'1799-0', n:5, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '魔法封印': { dir:'魔法封印', prefix:'2177-0', n:17, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '魔法消除': { dir:'魔法消除', prefix:'2181-0', n:19, fps:16, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '黑闇之影': { dir:'黑闇之影', prefix:'2175-0', n:8, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    // 🔮 保留：能量感測(byEle 屬性變體·手動 sense 掛點)
     '能量感測':   { dir: '能量感測',   n: 8, fps: 12, blend: 'screen', h: 0.85, ax: 0.50, ay: 0.55,
                     byEle: { fire: { prefix: '火' }, water: { prefix: '水' }, earth: { prefix: '地' }, wind: { prefix: '風' } } },
 };
@@ -74,6 +92,14 @@ function _preloadFxFrames(dir, prefix, n) {
     for (let i = 0; i < n; i++) { let im = new Image(); im.src = 'assets/fx/' + encodeURIComponent(dir) + '/' + prefix + '_' + i + '.png'; arr.push(im); }
     _spellFxCache[key] = arr;
     return arr;
+}
+// 🎯 方向型投射物選向：天堂 spr 方向索引（順時針·1=N 2=NE 3=E 4=SE 5=S 6=SW 7=W 0=NW）。
+//   base＝依「施法者→目標」角度算出的 45°分格（0=正上·順時針）。回 { idx=要用的 spr 方向索引, flip=水平鏡射 }。
+//   8向：全原生（idx=(base+1)%8）。4向：僅存 N/NE/E（idx 1/2/3）·左側(NW/W)用鏡射；投射物恆朝上→下半球(SE/S/SW)不會發生。
+function _pickFxDir(dirs, base) {
+    if (dirs >= 8) return { idx: (base + 1) % 8, flip: false };
+    let T = { 0: { idx: 1, flip: false }, 1: { idx: 2, flip: false }, 2: { idx: 3, flip: false }, 3: { idx: 3, flip: false }, 4: { idx: 1, flip: false }, 5: { idx: 3, flip: true }, 6: { idx: 3, flip: true }, 7: { idx: 2, flip: true } };
+    return T[base] || { idx: 1, flip: false };
 }
 // 🧊 v2.7.46 死亡特效(death_effect) registry＋預載：怪名→{n幀, ew/eh 特效畫布尺寸, anchored:{ox,oy,bw,bh}}。frames 在 assets/anim/<怪名>/death_effect_N.png(隨本體部署·非 fx 夾)。死亡時(vfxKill)獨立時間軸疊播(可比 body death 長)。
 const MOB_ANIM_DEATH_FX = {
@@ -109,7 +135,18 @@ function playSpellFx(skn, mob) {
         let _anc = _mobImgAnchor(_mobImg);
         let _vc = (cfg.targetVc != null) ? cfg.targetVc : _anc.vc;   // 🌋 地面型特效可指定較低錨點(近腳底)
         let ax = r.left + r.width * _anc.hc, ay = r.top + r.height * _vc;   // 打擊點螢幕座標
-        let frames = _preloadFxFrames(cfg.dir, cfg.prefix, cfg.n);
+        // 🎯 方向型投射物：依「施法者(玩家 sprite 胸口／戰鬥區底部中央)→目標打擊點」角度選對應方向 spr（8向原生·4向左側鏡射）
+        let _effPrefix = cfg.prefix, _flipX = false;
+        if (cfg.proj && cfg.dirs && cfg.dirPrefix) {
+            let _bv0 = document.getElementById('battle-view'); let _br0 = _bv0 && _bv0.getBoundingClientRect();
+            let _pr0 = (typeof _pmCasterRect === 'function') ? _pmCasterRect() : null;
+            let _ox0 = _pr0 ? (_pr0.left + _pr0.width * 0.5) : (_br0 ? (_br0.left + _br0.width * 0.5) : ax);
+            let _oy0 = _pr0 ? (_pr0.top + _pr0.height * 0.35) : (_br0 ? (_br0.top + _br0.height * 0.98) : (ay + 120));
+            let _deg = (Math.atan2(ax - _ox0, -(ay - _oy0)) * 180 / Math.PI + 360) % 360;   // 0=正上·順時針
+            let _sel = _pickFxDir(cfg.dirs, Math.round(_deg / 45) % 8);
+            _effPrefix = cfg.dirPrefix + _sel.idx; _flipX = _sel.flip;
+        }
+        let frames = _preloadFxFrames(cfg.dir, _effPrefix, cfg.n);
         let shadowFrames = cfg.shadowPrefix ? _preloadFxFrames(cfg.dir, cfg.shadowPrefix, cfg.n) : null;
         let first = frames[0];
         let _arFallback = !(first.naturalWidth && first.naturalHeight);   // 🩹 v2.7.41 首播未解碼→ar 退 0.93→解碼後 interval 重算一次(修高瘦特效如究極光裂術 395×568 首播被 0.93 撐寬)
@@ -149,6 +186,7 @@ function playSpellFx(skn, mob) {
             let oy = pr ? (pr.top + pr.height * 0.35) : (br ? (br.top + br.height * 0.98) : (ay + (fxH || 40) * 3));  // 施法者垂直＝sprite 胸口·退回戰鬥區底部(玩家視角)
             let axf = (cfg.ax != null ? cfg.ax : 0.5), ayf = (cfg.ay != null ? cfg.ay : 0.5);   // 投射物錨點(哪一點沿路徑走)
             let el = mkImg(first.src, null, cfg.blend);
+            if (_flipX) el.style.transform = 'scaleX(-1)';   // 🎯 4向左側：水平鏡射（NW←NE鏡射·W←E鏡射）
             el.style.left = (ox - fxW * axf) + 'px'; el.style.top = (oy - fxH * ayf) + 'px';   // 立即置於起點(避免首幀閃在終點)
             _spellFxActive[fxKey] = true;
             let dist = Math.hypot(ax - ox, ay - oy);
@@ -190,25 +228,79 @@ function playSpellFx(skn, mob) {
 // 🙏 v2.7.48 自我增益特效（SELF_FX）：治癒/武器附魔/防禦/屏障等 type buff/heal 技能施放時，於 #battle-view 中央疊播（v3.0.49：玩家變身 sprite 顯示中→改錨定 sprite 身上·否則以戰鬥區為「施法者」錨點）。
 //   掛點＝js/07 castSkill 施放成功且 isSupportSkill(sk)→playSelfFx(sk.n)（未註冊者靜默略過）。cfg：{dir,prefix,n,fps,blend,h=高為戰鬥區高倍數,cx/cy=戰鬥區內錨點比例(預設 0.5/0.62 略偏下=玩家視角)}。
 const SELF_FX = {
-    // 治癒（744 三階同 spr→中/高複用初級 dir·全部治癒術獨立 2173）
-    '初級治癒術':   { dir: '初級治癒術', prefix: '744-0', n: 21, fps: 16, blend: 'screen', h: 0.42 },
-    '中級治癒術':   { dir: '初級治癒術', prefix: '744-0', n: 21, fps: 16, blend: 'screen', h: 0.50 },
-    '高級治癒術':   { dir: '初級治癒術', prefix: '744-0', n: 21, fps: 16, blend: 'screen', h: 0.58 },
-    '全部治癒術':   { dir: '全部治癒術', prefix: '2173-0', n: 17, fps: 16, blend: 'screen', h: 0.62 },
-    // 武器附魔
-    '神聖武器':     { dir: '神聖武器',   prefix: '2165-0', n: 13, fps: 14, blend: 'screen', h: 0.45 },
-    '祝福魔法武器': { dir: '祝福魔法武器', prefix: '2176-0', n: 17, fps: 16, blend: 'screen', h: 0.60 },
-    '火炎武器':     { dir: '火炎武器',   prefix: '2182-0', n: 11, fps: 14, blend: 'screen', h: 0.50 },
-    '擬似魔法武器': { dir: '擬似魔法武器', prefix: '747-0', n: 19, fps: 16, blend: 'screen', h: 0.48 },
-    // 防禦/屏障/強化
-    '屬性防禦':     { dir: '屬性防禦',   prefix: '2184-0', n: 13, fps: 14, blend: 'screen', h: 0.45 },
-    '魔法屏障':     { dir: '魔法屏障',   prefix: '2174-0', n: 15, fps: 14, blend: 'screen', h: 0.55 },
-    '鎧甲護持':     { dir: '鎧甲護持',   prefix: '748-0', n: 20, fps: 16, blend: 'screen', h: 0.48 },
-    '負重強化':     { dir: '負重強化',   prefix: '2170-0', n: 13, fps: 14, blend: 'screen', h: 0.48 },
-    '體魄強健術':   { dir: '體魄強健術', prefix: '750-0', n: 11, fps: 14, blend: 'screen', h: 0.58 },
-    '通暢氣脈術':   { dir: '通暢氣脈術', prefix: '751-0', n: 11, fps: 14, blend: 'screen', h: 0.58 },
-    '加速術':       { dir: '加速術',     prefix: '755-0', n: 6,  fps: 12, blend: 'screen', h: 0.42 },
-    '傳送術':       { dir: '傳送術',     prefix: '169-0', n: 7,  fps: 14, blend: 'screen', h: 0.85, cy: 0.55 },   // 🌀 v2.7.54 高瘦傳送光柱(97×330)·手動施放於 manualCast teleport 分支掛
+    '中級治癒術': { dir:'中級治癒術', prefix:'744-0', n:21, fps:16, blend:'screen', h:0.5 },
+    '保護罩': { dir:'保護罩', prefix:'221-0', n:5, fps:14, blend:'screen', h:0.50, overHead:true },
+    '全部治癒術': { dir:'全部治癒術', prefix:'744-0', n:21, fps:16, blend:'screen', h:0.62 },
+    '冥想術': { dir:'冥想術', prefix:'2173-0', n:17, fps:14, blend:'screen', h:0.50, overHead:true },
+    '冰雪颶風': { dir:'冰雪颶風', prefix:'3933-0', n:31, fps:14, blend:'screen', h:0.50, overHead:true },
+    '初級治癒術': { dir:'初級治癒術', prefix:'744-0', n:21, fps:16, blend:'screen', h:0.42 },
+    '力量提升': { dir:'力量提升', prefix:'3909-0', n:18, fps:14, blend:'screen', h:0.50, overHead:true },
+    '加速術': { dir:'加速術', prefix:'755-0', n:6, fps:14, blend:'screen', h:0.50, overHead:true },
+    '反擊屏障': { dir:'反擊屏障', prefix:'5832-0', n:17, fps:14, blend:'screen', h:0.50, overHead:true },
+    '單屬性防禦': { dir:'單屬性防禦', prefix:'2285-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '堅固防護': { dir:'堅固防護', prefix:'5831-0', n:14, fps:14, blend:'screen', h:0.50, overHead:true },
+    '增幅防禦': { dir:'增幅防禦', prefix:'4824-0', n:19, fps:14, blend:'screen', h:0.50, overHead:true },
+    '大地屏障': { dir:'大地屏障', prefix:'2251-0', n:21, fps:14, blend:'screen', h:0.50, overHead:true },
+    '大地的祝福': { dir:'大地的祝福', prefix:'2287-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '大地防護': { dir:'大地防護', prefix:'2249-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '尖刺盔甲': { dir:'尖刺盔甲', prefix:'4648-0', n:22, fps:14, blend:'screen', h:0.50, overHead:true },
+    '屬性之火': { dir:'屬性之火', prefix:'4402-0', n:17, fps:14, blend:'screen', h:0.50, overHead:true },
+    '屬性防禦': { dir:'屬性防禦', prefix:'2184-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '強力加速術': { dir:'強力加速術', prefix:'3104-0', n:6, fps:14, blend:'screen', h:0.50, overHead:true },
+    '影之防護': { dir:'影之防護', prefix:'2943-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '心靈轉換': { dir:'心靈轉換', prefix:'2179-0', n:19, fps:14, blend:'screen', h:0.50, overHead:true },
+    '擬似魔法武器': { dir:'擬似魔法武器', prefix:'747-0', n:19, fps:14, blend:'screen', h:0.50, overHead:true },
+    '敏捷提升': { dir:'敏捷提升', prefix:'3910-0', n:18, fps:14, blend:'screen', h:0.50, overHead:true },
+    '暗影之牙': { dir:'暗影之牙', prefix:'2951-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '暗影閃避': { dir:'暗影閃避', prefix:'2950-0', n:15, fps:14, blend:'screen', h:0.50, overHead:true },
+    '暗隱術': { dir:'暗隱術', prefix:'2944-0', n:9, fps:14, blend:'screen', h:0.50, overHead:true },
+    '暴風之眼': { dir:'暴風之眼', prefix:'2288-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '暴風神射': { dir:'暴風神射', prefix:'2248-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '毒性抵抗': { dir:'毒性抵抗', prefix:'2948-0', n:11, fps:14, blend:'screen', h:0.50, overHead:true },
+    '水之元氣': { dir:'水之元氣', prefix:'4401-0', n:21, fps:14, blend:'screen', h:0.50, overHead:true },
+    '淨化精神': { dir:'淨化精神', prefix:'2180-0', n:11, fps:14, blend:'screen', h:0.50, overHead:true },
+    '火焰武器': { dir:'火焰武器', prefix:'2182-0', n:11, fps:14, blend:'screen', h:0.50, overHead:true },
+    '火牢': { dir:'火牢', prefix:'168-0', n:11, fps:14, blend:'screen', h:0.50, overHead:true },
+    '烈炎武器': { dir:'烈炎武器', prefix:'2242-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '烈焰之魂': { dir:'烈焰之魂', prefix:'5833-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '無所遁形術': { dir:'無所遁形術', prefix:'749-0', n:23, fps:14, blend:'screen', h:0.50, overHead:true },
+    '燃燒鬥志': { dir:'燃燒鬥志', prefix:'2946-0', n:9, fps:14, blend:'screen', h:0.50, overHead:true },
+    '狂暴術': { dir:'狂暴術', prefix:'3943-0', n:27, fps:14, blend:'screen', h:0.50, overHead:true },
+    '生命之泉': { dir:'生命之泉', prefix:'2243-0', n:16, fps:16, blend:'screen', h:0.5 },
+    '生命的祝福': { dir:'生命的祝福', prefix:'2244-0', n:16, fps:16, blend:'screen', h:0.5 },
+    '祝福魔法武器': { dir:'祝福魔法武器', prefix:'2176-0', n:17, fps:14, blend:'screen', h:0.50, overHead:true },
+    '神聖武器': { dir:'神聖武器', prefix:'2165-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '神聖疾走': { dir:'神聖疾走', prefix:'3936-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '精準射擊': { dir:'精準射擊', prefix:'5826-0', n:12, fps:14, blend:'screen', h:0.50, overHead:true },
+    '精準目標': { dir:'精準目標', prefix:'1765-0', n:31, fps:14, blend:'screen', h:0.50, overHead:true },
+    '絕對屏障': { dir:'絕對屏障', prefix:'2234-0', n:31, fps:14, blend:'screen', h:0.50, overHead:true },
+    '聖潔之光': { dir:'聖潔之光', prefix:'227-0', n:7, fps:16, blend:'screen', h:0.5 },
+    '聖結界': { dir:'聖結界', prefix:'228-0', n:7, fps:14, blend:'screen', h:0.50, overHead:true },
+    '能量激發': { dir:'能量激發', prefix:'5825-0', n:16, fps:14, blend:'screen', h:0.50, overHead:true },
+    '行走加速': { dir:'行走加速', prefix:'2945-0', n:6, fps:14, blend:'screen', h:0.50, overHead:true },
+    '負重強化': { dir:'負重強化', prefix:'2170-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '返生術': { dir:'返生術', prefix:'3944-0', n:24, fps:14, blend:'screen', h:0.55 },
+    '通暢氣脈術': { dir:'通暢氣脈術', prefix:'750-0', n:11, fps:14, blend:'screen', h:0.50, overHead:true },
+    '造屍術': { dir:'造屍術', prefix:'226-0', n:7, fps:14, blend:'screen', h:0.50, overHead:true },
+    '鋼鐵防護': { dir:'鋼鐵防護', prefix:'2252-0', n:15, fps:14, blend:'screen', h:0.50, overHead:true },
+    '鎧甲護持': { dir:'鎧甲護持', prefix:'748-0', n:20, fps:14, blend:'screen', h:0.50, overHead:true },
+    '鏡反射': { dir:'鏡反射', prefix:'4395-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '附加劇毒': { dir:'附加劇毒', prefix:'2942-0', n:9, fps:14, blend:'screen', h:0.50, overHead:true },
+    '雙重破壞': { dir:'雙重破壞', prefix:'2949-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '靈魂昇華': { dir:'靈魂昇華', prefix:'3935-0', n:19, fps:14, blend:'screen', h:0.50, overHead:true },
+    '風之疾走': { dir:'風之疾走', prefix:'2247-0', n:14, fps:14, blend:'screen', h:0.50, overHead:true },
+    '風之神射': { dir:'風之神射', prefix:'2246-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    '體力回復術': { dir:'體力回復術', prefix:'759-0', n:10, fps:16, blend:'screen', h:0.5 },
+    '體能激發': { dir:'體能激發', prefix:'4400-0', n:16, fps:14, blend:'screen', h:0.50, overHead:true },
+    '體魄強健術': { dir:'體魄強健術', prefix:'751-0', n:11, fps:14, blend:'screen', h:0.50, overHead:true },
+    '高級治癒術': { dir:'高級治癒術', prefix:'744-0', n:21, fps:16, blend:'screen', h:0.58 },
+    '魂體轉換': { dir:'魂體轉換', prefix:'2178-0', n:19, fps:14, blend:'screen', h:0.50, overHead:true },
+    '魔力奪取': { dir:'魔力奪取', prefix:'2171-0', n:9, fps:14, blend:'screen', h:0.50, overHead:true },
+    '魔法屏障': { dir:'魔法屏障', prefix:'2174-0', n:15, fps:14, blend:'screen', h:0.50, overHead:true },
+    '魔法相消術': { dir:'魔法相消術', prefix:'870-0', n:1, fps:16, blend:'screen', h:0.5 },
+    '魔法防禦': { dir:'魔法防禦', prefix:'2186-0', n:13, fps:14, blend:'screen', h:0.50, overHead:true },
+    // 🌀 保留：傳送術(手動 teleport 掛點·高瘦光柱)
+    '傳送術':       { dir: '傳送術',     prefix: '169-0', n: 7,  fps: 14, blend: 'screen', h: 0.85, cy: 0.55 },
 };
 let _selfFxActive = {};   // 技能名 → true：同增益同時只保留一個
 function playSelfFx(skn, anchorRect) {   // 🩹 v3.0.95 第2參 anchorRect（選用）：顯式錨點 rect（傭兵治癒疊在被治癒者 sprite 身上）·未傳→原邏輯（玩家 sprite→戰鬥區中央）
@@ -439,8 +531,8 @@ function _vfxFlush() {
             let cx = it.cx, cy = it.top + it.h * 0.45;
             // 🩸 傷害數字＝玩家最在意的資訊、單一輕量文字節點→放寬上限至 200，使快速/多段攻擊(龍騎士、AoE、傭兵/召喚同時打)也穩定顯示，不再整批被略過
             if (layer.childElementCount < 200) _vfxNumber(cx + (Math.random() * 26 - 13), it.top + it.h * 0.40, it.p.dmg, it.p.ele, it.p.big);
-            // ✨ 命中衝擊環＋屬性火花＝較重(blur/box-shadow/多節點)→維持原防洪上限 80；場上特效過多時只略過「粒子」、傷害數字照常顯示
-            if (!_vfxOff() && layer.childElementCount < 80) _vfxImpact(cx, cy, it.p.ele, it.p.big);   // 🎚️ v3.0.9 命中衝擊環/火花＝純特效→僅特效開時顯示（傷害數字已獨立於上方）
+            // ⛔ v3.0.104 取消「白光打擊特效」（命中衝擊環 _vfxImpact + 火花）：改由命中濺血當唯一命中回饋（_vfxImpact 函式保留為死碼·如需恢復把此行改回呼叫即可）
+            if (!_vfxOff() && layer.childElementCount < 150) _vfxBlood(cx, cy, it.p.big);   // 🩸 v3.0.103 命中濺血（小顆·無殘留）：純特效·輕量小 div 故上限放寬至 150
         }
     }
     _vfxPending = [];
@@ -489,6 +581,32 @@ function _vfxImpact(cx, cy, ele, big) {
               { transform: 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(.2)', opacity: 0 } ],
             { duration: 300 + Math.random() * 220, easing: 'cubic-bezier(.2,.7,.3,1)' }
         ).onfinish = () => sp.remove();
+    }
+}
+// 🩸 v3.0.103 命中濺血：命中點噴數顆小紅血滴（帶重力弧線→淡出·無殘留貼花·怪物不變色）。爆擊/重擊噴更多。純裝飾·吃 _vfxOff()。顆粒小、不上 box-shadow 保持不搶眼。
+const _VFX_BLOOD_COLORS = ['#7f1d1d', '#991b1b', '#b91c1c', '#dc2626', '#ef4444'];
+function _vfxBlood(cx, cy, big) {
+    let layer = _vfxLayer();
+    let n = big ? (8 + (Math.random() * 5 | 0)) : (4 + (Math.random() * 3 | 0));   // 爆擊/重擊 8~12·一般 4~6（不用太多）
+    for (let i = 0; i < n; i++) {
+        let sp = document.createElement('div'); sp.className = 'vfx-blood';
+        let sz = 1.3 + Math.random() * (big ? 2.1 : 1.4);   // 小顆粒：一般 1.3~2.7·爆擊 1.3~3.4
+        sp.style.width = sz + 'px'; sp.style.height = sz + 'px';
+        sp.style.left = cx + 'px'; sp.style.top = cy + 'px';
+        sp.style.background = _VFX_BLOOD_COLORS[(Math.random() * _VFX_BLOOD_COLORS.length) | 0];
+        layer.appendChild(sp);
+        let ang = Math.PI * 2 * Math.random();
+        let dist = (big ? 22 : 14) + Math.random() * (big ? 22 : 15);
+        let dx = Math.cos(ang) * dist;
+        let up = Math.sin(ang) * dist * 0.55 - (5 + Math.random() * 9);       // 初期向外略偏上
+        let fall = 16 + Math.random() * (big ? 30 : 20);                       // 末段重力下墜
+        sp.animate(
+            [ { transform: 'translate(-50%,-50%) scale(1)', opacity: 0.9 },
+              { transform: 'translate(calc(-50% + ' + (dx * 0.7).toFixed(1) + 'px), calc(-50% + ' + up.toFixed(1) + 'px)) scale(1)', opacity: 0.85, offset: 0.4 },
+              { transform: 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + (up + fall).toFixed(1) + 'px)) scale(.45)', opacity: 0 } ],
+            { duration: 360 + Math.random() * 240, easing: 'cubic-bezier(.3,.5,.5,1)' }
+        ).onfinish = () => sp.remove();
+        setTimeout(() => { if (sp.parentNode) sp.remove(); }, 680);
     }
 }
 // 🎯 v2.6.45 怪物圖「視覺中心」偵測：怪物 PNG 多為方形畫布、實體繪於下方(腳貼底·上方透明)→死亡爆裂/傷害數字若錨在方框幾何中心(0.45~0.5)會浮在怪物「上方」。
@@ -770,6 +888,14 @@ function vfxPlayerHit(dmg) {
         if (bar) { bar.classList.remove('vfx-hurt'); void bar.offsetWidth; bar.classList.add('vfx-hurt'); bar.addEventListener('animationend', () => bar.classList.remove('vfx-hurt'), { once: true }); }
     } catch (e) {}
 }
+// 🗡️ 怪物施法震動（死亡騎士施法時整個戰場輕微震動·cosmetic-only·吃 _vfxOff()＝含省電/state.ff·重用 vfx-shake 動畫）
+function vfxCastShake() {
+    try {
+        if (_vfxOff()) return;
+        let bv = document.getElementById('battle-view');
+        if (bv) { bv.classList.remove('vfx-shake'); void bv.offsetWidth; bv.classList.add('vfx-shake'); bv.addEventListener('animationend', () => bv.classList.remove('vfx-shake'), { once: true }); }
+    } catch (e) {}
+}
 
 // 🔋 省電模式（僅標題畫面提供；遊戲中不再出現）：一顆「省電模式」鈕開 Modal，內含四個獨立顯示開關，
 //    各自持久化於 localStorage、載入時套用到對應全域旗標。全部都是純顯示層，收益/戰鬥結果不受影響。
@@ -848,6 +974,7 @@ if (typeof castSkill === 'function' && !castSkill._vfxWrapped) {
     castSkill = function (skId) {
         let sk = DB.skills[skId];
         let _pele = (sk && sk.ele && sk.ele !== 'none' && !sk.weaponDmg && !sk.throwAxe) ? sk.ele : (sk ? _VFX_PROJECTILE_SKILLS[skId] : null);   // 屬性攻擊魔法 ＋ 白名單投射技能(光箭/究極光裂/心靈破壞/三重矢/戰斧投擲)
+        if (_pele && sk && typeof SPELL_FX !== 'undefined' && SPELL_FX[sk.n]) _pele = null;   // 🎯 v3.1.29 有「動態圖投射物」(proj·光箭/冰箭/火箭)→免 CSS 投射；v3.1.31 放寬＝技能只要有註冊任何 SPELL_FX 動態特效（含目標身上型 h/w）就不播 CSS 投射·只有「完全沒有動態特效」的技能保留 CSS 投射視覺
         let proj = !_vfxOff() && !!_pele;
         let before = null;
         if (proj) { before = mapState.mobs.map(m => (m && !m._dead) ? { uid: m.uid, hp: m.curHp, rect: _vfxSlotRect(m.uid) } : null); }

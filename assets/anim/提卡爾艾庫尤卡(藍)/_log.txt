@@ -1,0 +1,9 @@
+canvas 66x50, lattice origin at (-1,41)
+  attack: 5 frames, palette truecolor, blocks 31, header-bbox self-check ALL OK
+  attack_s: 5 frames, palette truecolor, blocks 22, header-bbox self-check ALL OK
+  death: 10 frames, palette truecolor, blocks 82, header-bbox self-check ALL OK
+  death_s: 10 frames, palette truecolor, blocks 69, header-bbox self-check ALL OK
+  hurt: 2 frames, palette truecolor, blocks 13, header-bbox self-check ALL OK
+  hurt_s: 2 frames, palette truecolor, blocks 8, header-bbox self-check ALL OK
+  idle: 13 frames, palette truecolor, blocks 81, header-bbox self-check ALL OK
+  idle_s: 13 frames, palette truecolor, blocks 58, header-bbox self-check ALL OK

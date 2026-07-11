@@ -336,8 +336,7 @@ function renderWarehouseNPC(div){
         ? `<div data-tip-uid="${it.uid}" data-tip-src="inv" class="tip-host w-full text-left py-1.5 px-2 text-sm bg-slate-900/60 border border-slate-700 rounded opacity-50 cursor-not-allowed">${getItemFullName(it)} <span class="text-xs text-red-400">（不可存）</span></div>`
         : mkBtn(it, 'whDeposit')).join('') : '<div class="text-slate-500 text-sm text-center py-4">此分類背包沒有物品</div>';
     let whHtml  = _whItems.length ? _whItems.map(it => mkBtn(it, 'whWithdraw')).join('') : '<div class="text-slate-500 text-sm text-center py-4">此分類倉庫是空的</div>';
-    let _oi = document.getElementById('wh-inv-list'), _os = document.getElementById('wh-store-list');
-    let _whInvScroll = _oi ? _oi.scrollTop : 0, _whStoreScroll = _os ? _os.scrollTop : 0, _divScroll = div.scrollTop;
+    let _aDiv = _whScrollAnchor(div), _aInv = _whScrollAnchor(document.getElementById('wh-inv-list')), _aStore = _whScrollAnchor(document.getElementById('wh-store-list'));
     div.innerHTML = `
     <div class="flex flex-col gap-3 p-1">
         <div class="wh-help text-slate-300 text-sm leading-relaxed">將物品或金幣存入倉庫，<b class="text-amber-300">四個存檔角色共用</b>。點背包物品＝存入；點倉庫物品＝取出（依下方<b class="text-amber-300">數量</b>欄取出／存入；留空＝整疊全部）。已裝備或鎖定中的物品無法存入（需先解鎖）。</div>
@@ -375,9 +374,39 @@ function renderWarehouseNPC(div){
             </div>
         </div>
     </div>`;
-    div.scrollTop = _divScroll;
-    let _ni = document.getElementById('wh-inv-list'); if(_ni) _ni.scrollTop = _whInvScroll;
-    let _ns = document.getElementById('wh-store-list'); if(_ns) _ns.scrollTop = _whStoreScroll;
+    _whScrollRestore(document.getElementById('wh-inv-list'), _aInv);
+    _whScrollRestore(document.getElementById('wh-store-list'), _aStore);
+    _whScrollRestore(div, _aDiv);
+}
+// 🔒 倉庫重繪的捲動錨定：把「捲動視窗頂端那個物品」釘回原本的位置，而不是死記 scrollTop。
+//   死記 scrollTop 不夠：存入/取出會讓清單少一項（內容變短），且 Chrome 在 innerHTML 重建、
+//   節點被移除時會自行做一次 scroll anchoring 調整 → 兩者疊加，玩家每存一個畫面就往上跳一截
+//   （手機尤其明顯：afk-mobile 取消了兩個清單的內層捲動、整個面板交給外層單一捲動，位移被放大）。
+//   同 js/01 _trimLog 的教訓：要「依重繪後的實際位置絕對對位」，這樣不管瀏覽器有沒有自己補都落在同一處。
+//   ⚠ 錨點必須連「它在哪一側清單」一起記：存入/取出只是把物品從背包清單搬到倉庫清單（uid 不變、元素沒消失），
+//     手機兩側是上下堆疊、相隔數百 px，若拿這顆當錨會把它釘回原位 → 反而爆跳一大截（實測 scrollTop +496）。
+function _whSide(e) { let p = e && e.closest('#wh-inv-list,#wh-store-list'); return p ? p.id : ''; }
+function _whScrollAnchor(sc) {
+    if (!sc) return null;
+    let top = sc.getBoundingClientRect().top, items = [];
+    sc.querySelectorAll('[data-tip-uid]').forEach(e => {
+        if (items.length >= 8) return;
+        let d = e.getBoundingClientRect().top - top;
+        if (d >= 0) items.push({ uid: e.getAttribute('data-tip-uid'), d: d, side: _whSide(e) });   // 只收視窗頂端以下的（頂端第一個就是錨）
+    });
+    return { scrollTop: sc.scrollTop, items: items };
+}
+function _whScrollRestore(sc, a) {
+    if (!sc || !a) return;
+    sc.scrollTop = a.scrollTop;                       // 粗還原：錨點全被搬走時的保底
+    if (!a.items.length) return;
+    let top = sc.getBoundingClientRect().top;
+    for (let it of a.items) {                         // 取第一個「重繪後仍在原側」的錨點（剛被存入/取出的那顆換邊了 → 跳過）
+        let e = sc.querySelector(`[data-tip-uid="${it.uid}"]`);
+        if (!e || _whSide(e) !== it.side) continue;
+        sc.scrollTop += (e.getBoundingClientRect().top - top) - it.d;   // 依實際渲染位置一次對位（冪等）
+        return;
+    }
 }
 // ===== 🐾 包武：寵物保管（項圈保管，最多 8 個；存於 player.petStorage，與其他存檔角色不共通）=====
 //  ・回憶蠟燭(resetStatsCandle)只清背包項圈、不碰 petStorage（兩者天生分離，無需改 useCandle）。

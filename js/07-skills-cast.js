@@ -854,9 +854,17 @@ function autoActions() {
         }
     }
 
+    // 🔮 召喚技只維持「一個」：setupSummon 只留單一召喚物，會把其他召喚 buff 歸零 → 同時勾選兩個召喚技(造屍術/召喚術/屬性精靈)會每 tick 互相重召、MP 被榨乾。
+    //    故先選出首選召喚技（分階召喚術 > 強力屬性精靈 > 其餘已學且已勾選者），其餘召喚技一律不自動施放（優先序比照傭兵端 allyMaintainBuffs）。
+    let _autoOn = (sid) => { let c = document.getElementById(`auto-sk-${sid}`); return !!(c && c.checked && player.skills.includes(sid)); };
+    let _prefSummon = ['sk_summon', 'sk_elf_summon2'].find(_autoOn)
+        || player.skills.find(s => { let d = DB.skills[s]; return d && d.type === 'buff' && d.summon && _autoOn(s); })
+        || null;
+
     if((player.d.loadTier||0) < 2) player.skills.forEach(sid => {
         let sk = DB.skills[sid];
         if(sk.type === 'buff') {
+            if(sk.summon && sid !== _prefSummon) return;   // 🔮 非首選的召喚技：不自動施放（避免互相清除 buff 造成無限重召）
             if(sk.haste && (player.buffs.haste > 0 || player._equipHaste)) return;  // 已有加速來源（含裝備常駐），不重複施放
             // 💨 v3.0.94 強力加速術優先：加速術/強力加速術同時勾選→只施放強力加速術（加速術讓位；原本加速術先施放後 buffs.haste>0 會永遠擋住強力加速術→其 buff 鍵不存在、狀態圖示也不顯示）
             if(sid === 'sk_haste_spell') { let _g = document.getElementById('auto-sk-sk_greater_haste'); if (_g && _g.checked && player.skills.includes('sk_greater_haste')) return; }

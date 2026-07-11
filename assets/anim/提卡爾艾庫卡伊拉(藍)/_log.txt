@@ -1,0 +1,14 @@
+canvas 203x113, lattice origin at (43,84)
+  attack: 8 frames, palette truecolor, blocks 149, header-bbox self-check ALL OK
+  attack_s: 8 frames, palette truecolor, blocks 99, header-bbox self-check ALL OK
+  death: 12 frames, palette truecolor, blocks 253, header-bbox self-check ALL OK
+  death_s: 12 frames, palette truecolor, blocks 128, header-bbox self-check ALL OK
+  hurt: 2 frames, palette truecolor, blocks 44, header-bbox self-check ALL OK
+  hurt_s: 2 frames, palette truecolor, blocks 23, header-bbox self-check ALL OK
+  idle: 12 frames, palette truecolor, blocks 206, header-bbox self-check ALL OK
+  idle_s: 12 frames, palette truecolor, blocks 92, header-bbox self-check ALL OK
+  skill: 7 frames, palette truecolor, blocks 121, header-bbox self-check MISMATCH
+  skill_s: 7 frames, palette truecolor, blocks 95, header-bbox self-check ALL OK
+warnings (2):
+  skill.spr f1: header bbox mismatch: decoded top=-68 right=95 bottom=-14 vs A-12=-68 B-1=95 C-13=65522
+  skill.spr f2: header bbox mismatch: decoded top=-67 right=106 bottom=-15 vs A-12=-67 B-1=106 C-13=65521

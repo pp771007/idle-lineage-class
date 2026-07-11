@@ -14,10 +14,10 @@ disable-model-invocation: true
    - `git status` + `git log origin/main..HEAD --oneline`(還沒 push 的 commit)
    - `git diff origin/main..HEAD --name-only` 抓出「動到的 `afk-*.js`」清單。
 
-2. **bump 改動外掛的 `?v=`**
-   - 對每支「有改動、但 index.html 裡 `?v=` 沒跟著變」的 `afk-*.js`，把 index.html 中對應 `<script src="afk-xxx.js?v=...">` 的版本號 bump 成「今天日期+流水字母」(如 `20260629a`→`20260629b`；同一支當天再改就往下一個字母)。
-   - 改到 `js/*.js`(遊戲碼直改)同理更新該檔引用的 `?v=`(慣例=內容 sha1 前 10 碼，`sha1sum js/<檔> | cut -c1-10`)。
-   - 沒改到的檔不要動它的 `?v=`。
+2. **bump 改動的 `?v=`**
+   - **`js/*.js` 與 `css/*.css`：跑 `node scripts/stamp-code-versions.mjs`**(自動把 `?v=` 對齊「內容 sha1 前 10 碼」，不必手動算、也不會漏)。
+     🚨 **這步絕不可省**：`?v=` 沒 bump ⇒ URL 沒變 ⇒ 玩家的瀏覽器/SW 繼續用舊快取，而同頁其他有 bump 的檔卻是新的 ⇒ **新舊混搭**。2026-07-11 踩過：遺物移植同時改了 `js/04`(新增 `equipSkillDmgMult`)與 `js/07`(呼叫它)、兩個 `?v=` 都沒 bump → 先快取過舊 `js/04`、之後才抓 `js/07` 的玩家拿到「新 07 + 舊 04」→ 一施放技能就 `Can't find variable: equipSkillDmgMult`，離線結算整段中斷、收益歸零。**看玩家何時快取而定，故低機率、無法重現，極難查**。
+   - `afk-*.js`(外掛，`?v=` 用日期流水號、不是內容 hash)：對每支「有改動、但 index.html 裡 `?v=` 沒跟著變」的，bump 成「今天日期+流水字母」(如 `20260629a`→`20260629b`；同一支當天再改就往下一個字母)。
    - 改到 `assets/`、`public/assets/` 的圖 → 跑 `node scripts/gen-manifests.mjs` 重產對帳清單一起 commit。
 
 3. **重算 sw.js 版本**(PWA 偵測更新靠這個)
@@ -31,6 +31,10 @@ disable-model-invocation: true
 5. **衝突標記把關**(rebase 沒解乾淨會壞整頁)
    - `grep -nE "^<<<<<<<|^=======|^>>>>>>>" index.html sw.js afk-*.js` 必須為空。
    - 順手確認每支外掛在 index.html 只出現一次 `<script>`(沒有重複)。
+
+6. **最後把關:`?v=` 全對得上**
+   - `node scripts/stamp-code-versions.mjs --check` → 必須 exit 0(「所有 js/css 的 `?v=` 都與內容一致」)。
+   - 紅了代表步驟 2 漏跑或有人手改過 → 跑一次不帶 `--check` 的版本修好再 push。
 
 6. **回報結果**
    - 全綠：列出「bump 了哪幾支、sw 版本、smoke 通過」，告訴使用者可以 `git add -A && git commit && git push` 了(或直接幫忙 commit/push)。

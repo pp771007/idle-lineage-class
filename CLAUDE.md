@@ -219,7 +219,21 @@
    - 新增外掛時,**務必同時**加上對應的 `<script>` 行;**有 DOM 掛點的**再加進 `scripts/smoke-hooks.mjs` 的 `need`(像 `afk-sw.js` 這種純註冊、無 DOM 掛點的就不必),否則功能不會生效、或掛點壞了沒人擋。
    - **⚠️ 改「外掛 init 觸發條件」(尤其只在特定裝置/尺寸才執行的)→ 想清楚 smoke 那輪驗不驗得到它。踩過(2026-07-01):`afk-mobile` 改成「桌機零接觸」(只有手機尺寸/裝置才 `init` 並印 `[AFK-mobile] hooks OK`)後,smoke 是用桌機視窗跑的 → afk-mobile 永遠印不出 hooks OK → 假性失效。修法:smoke 對「只在手機才 init 的外掛」用 `devices['iPhone 13']` 開第二輪 context 專驗(`needMobileOnly=['[AFK-mobile]']`),桌機那輪不列入。判準:任何「掛點只在某條件下才建立」的外掛,smoke 必須在該條件下(手機模擬/特定狀態)驗它,否則就是假性失效。**
 2. **smoke 沒有任何自動排程在跑(自動同步已停),一律 push 前本機跑**:`node scripts/smoke-hooks.mjs` → exit 0 才推(`/prepush` 內含)。紅了代表某外掛 hook 失效,回報是哪支。
-3. **改了任何外掛 JS → 一定要 bump `?v=` 版本號**(GitHub Pages / 瀏覽器會死命快取 JS;只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS)。版本號規則:日期 + 當天流水字母(如 `20260613a` → `20260613b`)。**沒 bump 的話使用者載到的還是舊外掛,debug 會鬼打牆**(踩過一整輪才發現)。改 `js/*.js` 同理要更新該檔 `?v=`(慣例=內容 sha1 前 10 碼)。
+3. **改了任何外掛 JS → 一定要 bump `?v=` 版本號**(GitHub Pages / 瀏覽器會死命快取 JS;只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS)。版本號規則:日期 + 當天流水字母(如 `20260613a` → `20260613b`)。**沒 bump 的話使用者載到的還是舊外掛,debug 會鬼打牆**(踩過一整輪才發現)。
+
+   ### 🚨🚨 `js/*.js` 與 `css/*.css` 的 `?v=` 一律用 `node scripts/stamp-code-versions.mjs` 自動對齊,不要靠手動記得(2026-07-11 踩過,害玩家離線收益歸零)
+
+   **漏 bump 不只是「載到舊檔」,而是「新舊混搭」——後果比想像嚴重、症狀完全不像快取問題。**
+
+   踩過的實例:「移植遺物系統」那個 commit 同時改了 `js/04`(新增 `equipSkillDmgMult()`)與 `js/07`(呼叫它),**兩個 `?v=` 都沒 bump**(當時 04 的 `?v=` 停在 7/05、07 停在 7/09)。URL 沒變 ⇒ 玩家載到哪一版,**全看他哪一天第一次抓到那個檔**:
+   - 兩個檔都是舊快取 → 沒事(舊 07 不會呼叫)
+   - **`js/07` 是新抓的、`js/04` 早就躺在快取裡 → 新 07 呼叫舊 04 裡還不存在的函式 → `ReferenceError: Can't find variable: equipSkillDmgMult`**
+
+   而這個例外正好炸在離線結算的迴圈裡 → 被 `catch` 吞掉 → 玩家只看到「🌙 離線掛機 0 分鐘（無明顯收益）」,**整晚收益歸零**。因為取決於每個玩家的快取時序,所以**低機率、無法重現、log 什麼都看不到**,查了非常久。
+
+   - **判準:凡動過 `js/*.js` / `css/*.css`,push 前一律跑 `node scripts/stamp-code-versions.mjs`**(自動把 `?v=` 對齊內容 sha1 前 10 碼),再用 `--check` 確認 exit 0。`/prepush` 已內含這兩步。
+   - **絕不可只 bump「自己這次有印象改到」的那幾支**——大型移植/合併常一次動十幾個檔,人一定會漏。腳本掃全部,沒有例外。
+   - 同理:跨檔案的「新函式 + 新呼叫」拆在不同檔時,兩邊的 `?v=` 必須同時更新,否則就是製造上面那顆地雷。
    - **改完任何程式檔,push 前再跑一次 `node scripts/stamp-sw-version.mjs`**(從 repo 根目錄)——重算 `sw.js` 的 `CODE_VERSION`,PWA 才偵測得到更新。漏跑的話「已安裝的 app」不會跳更新。
    - **新增/更換/刪除 `assets/`、`public/assets/` 的圖 → 跑 `node scripts/gen-manifests.mjs`** 重產對帳清單並一起 commit(否則 PWA 玩家卡舊圖/離線 404)。
 4. 確認沒有把 `.scratch/`、`node_modules/` 等暫存物混進 commit(見下)。

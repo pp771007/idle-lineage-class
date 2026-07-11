@@ -350,6 +350,9 @@ var TOWN_BGM_LIST = [
 var BGM_TRACKS = { title: 'title', create: 'create', town: 'town', battle: 'battle', boss: 'boss' };
 TOWN_BGM_LIST.forEach(function (id) { BGM_TRACKS[id] = id; });   // 各專屬城鎮：scene=id、檔=assets/bgm/<id>.<ext>
 var _TOWN_BGM = {}; TOWN_BGM_LIST.forEach(function (id) { _TOWN_BGM[id] = 1; });
+// 🐍 狩獵區專屬 BGM（地圖 id → 曲目檔名·assets/bgm/<檔>.<ext>）：提卡爾蛇神降世 3 圖。優先於通用 battle/boss，故祭壇(純頭目房)也放自己的曲。
+var HUNT_BGM = { 'tikal_area': 'music122', 'tikal_deep': 'music123', 'tikal_altar': 'music125' };
+Object.keys(HUNT_BGM).forEach(function (id) { BGM_TRACKS[HUNT_BGM[id]] = HUNT_BGM[id]; });   // 註冊曲目 scene=檔名，_bgmInit 會預解析 URL
 var _bgmUrl = {}, _bgmEls = [null, null], _bgmActive = -1, _bgmScene = null, _bgmFadeTimer = null, _bgmInited = false;
 
 function _bgmLoadCfg() {
@@ -383,6 +386,7 @@ function _bgmDetectScene() {
     if (typeof player === 'undefined' || !player || !player.cls) return _bgmIsCreateScreen() ? 'create' : 'title';   // 未建角：創角畫面→create、否則標題
     var cur = (typeof mapState !== 'undefined' && mapState) ? mapState.current : '';
     if (cur && cur.indexOf('town_') === 0) return _TOWN_BGM[cur] ? cur : 'town';   // 專屬城鎮→自己的曲；其餘安全區→共通 town
+    if (cur && HUNT_BGM[cur]) return HUNT_BGM[cur];   // 🐍 狩獵區專屬 BGM（提卡爾 3 圖）→優先於通用 battle/boss（祭壇即使頭目戰也放 music125）
     if (typeof mapState !== 'undefined' && mapState && mapState.mobs && mapState.mobs.some(function (m) { return m && m.boss && m.curHp > 0; })) return 'boss';
     return 'battle';
 }

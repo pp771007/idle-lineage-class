@@ -25,11 +25,7 @@
   // ----- 可調參數 ---------------------------------------------------------
   var CAP_HOURS        = 24;                      // 離線收益上限(小時)
   var CAP_MS           = CAP_HOURS * 3600 * 1000;
-  var HEARTBEAT_MS     = 5 * 1000;              // 活著時多久蓋一次時間戳（只在分頁可見時；見心跳）
-  // 🌙 回到前景時，離開超過這麼久就直接跑離線結算。
-  //   主迴圈 gameLoop 單次補跑上限是 MAX_CATCHUP_MS(5 分鐘)，更久的時間會被它直接丟掉；
-  //   而離線結算原本只在 loadGame 時觸發，頁面沒被系統殺掉就不會重載＝不會結算 → 手機切背景掛機整段收益蒸發。
-  var FG_CATCHUP_MIN_MS = 5 * 60 * 1000;
+  var HEARTBEAT_MS     = 5 * 1000;              // 活著時多久蓋一次時間戳
   var CKPT_MS          = 5 * 1000;              // 💾 結算檢查點間隔(真實毫秒):每滿就把已結算收益 saveGame＋錨點推進到已結算時點;結算被中斷最多丟這麼久的量
   var OVERLAY_MIN_TICK = 3000;                  // 補跑超過這麼多 tick 才顯示進度遮罩(約 5 分鐘)
   // 「每段最多跑這麼久就 await raf 讓出一次」＝畫面更新間隔(進度遮罩只在讓出時重繪、期間頁面凍結)。
@@ -88,15 +84,7 @@
   // 蓋時間戳(=現在),順手記下「即時所在地圖」(changeMap 不會存檔,光看存檔 blob 會誤判還在村莊)。
   // ⚠ 結算期間(catchingUp)一律跳過:錨點只能由檢查點以「已結算到的時間點」推進——
   //   否則心跳/存檔/落點 changeMap 把錨點蓋成「現在」,結算一被中斷整段離線時間就此蒸發(2026-07-10 修)。
-  // 一般蓋章（心跳／saveGame／changeMap）：分頁在背景時一律不蓋——背景＝離線的起算點必須停住，
-  //   否則背景期間任何一次存檔（例如殺王自動存檔）都會把起算點推到「現在」，回來就變成「離線 0 分鐘」。
   function stamp() {
-    if (catchingUp) return;
-    if (document.hidden) return;
-    stampCore(Date.now());
-  }
-  // 強制蓋章：只給「進背景／關頁」用——這一刻就是離線的起點，必須釘住。
-  function stampExit() {
     if (catchingUp) return;
     stampCore(Date.now());
   }
@@ -1207,53 +1195,11 @@
   // 入口提示(時空裂痕/排名攀登不支援離線)已直接寫進核心 renderRiftEntrance(js/05)/renderPrideEntrance(js/11),不再包 wrapper 注入。
 
   // ----- 心跳 + 關閉前蓋章 -------------------------------------------------
-  // ⚠ 心跳只在「分頁可見」時蓋錨點：手機鎖屏／切到別的 App 時，頁面常常不會被系統殺掉、JS 只是被降速，
-  //   心跳若照跑就會把離線起算點一路推到「現在」→ 掛了兩小時回來卻被算成離線 0 分鐘、收益全無（玩家回報 2026-07-11）。
   setInterval(function () {
-    if (validSlot() && state && state.running) stamp();   // stamp 內含 document.hidden 守衛
+    if (validSlot() && state && state.running) stamp();
   }, HEARTBEAT_MS);
-  window.addEventListener('beforeunload', stampExit);
-  window.addEventListener('pagehide', stampExit);
-
-  // 🌙 分頁進背景＝離線開始，回前景＝結算。
-  //   手機鎖屏／切 App 時頁面常常不會被系統殺掉 → 不會 loadGame → 不會觸發離線結算；
-  //   而主迴圈單次最多只補 MAX_CATCHUP_MS(5 分鐘)，掛更久的時間會被它直接丟掉。
-  //   所以背景期間乾脆把主迴圈停掉（＝真正的離線，不會邊跑邊算），回前景再一次補完：
-  //     ・離開 < 5 分鐘 → 把時間欠帳交還主迴圈逐拍補完（最精確，且不會跳結算摘要吵人）
-  //     ・離開 ≥ 5 分鐘 → 走離線結算（快速結算，能補到 24 小時上限）
-  function pauseLoopForBackground() {
-    try { if (typeof _gameLoopId !== 'undefined' && _gameLoopId !== null) { clearInterval(_gameLoopId); _gameLoopId = null; } } catch (e) {}
-    try { _tickDebt = 0; _loopLast = null; } catch (e) {}   // 欠帳歸零：這段時間改由「回前景」那條路統一補
-  }
-  document.addEventListener('visibilitychange', function () {
-    try {
-      if (document.hidden) {
-        stampExit();               // 釘住離線起點
-        if (!catchingUp) pauseLoopForBackground();   // 停掉主迴圈：背景不再邊跑邊算（避免與回前景的結算重複給收益）
-        return;
-      }
-      // ── 回到前景 ──
-      if (catchingUp || !state || !state.running || !validSlot()) return;
-      var ts = readTs();
-      if (!ts) { try { startGameTimers(); } catch (e) {} return; }
-      var gap = Date.now() - ts;
-      if (gap < FG_CATCHUP_MIN_MS) {
-        // 只離開一下下：把這段時間還給主迴圈自己逐拍補完（最精確，也不會跳結算摘要吵人）。
-        // ⚠ 順序：一定要先 startGameTimers()（它內部會把 _loopLast/_tickDebt 歸零），再把 _loopLast 往回撥，
-        //    否則撥好的值會被它蓋掉 → 這段時間就白白消失（改的當下踩過）。
-        try { startGameTimers(); } catch (e) {}
-        try { _tickDebt = 0; _loopLast = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - gap; } catch (e) {}
-        return;
-      }
-      maybeCatchup(readMap(), ts, readPride(), readObl());
-      // maybeCatchup 進了結算 → catchingUp=true（runCatchup 同步段已設），主迴圈由它收尾時 startGameTimers() 重啟；
-      // 若它早退（村莊／攻城／時空裂痕／木人場…不結算）→ 沒人會重啟被我們停掉的主迴圈，這裡自己補回來。
-      if (!catchingUp) { try { startGameTimers(); } catch (e2) {} }
-    } catch (e) {
-      console.warn('[AFK] 前景/背景切換處理失敗：', e);
-      try { startGameTimers(); } catch (e2) {}   // 保險：無論如何都不能把主迴圈留在停止狀態
-    }
-  });
+  window.addEventListener('beforeunload', stamp);
+  window.addEventListener('pagehide', stamp);
 
   // ----- 除錯介面 ----------------------------------------------------------
   window.__afk = {

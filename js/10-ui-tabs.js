@@ -313,13 +313,21 @@ function _renderEquipTab() {
     });
 }
 
+// 清空分頁內容，但保留標記 data-afk-persist 的常駐節點（背包搜尋框）：整塊 innerHTML='' 會連輸入框一起砍掉，
+// 打怪掉東西觸發重建時輸入框被換新 → 手機打字打到一半焦點與軟鍵盤被中斷（玩家回報打不進字）。
+function _clearInvTab(div) {
+    for (let i = div.children.length - 1; i >= 0; i--) {
+        let c = div.children[i];
+        if (!c.dataset || c.dataset.afkPersist !== '1') div.removeChild(c);
+    }
+}
 // 武器/防具/道具三清單：一趟走完背包,但只重建 _dirty 標記的分頁（掉雜物就只刻「道具」頁,武器/防具不動）。
 function _renderInvTabs(_dirty) {
     let wDiv = null, aDiv = null, iDiv = null;
-    // ⚡🗑️ 快速操作頭部：武器/防具分頁＝[快速強化][快速廢品]；道具分頁＝[快速廢品]
-    if(_dirty.wpn)  { wDiv = document.getElementById('tab-weapons'); wDiv.innerHTML = ''; wDiv.appendChild(buildQuickHeader('wpn')); }
-    if(_dirty.arm)  { aDiv = document.getElementById('tab-armors');  aDiv.innerHTML = ''; aDiv.appendChild(buildQuickHeader('arm')); }
-    if(_dirty.item) { iDiv = document.getElementById('tab-items');   iDiv.innerHTML = ''; iDiv.appendChild(buildQuickHeader('item')); }
+    // ⚡🗑️ 快速操作頭部：武器/防具分頁＝[快速強化][快速廢品]；道具分頁＝[快速廢品]（插在常駐節點之前，維持 [頭部][搜尋框][清單] 的順序）
+    if(_dirty.wpn)  { wDiv = document.getElementById('tab-weapons'); _clearInvTab(wDiv); wDiv.insertBefore(buildQuickHeader('wpn'), wDiv.firstElementChild); }
+    if(_dirty.arm)  { aDiv = document.getElementById('tab-armors');  _clearInvTab(aDiv); aDiv.insertBefore(buildQuickHeader('arm'), aDiv.firstElementChild); }
+    if(_dirty.item) { iDiv = document.getElementById('tab-items');   _clearInvTab(iDiv); iDiv.insertBefore(buildQuickHeader('item'), iDiv.firstElementChild); }
 
 player.inv.forEach(i => {
     if(!DB.items[i.id]) return;

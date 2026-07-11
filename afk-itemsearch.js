@@ -48,6 +48,7 @@
   function makeBox(inputId, key, onChange) {
     var wrap = document.createElement('div');
     wrap.className = 'afk-isearch';
+    wrap.dataset.afkPersist = '1';   // 背包重建(_clearInvTab)時保留此節點:輸入框若被換新,手機打字中的焦點與軟鍵盤會被中斷
     var inp = document.createElement('input');
     inp.id = inputId; inp.type = 'search'; inp.autocomplete = 'off';
     inp.placeholder = '🔍 搜尋名稱…';
@@ -63,9 +64,9 @@
       var div = document.getElementById(t.tabId);
       if (!div) return;
       var inputId = 'afk-isearch-' + t.key;
+      // 快速操作頭部每次重建都是新節點 → 每輪都要重新標記「不過濾」
+      if (div.firstElementChild && !div.firstElementChild.classList.contains('afk-isearch')) div.firstElementChild.dataset.afkKeep = '1';
       if (!document.getElementById(inputId)) {
-        // 重建過了 → 重注入。快速操作頭部(第一個子元素,若存在)標記不過濾,搜尋框插在它後面。
-        if (div.firstElementChild && !div.firstElementChild.classList.contains('afk-isearch')) div.firstElementChild.dataset.afkKeep = '1';
         var box = makeBox(inputId, t.key, function () { filterChildren(div, q[t.key], box); });
         div.insertBefore(box, div.firstElementChild ? div.firstElementChild.nextSibling : null);
       }

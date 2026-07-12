@@ -1095,7 +1095,7 @@ function doBianUncurse(slotKey) {
     let _e = document.getElementById('interaction-content'); if (_e) renderBianBless(_e);
 }
 function renderBianBless(el) {
-    let slots = [{k:'wpn',n:'武器'},{k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'}];   // 🦴 寵物裝備不支援祝福，故不列入
+    let slots = [{k:'wpn',n:'武器'},{k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'shin',n:'脛甲'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'}];   // 🦴 寵物裝備不支援祝福，故不列入；🦵 脛甲＝防具，用「賦予盔甲祝福卷軸」（doBianBless 的 isAcc 判斷已自動歸類）
     if (player.eq && player.eq.offwpn) slots.splice(1, 0, {k:'offwpn',n:'副手武器'});   // ⚔️ 迅猛雙斧副手武器：裝備時才顯示，插在主武器後（用「賦予武器祝福卷軸」祝福）
     let cnt = id => pledgeCountItem(id);
     let rows = slots.map(sl => {

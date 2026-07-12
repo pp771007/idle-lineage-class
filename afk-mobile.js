@@ -673,7 +673,9 @@
       /* iOS Safari 在 input 實際 font-size<16px 時 focus 會自動放大頁面(且新版 iOS 無視 maximum-scale),
          遊戲的數字輸入(商店數量/自動喝水%/倉庫/製作…)幾乎都是 13~14px → 一點就放大。
          統一提到 16px 門檻就不觸發;touch-action 順便取消雙擊縮放判定的 300ms 等待。 */
-      'body.m-mobile input[type="number"],body.m-mobile input[type="text"],body.m-mobile input:not([type]),body.m-mobile select,body.m-mobile textarea{font-size:16px !important;touch-action:manipulation;}',
+      /* 用「排除法」列所有會叫出鍵盤的 input(含 search/tel/email…):逐一列舉 type 白名單漏掉 search
+         → 搜尋框(倉庫/背包)一點就放大。checkbox/radio/range 不吃 font-size,排除以免影響版面。 */
+      'body.m-mobile input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),body.m-mobile select,body.m-mobile textarea{font-size:16px !important;touch-action:manipulation;}',
       /* 雙擊縮放全域取消:連點按鈕(娃娃合成/NPC 兌換…)會觸發 iOS 雙擊放大——上面那條只蓋輸入元件,
          按鈕類漏網之魚補不完 → 直接對 body 設 manipulation,效果沿觸控鏈「交集」生效:全站取消雙擊縮放、
          雙指縮放(無障礙)保留、既有 touch-action:none 的拖曳把手(交集後仍 none)不受影響;
@@ -942,8 +944,10 @@
       'body.m-mobile .wh-help{font-size:11px !important;line-height:1.5 !important;color:#94a3b8 !important;}',
       'body.m-mobile .wh-goldrow{padding:8px !important;gap:6px !important;font-size:12px !important;}',
       'body.m-mobile .wh-goldrow > span{flex:1 1 100% !important;}',   /* 金幣資訊獨佔第一行 → 第二行=輸入框+存入+取出,不再孤鈕換行 */
-      'body.m-mobile .wh-goldrow input{flex:1 1 auto !important;width:auto !important;min-width:0 !important;height:32px !important;margin-left:0 !important;}',
-      'body.m-mobile .wh-goldrow button{flex:0 0 auto !important;height:32px !important;padding:0 12px !important;font-size:12px !important;}',
+      'body.m-mobile .wh-goldrow input{flex:1 1 100% !important;width:100% !important;min-width:0 !important;height:32px !important;margin-left:0 !important;}',   /* 金額輸入獨佔一行 → 第三行放得下四顆鈕(存入/全存/取出/全取),不再一顆孤鈕落單 */
+      'body.m-mobile .wh-goldrow button{flex:1 1 auto !important;height:32px !important;padding:0 8px !important;font-size:12px !important;}',
+      'body.m-mobile .wh-goldrow .wh-gold-all{flex:0 0 auto !important;padding:0 8px !important;}',   /* 全部存入/取出:只有箭頭圖示,不跟著撐寬 */
+      'body.m-mobile .wh-search{height:34px !important;}',
       'body.m-mobile .wh-ctlrow{gap:6px !important;font-size:12px !important;}',
       'body.m-mobile .wh-note{display:none !important;}',   /* （存入／取出共用此分類）手機藏:資訊價值低、佔一整行 */
       'body.m-mobile .wh-ctlrow select{flex:1 1 34% !important;min-width:0 !important;height:32px !important;}',   /* 第一行=物品分類+兩個下拉(合計>100% → 後面的自動換行) */

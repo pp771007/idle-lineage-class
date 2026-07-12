@@ -128,13 +128,15 @@
 })();
 
 // ── 共用「確認彈窗」AFK_UI.confirm(opts) ─────────────────────────────
-//   opts:{ title, message, okText='確定', cancelText='取消', danger=false, onOk, onCancel }
-//   非阻塞(confirm 無法同步回傳,故用 callback):確定→onOk();取消/點背景/ESC/返回鍵→onCancel()。
-//   深色雙鈕卡片,沿用 alert 卡片樣式;透過 AFK_UI.openLayer 壓一層→手機返回鍵/ESC 視為取消。
+//   opts:{ title, message, okText='確定', cancelText='取消', danger=false, onOk, onCancel, onDismiss }
+//   非阻塞(confirm 無法同步回傳,故用 callback):確定→onOk();取消鈕→onCancel()。
+//   點背景/ESC/返回鍵=「沒做決定」→ onDismiss();沒給 onDismiss 才退回 onCancel()(與舊行為相容)。
+//   ⚠ 兩個鈕代表「二選一」(如靈魂之球選哪把魔杖)時務必給 onDismiss,否則誤觸背景會幫玩家做掉決定。
+//   深色雙鈕卡片,沿用 alert 卡片樣式;透過 AFK_UI.openLayer 壓一層→手機返回鍵/ESC 可關。
 //   優雅降級:document.body 未就緒退回原生 confirm。
 (function () {
   var U = (window.AFK_UI = window.AFK_UI || {});
-  var modal = null, titleEl, msgEl, okBtn, cancelBtn, layer = null, showing = false, cb = {}, pendingOk = false;
+  var modal = null, titleEl, msgEl, okBtn, cancelBtn, layer = null, showing = false, cb = {}, pendingOk = false, decided = false;
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -179,21 +181,26 @@
     cancelBtn = modal.querySelector('#afk-confirm-cancel');
     okBtn.addEventListener('click', function () { closeWith(true); });
     cancelBtn.addEventListener('click', function () { closeWith(false); });
-    modal.addEventListener('click', function (e) { if (e.target === modal) closeWith(false); });   // 點背景=取消
+    modal.addEventListener('click', function (e) { if (e.target === modal) dismiss(); });   // 點背景=沒做決定
   }
-  // 主動關(按鈕/背景):記下結果→走 AFK_UI 退一格歷史並觸發 doClose;doClose 依 pendingOk 分派 onOk/onCancel
+  // 按鈕:記下選擇(decided)→走 AFK_UI 退一格歷史並觸發 doClose
   function closeWith(ok) {
     if (!showing) return;
-    pendingOk = ok;
+    pendingOk = ok; decided = true;
     if (layer && U.closeLayer) U.closeLayer(layer); else doClose();
   }
-  // 實際收起(由 AFK_UI 於返回鍵/ESC/closeLayer 呼叫;返回鍵/ESC 未經 closeWith→pendingOk 維持 false=取消)
+  // 點背景:不記選擇 → doClose 走 onDismiss
+  function dismiss() {
+    if (!showing) return;
+    if (layer && U.closeLayer) U.closeLayer(layer); else doClose();
+  }
+  // 實際收起(由 AFK_UI 於返回鍵/ESC/closeLayer 呼叫;返回鍵/ESC 未經 closeWith→decided=false)
   function doClose() {
     if (!showing) return;
     showing = false;
     modal.classList.remove('open');
-    var ok = pendingOk, fn = ok ? cb.onOk : cb.onCancel;
-    layer = null; cb = {}; pendingOk = false;
+    var fn = decided ? (pendingOk ? cb.onOk : cb.onCancel) : (cb.onDismiss || cb.onCancel);
+    layer = null; cb = {}; pendingOk = false; decided = false;
     if (typeof fn === 'function') { try { fn(); } catch (e) {} }
   }
   U.confirm = function (opts) {
@@ -205,8 +212,8 @@
     }
     if (!modal) build();
     if (showing) return;   // 一次只顯示一個
-    showing = true; pendingOk = false;
-    cb = { onOk: opts.onOk, onCancel: opts.onCancel };
+    showing = true; pendingOk = false; decided = false;
+    cb = { onOk: opts.onOk, onCancel: opts.onCancel, onDismiss: opts.onDismiss };
     titleEl.innerHTML = esc(opts.title || '確認');
     titleEl.style.display = (opts.title === '') ? 'none' : '';
     msgEl.innerHTML = esc(opts.message || '').replace(/\n/g, '<br>');

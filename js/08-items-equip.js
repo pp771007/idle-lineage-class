@@ -326,9 +326,15 @@ function useItem(u, silent = false, keepModal = false) {
         let hasBaph = player.inv.some(i => i.id === 'wpn_powerless_baphomet' && i.cnt > 0);
         if (!hasBaless && !hasBaph) { logSys('<span class="text-slate-300">靈魂之球發出微弱的光芒，什麼事都沒發生。</span>'); return; }
         if (hasBaless && hasBaph) {
-            let pickBaless = confirm('靈魂之球同時感應到兩把失去魔力的魔杖，只能喚回一把。\n\n【確定】＝巴列斯魔杖\n【取消】＝巴風特魔杖');
-            if (pickBaless) _restore('wpn_powerless_baless', 'wpn_baless', '巴列斯魔杖', '失去魔力的巴列斯魔杖');
-            else _restore('wpn_powerless_baphomet', 'wpn_baphomet_wand', '巴風特魔杖', '失去魔力的巴風特魔杖');
+            // 二選一：兩個鈕各代表一把魔杖 → 一定要給 onDismiss（點背景/ESC＝沒選，不可幫玩家消耗掉靈魂之球）
+            gameConfirm({
+                title: '靈魂之球',
+                message: '同時感應到兩把失去魔力的魔杖，只能喚回一把。',
+                okText: '巴列斯魔杖', cancelText: '巴風特魔杖',
+                onOk: () => _restore('wpn_powerless_baless', 'wpn_baless', '巴列斯魔杖', '失去魔力的巴列斯魔杖'),
+                onCancel: () => _restore('wpn_powerless_baphomet', 'wpn_baphomet_wand', '巴風特魔杖', '失去魔力的巴風特魔杖'),
+                onDismiss: () => {}
+            });
             return;
         }
         if (hasBaless) _restore('wpn_powerless_baless', 'wpn_baless', '巴列斯魔杖', '失去魔力的巴列斯魔杖');

@@ -25,6 +25,18 @@ function whSetFilter(v){ _whFilter = v; _whSubFilter = ''; renderWarehouseNPC(do
 // 🗄️ 倉庫「子分類」：武器/防具沿用裝備收集冊的圖鑑類型(equipCatKey/EQUIP_CATEGORIES)細分；道具分 卡片/技能/製作/任務/卷軸/其他。空字串 ''＝全部。
 let _whSubFilter = '';
 function whSetSubFilter(v){ _whSubFilter = v || ''; renderWarehouseNPC(document.getElementById('interaction-content')); }
+// 🔍 倉庫名稱搜尋：背包側與倉庫側共用同一個關鍵字。純顯示層過濾（隱藏不合的列），不重繪面板
+//    → 打字時輸入框不會被換掉，手機軟鍵盤與游標不中斷（面板重繪成本高、5000 格倉庫更明顯）。
+let _whSearch = '';
+function whSetSearch(v){ _whSearch = v || ''; whApplySearch(); }
+function whApplySearch(){
+    let kw = _whSearch.trim().toLowerCase();
+    for(let id of ['wh-inv-list','wh-store-list']){
+        let list = document.getElementById(id);
+        if(!list) continue;
+        for(let el of list.children) el.style.display = (!kw || el.textContent.toLowerCase().includes(kw)) ? '' : 'none';
+    }
+}
 // 製作材料 id 集合（掃所有配方的 req/mats·排除金幣）：用來把倉庫道具歸入「製作」子分類。延後到首次呼叫才建（確保 js/14 配方已載入）。
 let _whCraftMatIds = null;
 function _whBuildCraftMatIds(){
@@ -315,8 +327,12 @@ function whWithdraw(uidv, qty){
     saveGame(); saveWarehouse(w); renderTabs(true); updateUI();
     renderWarehouseNPC(document.getElementById('interaction-content'));
 }
-function whGold(dir){
-    let amt = parseInt(document.getElementById('wh-gold-amt').value) || 0;
+function whGoldAll(dir){   // 💰 全部存入／全部取出：金額直接取來源方的全額
+    let w = loadWarehouse();
+    whGold(dir, (dir === 'in') ? player.gold : (w.gold || 0));
+}
+function whGold(dir, amount){
+    let amt = (amount !== undefined) ? amount : (parseInt(document.getElementById('wh-gold-amt').value) || 0);
     if(amt <= 0) return;
     let w = loadWarehouse();
     if(dir === 'in'){ amt = Math.min(amt, player.gold); player.gold -= amt; w.gold = (w.gold||0) + amt; }
@@ -344,7 +360,9 @@ function renderWarehouseNPC(div){
             <span>金幣　背包：<span class="text-yellow-400 font-bold">${player.gold}</span>　倉庫：<span class="text-yellow-400 font-bold">${w.gold||0}</span></span>
             <input id="wh-gold-amt" type="number" min="1" value="1000" class="w-24 bg-slate-900 border border-slate-600 text-center text-white rounded h-8 ms-auto">
             <button onclick="whGold('in')" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;">存入 ▶</button>
+            <button onclick="whGoldAll('in')" title="全部存入" aria-label="全部存入" class="wh-gold-all btn px-2 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;">▶▶</button>
             <button onclick="whGold('out')" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #6b2a10 0%, #b3490e 28%, #5a230e 52%, #9a3e0c 76%, #4a1d0c 100%); color: #fed7aa; border-color: #c2410c;">◀ 取出</button>
+            <button onclick="whGoldAll('out')" title="全部取出" aria-label="全部取出" class="wh-gold-all btn px-2 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #6b2a10 0%, #b3490e 28%, #5a230e 52%, #9a3e0c 76%, #4a1d0c 100%); color: #fed7aa; border-color: #c2410c;">◀◀</button>
         </div>
         <div class="wh-ctlrow flex items-center gap-2 text-sm flex-wrap">
             <span class="text-slate-300 font-bold">物品分類：</span>
@@ -363,6 +381,7 @@ function renderWarehouseNPC(div){
             <button onclick="whOneClickDeposit()" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center ms-auto" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" title="把背包中與倉庫現有物品（詞綴+名字+強化值完全相同）的物品自動存入；鎖定物品不動">一鍵存入</button>
             <button onclick="sortWarehouse()" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 28%, #16294a 52%, #1d4ed8 76%, #101f38 100%); color: #bfdbfe; border-color: #3b82f6;" title="依背包一鍵排列的相同規則整理倉庫物品">一鍵排列</button>
         </div>
+        <input id="wh-search" type="search" autocomplete="off" placeholder="🔍 搜尋名稱（背包與倉庫共用）" value="${_whSearch.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" oninput="whSetSearch(this.value)" class="wh-search w-full bg-slate-900 border border-slate-600 text-white rounded h-8 px-3 text-sm">
         <div class="wh-grid grid grid-cols-2 gap-3">
             <div class="flex flex-col min-h-0">
                 <div class="font-bold text-cyan-300 mb-1 text-sm">背包（點擊存入 ▶）</div>
@@ -374,6 +393,7 @@ function renderWarehouseNPC(div){
             </div>
         </div>
     </div>`;
+    whApplySearch();   // 重繪後重新套用關鍵字（清單是新節點）
     _whScrollRestore(document.getElementById('wh-inv-list'), _aInv);
     _whScrollRestore(document.getElementById('wh-store-list'), _aStore);
     _whScrollRestore(div, _aDiv);
@@ -623,7 +643,7 @@ function toggleBlessingAuto(key) {
 function confirmJoinPledge(faction) {
     let cfg = PLEDGE_CFG[faction];
     if (player.bloodPledge || player.lv < 20) return;
-    if (confirm(`你確定要加入${cfg.pledgeName}？`)) joinPledge(faction);
+    gameConfirm({ title: '加入血盟', message: `你確定要加入${cfg.pledgeName}？`, okText: '加入', onOk: () => joinPledge(faction) });
 }
 
 function joinPledge(faction) {
@@ -648,10 +668,17 @@ function leavePledge(faction) {
     let cfg = PLEDGE_CFG[faction];
     if (player.cls === 'royal') { logSys('<span class="text-amber-300">👑 王族世代效忠，無法退出血盟。</span>'); return; }   // 👑 王族不可退出
     if (player.bloodPledge !== faction) return;
-    if (traditionalActive()) {   // 🏛️ 傳統模式：入盟未發放禮物卷軸，退盟亦不需交還
-        if (!confirm(`${cfg.name}：確定要退出${cfg.pledgeName}？`)) return;
-    } else {
-        if (!confirm(`${cfg.name}：你必須交還贈送的禮物（對武器施法的卷軸 x5、對盔甲施法的卷軸 x10）才能退出血盟。確定交還並退出？`)) return;
+    let trad = traditionalActive();   // 🏛️ 傳統模式：入盟未發放禮物卷軸，退盟亦不需交還
+    gameConfirm({
+        title: '退出血盟',
+        message: trad ? `${cfg.name}：確定要退出${cfg.pledgeName}？`
+                      : `${cfg.name}：你必須交還贈送的禮物（對武器施法的卷軸 x5、對盔甲施法的卷軸 x10）才能退出血盟。確定交還並退出？`,
+        okText: trad ? '退出' : '交還並退出', danger: true,
+        onOk: () => _leavePledgeConfirmed(faction, cfg, trad)
+    });
+}
+function _leavePledgeConfirmed(faction, cfg, trad) {
+    if (!trad) {
         let lack = PLEDGE_GIFT.some(g => player.inv.filter(i => i.id === g.id && !i.lock).reduce((s, i) => s + i.cnt, 0) < g.cnt);   // 🔧 只計入未鎖定的卷軸
         if (lack) {
             logSys(`<span class="text-red-400">${cfg.name}：你的卷軸不足，無法退出血盟（需 對武器施法的卷軸 x5、對盔甲施法的卷軸 x10）。</span>`);

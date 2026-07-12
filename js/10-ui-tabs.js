@@ -2026,25 +2026,36 @@ function switchSquadTab(t) {
     });
 }
 
+// 🪟 全遊戲共用的「確認」入口：一律走自製彈窗（afk-ui.js 的 AFK_UI.confirm），不要直接用原生 confirm。
+//   原因：iOS Safari 會抑制連續的原生彈窗 → 玩家點了「確定」卻什麼都沒發生（無聲失敗），且外觀與遊戲不一致。
+//   自製彈窗非阻塞 → 一律 callback：確定 onOk、取消鈕 onCancel、點背景/ESC/返回鍵 onDismiss（沒給則同 onCancel）。
+//   ⚠ 呼叫端不可寫成 `if (gameConfirm(...))`——它不回傳選擇，後續動作要放進 onOk。
+//   afk-ui 沒載入時降級回原生 confirm（單獨開核心也不會壞）。
+function gameConfirm(opts) {
+    opts = opts || {};
+    if (window.AFK_UI && typeof AFK_UI.confirm === 'function') { AFK_UI.confirm(opts); return; }
+    let txt = (opts.title ? opts.title + '\n' : '') + (opts.message || '');
+    if (confirm(txt)) { if (opts.onOk) opts.onOk(); }
+    else { let fn = opts.onDismiss || opts.onCancel; if (fn) fn(); }
+}
 function _findAlly(slot) { return (player.allies || []).find(a => a && String(a._slot) === String(slot)); }
-// 💾 存檔目前角色並切換到指定協力角色(存檔位)遊玩；確認走共用 AFK_UI.confirm（非原生 confirm，AFK_UI 不在才降級）
+// 💾 存檔目前角色並切換到指定協力角色(存檔位)遊玩
 function switchToAllyChar(slot) {
     slot = String(slot);
     let a = _findAlly(slot);
     let sum = (typeof slotSummary === 'function') ? slotSummary(slot) : null;
     if (!sum) { alert('存檔 ' + slot + ' 目前沒有可切換的角色。'); return; }
     let who = a ? a._allyName : (sum.name || ('存檔 ' + slot));
-    let msg = '將先儲存目前角色的進度，再切換到「' + who + '」（' + (sum.cls || '') + ' Lv.' + (sum.lv || 1) + '）遊玩。\n確定要切換嗎？';
-    let doSwitch = function () {
-        saveGame();          // 先存目前角色（此時 currentSlot 仍為目前角色）
-        currentSlot = slot;  // 切到目標存檔位
-        loadGame();          // 載入該角色並切換畫面（同載入畫面「載入」路徑）
-    };
-    if (window.AFK_UI && typeof AFK_UI.confirm === 'function') {
-        AFK_UI.confirm({ title: '切換角色', message: msg, okText: '存檔並切換', cancelText: '取消', onOk: doSwitch });
-    } else if (confirm(msg)) {
-        doSwitch();
-    }
+    gameConfirm({
+        title: '切換角色',
+        message: '將先儲存目前角色的進度，再切換到「' + who + '」（' + (sum.cls || '') + ' Lv.' + (sum.lv || 1) + '）遊玩。\n確定要切換嗎？',
+        okText: '存檔並切換',
+        onOk: function () {
+            saveGame();          // 先存目前角色（此時 currentSlot 仍為目前角色）
+            currentSlot = slot;  // 切到目標存檔位
+            loadGame();          // 載入該角色並切換畫面（同載入畫面「載入」路徑）
+        }
+    });
 }
 function setAllyAtkSkill(slot, val) { let a = _findAlly(slot); if (a) { a._atkSkill = val || ''; saveGame(); } }   // _atkSkill 即時生效（傭兵攻擊路徑直接讀 ally._atkSkill）
 function setAllyHealSkill(slot, val) { let a = _findAlly(slot); if (a) { a._healSkill = val || ''; saveGame(); } }   // _healSkill 儲存待 Phase 3 傭兵自動補血讀取

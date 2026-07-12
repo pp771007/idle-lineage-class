@@ -1,17 +1,18 @@
 /* ============================================================================
- * afk-itemsearch.js — 背包(武器/防具/道具分頁)與倉庫(各分類頁)的「名稱搜尋」
+ * afk-itemsearch.js — 背包(武器/防具/道具分頁)的「名稱搜尋」
  *
- * 作法:包住 renderTabs / renderWarehouseNPC,每次重繪後把搜尋框「重新注入」清單頂端,
+ * 作法:包住 renderTabs,每次重繪後把搜尋框「重新注入」清單頂端,
  *   查詢字串存在外掛自己的狀態(不存 DOM)→ 重繪不會弄丟;比對用列的 textContent
  *   (含名稱/詞綴/強化值,子字串命中即顯示),不動遊戲資料、純顯示層過濾。
  * 重繪時機:背包分頁只有內容簽章變了才重建(renderTabs 分區重建),打字本身不觸發重繪;
  *   狩獵中掉寶重建會換掉輸入框 → 重注入時還原字串與焦點(游標移到最後),打字不中斷。
- * 優雅降級:renderTabs / renderWarehouseNPC 不存在就安靜停用。
+ * ※ 倉庫的名稱搜尋在核心 js/12(背包側與倉庫側共用單一關鍵字,見 whSetSearch)。
+ * 優雅降級:renderTabs 不存在就安靜停用。
  * ========================================================================== */
 (function () {
   'use strict';
 
-  var q = { wpn: '', arm: '', item: '', whInv: '', whStore: '' };   // 各清單的查詢字串(單一事實來源)
+  var q = { wpn: '', arm: '', item: '' };   // 各清單的查詢字串(單一事實來源)
   var TAB_KEYS = [
     { key: 'wpn', tabId: 'tab-weapons' },
     { key: 'arm', tabId: 'tab-armors' },
@@ -91,37 +92,10 @@
     window.renderTabs = wrapped;
   }
 
-  // ---- 倉庫(各分類頁共用;背包側/倉庫側各自一個搜尋框、獨立過濾) ----------------
-  function ensureWhSearch() {
-    [
-      { listId: 'wh-inv-list', key: 'whInv', inputId: 'afk-isearch-whinv' },
-      { listId: 'wh-store-list', key: 'whStore', inputId: 'afk-isearch-whstore' }
-    ].forEach(function (c) {
-      var list = document.getElementById(c.listId);
-      if (!list) return;
-      var apply = function () { filterChildren(list, q[c.key], null); };
-      if (!document.getElementById(c.inputId) && list.parentNode) {
-        list.parentNode.insertBefore(makeBox(c.inputId, c.key, apply), list);   // 插在欄標題與清單之間(清單自己捲,搜尋框恆在)
-      }
-      apply();
-    });
-  }
-
-  if (typeof window.renderWarehouseNPC === 'function' && !window.renderWarehouseNPC.__afkISearch) {
-    var _origWh = window.renderWarehouseNPC;
-    var wrappedWh = function () {
-      var r = _origWh.apply(this, arguments);
-      try { ensureWhSearch(); } catch (e) {}
-      return r;
-    };
-    wrappedWh.__afkISearch = true;
-    window.renderWarehouseNPC = wrappedWh;
-  }
-
   injectCss();
-  if (typeof window.renderTabs === 'function' || typeof window.renderWarehouseNPC === 'function') {
-    console.log('[AFK-itemsearch] hooks OK — 背包(武/防/道)與倉庫清單支援名稱搜尋。');
+  if (typeof window.renderTabs === 'function') {
+    console.log('[AFK-itemsearch] hooks OK — 背包(武/防/道)分頁支援名稱搜尋。');
   } else {
-    console.warn('[AFK-itemsearch] 找不到 renderTabs / renderWarehouseNPC,名稱搜尋停用。');
+    console.warn('[AFK-itemsearch] 找不到 renderTabs,名稱搜尋停用。');
   }
 })();

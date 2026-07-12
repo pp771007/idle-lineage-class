@@ -2316,12 +2316,18 @@ function renderAllyNPC(div) {
 function dismissAllAllies() {
     let n = (player.allies || []).length;
     if (!n) { logSys('<span class="text-slate-400">目前沒有上場的協力傭兵。</span>'); return; }
-    if (!confirm(`確定要解除全部 ${n} 名協力傭兵嗎？\n（招募費用不退還，累積經驗會記入待領帳本，各角色下次載入或回村時領取）`)) return;
-    (player.allies || []).forEach(a => { let m = _settleAllyExp(a, 'dismiss'); if (m) logSys(m); });   // 🤝 v2.6.68 各自記一筆待領經驗（帳本制·不直接改寫來源存檔）
-    player.allies = [];
-    logSys(`<span class="text-amber-300">已解除全部協力傭兵（共 ${n} 名）。</span>`);
-    saveGame(); updateUI();
-    let _c = document.getElementById('interaction-content'); if (_c) renderAllyNPC(_c);
+    gameConfirm({
+        title: '全員退出',
+        message: `確定要解除全部 ${n} 名協力傭兵嗎？\n（招募費用不退還，累積經驗會記入待領帳本，各角色下次載入或回村時領取）`,
+        okText: '全員退出', danger: true,
+        onOk: () => {
+            (player.allies || []).forEach(a => { let m = _settleAllyExp(a, 'dismiss'); if (m) logSys(m); });   // 🤝 v2.6.68 各自記一筆待領經驗（帳本制·不直接改寫來源存檔）
+            player.allies = [];
+            logSys(`<span class="text-amber-300">已解除全部協力傭兵（共 ${n} 名）。</span>`);
+            saveGame(); updateUI();
+            let _c = document.getElementById('interaction-content'); if (_c) renderAllyNPC(_c);
+        }
+    });
 }
 // 🔧 召喚控制戒指（acc_summon_ctrl）：裝備於任一戒指欄即生效——召喚物擲骰 19 視為命中
 function hasSummonCtrlRing(owner) {

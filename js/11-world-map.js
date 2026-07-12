@@ -704,7 +704,14 @@ function startSiege(faction, city) {
     if (cd > 0) { let h = Math.floor(cd/3600000), m = Math.floor((cd%3600000)/60000); alert(`攻城戰冷卻中，尚需 ${h} 小時 ${m} 分才能再次宣布。`); return; }
     if (player.lv < 40) { alert('需要等級 40 以上才能宣布攻城戰。'); return; }
     if (siegeWarrants() < 10) { alert(`需持有 10 張以上王族搜索狀才能宣布攻城戰（目前 ${siegeWarrants()} 張）。`); return; }
-    if (!confirm(`宣布對【${cfg.name}】的攻城戰將消耗 10 張王族搜索狀（目前持有 ${siegeWarrants()} 張），限時 30 分鐘。確定要開戰嗎？`)) return;
+    gameConfirm({
+        title: '宣布攻城戰',
+        message: `宣布對【${cfg.name}】的攻城戰將消耗 10 張王族搜索狀（目前持有 ${siegeWarrants()} 張），限時 30 分鐘。確定要開戰嗎？`,
+        okText: '開戰', danger: true,
+        onOk: () => _startSiegeConfirmed(city, cfg)
+    });
+}
+function _startSiegeConfirmed(city, cfg) {
     // 消耗 10 張王族搜索狀
     let _need = 10;
     for (let it of player.inv) { if (it.id === 'new_item_241' && _need > 0) { let take = Math.min(it.cnt, _need); it.cnt -= take; _need -= take; } }
@@ -874,11 +881,17 @@ function obelStartTracking() {
     updateUI();
 }
 function obelCancelTracking() {
-    if(!confirm('確定要取消追蹤嗎？（已消耗的王族搜索狀不會退還）')) return;
-    player.tracking = null;
-    saveGame();
-    logSys('已取消追蹤。');
-    let el = document.getElementById('interaction-content'); if(el) renderObelNPC(el);
+    gameConfirm({
+        title: '取消追蹤',
+        message: '確定要取消追蹤嗎？（已消耗的王族搜索狀不會退還）',
+        okText: '取消追蹤', danger: true,
+        onOk: () => {
+            player.tracking = null;
+            saveGame();
+            logSys('已取消追蹤。');
+            let el = document.getElementById('interaction-content'); if(el) renderObelNPC(el);
+        }
+    });
 }
 function renderIsmaelExchange(el) {
     let sw = invCountId('scroll_weapon'), sa = invCountId('scroll_armor');   // 🔧 含倉庫存量
@@ -1344,14 +1357,27 @@ function chooseMastery(id) {
             logSys(`<span class="text-red-400 font-bold">更換精通需要 ${cost.gold.toLocaleString()} 金幣與 王族搜索狀 ×${cost.warrants}。</span>`);
             return;
         }
-        // 更換前確認
-        if (!confirm(`確定要將精通由「${md.list[player.mastery].n}」更換為「${md.list[id].n}」嗎？\n將消耗 ${cost.gold.toLocaleString()} 金幣與 王族搜索狀 ×${cost.warrants}。`)) return;
-        player.gold -= cost.gold;
-        let _need = cost.warrants;
-        for (let it of player.inv.filter(i => i.id === 'new_item_241')) { if (_need <= 0) break; let dd = Math.min(it.cnt, _need); it.cnt -= dd; _need -= dd; }
-        player.inv = player.inv.filter(i => i.cnt > 0);
-        player.masteryChangeCnt = (player.masteryChangeCnt || 0) + 1;
+        // 更換前確認（自製彈窗＝非阻塞 → 扣費與套用都放進 onOk）
+        gameConfirm({
+            title: '更換精通',
+            message: `確定要將精通由「${md.list[player.mastery].n}」更換為「${md.list[id].n}」嗎？\n將消耗 ${cost.gold.toLocaleString()} 金幣與 王族搜索狀 ×${cost.warrants}。`,
+            okText: '更換',
+            onOk: () => {
+                player.gold -= cost.gold;
+                let _need = cost.warrants;
+                for (let it of player.inv.filter(i => i.id === 'new_item_241')) { if (_need <= 0) break; let dd = Math.min(it.cnt, _need); it.cnt -= dd; _need -= dd; }
+                player.inv = player.inv.filter(i => i.cnt > 0);
+                player.masteryChangeCnt = (player.masteryChangeCnt || 0) + 1;
+                _applyMastery(id);
+            }
+        });
+        return;
     }
+    _applyMastery(id);   // 初次選擇：免費、免確認
+}
+// 實際套用精通（扣費已在呼叫端完成）
+function _applyMastery(id) {
+    let md = MASTERY_DATA[player.cls];
     let prev = player.mastery;
     player.mastery = id;
     // 🏅 切換副作用

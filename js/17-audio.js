@@ -58,7 +58,9 @@ function _sfxSyncUI() {
     var v = document.getElementById('set-sfx-vol'); if (v) v.value = _sfxCfg.vol;
 }
 
-function setSfxOn(on) { _sfxCfg.on = !!on; _sfxSaveCfg(); if (on) playSfx('attack'); }   // 開啟時試播回饋（toggle 點擊即 user gesture，解鎖播放）
+function setSfxOn(on) { _sfxCfg.on = !!on; _sfxSaveCfg(); _sfxSyncUI(); _powerSaveSync(); if (on) playSfx('attack'); }   // 開啟時試播回饋（toggle 點擊即 user gesture，解鎖播放）
+// 🔋 音效/BGM 同時出現在「設定」分頁與標題畫面的省電模式（js/09），任一邊改都要讓另一邊的畫面跟上
+function _powerSaveSync() { try { if (typeof powerSaveSyncUI === 'function') powerSaveSyncUI(); } catch (e) {} }
 function setSfxVol(v) { _sfxCfg.vol = Math.max(0, Math.min(100, parseInt(v, 10) || 0)); _sfxSaveCfg(); }
 
 // 🔊 攻擊音效依「武器類型」分檔(attack_<weaponcat>·用 equipCatKey)；受傷依「職業群組+性別」分檔(hurt_<group>_<m|f>)；其餘事件共用單檔。缺對應變體檔→自動退回通用 key(attack/hurt)。
@@ -553,7 +555,7 @@ function _bgmStopAll() {
 }
 function _bgmTick() { if (_bgmInited) { try { _bgmSwitch(_bgmDetectScene()); } catch (e) {} } }
 
-function setBgmOn(on) { _bgmCfg.on = !!on; _bgmSaveCfg(); if (!on) { _bgmStopAll(); _bgmScene = null; } else { _bgmScene = null; _bgmTick(); } }
+function setBgmOn(on) { _bgmCfg.on = !!on; _bgmSaveCfg(); _bgmSyncUI(); _powerSaveSync(); if (!on) { _bgmStopAll(); _bgmScene = null; } else { _bgmScene = null; _bgmTick(); } }
 function setBgmVol(v) { _bgmCfg.vol = Math.max(0, Math.min(100, parseInt(v, 10) || 0)); _bgmSaveCfg(); if (!_bgmFadeTimer && _bgmActive >= 0 && _bgmEls[_bgmActive]) _bgmEls[_bgmActive].volume = _bgmTargetVol(); }
 function _bgmSyncUI() {
     var c = document.getElementById('set-bgm-on'); if (c) c.checked = !!_bgmCfg.on;

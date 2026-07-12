@@ -897,16 +897,29 @@ function vfxCastShake() {
     } catch (e) {}
 }
 
-// 🔋 省電模式（僅標題畫面提供；遊戲中不再出現）：一顆「省電模式」鈕開 Modal，內含四個獨立顯示開關，
-//    各自持久化於 localStorage、載入時套用到對應全域旗標。全部都是純顯示層，收益/戰鬥結果不受影響。
+// 🔋 省電模式（僅標題畫面提供；遊戲中不再出現）：一顆「省電模式」鈕開 Modal，內含數個獨立開關，
+//    各自持久化於 localStorage、載入時套用到對應全域旗標。全部都是顯示/音效層，收益/戰鬥結果不受影響。
 //    - 戰鬥特效  __vfxOff     ：法術序列幀/命中衝擊/擊殺閃光/投射物/狀態疊層
 //    - 傷害數字  __vfxNumOff  ：飄動傷害數字
 //    - 戰鬥動畫  __animOff    ：怪物/傭兵/玩家的 sprite 動作幀（8fps ticker 直接早退＝最大省電項）
 //    - 畫面流暢更新 __uiSlow  ：tick 尾端的血條/怪物重繪由每秒 10 次降為 2 次＋日誌捲動批次化（js/03、js/01 讀此旗標）
+//    - 戰鬥音效 / 背景音樂     ：沒有自己的旗標，直接讀寫 js/17-audio 的偏好（fb5_sfx / fb5_bgm）＝與遊戲內「設定」分頁的開關同一份
 const _VFX_PREF_KEY = 'lineage_vfx_off';
 const _VFX_NUM_PREF_KEY = 'lineage_vfx_num_off';   // 🔢 v3.0.2 「只關傷害數字」獨立偏好
 const _ANIM_PREF_KEY = 'lineage_anim_off';
 const _UI_SLOW_PREF_KEY = 'lineage_ui_slow';
+const _SFX_CFG_KEY = 'fb5_sfx';                    // 🔊 js/17-audio 的音效偏好鍵（{on,vol} JSON）
+const _BGM_CFG_KEY = 'fb5_bgm';                    // 🎵 js/17-audio 的背景音樂偏好鍵（{on,vol} JSON）
+// 🔊 音效/BGM 是否開啟：本檔排在 js/17-audio 之前、且引擎要等 DOMContentLoaded 才 init，故不能讀它的 _sfxCfg/_bgmCfg
+//    （標題按鈕在那之前就要顯示正確數量）→ 一律讀偏好鍵本身，與引擎同一份資料。缺鍵＝預設開啟。
+function _audioPrefOn(key) {
+    try {
+        let s = (typeof _lsGet === 'function') ? _lsGet(key) : localStorage.getItem(key);
+        if (!s) return true;
+        let o = JSON.parse(s);
+        return !o || o.on !== false;
+    } catch (e) { return true; }
+}
 function _applyVfxPref() {
     let rd = (k) => { try { return localStorage.getItem(k) === '1'; } catch (e) { return false; } };
     window.__vfxOff = rd(_VFX_PREF_KEY);
@@ -915,7 +928,8 @@ function _applyVfxPref() {
     window.__uiSlow = rd(_UI_SLOW_PREF_KEY);
     let bp = document.getElementById('btn-powersave');
     if (bp) {
-        let n = [window.__vfxOff, window.__vfxNumOff, window.__animOff, window.__uiSlow].filter(Boolean).length;
+        let n = [window.__vfxOff, window.__vfxNumOff, window.__animOff, window.__uiSlow,
+                 !_audioPrefOn(_SFX_CFG_KEY), !_audioPrefOn(_BGM_CFG_KEY)].filter(Boolean).length;
         bp.textContent = n ? `🔋 省電模式：已關閉 ${n} 項效果` : '🔋 省電模式';
         bp.className = 'btn text-base w-72 py-2.5 ' + (n
             ? 'bg-emerald-800 hover:bg-emerald-700 border-emerald-600'
@@ -932,12 +946,18 @@ function toggleVfxPref() { _togglePref(_VFX_PREF_KEY); }
 function toggleVfxNumPref() { _togglePref(_VFX_NUM_PREF_KEY); }
 function toggleAnimPref() { _togglePref(_ANIM_PREF_KEY); }
 function toggleUiSlowPref() { _togglePref(_UI_SLOW_PREF_KEY); }
+// 🔊🎵 音效/BGM 一律走引擎的 setSfxOn/setBgmOn：它們負責存偏好、停止/重啟音樂、同步遊戲內設定分頁的勾選框
+function toggleSfxPref() { try { setSfxOn(!_audioPrefOn(_SFX_CFG_KEY)); } catch (e) {} }
+function toggleBgmPref() { try { setBgmOn(!_audioPrefOn(_BGM_CFG_KEY)); } catch (e) {} }
 // 省電 Modal 的開關項目：label/desc 給玩家看;get()=目前「開啟」與否(開=效果有開=比較耗電)
+// 排序＝關掉後省電效果由高到低（畫面重繪 > 音訊播放）
 const _POWER_SAVE_ITEMS = [
-    { label: '✨ 戰鬥特效', desc: '法術特效、命中火花、擊殺閃光', get: () => !window.__vfxOff, toggle: toggleVfxPref },
-    { label: '🔢 傷害數字', desc: '戰鬥中飄出的傷害數字', get: () => !window.__vfxNumOff, toggle: toggleVfxNumPref },
     { label: '🎬 戰鬥動畫', desc: '角色／傭兵／怪物的動作動畫，關閉後改為靜態圖（最省電的一項）', get: () => !window.__animOff, toggle: toggleAnimPref },
     { label: '💧 畫面流暢更新', desc: '血條與戰鬥畫面每秒更新 10 次，關閉後降為每秒 2 次（數值照常計算）', get: () => !window.__uiSlow, toggle: toggleUiSlowPref },
+    { label: '✨ 戰鬥特效', desc: '法術特效、命中火花、擊殺閃光', get: () => !window.__vfxOff, toggle: toggleVfxPref },
+    { label: '🔢 傷害數字', desc: '戰鬥中飄出的傷害數字', get: () => !window.__vfxNumOff, toggle: toggleVfxNumPref },
+    { label: '🔊 戰鬥音效', desc: '攻擊、擊殺、施法等音效（與遊戲內「設定」的音效開關同一個）', get: () => _audioPrefOn(_SFX_CFG_KEY), toggle: toggleSfxPref },
+    { label: '🎵 背景音樂', desc: '各場景的背景音樂（與遊戲內「設定」的音樂開關同一個）', get: () => _audioPrefOn(_BGM_CFG_KEY), toggle: toggleBgmPref },
 ];
 function openPowerSaveModal() {
     let modal = document.getElementById('powersave-modal');
@@ -946,12 +966,17 @@ function openPowerSaveModal() {
         '<div class="absolute inset-0 bg-black/60" onclick="closePowerSaveModal()"></div>' +
         `<div class="panel border-slate-500 p-5 relative w-[420px] max-w-[92vw] flex flex-col" style="background:${typeof PANEL_BG !== 'undefined' ? PANEL_BG : '#1e293b'}">` +
           '<div class="panel-header rounded-md mb-2">🔋 省電模式</div>' +
-          '<div class="text-xs text-slate-400 mb-3">以下都是純顯示效果，關閉不影響收益與戰鬥結果；關越多越省電。手機發燙、耗電快時建議全部關閉。</div>' +
+          '<div class="text-xs text-slate-400 mb-3">以下都是顯示效果與聲音，關閉不影響收益與戰鬥結果；由上往下越省電，關越多越省電。手機發燙、耗電快時建議全部關閉。</div>' +
           '<div id="powersave-rows" class="flex flex-col gap-2"></div>' +
           '<button class="btn mt-4" onclick="closePowerSaveModal()">關閉視窗</button>' +
         '</div>';
     _renderPowerSaveRows();
     modal.classList.remove('hidden');
+}
+// 🔊 供 js/17-audio 的 setSfxOn/setBgmOn 回呼：遊戲內設定改了聲音 → 標題鈕文字與（若開著的）省電視窗跟著更新
+function powerSaveSyncUI() {
+    _applyVfxPref();
+    if (document.getElementById('powersave-rows')) _renderPowerSaveRows();
 }
 function _renderPowerSaveRows() {
     let box = document.getElementById('powersave-rows'); if (!box) return;

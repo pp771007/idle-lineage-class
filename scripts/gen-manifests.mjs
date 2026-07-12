@@ -40,6 +40,24 @@ if (existsSync('assets')) {
   console.log('[gen-manifests] assets-manifest.json →', manifest.length, '筆');
 }
 
+if (existsSync('assets/sfx')) {
+  // 音效「檔名 → 實際副檔名」索引。js/17-audio.js 據此直接組正確網址。
+  //   沒有它的話,音效一律逐一試 .mp3→.ogg→.wav:音效庫沒有任何 mp3,故每個音效至少撈回一個
+  //   404(GitHub Pages 的錯誤頁 ~9KB、進不了快取)→ 每次開遊戲、每張地圖的怪都重付一次。
+  const byName = {};
+  for (const p of readdirSync('assets/sfx')) {
+    const m = p.match(/^(.+)\.(mp3|ogg|wav)$/);
+    if (m) byName[m[1]] = m[2];
+  }
+  const names = Object.keys(byName).sort();
+  const body = names.map((n) => JSON.stringify(n) + ':' + JSON.stringify(byName[n])).join(',');
+  writeFileSync('js/sfx-index.js',
+    '/* 自動產生 — 由 scripts/gen-manifests.mjs 掃 assets/sfx/ 重產,勿手改。\n' +
+    ' * 音效檔名 → 實際副檔名。索引裡沒有的名稱＝沒有這個音檔,17-audio.js 直接靜音、不發請求。 */\n' +
+    'var SFX_INDEX = {' + body + '};\n');
+  console.log('[gen-manifests] js/sfx-index.js →', names.length, '筆');
+}
+
 {
   // anim(怪物幀) + classanim(職業戰鬥幀·v3.0.67)都走「一資料夾一合併 sha」,同進 anim-manifest.json
   const animDirs = ['assets/anim', 'assets/classanim'].filter((d) => existsSync(d));

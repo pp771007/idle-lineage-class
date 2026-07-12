@@ -25,9 +25,15 @@ function _sfxLoadCfg() {
 }
 function _sfxSaveCfg() { try { if (typeof _lsSet === 'function') _lsSet('fb5_sfx', JSON.stringify(_sfxCfg)); } catch (e) {} }
 
-// 載入單一音效：依序試 mp3→ogg→wav；第一個能播者→建立 N 個元素的播放池；全部失敗→該事件保持靜音
+// 載入單一音效：副檔名查 SFX_INDEX（js/sfx-index.js，掃 assets/sfx/ 自動產生）直接組網址；
+//   查無此名＝沒有這個音檔 → 靜音、不發任何請求。
+//   ⚠ 不可退回「逐一試 mp3→ogg→wav」：音效庫沒有任何 mp3，每試一次就撈回一個 9KB 的 404 錯誤頁，
+//     而 404 進不了快取 → 每個玩家每次開遊戲、每張地圖的每隻怪都重付一次（實測每次數百 KB）。
+//   索引本身沒載到（極舊快取）才降級成探測，避免整組音效啞掉。
 function _sfxTryLoad(key, def) {
-    var exts = ['mp3', 'ogg', 'wav'], i = 0;
+    var indexed = (typeof SFX_INDEX !== 'undefined') && SFX_INDEX;
+    if (indexed && !SFX_INDEX[def.file]) { _sfxPool[key] = null; return; }   // 沒這個檔 → 靜音（呼叫端會退回通用音）
+    var exts = indexed ? [SFX_INDEX[def.file]] : ['mp3', 'ogg', 'wav'], i = 0;
     function tryNext() {
         if (i >= exts.length) { _sfxPool[key] = null; return; }
         var url = 'assets/sfx/' + def.file + '.' + exts[i++];

@@ -571,3 +571,8 @@ button.classic-skill-cell { cursor:pointer; }
 #login-disclaimer { max-width:none !important; padding:0 !important; margin:0 !important; font-size:clamp(8px,.6vw,11px) !important; line-height:1.45; color:#eee2c7; }
 #slot-select-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,92vw); max-height:92vh; overflow:auto; margin:0 !important; padding:22px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
 #creation-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(1000px,96vw); max-height:96vh; overflow:auto; padding:20px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
+
+/* 🔍 倉庫搜尋框釘在捲動區頂端：物品清單很長（倉庫 5000 格上限；手機還把兩份清單的內捲取消、整個面板一起捲），
+   捲到一半想換關鍵字時搜尋框不能跟著捲走。背景要不透明才蓋得住捲到它下面的物品列——村莊 NPC 面板與浮動倉庫視窗底色不同，各給一個。 */
+.wh-searchbar { position:sticky; top:0; z-index:20; padding:4px 0; background:#0f172a; }
+.warehouse-window-content .wh-searchbar { background:#111925; }

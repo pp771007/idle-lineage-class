@@ -381,7 +381,9 @@ function renderWarehouseNPC(div){
             <button onclick="whOneClickDeposit()" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center ms-auto" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" title="把背包中與倉庫現有物品（詞綴+名字+強化值完全相同）的物品自動存入；鎖定物品不動">一鍵存入</button>
             <button onclick="sortWarehouse()" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 28%, #16294a 52%, #1d4ed8 76%, #101f38 100%); color: #bfdbfe; border-color: #3b82f6;" title="依背包一鍵排列的相同規則整理倉庫物品">一鍵排列</button>
         </div>
-        <input id="wh-search" type="search" autocomplete="off" placeholder="🔍 搜尋名稱（背包與倉庫共用）" value="${_whSearch.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" oninput="whSetSearch(this.value)" class="wh-search w-full bg-slate-900 border border-slate-600 text-white rounded h-8 px-3 text-sm">
+        <div class="wh-searchbar">
+            <input id="wh-search" type="search" autocomplete="off" placeholder="🔍 搜尋名稱（背包與倉庫共用）" value="${_whSearch.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" oninput="whSetSearch(this.value)" class="wh-search w-full bg-slate-900 border border-slate-600 text-white rounded h-8 px-3 text-sm">
+        </div>
         <div class="wh-grid grid grid-cols-2 gap-3">
             <div class="flex flex-col min-h-0">
                 <div class="font-bold text-cyan-300 mb-1 text-sm">背包（點擊存入 ▶）</div>

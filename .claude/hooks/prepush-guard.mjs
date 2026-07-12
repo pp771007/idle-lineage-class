@@ -66,6 +66,22 @@ try {
   if (m && m[1] !== want) fails.push(`sw.js CODE_VERSION 過時(現為 ${m[1]},應為 ${want})→ 先跑「node scripts/stamp-sw-version.mjs」再 push,否則 PWA 不跳更新`);
 } catch {}
 
+// ── 4. js/sfx-index.js 是否與 assets/sfx/ 現況一致 ──────────
+//   漏跑 gen-manifests → 新音檔不在索引 → 17-audio 當成「沒有這個檔」直接靜音,無錯誤無警告(安靜失效)
+try {
+  const dir = resolve(ROOT, 'assets/sfx');
+  if (existsSync(dir) && existsSync(resolve(ROOT, 'js/sfx-index.js'))) {
+    const byName = {};
+    for (const p of readdirSync(dir)) {
+      const m = p.match(/^(.+)\.(mp3|ogg|wav)$/);
+      if (m) byName[m[1]] = m[2];
+    }
+    const want = Object.keys(byName).sort().map((n) => JSON.stringify(n) + ':' + JSON.stringify(byName[n])).join(',');
+    const cur = rd('js/sfx-index.js').match(/var SFX_INDEX = \{([\s\S]*)\};/);
+    if (!cur || cur[1] !== want) fails.push('js/sfx-index.js 與 assets/sfx/ 對不上(增刪音檔後漏跑)→ 先跑「node scripts/gen-manifests.mjs」再 push,否則新音效會安靜靜音');
+  }
+} catch {}
+
 if (fails.length) {
   console.error('⛔ push 前把關沒過,先修這些再 push:\n' + fails.map((x) => '  • ' + x).join('\n'));
   process.exit(2);

@@ -24,7 +24,9 @@
     var st = document.createElement('style');
     st.id = 'afk-isearch-css';
     st.textContent = [
-      '.afk-isearch{position:sticky;top:0;z-index:5;padding:2px 0 4px;background:inherit;flex:none;}',
+      // top 由 ensureTabSearch 依「快速操作頭部」的實際高度逐輪設定(它也是 sticky，見下)；這裡的 0 只是沒有頭部時的預設。
+      // 背景必須不透明(與 .panel/頭部同為 slate-800)：sticky 釘住時，捲上來的物品列會從半透明背景後透出。
+      '.afk-isearch{position:sticky;top:0;z-index:5;padding:2px 0 4px;background:#1e293b;flex:none;}',
       '.afk-isearch input{width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#e2e8f0;padding:6px 10px;font-size:13px;font-family:inherit;outline:none;}',
       '.afk-isearch input:focus{border-color:#b89243;}',
       '.afk-isearch input::placeholder{color:#64748b;}'
@@ -59,6 +61,22 @@
     return wrap;
   }
 
+  // 搜尋框釘住的位置＝「快速操作頭部」釘住後的底緣。
+  //   頭部(核心 js/10 產生)本身就是 sticky top:-12px、z-10、不透明底色;搜尋框若也釘在 top:0,
+  //   兩者位置重疊 → 頭部 z 較高又不透明 → 捲動後搜尋框整個被蓋住看不見(表現得像「沒有 sticky」)。
+  //   頭部高度會隨版面(桌機/手機、按鈕換行)變,故每輪重繪都重算,不寫死。
+  //   ⚠ 未顯示的分頁(display:none)量到的高度是 0 → 此時不可覆寫成 top:0(那等於沒修),
+  //     留著上次的值,等 switchTab 切到它、量得到真高度時再設(故本檔也包住 switchTab)。
+  function stickBelowHeader(div, box) {
+    var hdr = div.firstElementChild;
+    if (!hdr || hdr === box) return;
+    var hs = getComputedStyle(hdr);
+    if (hs.position !== 'sticky') return;   // 沒有 sticky 頭部 → 維持 CSS 預設 top:0
+    var h = hdr.offsetHeight;
+    if (!h) return;                          // 分頁隱藏中,量不到
+    box.style.top = Math.max(0, (parseFloat(hs.top) || 0) + h) + 'px';
+  }
+
   // ---- 背包三分頁 -----------------------------------------------------------
   function ensureTabSearch() {
     TAB_KEYS.forEach(function (t) {
@@ -71,7 +89,10 @@
         var box = makeBox(inputId, t.key, function () { filterChildren(div, q[t.key], box); });
         div.insertBefore(box, div.firstElementChild ? div.firstElementChild.nextSibling : null);
       }
-      filterChildren(div, q[t.key], document.getElementById(inputId) && document.getElementById(inputId).parentElement);
+      var cur = document.getElementById(inputId);
+      cur = cur && cur.parentElement;
+      if (cur) stickBelowHeader(div, cur);
+      filterChildren(div, q[t.key], cur);
     });
   }
 
@@ -90,6 +111,18 @@
     };
     wrapped.__afkISearch = true;
     window.renderTabs = wrapped;
+  }
+
+  // 切分頁後該分頁才「量得到」頭部高度(隱藏時是 0)→ 顯示的當下重算搜尋框要釘在哪。
+  if (typeof window.switchTab === 'function' && !window.switchTab.__afkISearch) {
+    var _origSwitch = window.switchTab;
+    var wrappedSwitch = function () {
+      var r = _origSwitch.apply(this, arguments);
+      try { ensureTabSearch(); } catch (e) {}
+      return r;
+    };
+    wrappedSwitch.__afkISearch = true;
+    window.switchTab = wrappedSwitch;
   }
 
   injectCss();

@@ -379,18 +379,10 @@ async function exportSave(){
     }
     downloadSaveFile(data, fname);
 }
-// 📱 手機瀏覽器下載 blob 都會出事，兩邊症狀不同、同一個解法（Web Share：不走下載管理員，直接叫出系統的分享/儲存對話框）：
-//   ‧ Android Chrome：下載管理員是非同步的，blob URL 常在它讀取前就被 revoke → 存檔檔案 0 byte。
-//   ‧ iOS Safari：<a download> 的 blob 會被當成「導覽到 blob: 網址」→ 整頁變成「Safari 無法打開網頁（WebKitBlobResource 錯誤 1）」，
-//     網址列顯示的是站台網域（blob 的來源），玩家會以為是遊戲掛了。
-//   桌機（含手機的「桌面版網站」模式）UA 不含這些關鍵字 → 照走原本的下載路徑，行為不變。
-function _isMobileBrowser(){
-    let ua = navigator.userAgent || '';
-    if (/Android|iPhone|iPad|iPod/i.test(ua)) return true;
-    return /Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1;   // iPadOS 預設會偽裝成 Mac
-}
 function downloadSaveFile(data, fname){
-    if (_isMobileBrowser()) {
+    // Android Chrome 行動模式的下載管理員是非同步的，blob URL 常在它讀取前就被 revoke → 下載 0 byte。
+    // Web Share API 不走下載管理員，直接交給系統的分享/儲存對話框。桌面版模式 UA 不含 Android，走下面原路徑。
+    if (/Android/i.test(navigator.userAgent || '')) {
         try {
             let file = new File([data], fname, { type: 'application/json' });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -399,7 +391,7 @@ function downloadSaveFile(data, fname){
                     .catch(err => { if (!err || err.name !== 'AbortError') downloadSaveFileBlob(data, fname); });   // 使用者取消不重試；其他錯誤才退回下載
                 return;
             }
-        } catch (e) {}   // 舊版瀏覽器無 canShare / File → 落到下載
+        } catch (e) {}   // 舊版 Android 無 canShare / File → 落到下載
     }
     downloadSaveFileBlob(data, fname);
 }

@@ -2237,7 +2237,7 @@ const DB = {
             npcs: [
                 { id: "npc_sherine", n: "席琳", title: "祈禱", type: "pray", d: "靜謐的神女席琳，傾聽虔誠者的禱詞。等級 40 以上可向席琳祈禱，開啟或關閉「席琳的世界」。" },
                 { id: "npc_io", n: "伊奧", title: "遺骸兌換", type: "quest", classicHide: true, d: "守著席琳殘骸的祭司伊奧。以席琳結晶兌換指定部位的席琳遺骸，遺骸必定附帶隨機一種席琳套裝詞綴。" },
-                { id: "npc_lachesis", n: "菈克希絲", title: "遺骸拆分", type: "quest", classicHide: true, d: "命運的紡織者菈克希絲。可將你身上穿著、帶有舊席琳套裝詞綴的裝備拆分成對應部位的遺骸；裝備本身與強化值都會保留。" }
+                { id: "npc_lachesis", n: "菈克希絲", title: "遺骸拆分", type: "quest", classicHide: true, d: "命運的紡織者菈克希絲。可將你身上穿著或背包裡、帶有舊席琳套裝詞綴的武器防具拆分成對應部位的遺骸；裝備本身與強化值都會保留。" }
             ]
         },
         "town_silent": {   // 🔧 黑暗妖精出生地：沉默洞穴

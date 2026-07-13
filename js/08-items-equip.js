@@ -70,14 +70,15 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
 
 // 🦴 取得席琳遺骸（唯一入口：伊奧兌換／菈克希絲拆分）。遺骸必帶一個席琳套裝詞綴（group＝組名，如「魔女」）。
 //    itemSig 已含 seteff → 同部位不同組名分開堆疊（魔女之爪 / 紅獅之爪 各自一堆），比照 gainItem 的疊加規則。
-function gainSherineRemains(remId, group, silent) {
+function gainSherineRemains(remId, group, silent, cnt) {
     let d = DB.items[remId];
     if (!d || !group) return null;
+    let n = Math.max(1, cnt || 1);
     let _probe = { id: remId, en: 0, bless: false, anc: false, attr: false, seteff: group };
     let ex = player.inv.find(i => sameItemSig(i, _probe));
-    if (ex) ex.cnt += 1;
-    else player.inv.push({ id: remId, uid: uid(), cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: group, lock: false, junk: false });
-    let itemInfo = { id: remId, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: group };
+    if (ex) ex.cnt += n;
+    else player.inv.push({ id: remId, uid: uid(), cnt: n, en: 0, bless: false, anc: false, attr: false, seteff: group, lock: false, junk: false });
+    let itemInfo = { id: remId, cnt: n, en: 0, bless: false, anc: false, attr: false, seteff: group };
     if (!silent) logSys(`<span class="c-sherine font-bold">✦ 獲得席琳遺骸：${getItemFullName(itemInfo)}！</span>`);
     renderTabs();
     if (typeof auditTrackGain === 'function') auditTrackGain(itemInfo);

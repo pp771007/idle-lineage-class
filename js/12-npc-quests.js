@@ -751,39 +751,81 @@ function doIoExchange(remId) {
     let el = document.getElementById('interaction-content'); if (el) renderIoExchange(el);
 }
 
-// ===== 🦴 席琳神殿・菈克希絲：把身上「舊詞綴裝備」拆成遺骸 =====
-// 免費、不消耗結晶；裝備留在身上（強化值／祝福／古代／屬性全保留），只有席琳詞綴被拆下來變成對應部位的遺骸。
-// 部位對照＝SHERINE_REMAINS 的 eqSlot，另補兩個別名：副手武器(offwpn)→之爪、脛甲(shin)→之肉（皆可附舊詞綴，但沒有專屬遺骸）。
-const LACHESIS_SLOTS = SHERINE_REMAINS.map(r => ({ slot: r.eqSlot, remId: r.id, remN: r.n }))
-    .concat([{ slot: 'offwpn', remId: 'rem_claw', remN: '之爪' }, { slot: 'shin', remId: 'rem_flesh', remN: '之肉' }]);
+// ===== 🦴 席琳神殿・菈克希絲：把「舊詞綴武器防具」拆成遺骸 =====
+// 免費、不消耗結晶；裝備留著（強化值／祝福／古代／屬性全保留），只有席琳詞綴被拆下來變成對應部位的遺骸。
+// 範圍＝穿在身上的 ＋ 背包裡的（共用倉庫不算，要先領出來）。背包同款堆疊一次拆整疊，1 件＝1 個遺骸。
+// 部位對照＝SHERINE_REMAINS 的 eqSlot；脛甲(shin)沒有專屬遺骸 → 比照長靴給「之肉」（副手武器與主手同為 type wpn → 之爪）。
+const LACHESIS_REMAIN_BY_SLOT = (function () {
+    let m = {};
+    SHERINE_REMAINS.forEach(r => { m[r.eqSlot] = { remId: r.id, remN: r.n }; });
+    m.shin = m.boots;
+    return m;
+})();
+// 一件物品能拆出哪個遺骸；sherineSetEligible 已排除箭矢／遺物／遺骸本身（遺骸自己也帶 seteff，不擋會變無限複製）
+function lachesisRemainOf(id) {
+    let d = DB.items[id];
+    if (!d || !sherineSetEligible(d)) return null;
+    return LACHESIS_REMAIN_BY_SLOT[d.type === 'wpn' ? 'wpn' : d.slot] || null;
+}
+// 目前拆得出遺骸的東西：{ where:'eq'|'inv', key:部位鍵|uid, it:物品實例, rem:對應遺骸, cnt:件數 }
+function lachesisTargets() {
+    let out = [];
+    Object.keys(player.eq || {}).forEach(slot => {
+        let e = player.eq[slot];
+        let rem = e && e.seteff && lachesisRemainOf(e.id);
+        if (rem) out.push({ where: 'eq', key: slot, it: e, rem: rem, cnt: 1 });
+    });
+    (player.inv || []).forEach(it => {
+        let rem = it.seteff && lachesisRemainOf(it.id);
+        if (rem) out.push({ where: 'inv', key: it.uid, it: it, rem: rem, cnt: it.cnt || 1 });
+    });
+    return out;
+}
+// 取下詞綴 → 發遺骸。先按「組名＋部位」彙總再一次發，整疊/全部拆分時才不會每件都重建一次背包
+function lachesisStrip(targets) {
+    let tally = {};   // '魔女|rem_claw' → 件數
+    targets.forEach(t => {
+        let g = t.it.seteff.slice(0, 2);
+        t.it.seteff = false;   // 只取下席琳詞綴：強化值(en)／祝福(bless)／古代(anc)／屬性(attr) 全保留
+        let k = g + '|' + t.rem.remId;
+        tally[k] = (tally[k] || 0) + t.cnt;
+    });
+    let parts = Object.keys(tally).map(k => {
+        let g = k.split('|')[0], remId = k.split('|')[1], n = tally[k];
+        gainSherineRemains(remId, g, true, n);
+        return `<span class="c-sherine font-bold">${g}${DB.items[remId].n}</span>${n > 1 ? ` ×${n}` : ''}`;
+    });
+    consolidateInventory();   // 詞綴取下後簽章變了，與背包既有的同款裝備併回同一疊
+    logSys(`<span class="c-sherine font-bold">✦ 菈克希絲從你的裝備中抽出了席琳的絲線：獲得 ${parts.join('、')}！</span>`);
+    calcStats(); renderTabs(true); saveGame();
+    let el = document.getElementById('interaction-content'); if (el) renderLachesisSplit(el);
+}
 function renderLachesisSplit(div) {
-    let rows = LACHESIS_SLOTS.map(m => {
-        let e = player.eq && player.eq[m.slot];
-        if (!e || !e.seteff) return '';
-        let g = e.seteff.slice(0, 2);
-        return `<div class="flex items-center gap-2 bg-slate-800/60 border border-slate-600 rounded p-2 mb-2">
-            <span class="flex-1 min-w-0 truncate ${getItemColor(e)} font-bold text-sm">${getItemFullName(e)}</span>
-            <button class="btn bg-purple-900 hover:bg-purple-800 border-purple-600 py-2 px-3 text-sm font-bold shrink-0" onclick="doLachesisSplit('${m.slot}')">拆分 → <span class="c-sherine">${g}${m.remN}</span></button>
+    let ts = lachesisTargets();
+    let row = t => `<div class="flex items-center gap-2 bg-slate-800/60 border border-slate-600 rounded p-2 mb-2">
+            <span class="flex-1 min-w-0 truncate ${getItemColor(t.it)} font-bold text-sm">${getItemFullName(t.it)}</span>
+            <button class="btn bg-purple-900 hover:bg-purple-800 border-purple-600 py-2 px-3 text-sm font-bold shrink-0" onclick="doLachesisSplit('${t.where}','${t.key}')">拆分 → <span class="c-sherine">${t.it.seteff.slice(0, 2)}${t.rem.remN}</span>${t.cnt > 1 ? ` ×${t.cnt}` : ''}</button>
         </div>`;
-    }).join('');
+    let section = (title, list) => list.length ? `<div class="text-slate-400 text-xs font-bold mt-1">${title}</div>${list.map(row).join('')}` : '';
+    let total = ts.reduce((s, t) => s + t.cnt, 0);
     div.innerHTML = `<div class="flex flex-col gap-2 p-1">
         <div class="text-slate-300 text-sm bg-slate-900/60 border border-slate-700 rounded p-2 leading-relaxed">
             菈克希絲：織進裝備裡的線，我可以抽出來。<br>
-            <span class="text-slate-400">把你<b class="text-amber-300">身上穿著</b>、帶有席琳套裝詞綴的裝備拆分成對應部位的<b class="c-sherine">席琳遺骸</b>。裝備會留在身上，強化值與其他詞綴都不受影響，只有席琳詞綴被取下。不需要結晶。</span>
+            <span class="text-slate-400">把你<b class="text-amber-300">身上穿著或背包裡</b>、帶有席琳套裝詞綴的武器防具拆分成對應部位的<b class="c-sherine">席琳遺骸</b>。裝備會留著，強化值與其他詞綴都不受影響，只有席琳詞綴被取下。不需要結晶。（放在共用倉庫的要先領出來）</span>
         </div>
-        ${rows || `<div class="text-slate-500 text-sm py-6 text-center">你身上沒有穿著帶席琳套裝詞綴的裝備。</div>`}
+        ${ts.length ? `<button class="btn bg-purple-800 hover:bg-purple-700 border-purple-500 py-3 font-bold w-full" onclick="doLachesisSplitAll()">全部拆分 → <span class="c-sherine">席琳遺骸 ×${total}</span></button>` : ''}
+        ${section('裝備中', ts.filter(t => t.where === 'eq'))}
+        ${section('背包', ts.filter(t => t.where === 'inv'))}
+        ${ts.length ? '' : `<div class="text-slate-500 text-sm py-6 text-center">你身上與背包裡沒有帶席琳套裝詞綴的裝備。</div>`}
     </div>`;
 }
-function doLachesisSplit(slotKey) {
-    let m = LACHESIS_SLOTS.find(x => x.slot === slotKey);
-    let e = m && player.eq && player.eq[slotKey];
-    if (!m || !e || !e.seteff) return;
-    let g = e.seteff.slice(0, 2);
-    e.seteff = false;   // 只取下席琳詞綴：強化值(en)／祝福(bless)／古代(anc)／屬性(attr) 全保留，裝備維持穿著
-    gainSherineRemains(m.remId, g, true);
-    logSys(`<span class="c-sherine font-bold">✦ 菈克希絲從你的裝備中抽出了席琳的絲線：獲得 ${g}${m.remN}！</span>`);
-    calcStats(); renderTabs(true); saveGame();
-    let el = document.getElementById('interaction-content'); if (el) renderLachesisSplit(el);
+function doLachesisSplit(where, key) {
+    let t = lachesisTargets().find(x => x.where === where && String(x.key) === String(key));
+    if (t) lachesisStrip([t]);
+}
+function doLachesisSplitAll() {
+    let ts = lachesisTargets();
+    if (ts.length) lachesisStrip(ts);
 }
 
 // ===== 🔮 試煉「席琳兌換」共用 =====

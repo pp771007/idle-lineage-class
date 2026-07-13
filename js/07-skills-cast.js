@@ -369,7 +369,7 @@ function castSkillInner(skId) {
         if(sk.hot) {
             if(player.hots && player.hots[skId] && player.hots[skId].ticksLeft > 0) return false;  // 🍃 該技能團隊 HoT 已在持續中→不重複(防自動施放洗版/耗MP)；不同技能(生命的祝福/體力回復術)可並存、同技能後放取代先放
             player.mp -= cost;
-            applyTeamHot(skId, sk, player.d);   // 🍃 施放時全隊(玩家＋全體傭兵)持續回復
+            applyTeamHot(skId, sk, player.d, player);   // 🍃 施放時全隊(玩家＋全體傭兵)持續回復
             player.cds.healSk = getAutoCastInterval();  // 🔧 HoT 不再把共用治癒冷卻鎖到結束：重複施放已由上方守衛擋住；長鎖會餓死其他自動治癒（高級治癒術/生命之泉等）
             logCombat(`施放 ${sk.n}，全隊開始持續回復 HP。`, 'heal');
             return true;
@@ -742,10 +742,12 @@ function castSkillInner(skId) {
 // 🍃 團隊 HoT（生命的祝福 / 體力回復術）單一真相：施放時登錄「全隊持續回復」到 player.hots[skId]。
 //   ・player.hots 為 dict(skId→HoT 實例)→不同技能可並存；同 skId 後放覆蓋先放（取代/刷新）。
 //   ・dStats＝施法者衍生值(玩家 player.d 或傭兵 ally.d)→spCoef 由施法者魔法傷害決定；每 interval 於 js/03 tick 對「玩家＋全體非倒地傭兵」各回復一次。
-function applyTeamHot(skId, sk, dStats) {
+function applyTeamHot(skId, sk, dStats, caster) {
     if (!player.hots) player.hots = {};
     let mDmg = (dStats && dStats.magicDmg) || 0;
-    player.hots[skId] = { skId: skId, healDice: sk.healDice, healBase: sk.healBase, valDice: sk.valDice, magicDmg: mDmg, spCoef: 1 + (3 * mDmg / 16), interval: sk.hot.interval, ticksLeft: sk.hot.ticks, cd: sk.hot.interval, skName: sk.n, msg: sk.msg };
+    let _hm = 1;   // 🏺 遺物 治癒者的恢復魔棒：施放者（玩家或傭兵）持 hotHealMult 武器 → 此 HoT 每跳回復 ×N（施放時快照，中途換武器不影響已存在的 HoT）
+    { let _cw = caster && caster.eq && caster.eq.wpn && DB.items[caster.eq.wpn.id]; if (_cw && _cw.hotHealMult) _hm = _cw.hotHealMult; }
+    player.hots[skId] = { skId: skId, healDice: sk.healDice, healBase: sk.healBase, valDice: sk.valDice, magicDmg: mDmg, spCoef: 1 + (3 * mDmg / 16), healMult: _hm, interval: sk.hot.interval, ticksLeft: sk.hot.ticks, cd: sk.hot.interval, skName: sk.n, msg: sk.msg };
 }
 function autoActions() {
     let hpPct = (player.hp / player.mhp) * 100;

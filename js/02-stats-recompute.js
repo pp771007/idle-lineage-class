@@ -28,6 +28,10 @@ function recomputeStats() {
     d.lowMpRegenBonus = 0;   // 🐍 遺物 蛇神的凝視：MP<15% 時 MP自然恢復量額外+N（js/03 regenTick）
     d.moveSpeedPct = 0;  // 🏺 遺物 寄居蟹背殼：移動速度%（負=變慢→怪物重生變慢·js/03 重生延遲讀取·與加速buff相乘）
     d.poisonHealMult = 0;   // 🏺 遺物 毒液化身：受到毒性 DoT 時恢復所受傷害×此倍率的 HP（js/03 中毒 tick 讀取·0=無）
+    d.dotCrit = false;       // 🏺 遺物 永不終止的夢魘：我方持續傷害(中毒/出血/猛爆劇毒)可爆擊（js/06 processMobStatusTick）
+    d.dmgReflect = 0;        // 🏺 遺物 魅魔女皇的誘惑：受一般攻擊 N% 機率反射相同傷害且免疫該次（js/04 受擊路徑）
+    d.fullHpMpHalf = false;  // 🏺 遺物 巫師的黑暗魔導書：滿血時技能消耗 MP 減半（getMpCost 讀取）
+    d.eleWpnMult = null;     // 🏺 遺物 四之牙臂甲：裝備對應屬性武器時一般攻擊傷害 ×mult（{ele,mult}·js/03 getPhysicalDmg＋js/06 傭兵攻擊）
     d.rangedDmg = 0; d.rangedHit = 0; d.rangedCrit = 0;
     d.extraDmg = 0; d.extraHit = 0; d.equipExtraAtk = 0;   // 🐉 d.equipExtraAtk：裝備授予的額外一般攻擊次數（龍鱗臂甲）
     d.magicDmg = 0; d.magicHit = 0; d.magicCrit = 0; d.extraMp = 0; d.mpReduce = 0;
@@ -196,6 +200,7 @@ function recomputeStats() {
     d.getMpCost = function(baseMp, tier) {
         let c = Math.max(1, Math.ceil(baseMp * (1 - d.mpReduce / 100)));
         if (p._setApprentice5 && p.mp < p.mmp * 0.3) c = Math.max(1, Math.ceil(c / 2));   // 🔮 學徒 5/5：MP 低於最大值 30% 時，所有技能耗魔減半
+        if (d.fullHpMpHalf) { let _hpNow = (p.curHp != null) ? p.curHp : p.hp; if (_hpNow >= (p.mhp || 1)) c = Math.max(1, Math.ceil(c / 2)); }   // 🏺 遺物 巫師的黑暗魔導書：滿血時技能耗魔減半（玩家 p.hp／傭兵 p.curHp）
         if (p.mastery === 'i_mana') c *= 2;   // 🔮 魔力精通：所有技能MP消耗加倍（與 MP 上限加倍配套）
         return c;
     };
@@ -225,6 +230,9 @@ function recomputeStats() {
         // 武器自身固定傷害/命中：只加武器本身的攻擊類型（近戰武器→近距離、遠程武器→遠距離）
         if (isRanged) { d.rangedDmg += (w.dmgBonus||0); d.rangedHit += (w.hit||0); }
         else { d.meleeDmg += (w.dmgBonus||0); d.meleeHit += (w.hit||0); }
+        // 🏺 遺物 猴子的金箍棒：傷害/命中 +(等級 ÷ lvDmgDiv・lvHitDiv)（隨等級成長的武器加成）
+        if (w.lvDmgDiv) { let _lb = Math.floor((p.lv || 1) / w.lvDmgDiv); if (isRanged) d.rangedDmg += _lb; else d.meleeDmg += _lb; }
+        if (w.lvHitDiv) { let _lh = Math.floor((p.lv || 1) / w.lvHitDiv); if (isRanged) d.rangedHit += _lh; else d.meleeHit += _lh; }
         // 🔧 武器「強化」固定加成：近距離與遠距離 傷害＋命中 同時各加（每強化+1→四者各+1）。⚠️ 與「最終傷害倍率」wpnEnFinalMult 各自獨立疊加（依使用者指定·+20 武器明顯變強）
         d.meleeDmg += _enW.dmg; d.rangedDmg += _enW.dmg;
         d.meleeHit += _enW.hit; d.rangedHit += _enW.hit;
@@ -247,6 +255,7 @@ function recomputeStats() {
         if(w.meleeHitPerEn) d.meleeHit += _wEn * w.meleeHitPerEn;   // 每強化+1 → 近距離命中
         if(w.mpRPerEn)      d.mpR      += _wEn * w.mpRPerEn;        // 🔮 每強化+1 → MP自然恢復量（冥想奇古獸）
         if(w.mdmgEnFrom7Max3) d.magicDmg += Math.min(3, Math.max(0, _wEn - 6));   // 🔧 巴風特魔杖：強化+7 魔法傷害+1，之後每+1再+1，最高+3
+        if(w.fullHpMpHalf) d.fullHpMpHalf = true;   // 🏺 遺物 巫師的黑暗魔導書：滿血時技能消耗 MP 減半（getMpCost 讀取）
         // 武器祝福/遠古：依規格計入（同時影響遠近距離）
         // 祝福的武器：額外傷害+1、額外魔法點數+2、額外命中+1
         applyBlessStats(d, p.eq.wpn.bless, 'wpn');   // 祝福的/詛咒的
@@ -260,6 +269,7 @@ function recomputeStats() {
 
     let setCheck = {}, _setSeen = {};
     p._equipHaste = false;   // 裝備常駐加速（如伊娃之盾）：每次重算先清除，卸下即消失（同 _setPoly 模式）
+    p._allLures = false;     // 🐾 遺物 馴獸師的飼料袋：同上，卸下即失效
     if (p.eq.wpn) { let _hw = DB.items[p.eq.wpn.id]; if (_hw && (_hw.eff === 'haste' || _hw.equipHaste)) p._equipHaste = true; }   // 🔧 武器常駐加速（惡魔之劍 eff:haste／惡魔雙刀·鋼爪·十字弓 equipHaste）
     for (let k in p.eq) {
         let e = p.eq[k];
@@ -317,6 +327,10 @@ d.mr += (baseMr + bonusMr);
         if(ed.physDrGated) d.physDrGated += ed.physDrGated;   // 🐍 遺物 祭祀儀式陶罐：受一般攻擊傷害減少%（3秒節流·js/04）
         if(ed.lowMpRegenBonus) d.lowMpRegenBonus += ed.lowMpRegenBonus;   // 🐍 遺物 蛇神的凝視：MP<15% 時 MP自然恢復額外+N（js/03 regenTick）
         if(ed.moveSpeedPct) d.moveSpeedPct += ed.moveSpeedPct;   // 🏺 遺物 寄居蟹背殼：移動速度%（影響怪物重生延遲）
+        if(ed.dotCrit) d.dotCrit = true;                       // 🏺 遺物 永不終止的夢魘：持續傷害可爆擊（js/06 processMobStatusTick）
+        if(ed.dmgReflect) d.dmgReflect = Math.max(d.dmgReflect, ed.dmgReflect);   // 🏺 遺物 魅魔女皇的誘惑：受一般攻擊 N% 反射＋免疫（取最高·不疊加）
+        if(ed.eleWpnMult) d.eleWpnMult = ed.eleWpnMult;        // 🏺 遺物 四之牙臂甲：裝對應屬性武器時一般攻擊 ×mult（僅副手單槽·無疊加疑慮）
+        if(ed.allLures) p._allLures = true;                    // 🐾 遺物 馴獸師的飼料袋：裝備即視為持有誘捕狀態（不必吃肉），且捕獲後不消耗（js/05 誘捕判定）
         if(ed.poisonHealMult) d.poisonHealMult = Math.max(d.poisonHealMult, ed.poisonHealMult);   // 🏺 遺物 毒液化身：毒性 DoT 轉治癒倍率（取最高·不疊加）
         // 🛡️ 臂甲（副手）：每強化+1 → HP+10；門檻特效（達 +5/+7/+9 套用對應階、取最高階、非累加）
         if(ed.armguard) {
@@ -468,6 +482,9 @@ d.mr += (baseMr + bonusMr);
     { let _iw = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(p.cls === 'illusion' && _iw && !_iw.isBow && ((p.mastery === 'i_qigu' && _iw.qigu) || (p.mastery === 'i_magicsword' && !_iw.qigu && !isWandWeapon(_iw)))) spdMult *= (1/1.3); }   // 🔮 奇古獸精通(裝奇古獸)／魔劍精通(裝非奇古獸·排除魔杖)：攻速+30%
     if(d.atkSpdPct !== 0) spdMult *= (1 / (1 + d.atkSpdPct / 100));   // 🏺 遺物 綠色妖鬼的指甲 +20%／🏺 鎧甲守衛的笨重巨劍 -50%（負值＝攻速變慢·間隔加倍·!==0 使負值生效）
     { let _mhw = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(d.meleeHaste > 0 && _mhw && !_mhw.isBow && !_mhw.ranged) spdMult *= (1 / (1 + d.meleeHaste / 100)); }   // 🏺 遺物 狂野的鬃毛外套：裝備近距離武器時攻速 +meleeHaste%
+    { let _polyOn = !!(p._setPoly || (p.buffs.poly > 0 && p.poly));   // 變身中＝套裝變身，或變身 buff 仍在且有型態（同下方 _polyForm 判定）
+      let _polySpd = 0; if (_polyOn) { for (let _k in p.eq) { let _e = p.eq[_k]; let _ed = _e && DB.items[_e.id]; if (_ed && _ed.polyAtkSpdPct) _polySpd += _ed.polyAtkSpdPct; } }
+      if (_polySpd > 0) spdMult *= (1 / (1 + _polySpd / 100)); }   // 🏺 遺物 浣熊的變身葉：變身狀態下攻速 +polyAtkSpdPct%
     if(p.buffs.blue > 0) d.mpR += getWisBlueBonus(d.wis);          // 藍色藥水：依精神提升MP恢復
     if(p.buffs.cautious > 0) { d.magicDmg += 2; d.mpR += 2; }      // 慎重藥水
     if(p.buffs.sk_reduction_armor > 0) d.dr += Math.floor(p.lv/10);   // 增幅防禦：等同傷害減免 floor(等級/10)，併入 DR 顯示與計算

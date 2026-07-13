@@ -229,7 +229,7 @@ function killMob(idx) {
 
     }
 	// 誘捕判定（誘捕上限改於「使用肉」時以 floor(魅力/7) 判定）
-    if (player.buffs.taming > 0) {
+    if (player.buffs.taming > 0 || player._allLures) {   // 🐾 遺物 馴獸師的飼料袋（_allLures）：不必吃肉即視為誘捕狀態
         let collarDrop = null;
         if (mob.n.includes("杜賓狗")) collarDrop = 'new_item_184';
         else if (mob.n.includes("狼")) collarDrop = 'new_item_185';
@@ -239,7 +239,7 @@ function killMob(idx) {
         if (collarDrop) {   // 誘捕擊殺必定捕獲（100%）
             gainItem(collarDrop, 1);
             logSys(`<span class="text-green-300 font-bold">誘捕成功！獲得 ${DB.items[collarDrop].n}。</span>`);
-            player.buffs.taming = 0;
+            if (!player._allLures) player.buffs.taming = 0;   // 🐾 一般誘捕（吃肉）捕獲後消耗；飼料袋提供的誘捕不消耗
         }
     }
     
@@ -310,7 +310,9 @@ function killMob(idx) {
         if(!DB.items[itemId]) return;          // 該物品不存在於資料庫則略過
         if(trialDropBlocked(itemId)) return;   // 🔒 試煉兌換道具：僅本職擊殺才掉（非本職直接跳過）
         let _clMult = (mob.n === '卡瑞' && itemId === 'wpn_dragonslayer') ? 1 : classicExemptDropMult(itemId);   // 🔧 v2.6.75 卡瑞·屠龍劍：經典模式仍維持 100%（獎勵已綁「擊殺消耗四任務道具」的成本·不受 ×1/10）
-        if(Math.random() < (ratePct * _dropBase * _clMult) / 100) gainItem(itemId, 1);   // 🎮 試煉道具／遺物不受經典 ×1/10（classicExemptDropMult 回 1）
+        let _relicX2 = 1;   // 🏺 遺物 幸運暴走兔腳（需裝備）：遺物掉落機率 ×2
+        if (DB.items[itemId].relic) { for (let _k in player.eq) { let _e = player.eq[_k]; if (_e && DB.items[_e.id] && DB.items[_e.id].relicDropX2) { _relicX2 = 2; break; } } }
+        if(Math.random() < (ratePct * _dropBase * _clMult * _relicX2) / 100) gainItem(itemId, 1);   // 🎮 試煉道具／遺物不受經典 ×1/10（classicExemptDropMult 回 1）
     });
 
     // === 🔧 萬能藥稀有掉落：等級 40 以上、非血盟。一般敵人 0.01%；頭目 1%（排除夢幻之島頭目），擊殺後隨機掉落 6 種萬能藥之一 ===

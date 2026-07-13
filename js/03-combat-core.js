@@ -457,9 +457,9 @@ function tick() {
             let _h = player.hots[_hsk];
             if(--_h.cd <= 0) {
                 _h.cd = _h.interval;
-                let heal = _h.healDice
-                    ? Math.max(1, Math.floor((rollDice(_h.healDice[0], _h.healDice[1]) + (_h.healBase || 0)) * _h.spCoef))
-                    : Math.max(1, roll(_h.valDice[0], _h.valDice[1]) + (_h.magicDmg || 0));
+                let heal = _h.healDice   // 🏺 遺物 治癒者的恢復魔棒：施放者持 hotHealMult 武器 → 每跳回復 ×N（healMult 於施放時快照，見 applyTeamHot）
+                    ? Math.max(1, Math.floor((rollDice(_h.healDice[0], _h.healDice[1]) + (_h.healBase || 0)) * _h.spCoef * (_h.healMult || 1)))
+                    : Math.max(1, Math.floor((roll(_h.valDice[0], _h.valDice[1]) + (_h.magicDmg || 0)) * (_h.healMult || 1)));
                 player.hp = Math.min(player.mhp, player.hp + heal);   // 🔧 水之元氣不套用於持續回復(HoT)
                 _hotAllies.forEach(a => { a.curHp = Math.min(a.mhp || 1, (a.curHp || 0) + heal); });   // 🍃 全體傭兵同步回復
                 _h.ticksLeft--;
@@ -515,7 +515,7 @@ function tick() {
                             _pts.forEach(_pm => {
                                 let _pdmg = petProcSpellDamage(pd.proc, _pm);
                                 if (_pdmg > 0) {
-                                    _pdmg = Math.max(1, Math.floor(_pdmg * royalAllyMult()));   // 👑 王族魅力加成：夥伴 proc 法術傷害 ×(1+魅力/100)
+                                    _pdmg = Math.max(1, Math.floor(_pdmg * royalAllyMult() * _relicPetSkillMult()));   // 👑 王族魅力加成：夥伴 proc 法術傷害 ×(1+魅力/100)；🏺 遺物 馴獸師的訓狗棒：夥伴技能傷害 ×N
                                     _pm.curHp -= _pdmg; _pm.justHit = _ps.ele || pd.ele; mobWake(_pm);
                                     _ptexts.push(`<span class="${getMobColor(_pm.lv)}">${_pm.n}</span> ${_pdmg}`);
                                 }
@@ -750,8 +750,10 @@ function spawnMob(idx) {
     // 魔物追蹤：在追蹤地圖且追蹤有效期間，每次出怪 50% 固定機率改為被追蹤的怪物
     if(player.tracking && player.tracking.until > Date.now() && player.tracking.map === mapState.current
        && DB.maps[mapState.current] && DB.maps[mapState.current].includes(player.tracking.mob)
-       && DB.mobs[player.tracking.mob] && !DB.mobs[player.tracking.mob].boss && Math.random() < 0.5) {
-        mobId = player.tracking.mob;
+       && DB.mobs[player.tracking.mob] && !DB.mobs[player.tracking.mob].boss) {
+        let _trkRate = 0.5;   // 🏺 遺物 小獵犬的追蹤鼻：魔物追蹤命中率 50% → 70%
+        for (let _k in player.eq) { let _e = player.eq[_k]; if (_e && DB.items[_e.id] && DB.items[_e.id].trackBoost) { _trkRate = 0.7; break; } }
+        if (Math.random() < _trkRate) mobId = player.tracking.mob;
     }
     // 🔧 卡瑞（BOSS）：身上「同時」攜帶 飛龍的爪子/蜥蜴的角/水晶球/妖魔戰士護身符 時，
     //    於龍之谷地監6樓 1% 機率出現（場上無其他 BOSS 時才出現，且同時最多一隻）
@@ -878,7 +880,7 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     else if (forceHit) { hit = true; }   // 反擊：必定命中、必定非重擊
     else if (forceLand) { hit = true; if (rollHit === 20) heavy = true; }   // 居合：必定命中，rollHit20 仍自然重擊；不擦傷
     else if (rollHit === 20) { hit = true; heavy = true; }
-    else if (isCrush && rollHit === 19) { hit = true; heavy = true; crush = true; }   // 重擊武器：骰19必定重擊（粉碎）
+    else if (isCrush && rollHit >= 19 - Math.round(((_cw && _cw.heavyRatePct) || 0) / 5)) { hit = true; heavy = true; crush = true; }   // 重擊武器：骰19必定重擊（粉碎）；🏺 遺物 風化的巨型方尖碑：heavyRatePct% 每 5% 再往下擴一個骰面
     else if (player.buffs && player.buffs.sk_elf_preciseshot > 0 && rollHit === 1) hit = true;   // 🏹 精準射擊：擲骰1由必定未命中→必定命中（最高命中率可達100%）
     else if (rollHit !== 1 && hitValue >= rollHit) hit = true;
     else if (rollHit === 19) { hit = true; graze = true; }   // 一般武器：擲到19本應未命中時 → 擦傷（傷害剩50%）
@@ -933,6 +935,8 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     else if (player.buffs.sk_holy_wpn > 0 && target.un) {
         fixed += roll(1, 20);
     }
+    // 🏺 遺物 傑克的彈弓：對「巨人」種族加成 +1D20（與 unBonus 同模型·獨立於不死/狼人加成）
+    if (wpn && wpn.giantBonus && target.race === '巨人') fixed += roll(1, 20);
 
     let _outDmg = inner + fixed;
     if (graze) _outDmg = Math.max(1, Math.floor(_outDmg * 0.5));   // 擦傷：最終傷害剩 50%
@@ -940,7 +944,10 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     _outDmg = Math.max(1, Math.floor(_outDmg * wpnEnFinalMult(wpnInst || player.eq.wpn)));   // 🔧 武器強化最終傷害倍率；🛡️ v2.6.69 審計#14：有傳 wpnInst（如迅猛雙斧副手揮擊傳 offwpn）就用「該武器自身」的強化與分級，不再硬吃主手倍率
     if (_cw && _cw.finalMult) _outDmg = Math.max(1, Math.floor(_outDmg * _cw.finalMult));   // 🏛️ 武器最終傷害倍率（古老武器 ×2）
     _outDmg = Math.max(1, Math.floor(_outDmg * rlFuryMult()));   // 🔮 紅獅5/5(×1.2)＋😡狂怒5/5：最終傷害（普攻及所有走本函式的物理攻擊：反擊/居合/看破/連擊/連射/穿透/魔擊/物理技能）
-    _outDmg = Math.max(1, Math.floor(_outDmg * elementCounterMult(_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId]), target.e)));   // ⚔️ 屬性剋制：屬性詞綴優先，否則取揮擊武器基底 ele（「一般攻擊轉為X屬性」遺物·與傭兵路徑 js/06 getWpnEle 對齊）剋怪 ×1.4、被剋 ×0.6（無屬性→×1）
+    { let _ecm = elementCounterMult(_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId]), target.e);
+      if (wpn && wpn.counterAllEle && target.e && target.e !== 'none') _ecm = Math.max(_ecm, 1.4);   // 🏺 遺物 不定形的變幻劍：一般攻擊剋制地/水/火/風一切屬性之敵（強制 ≥×1.4）
+      _outDmg = Math.max(1, Math.floor(_outDmg * _ecm)); }   // ⚔️ 屬性剋制：屬性詞綴優先，否則取揮擊武器基底 ele（「一般攻擊轉為X屬性」遺物·與傭兵路徑 js/06 getWpnEle 對齊）剋怪 ×1.4、被剋 ×0.6（無屬性→×1）
+    if (_natRoll && player.d.eleWpnMult && (_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId])) === player.d.eleWpnMult.ele) _outDmg = Math.max(1, Math.floor(_outDmg * player.d.eleWpnMult.mult));   // 🏺 遺物 四之牙臂甲：裝對應屬性武器時一般攻擊傷害 ×mult
     if (target && target._fireVulnUntil > state.ticks && (_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId])) === 'fire') _outDmg = Math.max(1, Math.floor(_outDmg * 1.3));   // 🏺 遺物 灼熱蜥蜴長舌：目標帶火屬性弱點時受火屬性攻擊 +30%
     if (heavy && player.mastery === 'k_cleave' && _cw && _cw.eff === 'cleave') _outDmg = Math.max(1, Math.floor(_outDmg * 1.5));   // 🏅 切割精通：觸發重擊時傷害 ×1.5
     if (heavy && _cw && _cw.heavyMult) _outDmg = Math.max(1, Math.floor(_outDmg * _cw.heavyMult));   // 🏺 遺物 鎧甲守衛的笨重巨劍：觸發重擊時傷害 ×heavyMult（1.5）

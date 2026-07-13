@@ -360,6 +360,7 @@ function useItem(u, silent = false, keepModal = false) {
             if (hasMastery('k_survive')) h = Math.floor(h * 1.25);   // 🏅 生存精通：治癒藥水恢復 +25%
             if (hasMastery('k_tough') && player.hp < player.mhp * 0.4) h = Math.floor(h * 1.5);   // ⚔️ 堅韌精通：HP<40% 時藥水治癒量 +50%
             if (hasMastery('k_dragonblood')) h = Math.floor(h * 1.15);   // 🐉 龍血精通：治癒藥水恢復 +15%
+            if (player.hp < player.mhp * 0.2) { for (let _k in player.eq) { let _e = player.eq[_k]; if (_e && DB.items[_e.id] && DB.items[_e.id].lowHpPotionX2) { h = h * 2; break; } } }   // 🏺 遺物 聖伯納的急救酒桶：HP<20% 時治癒藥水恢復量 ×2
             player.hp = Math.min(player.mhp, player.hp + h);
             player.cds.pot = 1;
             if(!silent) logSys(`飲用 ${d.n}，恢復 ${h} HP。`);

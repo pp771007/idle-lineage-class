@@ -588,7 +588,7 @@ function findMysticWandSource(srcId) {
     return cands.slice().sort((a, b) => ((a.en || 0) - (b.en || 0)) || (_extra(a) - _extra(b)))[0];
 }
 function buildMysticWandCraftHTML() {
-    let html = `<div class="text-amber-300 font-bold text-sm mt-4 mb-2 px-1 border-t border-slate-700 pt-3">🔮 鋼鐵瑪那魔杖（消耗 +7 以上的來源魔杖；成品為 +0）</div>`;
+    let html = `<div class="text-amber-300 font-bold text-sm mt-4 mb-2 px-1 border-t border-slate-700 pt-3">🔮 鋼鐵瑪那魔杖（消耗 +7 以上的來源魔杖；成品${traditionalActive() ? '自帶隨機強化值' : '為 +0'}）</div>`;
     MYSTICWAND_RECIPES.forEach((r, idx) => {
         let resItem = DB.items[r.result];
         let imgUrl = getIconUrl(resItem);
@@ -629,7 +629,9 @@ function doMysticWandCraft(idx) {
     MYSTICWAND_MATS.forEach(m => consumeMaterialById(m.id, m.cnt));
     if (src._whSource) { whRemoveStackByUid(src.uid, 1); }   // 來源魔杖在倉庫：自倉庫精準消耗該實例
     else if ((src.cnt || 1) > 1) src.cnt -= 1; else player.inv = player.inv.filter(i => i.uid !== src.uid);   // 消耗 1 把來源魔杖（背包）
-    gainItem(r.result, 1, true, false);   // 成品恆 +0 白板（不繼承來源的強化值／屬性／詞綴）；走 gainItem → 自動登錄裝備收集冊
+    // 一般／經典：成品恆 +0 白板（不繼承來源的強化值／屬性／詞綴）；🏛️ 傳統：比照其他製作／兌換，自帶隨機強化值（gainItem 內 traditionalActive() 閘）
+    let _svTrad = _tradLootCtx; _tradLootCtx = true;
+    try { gainItem(r.result, 1, true, false); } finally { _tradLootCtx = _svTrad; }   // 走 gainItem → 自動登錄裝備收集冊
     logSys(`<span class="text-amber-200 font-bold">神秘的魔法師</span> 製作完成：<span class="${getItemColor({ id: r.result })} font-bold">${DB.items[r.result].n}</span>`);
     updateUI(); renderTabs(true); saveGame();
     renderUniversalCraft(document.getElementById('interaction-content'), 'npc_mystic_mage');

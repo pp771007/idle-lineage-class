@@ -399,7 +399,7 @@
       MYSTICWAND_RECIPES.forEach(function (r) {
         if (!r || !r.result) return;
         var req = [{ id: r.src, cnt: 1, plus7: true }].concat(mwMats);
-        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_mystic_mage', req: req, yield: 1, note: '消耗 +7 以上的「' + (r.srcName || r.src) + '」；成品為 +0 白板，不繼承強化值／詞綴／屬性' });
+        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_mystic_mage', req: req, yield: 1, note: '消耗 +7 以上的「' + (r.srcName || r.src) + '」；成品為 +0 白板，不繼承強化值／詞綴／屬性（傳統模式：比照其他製作，成品自帶隨機強化值）' });
       });
     }
   }

@@ -1955,7 +1955,7 @@
       html += '<div class="m-wiki-sub">🔮 ' + mwWhere + '（鋼鐵瑪那魔杖・客製）</div>';
       html += MYSTICWAND_RECIPES.map(function (r) {
         var mats = itemName(r.src) + '（須 +7 以上）×1' + (mwMats.length ? '、' + mwMats.map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') : '');
-        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + mwWhere + ' 製作　材料：' + esc(mats) + '（成品為 <b>+0</b> 白板，不繼承來源魔杖的強化值／詞綴／屬性）</div>';
+        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + mwWhere + ' 製作　材料：' + esc(mats) + '（成品為 <b>+0</b> 白板，不繼承來源魔杖的強化值／詞綴／屬性；傳統模式比照其他製作，成品自帶隨機強化值）</div>';
       }).join('');
     }
     return html;

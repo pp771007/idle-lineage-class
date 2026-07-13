@@ -57,7 +57,13 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     let itemInfo = { id: id, cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff };
     
     if (!silent && d) {
-        logSys(`獲得物品: <span class="font-bold">${getItemFullName(itemInfo)}</span>`);
+        // 🐾 有擊殺掉落來源怪物時 →「怪名 給你 物品名」；其餘來源（商店/製作/NPC 兌換/任務）維持「獲得物品:」
+        if (_lootMobInfo) {
+            let _mc = (typeof getMobColor === 'function') ? getMobColor(_lootMobInfo.lv) : '';
+            logSys(`<span class="sys-item-gain"><span class="${_mc}">${_lootMobInfo.n}</span> 給你 <span class="font-bold">${getItemFullName(itemInfo)}</span> 。</span>`);
+        } else {
+            logSys(`<span class="sys-item-gain">獲得物品: <span class="font-bold">${getItemFullName(itemInfo)}</span></span>`);
+        }
     }
     renderTabs();
     if(DB.items[id] && DB.items[id].grantSkills) { calcStats(); renderSkillSelects(); }   // 取得授予技能的頭盔：立即生效

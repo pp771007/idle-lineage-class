@@ -148,7 +148,6 @@
         '長老．拉曼斯': [['wpn_dark_sword', 0.5], ['wpn_official_2h', 0.5], ['wpn_claw_dark', 0.5], ['hlm_official', 0.5], ['arm_official_cloak', 0.5], ['bot_dark', 0.5], ['bk_invisible', 0.2], ['bk_elf_groundtrap', 1], ['bk_dark_str', 1], ['bk_elf_energyboost', 1], ['mat_black_powder', 3], ['mat_history_7', 3], ['item_dk_insignia', 3]],
         '長老．泰瑪斯': [['wpn_blood_2hsword', 1], ['clk_dark', 0.5], ['glv_official', 0.5], ['bk_holy_dash', 0.5], ['bk_elf_mirror', 1], ['bk_dark_dex', 1], ['bk_elf_energyboost', 1], ['mat_black_powder', 3], ['mat_history_6', 3], ['item_dk_insignia', 3]],
         '長老．艾迪爾': [['glv_dark', 1], ['bot_priest', 0.5], ['bk_dark_shadow', 0.5], ['bk_sleep_mist', 0.5], ['bk_elf_lifebless', 0.5], ['bk_dragon_awaken_antares', 1], ['mat_black_powder', 3], ['mat_history_5', 3], ['item_dk_insignia', 3]],
-        '炎魔之影': [['mat_black_blood', 1]],
         '血色術士': [['wpn_red_crystalwand', 0.1], ['hlm_priest', 0.05], ['amr_priest', 0.05], ['amr_dark_cape', 1], ['bot_priest', 0.05], ['mat_legion_necro', 0.1]],
         '歐姆戰士': [['hlm_priest', 0.05], ['clk_priest', 0.02], ['bot_priest', 0.05], ['glv_priest', 0.05], ['blt_dark', 0.05], ['mat_legion_assassin', 0.1], ['mat_legion_necro', 0.1]],
         '闇黑君王': [['wpn_red_crystalwand', 0.1], ['hlm_priest', 0.02], ['bot_priest', 0.02], ['mat_legion_necro', 0.1]],
@@ -419,7 +418,7 @@
         '象牙塔小惡魔': [['wpn_demon_axe',0.01],['mat_black_mithril',1]],
         '象牙塔巴風特之影': [['mat_black_mithril',1],['wpn_powerless_baphomet',0.0001],['amr_baphomet',0.0001]],
         '象牙塔翼魔': [['mat_black_mithril',1]],
-        '象牙塔炎魔之影': [['mat_black_mithril',1]],
+        '象牙塔炎魔之影': [['mat_black_mithril',1], ['mat_black_blood',1]],   // 🩹 黑血原掛在孤兒 key「炎魔之影」(那是 NPC 名·場上無此怪)→ 永遠掉不出來，併回真正的怪名
         '象牙塔惡魔之影': [['mat_black_mithril',1],['wpn_demon_axe',0.1],['wpn_demon_scythe',0.0001],['wpn_demon_dual',0.01],['wpn_demon_claw',0.01],['wpn_demon_xbow',0.01]],
         // ===== 🐜 螞蟻洞窟 新增怪物掉落 + 巨蟻女皇（古代妖精裝備） =====
         '白螞蟻群': [['wpn_giantaxe',0.1],['arm_46',0.03],['arm_108',0.3],['new_item_154',5],['bk_elf_groundtrap',0.2],['bk_elf_earthbless',0.1]],
@@ -766,6 +765,7 @@ function sherineWorldActive() { return !!(player && (player.sherineWorld || play
 function sherineMadActive() { return !!(player && player.sherineMad); }   // 🔮 僅「瘋狂的席琳世界」：供倍率分流
 function applySherineTheme() { document.body.classList.toggle('sherine-world', sherineWorldActive()); document.body.classList.toggle('sherine-mad', sherineMadActive()); }
 let _sherineLootCtx = null;   // 擊殺掉落上下文：killMob 期間設定（{boss,grace}），供 gainItem 判定詞綴×3 與套裝效果
+let _lootMobInfo = null;      // 🐾 擊殺掉落期間設 {n,lv}＝掉落來源怪物，供 gainItem 顯示「怪名 給你 物品名」（商店/製作/NPC 兌換不設→維持「獲得物品:」）
 let _forceSherineSet = false;   // 🔮 席琳製作：成品必定附帶隨機套裝效果（doCraft 產出期間設定）
 let _tradLootCtx = false;   // 🏛️ 傳統模式「掠奪上下文」：在怪物掉落／潘朵拉黑市／製作期間設 true，供 gainItem 為裝備隨機自帶強化值＋抑制施法卷軸（商店購買不設→恆 +0）
 let _noAffixCtx = false;    // 🦴 「白板上下文」：設 true 時 gainItem 不附加詞綴（祝福/詛咒/屬性）但仍放行傳統自帶強化值——供寵物裝備製作（白板＋隨機強化值，機率同飾品）

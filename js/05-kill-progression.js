@@ -188,6 +188,7 @@ function killMob(idx) {
     let _kbNoReward = _kbRoom && !mob.boss;                     // 除頭目外（地獄束縛犬）：不給金錢/掉落
     _sherineLootCtx = mob._sherine ? { boss: !!mob.boss, grace: !!mob._grace, mad: !!mob._sherineMad } : null;   // 🔮 席琳的世界：本次擊殺掉落套用 詞綴×3(瘋狂×5)／套裝效果判定（恩賜怪套裝機率×5、瘋狂再×3）
     _tradLootCtx = traditionalActive();   // 🏛️ 傳統模式：本次擊殺掉落的裝備隨機自帶強化值＋抑制施法卷軸（於 _sherineLootCtx 清除處一併關閉）
+    _lootMobInfo = { n: mob.n, lv: mob.lv };   // 🐾 本次掉落的來源怪物 → gainItem 顯示「怪名 給你 物品名」
     _vfxLootCtx = true;   // ✨ VFX：本次擊殺掉落期間→gainItem 對潘朵拉權重=1 物品閃光
     try {
     if(typeof auditTrackKill === 'function') auditTrackKill(mob);   // 統計：累計經驗/擊殺
@@ -401,6 +402,7 @@ function killMob(idx) {
         _sherineLootCtx = null;   // 🔮 掉落判定結束，清除上下文（try/finally：縱使中途拋例外也必清，杜絕 _tradLootCtx 殘留洩漏到兌換/任務/其他 forceNormal=false 獎勵）
         _tradLootCtx = false;     // 🏛️ 傳統模式掠奪上下文一併關閉
         _vfxLootCtx = false;      // ✨ VFX：擊殺掉落上下文一併關閉
+        _lootMobInfo = null;      // 🐾 掉落來源怪物一併清除（杜絕殘留洩漏到兌換/任務的 gainItem）
     }
     // 🔧 架構#2：不在此處位移輸送帶（呼叫點可能正在迭代怪物陣列）。
     // tick 內的擊殺延後到 gameLoop 的 settleDeadMobs()；手動操作則立即清算。
@@ -693,6 +695,7 @@ function enterRiftMap() {   // 仿 enterPrideFloor 的戰鬥進場（不走 chan
         document.getElementById('town-view').classList.add('hidden');
         document.getElementById('town-view').classList.remove('flex');
         mapPanel.classList.remove('flex-1', 'overflow-hidden');
+        try { applyAreaBackground(); } catch (e) {}   // 進裂痕時立即套狩獵區背景（原本要等下一次 updateUI 才換，會沿用村莊版面）
         logSys('<span class="font-bold" style="color:#c4b5fd;">--- 🌀 你撕開時空，踏入了裂痕…… ---</span>');
         renderMobs();
         syncMapSelectors();

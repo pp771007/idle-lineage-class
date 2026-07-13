@@ -1728,7 +1728,8 @@
         function (k) { return ebBonusTxt(bonus[k]); });
     } else if (typeof EQUIP_CAT_BONUS !== 'undefined') {   // 未選模式:只列加成對照(無進度、不爆缺項)
       out += wCard('🗡️ 各部位全收集加成', wTbl(['部位', '全部收集齊 → 永久加成'],
-        EQUIP_CATEGORIES.map(function (c) { return [esc(c.name), ebBonusTxt(bonus[c.key])]; })));
+        EQUIP_CATEGORIES.filter(function (c) { return (EQUIP_CAT_ITEMS[c.key] || []).length > 0; })   // 恆空的分類(箭筒＝只有遺物)不列
+          .map(function (c) { return [esc(c.name), ebBonusTxt(bonus[c.key])]; })));
     }
     return out;
   }

@@ -22,6 +22,7 @@ const EQUIP_CATEGORIES = [
     { key: 'chainsword', name: '鎖鏈劍',   group: '武器' },
     { key: 'bow',        name: '弓',       group: '武器' },
     { key: 'xbow',       name: '十字弓',   group: '武器' },
+    { key: 'quiver',     name: '箭筒',     group: '武器' },   // 🏺 只有遺物箭筒（改造便利箭筒／艾庫尤卡的永續箭筒）；一般箭矢＝彈藥不收錄，故「裝備收集冊」此分類恆為空、不會顯示
     { key: 'wand',       name: '魔杖',     group: '武器' },
     { key: 'qigu',       name: '奇古獸',   group: '武器' },
     { key: 'wpn_other',  name: '其他武器', group: '武器' },
@@ -84,7 +85,7 @@ const EQUIP_CAT_BONUS = {
 function equipCatKey(id, d) {
     if (!d) return null;
     if (d.type === 'wpn') {
-        if (d.isArrow) return null;                                  // 箭矢＝彈藥，不收錄
+        if (d.isArrow) return (typeof isRelic === 'function' && isRelic(d)) ? 'quiver' : null;   // 🏺 遺物箭筒歸「箭筒」分類（進遺物收集冊）；一般箭矢＝彈藥，不收錄
         if (d.isBow) return /十字弓|弩/.test(d.n || '') ? 'xbow' : 'bow';
         if (d.qigu) return 'qigu';
         if (d.chainsword) return 'chainsword';

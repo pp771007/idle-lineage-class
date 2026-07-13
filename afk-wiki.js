@@ -1760,9 +1760,32 @@
     { k: 'remains', n: '🦴 席琳遺骸' }   // 8 種遺骸的 slot 各自不同(rem_claw…),equipGroupKey 統一歸到這一組
   ]);
   var EQUIP_REQ_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
+  // 武器分類名(「弓」「十字弓」…) → 分類 key(bow/xbow…)。EQUIP_CATEGORIES 改了會自動跟上。
+  var _wpnCatByName = null, _wpnCatNames = null;
+  function wpnCatByName() {
+    if (!_wpnCatByName) {
+      _wpnCatByName = {};
+      if (typeof EQUIP_CATEGORIES !== 'undefined') EQUIP_CATEGORIES.forEach(function (c) { if (c.group === '武器') _wpnCatByName[c.name] = c.key; });
+    }
+    return _wpnCatByName;
+  }
   function equipGroupKey(id, d) {
     if (d.remains) return 'remains';   // 🦴 席琳遺骸 8 件的 slot 各自不同,歸成同一組
-    return (d.type === 'wpn') ? ((typeof EQUIP_ITEM_CAT !== 'undefined' && EQUIP_ITEM_CAT[id]) || 'wpn_other') : (d.slot || 'other');
+    if (d.type !== 'wpn') return d.slot || 'other';
+    var k = (typeof EQUIP_ITEM_CAT !== 'undefined' && EQUIP_ITEM_CAT[id]);
+    if (k) return k;
+    // 🏺 遺物武器不在「裝備收集冊」分類表(EQUIP_ITEM_CAT)內(遺物走獨立收集冊)→ 沒這段的話 100+ 件遺物武器
+    //    會全部落進「其他武器」,弓/十字弓/單手劍等分類看不到任何遺物。改用遊戲自己的武器標籤與旗標回推分類。
+    var byName = wpnCatByName();
+    var tags = (typeof getWeaponTags === 'function') ? (getWeaponTags(id) || []) : [];
+    for (var i = 0; i < tags.length; i++) if (byName[tags[i]]) return byName[tags[i]];
+    if (d.qigu) return byName['奇古獸'] || 'wpn_other';
+    if (typeof isWandWeapon === 'function' && isWandWeapon(d)) return byName['魔杖'] || 'wpn_other';
+    // 名稱含分類名(長的先比:「十字弓」不能被「弓」搶走)。遺物十字弓只有 isBow 旗標、沒有武器標籤。
+    var names = _wpnCatNames || (_wpnCatNames = Object.keys(byName).sort(function (a, b) { return b.length - a.length; }));
+    for (var j = 0; j < names.length; j++) if (String(d.n || '').indexOf(names[j]) >= 0) return byName[names[j]];
+    if (d.isBow || d.ranged) return byName['弓'] || 'wpn_other';
+    return 'wpn_other';
   }
   // 某職業能否裝備:用遊戲真實規則(與遊戲顯示一致),非單看 req
   function classCanEquip(d, id, cls) {

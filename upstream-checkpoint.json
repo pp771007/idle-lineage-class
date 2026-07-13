@@ -3,8 +3,8 @@
   "localClone": "D:/otherPersonRepos/idle-lineage-class",
   "divergedAtUpstream": "8a701d846b729171248521bd4153533d8078b44e",
   "divergedAtOurs": "58ad5809f08a3b92e02c963ae8cebe553b482bf2",
-  "reviewedUpstreamCommit": "de9129b79c2f25832c62d087e0bbc4c19659ec48",
-  "reviewedAt": "2026-07-10 15:05 (UTC+8)",
-  "reports": ["upstream-reviews/2026-07-10-v3.0.65-to-v3.1.67.md"],
+  "reviewedUpstreamCommit": "a3c8331b5a1664ec7a43925945779dfb0b49a2f4",
+  "reviewedAt": "2026-07-13 10:39 (UTC+8)",
+  "reports": ["upstream-reviews/2026-07-10-v3.0.65-to-v3.1.67.md", "upstream-reviews/2026-07-13-v3.1.67-to-v3.3.15.md"],
   "note": "分家點=2026-07-05 最後一次自動同步(上游 v3.0.65)。divergedAt* 兩個 commit 內容等價(js/ 全檔 blob 相同)、永不改動,是 3-way 移植的共同祖先。reviewedUpstreamCommit=已完成差異分析的上游 commit,由 /upstream-diff 推進;分析報告存 upstream-reviews/ 並列進 reports。"
 }

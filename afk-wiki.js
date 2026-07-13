@@ -1756,10 +1756,14 @@
     { k: 'helm', n: '🪖 頭部' }, { k: 'armor', n: '🛡 身體' }, { k: 'shin', n: '🦵 脛甲' },
     { k: 'shield', n: '🔰 盾牌／副手' }, { k: 'cloak', n: '🧥 斗篷' }, { k: 'gloves', n: '🧤 手套' },
     { k: 'boots', n: '🥾 鞋子' }, { k: 'belt', n: '🎗️ 腰帶' }, { k: 'ring', n: '💍 戒指' },
-    { k: 'amulet', n: '📿 項鍊' }, { k: 'ear', n: '👂 耳環' }, { k: 'tshirt', n: '👕 內衣' }, { k: 'pet', n: '🐾 寵物裝備' }
+    { k: 'amulet', n: '📿 項鍊' }, { k: 'ear', n: '👂 耳環' }, { k: 'tshirt', n: '👕 內衣' }, { k: 'pet', n: '🐾 寵物裝備' },
+    { k: 'remains', n: '🦴 席琳遺骸' }   // 8 種遺骸的 slot 各自不同(rem_claw…),equipGroupKey 統一歸到這一組
   ]);
   var EQUIP_REQ_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
-  function equipGroupKey(id, d) { return (d.type === 'wpn') ? ((typeof EQUIP_ITEM_CAT !== 'undefined' && EQUIP_ITEM_CAT[id]) || 'wpn_other') : (d.slot || 'other'); }
+  function equipGroupKey(id, d) {
+    if (d.remains) return 'remains';   // 🦴 席琳遺骸 8 件的 slot 各自不同,歸成同一組
+    return (d.type === 'wpn') ? ((typeof EQUIP_ITEM_CAT !== 'undefined' && EQUIP_ITEM_CAT[id]) || 'wpn_other') : (d.slot || 'other');
+  }
   // 某職業能否裝備:用遊戲真實規則(與遊戲顯示一致),非單看 req
   function classCanEquip(d, id, cls) {
     if (cls === 'all') return true;
@@ -1903,7 +1907,7 @@
       html += '<div class="m-wiki-sub">👑 ' + dkWhere + '（惡魔王武器・客製）</div>';
       html += DEMONKING_RECIPES.map(function (r) {
         var mats = itemName(r.src) + '（須 +11 以上）×1' + (dkMats.length ? '、' + dkMats.map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') : '');
-        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + dkWhere + ' 製作　材料：' + esc(mats) + '（會繼承來源武器的強化值／詞綴／席琳套裝）</div>';
+        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + dkWhere + ' 製作　材料：' + esc(mats) + '（會繼承來源武器的強化值與詞綴，含舊席琳詞綴）</div>';
       }).join('');
     }
     // ⚔️ 神聖執行團裝備:琉米埃爾客製製作(消耗 +7 以上戰士團裝備 + 素材,不在 CRAFT_RECIPES 裡)
@@ -1913,7 +1917,7 @@
       html += '<div class="m-wiki-sub">⚔️ ' + lmWhere + '（神聖執行團裝備・客製）</div>';
       html += LUMIEL_RECIPES.map(function (r) {
         var mats = itemName(r.src) + '（須 +7 以上）×1' + ((r.mats && r.mats.length) ? '、' + r.mats.map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') : '');
-        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + lmWhere + ' 製作　材料：' + esc(mats) + '（會繼承來源戰士團裝備的強化值／詞綴／席琳套裝）</div>';
+        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + lmWhere + ' 製作　材料：' + esc(mats) + '（會繼承來源戰士團裝備的強化值與詞綴，含舊席琳詞綴）</div>';
       }).join('');
     }
     return html;
@@ -1999,7 +2003,7 @@
   }
 
   function renderSherine() {
-    var out = '<div class="m-wiki-note">「席琳」是一整套困難模式：開啟世界 → 怪變強但報酬翻倍 → 掉席琳結晶 → 做／換席琳套裝。<br>📌 作用範圍：席琳的世界強化效果（怪物強化與掉落倍率）也套用在<b>軍王之室</b>、<b>底比斯歐西里斯祭壇</b>與<b>提卡爾庫庫爾坎祭壇</b>的怪物（但恩賜精英不會在這些頭目房出現）。</div>';
+    var out = '<div class="m-wiki-note">「席琳」是一整套困難模式：開啟世界 → 怪變強但報酬翻倍 → 掉<b>席琳結晶</b> → 找神殿的<b>伊奧</b>換<b>席琳遺骸</b> → 遺骸湊組發動席琳套裝效果。<br>📌 作用範圍：席琳的世界強化效果（怪物強化與掉落倍率）也套用在<b>軍王之室</b>、<b>底比斯歐西里斯祭壇</b>與<b>提卡爾庫庫爾坎祭壇</b>的怪物（但恩賜精英不會在這些頭目房出現）。</div>';
 
     out += wCard('🩸 席琳的世界（困難模式：一般／瘋狂）',
       wDesc('到「席琳神殿」找 NPC <b>席琳</b> 祈禱開／關（需 40 級以上、可自由切換）；分<b>一般</b>與更猛的<b>瘋狂</b>兩段、兩者互斥，開啟後畫面變暗紅（瘋狂更紅）。<b>攻城區與血盟敵人不受影響</b>。') +
@@ -2016,17 +2020,35 @@
         ['你的金錢', '<b style="color:#86efac">×5</b>', '<b style="color:#86efac">×10</b>'],
         ['掉落機率', '<b style="color:#86efac">×3</b>', '<b style="color:#86efac">×5</b>'],
         ['詞綴（祝福）機率', '<b style="color:#86efac">×3</b>', '<b style="color:#86efac">×5</b>'],
-        ['席琳結晶／套裝效果掉率', '基準（限開啟時才掉）', '<b style="color:#86efac">×3</b>']
+        ['席琳結晶掉率', '基準（限開啟時才掉）', '<b style="color:#86efac">×3</b>']
       ]));
 
-    out += wCard('💎 席琳結晶（做套裝的鑰匙）',
-      wDesc('席琳世界限定材料，本身不能直接用；做「席琳製作／兌換」時各額外消耗 1 個，讓成品必帶一種套裝效果。') +
-      wTbl(['掉落來源', '機率（固定・不吃掉落倍率）'], [
-        ['21~30 級怪', '0.001%'], ['31~40 級怪', '0.002%'], ['41 級以上怪', '0.003%'],
-        ['一般 BOSS', '0.1%'], ['夢幻之島 BOSS', '0.01%'], ['四大龍（安塔瑞斯／法利昂／巴拉卡斯／林德拜爾）', '<b>10%</b>'],
-        ['20 級以下怪、血盟怪', '不掉']
+    out += wCard('💎 席琳結晶（換遺骸的鑰匙）',
+      wDesc('席琳世界限定材料，本身不能直接用。到席琳神殿找 <b>伊奧</b>，<b>1 顆換 1 件</b>指定部位的席琳遺骸。掉率直接由<b>怪物等級</b>決定：') +
+      wTbl(['怪物類型', '每擊殺的掉落機率'], [
+        ['一般怪', '<b>0.001% × 等級</b>（Lv30 → 0.03%、Lv60 → 0.06%）'],
+        ['頭目', '<b>0.01% × 等級</b>（Lv60 → 0.6%、Lv100 → 1%）'],
+        ['血盟怪', '不掉']
       ]) +
-      wDesc('🔴 <b>瘋狂席琳</b>：上表結晶掉率全部再 ×3。'));
+      wTbl(['倍率', '是否影響結晶掉率'], [
+        ['席琳的世界 ×3', '<b style="color:#f87171">不影響</b>（結晶本來就只在席琳世界掉）'],
+        ['恩賜怪 ×10', '<b style="color:#f87171">不影響</b>'],
+        ['瘋狂的席琳世界', '<b style="color:#86efac">×3</b>'],
+        ['經典模式', '<b style="color:#f87171">×1/10</b>']
+      ]));
+
+    out += wCard('🦴 席琳遺骸（套裝效果的載體）',
+      wDesc('席琳套裝效果<b>不再附在一般裝備上</b>，改由 8 格專屬的「席琳遺骸」承載——遺骸欄在「<b>裝備</b>」分頁的最下方。遺骸本身沒有任何數值、不佔負重、不能強化，唯一的作用就是帶著一個席琳套裝詞綴。') +
+      wTbl(['遺骸', '對應部位（拆分時用）'], [
+        ['之爪', '武器'], ['之眼', '頭盔'], ['之血', '斗篷'], ['之肉', '長靴／脛甲'],
+        ['之心', '腰帶'], ['之骨', '手套'], ['之牙', '副手（盾牌／臂甲）'], ['之鱗', '盔甲']
+      ]) +
+      wTbl(['取得方式', '規則'], [
+        ['席琳神殿・<b>伊奧</b>', '<b>席琳結晶 ×1</b> → 指定部位的遺骸 ×1（8 部位任選），詞綴從 12 組<b>隨機</b>一種'],
+        ['席琳神殿・<b>菈克希絲</b>', '把<b>身上穿著</b>、帶舊席琳詞綴的裝備拆成對應部位的遺骸（<b>免費</b>；裝備、強化值與其他詞綴全部保留，只有詞綴被取下）'],
+        ['怪物掉落', '<b style="color:#f87171">沒有</b>——怪不會掉遺骸，裝備也不會再自己長出席琳詞綴']
+      ]) +
+      wDesc('舊裝備上的席琳詞綴<b>只剩顯示、不再計入套裝件數</b>，要生效請找菈克希絲拆成遺骸。'));
 
     var st = sherineSetText();
     var setRows = Object.keys(st).map(function (g) {
@@ -2034,17 +2056,13 @@
       st[g].forEach(function (line) { var m = String(line).match(/^(\d+)件：(.+)$/); if (m) t[m[1]] = esc(friendly(m[2])); });
       return ['<b style="color:#86efac">' + esc(g) + '</b>', t['2'], t['3'], t['5']];
     });
-    out += wCard('🟢 席琳套裝加成（同名跨部位湊件數）',
-      wDesc('裝備可帶一個席琳套裝效果（名稱前冠套裝名，如「紅獅環甲」）；<b>同一套裝名戴在不同部位</b>累計件數，湊 2／3／5 件解鎖各階。可裝：武器／頭盔／盔甲／手套／長靴／斗篷／腰帶／盾牌／臂甲（副手）。') +
-      wDesc('取得帶效果裝備：席琳世界擊殺（一般怪 0.1%、恩賜怪 0.5%、BOSS 5%；<b>瘋狂席琳再 ×3</b>）、席琳製作（必帶）、席琳兌換（必帶）。') +
+    out += wCard('🟢 席琳套裝加成（同組名湊遺骸格數）',
+      wDesc('每件遺骸帶一個席琳套裝詞綴（共 12 組）；<b>同一組名</b>的遺骸裝進不同遺骸格就累計，湊 <b>2／3／5</b> 格解鎖各階效果。8 格全裝滿最多能同時養兩組（5＋3）或四組（2×4）。') +
       wTbl(['套裝', '2 件', '3 件', '5 件'], setRows));
 
     out += wCard('✨ 席琳恩賜（精英怪）',
       wDesc('席琳世界每次刷怪 1% 機率（每 3 分鐘最多一次），隨機一隻普通怪變「恩賜精英」（紅綠光暈＋紅底綠字徽章）；牠更兇但報酬更高。<b>已恩賜的怪不會再被選中第二次</b>（同一隻不會疊加恩賜）。') +
-      wTbl(['恩賜怪', '倍率／機率'], [['HP', '×10（並回滿）'], ['經驗', '×10'], ['金錢', '×10'], ['掉落', '×10'], ['席琳套裝掉率', '0.5%']]));
-
-    out += wCard('🔄 席琳兌換',
-      wDesc('各試煉 NPC 兌換時，一般兌換鈕旁多一顆綠色「席琳兌換」鈕：額外花 1 個席琳結晶，換到的裝備<b>必帶一個隨機席琳套裝效果</b>（身上＋倉庫無結晶時不能用）。'));
+      wTbl(['恩賜怪', '倍率／機率'], [['HP', '×10（並回滿）'], ['經驗', '×10'], ['金錢', '×10'], ['掉落', '×10'], ['席琳結晶掉率', '不受恩賜影響']]));
 
     return out;
   }
@@ -2285,7 +2303,7 @@
 
     var c4 = card('🏛️ 系統 · NPC · 其他', tbl(
       r('席琳神殿（進入·世界排名）', OK, NO, OK, NO) +
-      r('席琳結晶兌換套裝效果', OK, NO, OK, NO) +
+      r('席琳結晶兌換遺骸（伊奧／菈克希絲）', OK, NO, OK, NO) +
       r('碧恩（象牙塔）：賦予祝福卷軸（屬性／遠古）', OK, NO, OK, NO) +
       r('漢：職業精通', OK, NO, OK, NO) +
       r('肯特城兌換 NPC（伊賽馬利）', OK, OK, OK, NO) +

@@ -255,7 +255,8 @@ function renderTabs(force) {
 function _renderEquipTab() {
     let eDiv = document.getElementById('tab-equip'); eDiv.innerHTML = '';
     { let _wd = player.d || {}; let _t = _wd.loadTier || 0; let _hdr = document.createElement('div'); _hdr.className = 'text-center py-0.5 mb-1 rounded bg-slate-900/60 border border-slate-700 text-sm font-bold leading-tight' + (_t >= 1 ? ' cursor-help' : ''); if (_t >= 1) { _hdr.title = _t === 1 ? '負重50%↑：HP/MP不自然恢復' : (_t === 2 ? '負重82%↑：HP/MP不自然恢復、停自動施法、攻速變慢' : '負重100%↑：HP/MP不自然恢復、停自動施法、攻速大幅變慢'); } _hdr.innerHTML = `<span class="text-slate-400">負重 </span><span class="${getLoadColor(_t)}">${_wd.weightPct||0}%</span>`; eDiv.appendChild(_hdr); }
-    const slots = [{k:'wpn',n:'武器'}, ...((player.cls === 'warrior' && (player.skills.includes('sk_warrior_dualaxe') || player.eq.offwpn)) ? [{k:'offwpn',n:'副手武器'}] : []), {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'shin',n:'脛甲'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'pet',n:'寵物裝備'},{k:'doll',n:'魔法娃娃'},{k:'arrow',n:'箭矢'}];   // ⚔️ offwpn：戰士學會迅猛雙斧後顯示副手武器欄
+    const slots = [{k:'wpn',n:'武器'}, ...((player.cls === 'warrior' && (player.skills.includes('sk_warrior_dualaxe') || player.eq.offwpn)) ? [{k:'offwpn',n:'副手武器'}] : []), {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'shin',n:'脛甲'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'pet',n:'寵物裝備'},{k:'doll',n:'魔法娃娃'},{k:'arrow',n:'箭矢'},
+        { sep: '🦴 席琳遺骸' }, ...SHERINE_REMAINS.map(r => ({ k: r.id, n: r.n, rem: true }))];   // ⚔️ offwpn：戰士學會迅猛雙斧後顯示副手武器欄；🦴 席琳遺骸 8 格接在最後（席琳套裝效果只看這 8 格）
     
     let setCheck = {}, _setSeen = {};
     for (let k in player.eq) {
@@ -285,16 +286,27 @@ function _renderEquipTab() {
     if(setCheck['bluepirate'] >= 4) activeSets.push('bluepirate');   // 🏴‍☠️ 藍海賊套裝：4 件齊→欄位底色亮起
 
     slots.forEach(s => {
+        if (s.sep) {   // 🦴 遺骸區分隔標題
+            let h = document.createElement('div');
+            h.className = 'text-center text-sm font-bold text-slate-400 mt-2 mb-1 pt-2 border-t border-slate-700';
+            h.innerText = s.sep;
+            eDiv.appendChild(h);
+            return;
+        }
         let eq = player.eq[s.k];
         let isSetActive = false;
         if(eq && DB.items[eq.id].set && activeSets.includes(DB.items[eq.id].set)) isSetActive = true;
-        // 🔮 席琳套裝：該裝備的套裝效果組別達 2 件以上（觸發套裝能力）→ 欄位底色變綠
-        let isSherineActive = !!(eq && eq.seteff && player._sherineSetCnt && (player._sherineSetCnt[eq.seteff.slice(0, 2)] || 0) >= 2);
+        // 🔮 席琳套裝：該欄的套裝效果組別達 2 件以上（觸發套裝能力）→ 欄位底色變綠
+        //    🦴 一般裝備欄的舊 seteff 已不計入效果（_sherineSetCnt 只數遺骸欄），故底色只會在遺骸欄亮起
+        let _grp = (eq && eq.seteff) ? eq.seteff.slice(0, 2) : null;
+        let _setN = _grp ? ((player._sherineSetCnt && player._sherineSetCnt[_grp]) || 0) : 0;
+        let isSherineActive = _setN >= 2;
 
         let el = document.createElement('div');
         // 🔧 底色優先序：席琳套裝(綠) > 舊套裝(琥珀金，原綠色讓給席琳) > 一般
-        el.className = `list-item text-base rounded mb-1 ${isSherineActive
-            ? 'bg-green-900 border border-green-400 ring-1 ring-green-400/60 shadow-[0_0_10px_rgba(74,222,128,0.6)]'
+        //    🦴 遺骸欄的發光強度分 2/3/5 件三階，走 css/style.css 的 .rem-lit/.rem-tier-N（Tailwind 是 purge 過的建置檔，新的任意值 class 不會存在）
+        el.className = `list-item text-base rounded mb-1 ${s.rem ? 'rem-slot ' : ''}${isSherineActive
+            ? (s.rem ? `bg-green-900 rem-lit rem-tier-${_setN >= 5 ? 5 : (_setN >= 3 ? 3 : 2)}` : 'bg-green-900 border border-green-400 ring-1 ring-green-400/60 shadow-[0_0_10px_rgba(74,222,128,0.6)]')
             : (isSetActive ? 'bg-amber-900 border border-amber-400 ring-1 ring-amber-400/60 shadow-[0_0_10px_rgba(245,158,11,0.55)]' : 'bg-slate-800')}`;
         if(eq) {
             let d = DB.items[eq.id];
@@ -302,7 +314,8 @@ function _renderEquipTab() {
             // 👇 判斷如果裝備本身是祝福的，或者物品基底(卷軸)是祝福的，就套用螢光特效
             let glowClass = getGlowClass(eq, d);
             let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="w-6 h-6 ml-2 object-contain pointer-events-none ${glowClass}">`;
-            el.innerHTML = `<span class="text-slate-400 w-12">${s.n}</span><div class="flex items-center justify-end flex-1"><span class="${getItemColor(eq)} text-right font-bold">${getItemFullName(eq)}</span>${imgHtml}</div>`;
+            let _pg = s.rem ? `<span class="text-xs ${isSherineActive ? 'text-green-300' : 'text-slate-500'} mr-2">${Math.min(5, _setN)}/5</span>` : '';   // 🦴 遺骸欄顯示該組共鳴進度
+            el.innerHTML = `<span class="text-slate-400 w-12">${s.n}</span><div class="flex items-center justify-end flex-1">${_pg}<span class="${getItemColor(eq)} text-right font-bold">${getItemFullName(eq)}</span>${imgHtml}</div>`;
             el.onclick = () => openModal(eq, true, s.k);
         } else {
             let _rlv = (s.k === 'ring3') ? 55 : (s.k === 'ring4') ? 65 : (s.k === 'ear2') ? 50 : 0;   // 🔧 第3/4戒指欄、第2耳環欄等級需求
@@ -676,7 +689,9 @@ function buildItemDescHTML(item) {
     if (item.seteff) {
         let _g = item.seteff.slice(0, 2);
         let _lines = (SHERINE_SET_TEXT[_g] || []).map(t => `<span class="text-green-200">・${t}</span>`).join('<br>');
-        desc = `<span class="c-sherine font-bold">✦ 席琳套裝效果：${_g}</span><br>${_lines}`
+        // 🦴 一般裝備上的舊詞綴已不計入套裝效果（只有遺骸欄計件），提示玩家可去神殿拆成遺骸
+        let _legacy = d.remains ? '' : `<br><span class="text-amber-300 text-sm">（舊詞綴：已不計入套裝效果，可請席琳神殿的菈克希絲拆分為遺骸）</span>`;
+        desc = `<span class="c-sherine font-bold">✦ 席琳套裝效果：${_g}</span><br>${_lines}${_legacy}`
              + (desc ? `<br>${desc}` : '');
     }
     if(d.type === 'wpn') {
@@ -960,7 +975,8 @@ function openModal(item, isEq, slot) {
     // === 旁邊顯示「目前裝備中」對應欄位，方便比對（僅背包中的武器/防具/飾品，箭矢除外）===
     let _cmp = document.getElementById('modal-compare');
     if(_cmp) {
-        const SLOT_LABEL = { wpn:'武器', offwpn:'副手武器', helm:'頭盔', armor:'盔甲', shin:'脛甲', shield:'副手', cloak:'斗篷', tshirt:'內衣', gloves:'手套', boots:'鞋子', ring1:'戒指 1', ring2:'戒指 2', ring3:'戒指 3', ring4:'戒指 4', amulet:'項鍊', ear1:'耳環 1', ear2:'耳環 2', belt:'腰帶', pet:'寵物裝備' };   // 🦵 shin=脛甲（遺物新增部位）
+        const SLOT_LABEL = { wpn:'武器', offwpn:'副手武器', helm:'頭盔', armor:'盔甲', shin:'脛甲', shield:'副手', cloak:'斗篷', tshirt:'內衣', gloves:'手套', boots:'鞋子', ring1:'戒指 1', ring2:'戒指 2', ring3:'戒指 3', ring4:'戒指 4', amulet:'項鍊', ear1:'耳環 1', ear2:'耳環 2', belt:'腰帶', pet:'寵物裝備',
+            rem_claw:'席琳遺骸・之爪', rem_eye:'席琳遺骸・之眼', rem_blood:'席琳遺骸・之血', rem_flesh:'席琳遺骸・之肉', rem_heart:'席琳遺骸・之心', rem_bone:'席琳遺骸・之骨', rem_fang:'席琳遺骸・之牙', rem_scale:'席琳遺骸・之鱗' };   // 🦵 shin=脛甲（遺物新增部位）；🦴 rem_*＝席琳遺骸 8 格
         if(!isEq && !d.isArrow && (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc')) {
             let slots = (d.type === 'wpn') ? ['wpn'] : (d.slot === 'ring' ? ['ring1','ring2','ring3','ring4'] : (d.slot === 'ear' ? ['ear1','ear2'] : [d.slot]));
             let cards = slots.map(sl => {

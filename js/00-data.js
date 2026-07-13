@@ -717,7 +717,19 @@ const DB = {
         "rng_water": { n: "水靈戒指", type: "acc", slot: "ring", ac: 0, resWater: 10, req: "all", safe: 0, p: 50000, gachaWeight: 1, d: "封存著潺潺水靈的戒指，指尖彷彿淌過清泉。蘊含流水之力的戒指。" },
         "rng_wind": { n: "風靈戒指", type: "acc", slot: "ring", ac: 0, resWind: 10, req: "all", safe: 0, p: 50000, gachaWeight: 1, d: "封存著疾風精魄的戒指，戴上便覺步履輕盈。蘊含疾風之力的戒指。" },
         "rng_fire": { n: "火靈戒指", type: "acc", slot: "ring", ac: 0, resFire: 10, req: "all", safe: 0, p: 50000, gachaWeight: 1, d: "封存著熾烈火魂的戒指，掌心始終餘有一絲溫熱。蘊含烈焰之力的戒指。" },
-        "sherine_crystal": { n: "席琳結晶", type: "etc", p: 0, noUse: true, c: "c-sherine", gachaWeight: 0, d: "蘊含席琳力量的珍貴結晶，無法直接使用。進行「席琳製作」時加入材料，可使成品必定附帶一種席琳套裝效果。（席琳的世界掉落限定）" },   // 🔮 潘朵拉抽不到(gachaWeight:0)、無法使用(noUse)、名稱同套裝綠光(c-sherine)
+        "sherine_crystal": { n: "席琳結晶", type: "etc", p: 0, noUse: true, c: "c-sherine", gachaWeight: 0, d: "蘊含席琳力量的珍貴結晶，無法直接使用。可於席琳神殿向「伊奧」兌換指定部位的席琳遺骸（每件 1 顆）。（席琳的世界掉落限定）" },   // 🔮 潘朵拉抽不到(gachaWeight:0)、無法使用(noUse)、名稱同套裝綠光(c-sherine)
+        // ===== 🦴 席琳遺骸：席琳套裝效果的載體（8 部位）=====
+        // 遺骸本身沒有任何數值（重量 0、不可強化、不可賦予詞綴、潘朵拉抽不到），只負責「攜帶一個席琳套裝詞綴（seteff）」。
+        // slot 刻意＝物品 id：equipItem 的泛用分派（slot = d.slot）直接就對，裝進裝備分頁底部的專屬遺骸欄。
+        // 相同組名的遺骸湊滿 2/3/5 格 → 發動席琳套裝效果（計件見 js/02 recomputeStats；裝備上的舊詞綴不再計入）。
+        "rem_claw":  { n: "之爪", type: "acc", slot: "rem_claw",  remains: true, noEnhance: true, noJunk: true, req: "all", safe: 0, p: 0, gachaWeight: 0, d: "【席琳遺骸】自席琳的殘骸中析出的利爪，對應武器的位置。裝入遺骸欄後，其上的席琳套裝詞綴即開始共鳴。" },
+        "rem_eye":   { n: "之眼", type: "acc", slot: "rem_eye",   remains: true, noEnhance: true, noJunk: true, req: "all", safe: 0, p: 0, gachaWeight: 0, d: "【席琳遺骸】自席琳的殘骸中析出的眼瞳，對應頭盔的位置。裝入遺骸欄後，其上的席琳套裝詞綴即開始共鳴。" },
+        "rem_blood": { n: "之血", type: "acc", slot: "rem_blood", remains: true, noEnhance: true, noJunk: true, req: "all", safe: 0, p: 0, gachaWeight: 0, d: "【席琳遺骸】自席琳的殘骸中析出的凝血，對應斗篷的位置。裝入遺骸欄後，其上的席琳套裝詞綴即開始共鳴。" },
+        "rem_flesh": { n: "之肉", type: "acc", slot: "rem_flesh", remains: true, noEnhance: true, noJunk: true, req: "all", safe: 0, p: 0, gachaWeight: 0, d: "【席琳遺骸】自席琳的殘骸中析出的血肉，對應長靴的位置。裝入遺骸欄後，其上的席琳套裝詞綴即開始共鳴。" },
+        "rem_heart": { n: "之心", type: "acc", slot: "rem_heart", remains: true, noEnhance: true, noJunk: true, req: "all", safe: 0, p: 0, gachaWeight: 0, d: "【席琳遺骸】自席琳的殘骸中析出的心臟，對應腰帶的位置。裝入遺骸欄後，其上的席琳套裝詞綴即開始共鳴。" },
+        "rem_bone":  { n: "之骨", type: "acc", slot: "rem_bone",  remains: true, noEnhance: true, noJunk: true, req: "all", safe: 0, p: 0, gachaWeight: 0, d: "【席琳遺骸】自席琳的殘骸中析出的骸骨，對應手套的位置。裝入遺骸欄後，其上的席琳套裝詞綴即開始共鳴。" },
+        "rem_fang":  { n: "之牙", type: "acc", slot: "rem_fang",  remains: true, noEnhance: true, noJunk: true, req: "all", safe: 0, p: 0, gachaWeight: 0, d: "【席琳遺骸】自席琳的殘骸中析出的獠牙，對應副手的位置。裝入遺骸欄後，其上的席琳套裝詞綴即開始共鳴。" },
+        "rem_scale": { n: "之鱗", type: "acc", slot: "rem_scale", remains: true, noEnhance: true, noJunk: true, req: "all", safe: 0, p: 0, gachaWeight: 0, d: "【席琳遺骸】自席琳的殘骸中析出的鱗片，對應盔甲的位置。裝入遺骸欄後，其上的席琳套裝詞綴即開始共鳴。" },
         "item_dragon_claw": { n: "飛龍的爪子", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "鋒利如刃的巨爪，仍殘留著撕裂風與骨的記憶，似乎與龍之谷深處的傳說有關……（無法使用）" },   // 🔧 卡瑞任務道具：飛龍 1% 掉落
         "item_lizard_horn": { n: "蜥蜴的角", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "邪惡蜥蜴額上隆起的尖角，泛著爬蟲類特有的冷光，似乎與龍之谷深處的傳說有關……（無法使用）" },   // 🔧 卡瑞任務道具：邪惡蜥蜴 0.01% 掉落
         "item_crystal_ball": { n: "水晶球", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "巫師用以窺探命運的水晶球，霧色在其中緩緩流轉，似乎與龍之谷深處的傳說有關……（無法使用）" },   // 🔧 卡瑞任務道具：巫師 0.01% 掉落
@@ -2223,7 +2235,9 @@ const DB = {
         "town_sherine": {   // 🔮 新安全區：席琳神殿
             n: "席琳神殿",
             npcs: [
-                { id: "npc_sherine", n: "席琳", title: "祈禱", type: "pray", d: "靜謐的神女席琳，傾聽虔誠者的禱詞。等級 40 以上可向席琳祈禱，開啟或關閉「席琳的世界」。" }
+                { id: "npc_sherine", n: "席琳", title: "祈禱", type: "pray", d: "靜謐的神女席琳，傾聽虔誠者的禱詞。等級 40 以上可向席琳祈禱，開啟或關閉「席琳的世界」。" },
+                { id: "npc_io", n: "伊奧", title: "遺骸兌換", type: "quest", classicHide: true, d: "守著席琳殘骸的祭司伊奧。以席琳結晶兌換指定部位的席琳遺骸，遺骸必定附帶隨機一種席琳套裝詞綴。" },
+                { id: "npc_lachesis", n: "菈克希絲", title: "遺骸拆分", type: "quest", classicHide: true, d: "命運的紡織者菈克希絲。可將你身上穿著、帶有舊席琳套裝詞綴的裝備拆分成對應部位的遺骸；裝備本身與強化值都會保留。" }
             ]
         },
         "town_silent": {   // 🔧 黑暗妖精出生地：沉默洞穴

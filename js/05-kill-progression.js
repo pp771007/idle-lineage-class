@@ -381,17 +381,13 @@ function killMob(idx) {
         });
     }
 
-    // === 🔮 席琳結晶：席琳的世界限定掉落（固定機率，不吃掉落倍率）===
-    // 血盟與 Lv20 以下不掉（血盟本就無 _sherine）；21~30 非BOSS 0.001%、31~40 非BOSS 0.002%、
-    // 41+ 非BOSS 0.003%、夢幻之島BOSS 0.01%、四大龍（安塔瑞斯/法利昂/巴拉卡斯/林德拜爾）10%、其餘BOSS 0.1%
+    // === 🔮 席琳結晶：席琳的世界限定掉落（依怪物等級的統一公式，不吃席琳×3／恩賜×10 的掉落倍率）===
+    // 🦴 遺骸系統上線後結晶＝套裝效果的唯一產出（伊奧：1 顆換 1 件指定部位遺骸），故掉率改成隨等級線性成長：
+    //    一般怪 0.001% × 等級、頭目 0.01% × 等級（Lv100 頭目＝1%）；瘋狂的席琳世界再 ×3；經典模式吃 classicDropMult()。
+    //    血盟怪本就無 _sherine，不掉。
     if (mob._sherine) {
-        let _cr = 0;
-        if (['安塔瑞斯', '法利昂', '巴拉卡斯', '林德拜爾'].includes(mob.n)) _cr = 0.10;
-        else if (mob.boss) _cr = (mapState.current === 'dream_island') ? 0.0001 : 0.001;
-        else if ((mob.lv || 1) >= 41) _cr = 0.00003;
-        else if ((mob.lv || 1) >= 31) _cr = 0.00002;
-        else if ((mob.lv || 1) >= 21) _cr = 0.00001;
-        if (_cr > 0 && Math.random() < _cr * classicDropMult() * (mob._sherineMad ? 3 : 1)) {   // 🔮 瘋狂的席琳世界：結晶掉率 ×3（一般怪／頭目皆然）
+        let _cr = (mob.boss ? 0.0001 : 0.00001) * (mob.lv || 1) * (mob._sherineMad ? 3 : 1);
+        if (_cr > 0 && Math.random() < _cr * classicDropMult()) {
             gainItem('sherine_crystal', 1);
             logSys(`<span class="c-sherine font-bold">✦✦ 席琳結晶 從 ${mob.n} 的殘骸中浮現！✦✦</span>`);
         }

@@ -706,41 +706,103 @@ function _leavePledgeConfirmed(faction, cfg, trad) {
     renderPledgeNPC(document.getElementById('interaction-content'), faction);
 }
 
-// ===== 🔮 試煉「席琳兌換」共用 =====
-// 原需求道具外，額外消耗 1 個席琳結晶；兌換出的裝備必定附帶隨機一種席琳套裝效果。
-// 按鈕版面：原本的全寬兌換鈕改為左右各半（左＝一般兌換、右＝席琳兌換）。
-// 僅提供給「成品部位可附加套裝效果」的兌換（武器/頭盔/盔甲/手套/長靴/斗篷/腰帶）。
-function sherineExBtns(label, normalCall, sherineCall) {
-    let _shBtn = player.classicMode   // 🎮 經典模式：隱藏席琳兌換選項（一般兌換鈕 flex-1 自動撐滿整列）
-        ? ''
-        : `<button class="btn flex-1 bg-green-900 hover:bg-green-800 border-green-600 py-3 text-base font-bold" onclick="${sherineCall}" title="額外消耗 1 個席琳結晶：成品必定附帶一種席琳套裝效果"><span class="c-sherine">席琳兌換</span>：${label}</button>`;
-    return `<div class="flex gap-2 w-full">
-        <button class="btn flex-1 bg-blue-800 py-3 text-base font-bold" onclick="${normalCall}">兌換：${label}</button>
-        ${_shBtn}
+// ===== 🦴 席琳神殿・伊奧：席琳結晶兌換遺骸 =====
+// 席琳結晶 ×1 → 指定部位的遺骸 ×1（8 選 1），詞綴自 SHERINE_EFFECTS 12 組均勻隨機。
+function renderIoExchange(div) {
+    let have = questCountId('sherine_crystal');   // 🔧 含共用倉庫
+    let rows = SHERINE_REMAINS.map(r => {
+        let d = DB.items[r.id];
+        return `<div class="flex items-center gap-2 bg-slate-800/60 border border-slate-600 rounded p-2 mb-2">
+            <img src="${getIconUrl(d)}" onerror="this.style.opacity='0';" class="w-8 h-8 object-contain shrink-0 sherine-glow-icon">
+            <div class="flex-1 min-w-0">
+                <div class="c-sherine font-bold">席琳${r.n}</div>
+                <div class="text-xs">${craftReqHtml([{ id: 'sherine_crystal', cnt: 1 }])}</div>
+            </div>
+            <input id="io-qty-${r.id}" type="number" min="1" value="1" class="w-14 bg-slate-900 border border-slate-600 text-white text-center rounded py-1 shrink-0" oninput="if((parseInt(this.value)||0)<1)this.value=1">
+            <button class="btn bg-green-900 hover:bg-green-800 border-green-600 py-2 px-3 text-sm font-bold shrink-0" onclick="doIoExchange('${r.id}')">兌換</button>
+        </div>`;
+    }).join('');
+    div.innerHTML = `<div class="flex flex-col gap-2 p-1">
+        <div class="text-slate-300 text-sm bg-slate-900/60 border border-slate-700 rounded p-2 leading-relaxed">
+            伊奧：席琳的殘骸，只認得同源的結晶。<br>
+            <span class="text-slate-400">每 1 個 <b class="c-sherine">席琳結晶</b> 可換 1 件指定部位的遺骸，附帶的套裝詞綴由席琳決定（隨機一種）。遺骸裝在「裝備」分頁底部的專屬 8 格中，同一組名湊滿 2／3／5 格即發動對應效果。</span><br>
+            持有席琳結晶：<b class="${have >= 1 ? 'text-green-400' : 'text-red-400'}">${have}</b>
+        </div>
+        ${rows}
     </div>`;
 }
-// 席琳兌換前置檢查（於原材料檢查通過後、扣除材料前呼叫）：沒有結晶 → 提示並中止
-function sherineExCheck(sherine) {
-    if (!sherine) return true;
-    if (questCountId('sherine_crystal') < 1) {   // 🔧 含倉庫
-        logSys('<span class="text-red-400 font-bold">材料不足，無法兌換。</span><span class="text-red-300">（尚缺：席琳結晶 1）</span>');
-        return false;
+function doIoExchange(remId) {
+    if (!SHERINE_REMAINS.some(r => r.id === remId)) return;
+    let qtyInput = document.getElementById(`io-qty-${remId}`);
+    let qty = Math.max(1, parseInt(qtyInput && qtyInput.value) || 1);
+    let have = questCountId('sherine_crystal');
+    if (have < 1) { logSys('<span class="text-red-400 font-bold">材料不足，無法兌換。</span><span class="text-red-300">（尚缺：席琳結晶 1）</span>'); return; }
+    let n = Math.min(qty, have);   // 結晶不足時自動以持有量為上限
+    let tally = {};
+    for (let i = 0; i < n; i++) {
+        questConsumeId('sherine_crystal', 1);   // 🔧 背包優先，不足扣共用倉庫
+        let g = SHERINE_EFFECTS[Math.floor(lootRng('ioaff') * SHERINE_EFFECTS.length)];   // 🎲 committed RNG：防 SL 重抽
+        gainSherineRemains(remId, g, true);
+        tally[g] = (tally[g] || 0) + 1;
     }
-    return true;
+    let parts = Object.keys(tally).map(g => `<span class="c-sherine font-bold">${g}${DB.items[remId].n}</span>${tally[g] > 1 ? ` ×${tally[g]}` : ''}`);
+    logSys(`<span class="c-sherine font-bold">✦ 伊奧的兌換</span>：${parts.join('、')}（消耗 席琳結晶 ×${n}）`);
+    saveGame();
+    let el = document.getElementById('interaction-content'); if (el) renderIoExchange(el);
 }
-// 席琳兌換發放獎勵：扣 1 個結晶並使成品必定附帶套裝效果（取代各兌換函式中的 gainItem）
+
+// ===== 🦴 席琳神殿・菈克希絲：把身上「舊詞綴裝備」拆成遺骸 =====
+// 免費、不消耗結晶；裝備留在身上（強化值／祝福／古代／屬性全保留），只有席琳詞綴被拆下來變成對應部位的遺骸。
+// 部位對照＝SHERINE_REMAINS 的 eqSlot，另補兩個別名：副手武器(offwpn)→之爪、脛甲(shin)→之肉（皆可附舊詞綴，但沒有專屬遺骸）。
+const LACHESIS_SLOTS = SHERINE_REMAINS.map(r => ({ slot: r.eqSlot, remId: r.id, remN: r.n }))
+    .concat([{ slot: 'offwpn', remId: 'rem_claw', remN: '之爪' }, { slot: 'shin', remId: 'rem_flesh', remN: '之肉' }]);
+function renderLachesisSplit(div) {
+    let rows = LACHESIS_SLOTS.map(m => {
+        let e = player.eq && player.eq[m.slot];
+        if (!e || !e.seteff) return '';
+        let g = e.seteff.slice(0, 2);
+        return `<div class="flex items-center gap-2 bg-slate-800/60 border border-slate-600 rounded p-2 mb-2">
+            <span class="flex-1 min-w-0 truncate ${getItemColor(e)} font-bold text-sm">${getItemFullName(e)}</span>
+            <button class="btn bg-purple-900 hover:bg-purple-800 border-purple-600 py-2 px-3 text-sm font-bold shrink-0" onclick="doLachesisSplit('${m.slot}')">拆分 → <span class="c-sherine">${g}${m.remN}</span></button>
+        </div>`;
+    }).join('');
+    div.innerHTML = `<div class="flex flex-col gap-2 p-1">
+        <div class="text-slate-300 text-sm bg-slate-900/60 border border-slate-700 rounded p-2 leading-relaxed">
+            菈克希絲：織進裝備裡的線，我可以抽出來。<br>
+            <span class="text-slate-400">把你<b class="text-amber-300">身上穿著</b>、帶有席琳套裝詞綴的裝備拆分成對應部位的<b class="c-sherine">席琳遺骸</b>。裝備會留在身上，強化值與其他詞綴都不受影響，只有席琳詞綴被取下。不需要結晶。</span>
+        </div>
+        ${rows || `<div class="text-slate-500 text-sm py-6 text-center">你身上沒有穿著帶席琳套裝詞綴的裝備。</div>`}
+    </div>`;
+}
+function doLachesisSplit(slotKey) {
+    let m = LACHESIS_SLOTS.find(x => x.slot === slotKey);
+    let e = m && player.eq && player.eq[slotKey];
+    if (!m || !e || !e.seteff) return;
+    let g = e.seteff.slice(0, 2);
+    e.seteff = false;   // 只取下席琳詞綴：強化值(en)／祝福(bless)／古代(anc)／屬性(attr) 全保留，裝備維持穿著
+    gainSherineRemains(m.remId, g, true);
+    logSys(`<span class="c-sherine font-bold">✦ 菈克希絲從你的裝備中抽出了席琳的絲線：獲得 ${g}${m.remN}！</span>`);
+    calcStats(); renderTabs(true); saveGame();
+    let el = document.getElementById('interaction-content'); if (el) renderLachesisSplit(el);
+}
+
+// ===== 🔮 試煉「席琳兌換」共用 =====
+// 🦴 遺骸系統上線後已停用：套裝詞綴不再附加在兌換出的裝備上（唯一產出＝結晶→伊奧）。
+//    函式簽章與 sherine 參數保留，讓各試煉的呼叫端不必逐一改寫；sherineExBtns 只回一般兌換鈕。
+function sherineExBtns(label, normalCall, sherineCall) {
+    return `<div class="flex gap-2 w-full">
+        <button class="btn flex-1 bg-blue-800 py-3 text-base font-bold" onclick="${normalCall}">兌換：${label}</button>
+    </div>`;
+}
+function sherineExCheck(sherine) { return true; }
 function sherineExGain(rewardId, sherine) {
-    if (sherine) {
-        questConsumeId('sherine_crystal', 1);   // 🔧 背包優先，不足扣倉庫
-        _forceSherineSet = true;
-    }
     { let _sv = _tradLootCtx; _tradLootCtx = true; try { gainItem(rewardId, 1, false, false); } finally { _tradLootCtx = _sv; } }   // 🏛️ 傳統模式：兌換裝備比照掉落/製作自帶隨機強化值（forceNormal=false：詞綴機率同一般兌換）
-    _forceSherineSet = false;
 }
 
 // ===== 🔧 試煉兌換數量：可一次兌換多個（共用 UI＋核心）=====
 //  trialQtyBar()：數量選擇器（−/＋/全部，id=trial-qty），各試煉的兌換按鈕前放一次。
 //  trialRun(reqs, rewardId, sherine)：扣材料×qty、發獎勵×qty；qty 取「輸入值」與「可負擔上限」較小者。回傳實際次數。
+//  🦴 sherine 參數已失效（遺骸系統上線後兌換不再附帶套裝詞綴），保留簽章供既有呼叫端相容。
 function trialQtyBar() {
     return `<div class="flex items-center justify-center gap-2 mb-3">
         <span class="text-slate-400 text-sm">兌換數量</span>
@@ -756,17 +818,12 @@ function trialRun(reqs, rewardId, sherine) {
     let norm = reqs.map(r => Array.isArray(r) ? r : [r, 1]);
     let maxN = Math.min.apply(null, norm.map(p => Math.floor(questCountId(p[0]) / (p[1] || 1))));
     if (!isFinite(maxN)) maxN = 0;
-    if (sherine) maxN = Math.min(maxN, questCountId('sherine_crystal'));   // 席琳兌換：每個額外耗 1 結晶
     let qty = Math.min(trialQtyVal(), Math.max(0, maxN));
     if (qty < 1) { logSys('<span class="text-red-400 font-bold">材料不足，無法兌換。</span>'); return 0; }
     norm.forEach(p => questConsumeId(p[0], (p[1] || 1) * qty));   // 🔧 背包優先扣除，不足扣共用倉庫
     let _savedTrad = _tradLootCtx; _tradLootCtx = true;   // 🏛️ 傳統模式：試煉／任務「兌換」物品比照製作／掉落，裝備隨機自帶強化值（2026-06 用戶更正：原誤設 +0；非傳統模式由 gainItem 的 traditionalActive() 閘恆 +0）
     try {
-        for (let i = 0; i < qty; i++) {
-            if (sherine) { questConsumeId('sherine_crystal', 1); _forceSherineSet = true; }
-            gainItem(rewardId, 1, false, false);   // forceNormal=false：詞綴機率同一般兌換
-            _forceSherineSet = false;
-        }
+        for (let i = 0; i < qty; i++) gainItem(rewardId, 1, false, false);   // forceNormal=false：詞綴機率同一般兌換
     } finally { _tradLootCtx = _savedTrad; }
     return qty;
 }
@@ -848,7 +905,7 @@ const YURIA_HATIN_REWARDS = [
 ];
 function renderYuriaQuest(div) {
     let have = questCountId('item_olin_diary');
-    let html = `<div class="p-4 text-slate-300 leading-relaxed">尤麗婭：帶來<b class="text-amber-300">歐林的日記本</b>，我便為你打造一件臂甲（裝於<b class="text-amber-300">副手</b>，可與雙手武器並用）。<br>持有歐林的日記本：<b class="${have >= 1 ? 'text-green-400' : 'text-red-400'}">${have}</b><br><span class="text-slate-400 text-sm">每件消耗 1 本，三選一。</span>${!player.classicMode ? `<br><span class="text-xs text-slate-400">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每件額外消耗 1 個 <b class="c-sherine">席琳結晶</b>（持有 ${questCountId('sherine_crystal')}），成品必定附帶一種隨機 <span class="c-sherine">席琳套裝效果</span>。</span>` : ''}</div>`;
+    let html = `<div class="p-4 text-slate-300 leading-relaxed">尤麗婭：帶來<b class="text-amber-300">歐林的日記本</b>，我便為你打造一件臂甲（裝於<b class="text-amber-300">副手</b>，可與雙手武器並用）。<br>持有歐林的日記本：<b class="${have >= 1 ? 'text-green-400' : 'text-red-400'}">${have}</b><br><span class="text-slate-400 text-sm">每件消耗 1 本，三選一。</span></div>`;
     if (have >= 1 || questCountId('item_hatin_diary') >= 1) html += `<div class="px-4 pt-2 pb-0">${trialQtyBar()}</div>`;   // 🔧 共用兌換數量列（歐林臂甲＋哈汀魔族武器兩兌換共用 trial-qty）
     if (have >= 1) {
         html += `<div class="grid grid-cols-1 gap-3 p-4">`;
@@ -859,7 +916,7 @@ function renderYuriaQuest(div) {
     }
     // 👹 第二兌換：黑暗哈汀的日記本 → 隱藏的魔族武器（六選一）
     let have2 = questCountId('item_hatin_diary');
-    html += `<div class="p-4 pt-2 text-slate-300 leading-relaxed border-t border-slate-700/60">尤麗婭：你身上那本<b class="text-purple-300">黑暗哈汀的日記本</b>……裡頭的禁咒，我能據以打造一件<b class="text-purple-300">隱藏的魔族武器</b>。<br>持有黑暗哈汀的日記本：<b class="${have2 >= 1 ? 'text-green-400' : 'text-red-400'}">${have2}</b><br><span class="text-slate-400 text-sm">每件消耗 1 本，六選一。</span>${!player.classicMode ? `<br><span class="text-xs text-slate-400">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每件額外消耗 1 個 <b class="c-sherine">席琳結晶</b>（持有 ${questCountId('sherine_crystal')}），成品必定附帶一種隨機 <span class="c-sherine">席琳套裝效果</span>。</span>` : ''}</div>`;
+    html += `<div class="p-4 pt-2 text-slate-300 leading-relaxed border-t border-slate-700/60">尤麗婭：你身上那本<b class="text-purple-300">黑暗哈汀的日記本</b>……裡頭的禁咒，我能據以打造一件<b class="text-purple-300">隱藏的魔族武器</b>。<br>持有黑暗哈汀的日記本：<b class="${have2 >= 1 ? 'text-green-400' : 'text-red-400'}">${have2}</b><br><span class="text-slate-400 text-sm">每件消耗 1 本，六選一。</span></div>`;
     if (have2 >= 1) {
         html += `<div class="grid grid-cols-1 gap-3 p-4 pt-0">`;
         YURIA_HATIN_REWARDS.forEach(r => { html += sherineExBtns(r.nm, `doYuriaHatinExchange('${r.id}',false)`, `doYuriaHatinExchange('${r.id}',true)`); });   // 🔮 一般兌換 + 席琳兌換雙鈕（經典自動隱藏席琳鈕）
@@ -891,7 +948,6 @@ function _shimizheEnough() { return SHIMIZHE_COST.every(([id, cnt]) => questCoun
 function renderShimizheExchange(div) {
     let ok = _shimizheEnough();
     let h = `<div class="p-4 text-slate-300 leading-relaxed">希米哲：若你尋回我兒子的遺物，我便將他生前的藍海賊裝備擇一贈予你，聊表謝意。<br><span class="text-slate-400 text-sm">每次兌換消耗 ${_shimizheCostHtml()}（五選一・無次數限制）</span>`;
-    if (!player.classicMode) h += `<br><span class="text-xs text-slate-400">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每件額外消耗 1 個 <b class="c-sherine">席琳結晶</b>（持有 ${questCountId('sherine_crystal')}），成品必定附帶一種隨機 <span class="c-sherine">席琳套裝效果</span>。</span>`;
     h += `</div>`;
     if (ok) {
         h += `<div class="px-4 pt-0 pb-1">${trialQtyBar()}</div>`;   // 🔧 共用兌換數量列
@@ -1043,10 +1099,7 @@ function build50TrialHTML(npcName) {
         return h;
     }
     let have = questCountId(cfg.exMat);
-    let crystals = questCountId('sherine_crystal');   // 🔮 含倉庫
-    let anySherine = !player.classicMode && cfg.rewards.some(r => sherineSetEligible(DB.items[r.id]));   // 🔮 此試煉是否有可席琳兌換的成品（戒指/技能書/項鍊不支援；盾牌/臂甲已支援）；🎮 經典模式隱藏席琳說明（兌換鈕已由 sherineExBtns 隱藏）
     h += `試煉已完成，魔族神殿已對你開放。<br>交付 1 個 <b class="text-red-300">${cfg.exMatNm}</b>（持有 ${have}）可重複換取：`;
-    h += anySherine ? `<br><span class="text-slate-400 text-sm">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每個額外消耗 1 個<b class="c-sherine">席琳結晶</b>（持有 ${crystals}），成品必定附帶一種隨機<span class="c-sherine">席琳套裝效果</span>。</span>` : ``;
     h += `</div>`;
     if (have < 1) return h + `<div class="px-4 pb-4 text-red-400 text-sm">需要 1 個 ${cfg.exMatNm} 才能兌換。</div>`;
     h += `<div class="p-4">${trialQtyBar()}<div class="grid grid-cols-1 gap-3">`;
@@ -1183,15 +1236,9 @@ function renderDuwen(div) {
     if (player.cls !== 'warrior') { div.innerHTML = `<div class="p-6 text-red-400">多文：這場試煉只屬於戰士。</div>`; return; }
     let exBtns = (type) => WARRIOR_EX[type].rewards.map(rid => {
         let _nm = DB.items[rid].n;
-        let _n = `<button class="btn bg-blue-800 hover:bg-blue-700 py-2 px-3 text-sm font-bold" onclick="duwenEx('${type}','${rid}')">兌換：${_nm}</button>`;
-        // 🔮 僅「可附帶套裝效果」的成品（武器/頭盔/斗篷…）提供席琳兌換；印記書等不符 → 只給一般兌換；🎮 經典模式隱藏
-        let _s = (!player.classicMode && sherineSetEligible(DB.items[rid]))
-            ? `<button class="btn bg-green-900 hover:bg-green-800 border-green-600 py-2 px-3 text-sm font-bold" onclick="duwenEx('${type}','${rid}',true)" title="額外消耗 1 個席琳結晶：成品必定附帶一種席琳套裝效果"><span class="c-sherine">席琳兌換</span>：${_nm}</button>`
-            : '';
-        return _n + _s;
+        return `<button class="btn bg-blue-800 hover:bg-blue-700 py-2 px-3 text-sm font-bold" onclick="duwenEx('${type}','${rid}')">兌換：${_nm}</button>`;
     }).join('');
     let h = `<div class="p-4 text-slate-300 leading-relaxed"><div class="text-amber-300 font-bold mb-3">⚔️ 多文的試煉與兌換</div>`;
-    if (!player.classicMode) h += `<div class="text-xs text-slate-400 mb-2">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每件額外消耗 1 個 <b class="c-sherine">席琳結晶</b>（持有 ${questCountId('sherine_crystal')}），成品必定附帶一種隨機 <span class="c-sherine">席琳套裝效果</span>（僅限可附帶部位）。</div>`;
     h += `<div class="mb-2">${trialQtyBar()}</div>`;   // 🔧 共用兌換數量列
     h += `<div class="mb-2 p-3 bg-slate-800/60 rounded border border-slate-700"><div class="text-emerald-300 font-bold text-sm">生命的卷軸（二選一）</div>
         <div class="text-xs text-slate-400 mb-2">交付 ${_duwenCostHtml('scroll')}</div>${_duwenEnough('scroll') ? `<div class="flex flex-wrap gap-2">${exBtns('scroll')}</div>` : `<div class="text-red-400 text-xs">尚未備齊。</div>`}</div>`;
@@ -1382,7 +1429,6 @@ function renderGunterQuest(div) {
                 <div class="mb-1">${sherineExBtns('君主的威嚴', `doGunterRoyalExchange('${relicId}', 'clk_royal_majesty')`, `doGunterRoyalExchange('${relicId}', 'clk_royal_majesty', true)`)}</div>
                 <button class="btn w-full bg-blue-800 py-2 text-base font-bold" onclick="doGunterRoyalExchange('${relicId}', 'bk_royal_callally')">兌換：魔法書(呼喚盟友)</button>`;
         }
-        if (rAct && !player.classicMode) rHtml += `<div class="px-4 text-xs text-slate-400">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每件額外消耗 1 個 <b class="c-sherine">席琳結晶</b>（持有 ${questCountId('sherine_crystal')}），成品必定附帶一種隨機 <span class="c-sherine">席琳套裝效果</span>。</div>`;
         if (rAct) rHtml += `<div class="p-4">${trialQtyBar()}${rAct}</div>`;
         div.innerHTML = rHtml;
         return;

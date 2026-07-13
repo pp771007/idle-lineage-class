@@ -633,7 +633,8 @@ function startGame() {
     let b = createBase[curCreate.cls];
     player.base = { str: b.str+curCreate.str, dex: b.dex+curCreate.dex, con: b.con+curCreate.con, int: b.int+curCreate.int, wis: b.wis+curCreate.wis, cha: b.cha+curCreate.cha };
     player.lv = 1; player.exp = 0; player.gold = 1000;
-    player.inv = []; player.eq = { wpn: null, helm: null, armor: null, shin: null, shield: null, cloak: null, tshirt: null, gloves: null, boots: null, ring1: null, ring2: null, ring3: null, ring4: null, amulet: null, ear1: null, ear2: null, belt: null }; player.junkPrefs = {};   // 🦵 shin=脛甲（遺物新增部位）
+    player.inv = []; player.eq = { wpn: null, helm: null, armor: null, shin: null, shield: null, cloak: null, tshirt: null, gloves: null, boots: null, ring1: null, ring2: null, ring3: null, ring4: null, amulet: null, ear1: null, ear2: null, belt: null,
+                                   rem_claw: null, rem_eye: null, rem_blood: null, rem_flesh: null, rem_heart: null, rem_bone: null, rem_fang: null, rem_scale: null }; player.junkPrefs = {};   // 🦵 shin=脛甲（遺物新增部位）；🦴 rem_*＝席琳遺骸 8 欄
     player.skills = [];
     player.summon = null; player.charmed = null; player.manualCd = {}; player.hot = null; player.hots = {}; player.elfEle = null; player.buffs = { haste: 0, brave: 0, blue: 0, cautious: 0, elfcookie: 0, poly: 0, shield: 0 };
     

@@ -390,12 +390,9 @@ const CRAFT_RECIPES = {
 
 // 製作數量選擇器 + 製作按鈕（預設數量 1）
 function craftActionHtml(npcId, idx) {
-    // 🔮 席琳製作：成品為 武器/頭盔/盔甲/手套/長靴/斗篷/腰帶 時，於「製作」旁多一顆按鈕
-    //（消耗相同材料＋每件 1 個席琳結晶，成品必定附帶隨機席琳套裝效果；其餘詞綴機率照舊）
-    let _r = CRAFT_RECIPES[npcId] && CRAFT_RECIPES[npcId][idx];
-    let _rd = _r && DB.items[_r.result];
-    let _shOk = _rd && !player.classicMode && sherineSetEligible(_rd);   // 🔮 單一真相＝sherineSetEligible（含副手盾牌/臂甲 slot:shield）；勿再 inline 複製部位清單
-    let _shBtn = _shOk ? `<button class="btn bg-green-900 hover:bg-green-800 border-green-600 py-2 px-3 font-bold shadow" onclick="doCraft('${npcId}', ${idx}, true)" title="消耗相同材料＋每件 1 個席琳結晶：成品必定附帶一種席琳套裝效果"><span class="c-sherine">席琳製作</span></button>` : '';
+    // 🦴 「席琳製作」按鈕已隨遺骸系統下架：套裝詞綴不再附加在製作出的裝備上（唯一產出＝結晶→神殿的伊奧兌換遺骸）。
+    //    留空字串而非刪整段：doCraft 的 sherine 參數與版面結構維持相容。
+    let _shBtn = '';
     return `<div class="flex items-center gap-2 shrink-0">
         <input type="number" min="1" value="1" id="craft-qty-${npcId}-${idx}" onclick="event.stopPropagation()" class="w-14 px-1 py-2 bg-slate-900 border border-slate-600 rounded text-center text-white font-bold">
         <button class="btn bg-blue-700 hover:bg-blue-600 border-blue-500 py-2 px-6 font-bold shadow" onclick="doCraft('${npcId}', ${idx})">製作</button>
@@ -863,7 +860,8 @@ function craftShortfall(recipe, count) {
     for (let q of recipe.req) take(q.id, q.cnt * count);
     return lack;
 }
-function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製作（材料＋每件 1 個席琳結晶，成品必帶套裝效果）
+function doCraft(npcId, recipeIdx, sherine) {
+    sherine = false;   // 🦴 席琳製作已下架（詞綴改由遺骸承載）：強制關閉，避免舊的按鈕/呼叫端白扣席琳結晶卻做出白板成品
     let recipe = CRAFT_RECIPES[npcId][recipeIdx];
     if (!recipe) return;
 

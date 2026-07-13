@@ -41,21 +41,10 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
         attr = _af.attr; bless = _af.bless; anc = _af.anc;
     }
 
-    // 🔮 席琳套裝效果：指定部位（武器/頭盔/盔甲/手套/長靴/斗篷/腰帶）※項鍊已改為腰帶
-    //  - 席琳的世界擊殺掉落：一般怪0.1%、恩賜怪0.5%、頭目5%（9 組均勻抽一；🔮 瘋狂的席琳世界再 ×3）
-    //  - 席琳製作（_forceSherineSet）：必定附帶隨機一種
+    // 🦴 席琳套裝效果已改由「席琳遺骸」承載：一般裝備不再於掉落／製作／兌換時附帶 seteff。
+    //    唯一產出＝席琳結晶 → 神殿的伊奧兌換遺骸；舊詞綴裝備 → 神殿的菈克希絲拆成遺骸（見 gainSherineRemains）。
+    //    此處恆 false；靈魂之球喚回等「繼承來源裝備 seteff」的路徑仍會帶著舊詞綴，屬預期。
     let seteff = false;
-    if (d) {
-        let _slotOk = sherineSetEligible(d);
-        if (_slotOk && _sherineLootCtx && lootRng('setdrop') < (_sherineLootCtx.boss ? 0.05 : (_sherineLootCtx.grace ? 0.005 : 0.001)) * (_sherineLootCtx.mad ? 3 : 1)) {   // 🎲 committed RNG
-            seteff = SHERINE_EFFECTS[Math.floor(lootRng('setpick') * SHERINE_EFFECTS.length)];
-            logSys(`<span class="c-sherine font-bold">✦ 掉落的裝備蘊含著席琳的祝福：【${seteff}】！</span>`);
-        }
-        if (_slotOk && !seteff && _forceSherineSet) {
-            seteff = SHERINE_EFFECTS[Math.floor(lootRng('setpick') * SHERINE_EFFECTS.length)];
-            logSys(`<span class="c-sherine font-bold">✦ 席琳結晶引導出套裝效果：【${seteff}】！</span>`);
-        }
-    }
 
     // 🏛️ 傳統模式：掉落／黑市／製作的「裝備」隨機自帶強化值（_tradLootCtx 期間；商店 forceNormal=true 不設→恆 +0；箭矢/材料/消耗品不套）
     let _tEn = (_tradLootCtx && !forceNormal && d && !d.noEnhance && ((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc') && traditionalActive()) ? rollTraditionalEnhance(d) : 0;   // 🏛️ 無法強化的裝備（古老系列 noEnhance）恆 +0，不自帶強化值
@@ -77,6 +66,22 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     try { if (_vfxLootCtx && d && d.gachaWeight === 1 && typeof vfxRareDrop === 'function') vfxRareDrop(d.n); } catch(e){}   // ✨ VFX：潘朵拉權重=1 的稀有掉落金色閃光
     try { if (typeof autoSortInventory === 'function') autoSortInventory(); } catch (e) {}   // 🔧 v2.6.73 獲得物品時自動排列背包（每 10 秒最多 1 次·節流在函式內）
     return itemInfo; // 👈 讓拉霸機可以讀取最終產生的物品
+}
+
+// 🦴 取得席琳遺骸（唯一入口：伊奧兌換／菈克希絲拆分）。遺骸必帶一個席琳套裝詞綴（group＝組名，如「魔女」）。
+//    itemSig 已含 seteff → 同部位不同組名分開堆疊（魔女之爪 / 紅獅之爪 各自一堆），比照 gainItem 的疊加規則。
+function gainSherineRemains(remId, group, silent) {
+    let d = DB.items[remId];
+    if (!d || !group) return null;
+    let _probe = { id: remId, en: 0, bless: false, anc: false, attr: false, seteff: group };
+    let ex = player.inv.find(i => sameItemSig(i, _probe));
+    if (ex) ex.cnt += 1;
+    else player.inv.push({ id: remId, uid: uid(), cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: group, lock: false, junk: false });
+    let itemInfo = { id: remId, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: group };
+    if (!silent) logSys(`<span class="c-sherine font-bold">✦ 獲得席琳遺骸：${getItemFullName(itemInfo)}！</span>`);
+    renderTabs();
+    if (typeof auditTrackGain === 'function') auditTrackGain(itemInfo);
+    return itemInfo;
 }
 
 // ===== 屬性詞綴定義（12種，武器/防具/飾品皆可出現） =====

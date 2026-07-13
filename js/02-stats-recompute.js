@@ -394,12 +394,13 @@ d.mr += (baseMr + bonusMr);
     if(setCheck['frost'] >= 3) { d.ac -= 5; p.mhp += 100; d.hpR += 8; d.mpR += 4; d.mr += 15; d.resWater += 20; }   // ❄️ 寒冰套裝（王族／龍騎士）：AC-5、HP+100、HP自然恢復+8、MP自然恢復+4、MR+15、水屬性抗性+20（體質+3 已於 Phase 1 前提前套用）
     if(setCheck['bluepirate'] >= 4) { d.ac -= 1; p.mhp += 10; }   // 🏴‍☠️ 藍海賊套裝（頭巾＋皮盔甲＋手套＋長靴）：AC-1、HP+10（智力+1 已於 Phase 1 前提前套用）
 
-    // ===== 🔮 席琳套裝效果：以「相同套裝名、不同部位」的件數計（同名不同部位即累計；不再要求五種不同詞綴）=====
+    // ===== 🔮 席琳套裝效果：只計「席琳遺骸欄」（8 格，SHERINE_REMAINS；欄位鍵＝遺骸物品 id）=====
+    // 🦴 一般裝備上的舊 seteff 詞綴不再計入（保留顯示，玩家可找菈克希絲拆成遺骸）。
     // 同步寫入傭兵快照：buildAlly 換身重算時 p=ally，旗標自然存於傭兵物件上
     let _shSets = {};
-    for (let k in p.eq) {
-        let e = p.eq[k];
-        if (e && e.seteff) { let g = e.seteff.slice(0, 2); _shSets[g] = (_shSets[g] || 0) + 1; }   // 計件＝帶該套裝名的「部位數」（每個裝備欄各算一件）
+    for (let _r of SHERINE_REMAINS) {
+        let e = p.eq && p.eq[_r.id];
+        if (e && e.seteff) { let g = e.seteff.slice(0, 2); _shSets[g] = (_shSets[g] || 0) + 1; }   // 計件＝帶該套裝名的「遺骸格數」（每格各算一件）
     }
     let _shN = (g) => (_shSets[g] || 0);
     p._sherineSetCnt = {};   // 🔮 各組件數（部位數）：供狀態面板（n/5 徽章）與裝備欄底色判定使用

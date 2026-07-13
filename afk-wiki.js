@@ -923,6 +923,7 @@
     { k: 'equipbook', n: '收藏-裝備' },
     { k: 'miscbook', n: '收藏-道具' },
     { k: 'card', n: '收藏-怪物' },
+    { k: 'relicbook', n: '收藏-遺物' },
     { k: 'magic', n: '職業魔法' },
     { k: 'mastery', n: '職業專精' },
     { k: 'equip', n: '裝備' },
@@ -1103,6 +1104,7 @@
     if (key === 'doll') return renderDoll();
     if (key === 'equipbook') return renderEquipBook();
     if (key === 'miscbook') return renderMiscBook();
+    if (key === 'relicbook') return renderRelicDex();   // 命名避開遊戲全域的 renderRelicBook(js/21 收集冊本體 UI)
     if (key === 'equip') return renderEquip();
     if (key === 'enhance') return renderEnhance();
     if (key === 'craft') return renderCraft();
@@ -1143,6 +1145,7 @@
     { key: 'equipbook', cls: false, label: '收藏-裝備' },
     { key: 'miscbook', cls: false, label: '收藏-道具' },
     { key: 'card', cls: false, label: '收藏-怪物' },
+    { key: 'relicbook', cls: false, label: '收藏-遺物' },
     { key: 'magic', cls: false, label: '職業魔法' },
     { key: 'mastery', cls: true, label: '職業專精' },
     { key: 'equip', cls: false, label: '裝備' },
@@ -1717,7 +1720,7 @@
   function renderEquipBook() {
     if (typeof EQUIP_CATEGORIES === 'undefined' || typeof EQUIP_CAT_ITEMS === 'undefined') return '<div class="m-wiki-note">讀不到裝備收集冊資料。</div>';
     var bonus = (typeof EQUIP_CAT_BONUS !== 'undefined') ? EQUIP_CAT_BONUS : {};
-    var out = '<div class="m-wiki-note">「裝備收集冊」：<b>獲得任何裝備就自動登錄</b>（只增不減，賣掉／丟掉也保留紀錄），依部位分類。把<b>某部位的全部裝備</b>都收集齊，就拿到該部位的<b>永久加成</b>（加成不大但永久、各部位獨立；作者之後在某部位加新裝備，原本收滿的會變回沒滿）。收集冊本體從畫面上的「<b>收藏</b>」面板翻開。<b>遺物不算在這本</b>——另有獨立的「遺物收集冊」（同在「收藏」面板，只記錄進度、無全收集加成），遺物介紹見「裝備」分頁。</div>';
+    var out = '<div class="m-wiki-note">「裝備收集冊」：<b>獲得任何裝備就自動登錄</b>（只增不減，賣掉／丟掉也保留紀錄），依部位分類。把<b>某部位的全部裝備</b>都收集齊，就拿到該部位的<b>永久加成</b>（加成不大但永久、各部位獨立；作者之後在某部位加新裝備，原本收滿的會變回沒滿）。收集冊本體從畫面上的「<b>收藏</b>」面板翻開。<b>遺物不算在這本</b>——遺物走獨立的收集冊，見「收藏-遺物」分頁。</div>';
     out += collModeRow();
     if (state.collMode !== null) {
       var b = collBuckets();
@@ -1747,6 +1750,25 @@
     return out;
   }
 
+  // 遺物收集冊(js/21-relic-book.js):動態讀 RELIC_CAT_ITEMS(沿用 EQUIP_CATEGORIES 分類,只含遺物)。
+  // 與裝備/道具收集冊不同:遺物「沒有」全收集加成,純進度紀錄 → collBookProgressHTML 傳 bonusOf=null 不畫那一欄。
+  function renderRelicDex() {
+    if (typeof RELIC_CAT_ITEMS === 'undefined' || typeof EQUIP_CATEGORIES === 'undefined') return '<div class="m-wiki-note">讀不到遺物收集冊資料。</div>';
+    var total = 0;
+    EQUIP_CATEGORIES.forEach(function (c) { total += (RELIC_CAT_ITEMS[c.key] || []).length; });
+    var out = '<div class="m-wiki-note">「遺物收集冊」：<b>獲得任何遺物就自動登錄</b>（只增不減，賣掉／丟掉也保留紀錄），依部位分類，目前共 <b>' + total + '</b> 件。與裝備／道具收集冊不同，遺物<b>沒有全收集加成</b>，純粹是收集進度。收集冊本體從畫面上的「<b>收藏</b>」面板翻開；遺物的數值與取得方式見「<b>裝備</b>」分頁。</div>';
+    out += collModeRow();
+    if (state.collMode !== null) {
+      var b = collBuckets();
+      out += collBookProgressHTML('🏺 遺物收集進度（' + esc(b.mode) + '模式）', EQUIP_CATEGORIES, RELIC_CAT_ITEMS, b.relic || {}, null);
+    } else {   // 未選模式:只列各部位有幾件(無進度、不爆缺項)
+      out += wCard('🏺 各部位的遺物件數', wTbl(['部位', '遺物件數'],
+        EQUIP_CATEGORIES.filter(function (c) { return (RELIC_CAT_ITEMS[c.key] || []).length > 0; })
+          .map(function (c) { return [esc(c.name), String((RELIC_CAT_ITEMS[c.key] || []).length)]; })));
+    }
+    return out;
+  }
+
   // 裝備總覽:直接讀遊戲 DB.items 依部位分組。數值用遊戲自己的 buildItemDescHTML(永遠與遊戲一致、作者新增自動跟上),
   // 取得方式接掉落查詢的 AFK_DEX_API.acquireHTML。每件「詳情」常駐 DOM(display:none)→ 連完整數值/特效都進統一搜尋;
   // 詳情與整頁 HTML 都建一次就快取(_equipDetail/_equipHtml)→ 搜尋每次重渲染 441 件也不卡。
@@ -1760,32 +1782,13 @@
     { k: 'remains', n: '🦴 席琳遺骸' }   // 8 種遺骸的 slot 各自不同(rem_claw…),equipGroupKey 統一歸到這一組
   ]);
   var EQUIP_REQ_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
-  // 武器分類名(「弓」「十字弓」…) → 分類 key(bow/xbow…)。EQUIP_CATEGORIES 改了會自動跟上。
-  var _wpnCatByName = null, _wpnCatNames = null;
-  function wpnCatByName() {
-    if (!_wpnCatByName) {
-      _wpnCatByName = {};
-      if (typeof EQUIP_CATEGORIES !== 'undefined') EQUIP_CATEGORIES.forEach(function (c) { if (c.group === '武器') _wpnCatByName[c.name] = c.key; });
-    }
-    return _wpnCatByName;
-  }
   function equipGroupKey(id, d) {
     if (d.remains) return 'remains';   // 🦴 席琳遺骸 8 件的 slot 各自不同,歸成同一組
     if (d.type !== 'wpn') return d.slot || 'other';
-    var k = (typeof EQUIP_ITEM_CAT !== 'undefined' && EQUIP_ITEM_CAT[id]);
-    if (k) return k;
-    // 🏺 遺物武器不在「裝備收集冊」分類表(EQUIP_ITEM_CAT)內(遺物走獨立收集冊)→ 沒這段的話 100+ 件遺物武器
-    //    會全部落進「其他武器」,弓/十字弓/單手劍等分類看不到任何遺物。改用遊戲自己的武器標籤與旗標回推分類。
-    var byName = wpnCatByName();
-    var tags = (typeof getWeaponTags === 'function') ? (getWeaponTags(id) || []) : [];
-    for (var i = 0; i < tags.length; i++) if (byName[tags[i]]) return byName[tags[i]];
-    if (d.qigu) return byName['奇古獸'] || 'wpn_other';
-    if (typeof isWandWeapon === 'function' && isWandWeapon(d)) return byName['魔杖'] || 'wpn_other';
-    // 名稱含分類名(長的先比:「十字弓」不能被「弓」搶走)。遺物十字弓只有 isBow 旗標、沒有武器標籤。
-    var names = _wpnCatNames || (_wpnCatNames = Object.keys(byName).sort(function (a, b) { return b.length - a.length; }));
-    for (var j = 0; j < names.length; j++) if (String(d.n || '').indexOf(names[j]) >= 0) return byName[names[j]];
-    if (d.isBow || d.ranged) return byName['弓'] || 'wpn_other';
-    return 'wpn_other';
+    // 武器分類走遊戲自己的 equipCatKey(js/16)——不要用 EQUIP_ITEM_CAT 查表:那張表只收「裝備收集冊」的一般裝備,
+    // 遺物走獨立收集冊(RELIC_ITEM_CAT)不在其中 → 查表會讓 100+ 件遺物武器全落進「其他武器」,弓/十字弓等分類一件遺物都看不到。
+    var k = (typeof equipCatKey === 'function') ? equipCatKey(id, d) : (typeof EQUIP_ITEM_CAT !== 'undefined' ? EQUIP_ITEM_CAT[id] : null);
+    return k || 'wpn_other';
   }
   // 某職業能否裝備:用遊戲真實規則(與遊戲顯示一致),非單看 req
   function classCanEquip(d, id, cls) {
@@ -2733,7 +2736,7 @@
     var modeName = COLL_MODE_CN[suf];
     if (typeof player !== 'undefined' && player && player.cls && typeof modeSuffix === 'function' &&
         modeSuffix(!!player.classicMode, !!player.traditionalMode) === suf) {
-      return { card: player.cardDex || {}, equip: player.equipDex || {}, misc: player.miscDex || {}, mode: modeName };
+      return { card: player.cardDex || {}, equip: player.equipDex || {}, misc: player.miscDex || {}, relic: player.relicDex || {}, mode: modeName };
     }
     function rd(base) { try { var s = _lzGet(base + suf); if (s) { var o = JSON.parse(s); if (o && typeof o === 'object') return o; } } catch (e) {} return {}; }
     var card = rd(typeof CARDDEX_KEY !== 'undefined' ? CARDDEX_KEY : 'lineage_idle_carddex');
@@ -2746,6 +2749,7 @@
       card: card,
       equip: rd(typeof EQUIPDEX_KEY !== 'undefined' ? EQUIPDEX_KEY : 'lineage_idle_equipdex'),
       misc: rd(typeof MISCDEX_KEY !== 'undefined' ? MISCDEX_KEY : 'lineage_idle_miscdex'),
+      relic: rd(typeof RELICDEX_KEY !== 'undefined' ? RELICDEX_KEY : 'lineage_idle_relicdex'),
       mode: modeName
     };
   }
@@ -2784,19 +2788,21 @@
       wDesc('地區加成取「全部怪都達到」的最高階。下面各地區列出還缺的卡，點怪名可跳「掉落查詢」看出沒地圖。')) + detail;
   }
   // 收藏-裝備/道具分頁:選定模式的收集進度(含全收集加成)＋缺件清單(點名字跳掉落查詢看取得方式)
+  // bonusOf 傳 null＝這本沒有「全收集加成」(遺物收集冊)→ 不畫那一欄
   function collBookProgressHTML(title, cats, catItems, dex, bonusOf) {
     var rows = [], detail = '';
     cats.forEach(function (c) {
       var arr = catItems[c.key] || [];
+      if (!arr.length) return;   // 該分類沒有任何可收集項目→不列(遺物並非每個部位都有)
       var missing = arr.filter(function (id) { return !dex[id]; });
-      rows.push([esc(c.name), bonusOf(c.key), (arr.length - missing.length) + '／' + arr.length,
-        missing.length ? '<b style="color:#f87171">缺 ' + missing.length + '</b>' : '<b style="color:#22c55e">✓ 完成</b>']);
+      rows.push([esc(c.name)].concat(bonusOf ? [bonusOf(c.key)] : []).concat([(arr.length - missing.length) + '／' + arr.length,
+        missing.length ? '<b style="color:#f87171">缺 ' + missing.length + '</b>' : '<b style="color:#22c55e">✓ 完成</b>']));
       if (missing.length) {
         detail += wCard('📍 ' + esc(c.name) + '（缺 ' + missing.length + ' 件）',
           '<div class="m-wiki-desc">' + missing.map(function (id) { var d = DB.items[id]; return wDexLink((d && d.n) || id); }).join('、') + '</div>');
       }
     });
-    return wCard(title, wTbl(['類別', '全收集加成', '已收集', '狀態'], rows) +
+    return wCard(title, wTbl(['類別'].concat(bonusOf ? ['全收集加成'] : []).concat(['已收集', '狀態']), rows) +
       wDesc('點下面缺的名字可跳「掉落查詢」看怎麼取得。')) + detail;
   }
 

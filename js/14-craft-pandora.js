@@ -385,7 +385,9 @@ const CRAFT_RECIPES = {
         { result: 'amr_old_leather', req: [{ id: 'item_forgotten_leather', cnt: 1 }, { id: 'item_ancient_scroll', cnt: 1 }] },
         { result: 'amr_old_robe', req: [{ id: 'item_forgotten_robe', cnt: 1 }, { id: 'item_ancient_scroll', cnt: 1 }] },
         { result: 'amr_old_plate', req: [{ id: 'item_forgotten_plate', cnt: 1 }, { id: 'item_ancient_scroll', cnt: 1 }] }
-    ]
+    ],
+    // 🔷🔶 象牙塔・神秘的魔法師（魔杖改造）：僅有客製配方（見 MYSTICWAND_RECIPES），空陣列讓 renderUniversalCraft 通過並附加客製區塊
+    'npc_mystic_mage': []
 };
 
 // 製作數量選擇器 + 製作按鈕（預設數量 1）
@@ -436,6 +438,7 @@ function renderUniversalCraft(div, npcId) {
     div.innerHTML = html;
     if (npcId === 'npc_flame_shadow') div.innerHTML += buildDemonKingCraftHTML();   // 👑 炎魔之影：在通用配方下方附加惡魔王武器客製製作區
     if (npcId === 'npc_lumiel') div.innerHTML += buildLumielCraftHTML();   // ⚔️ 琉米埃爾：在通用配方下方附加神聖執行團裝備客製製作區
+    if (npcId === 'npc_mystic_mage') div.innerHTML += buildMysticWandCraftHTML();   // 🔷🔶 神秘的魔法師：鋼鐵瑪那魔杖客製製作區（該 NPC 無通用配方）
 }
 
 // ===== 👑 惡魔王武器客製製作（炎魔之影）：消耗 +11 以上「指定」惡魔武器，繼承其強化值／詞綴／席琳套裝效果；不支援席琳製作 =====
@@ -568,6 +571,68 @@ function doLumielCraft(idx) {
     logSys(`<span class="text-amber-200 font-bold">琉米埃爾</span> 製作完成：<span class="${getItemColor(inst)} font-bold">${getItemFullName(inst)}</span>`);
     updateUI(); renderTabs(true); saveGame();
     renderUniversalCraft(document.getElementById('interaction-content'), 'npc_lumiel');
+}
+
+// ===== 🔷🔶 鋼鐵瑪那魔杖客製製作（象牙塔・神秘的魔法師）：消耗 +7 以上的來源魔杖，成品恆為 +0 白板（不繼承強化值／屬性／詞綴） =====
+const MYSTICWAND_MATS = [{ id: 'new_item_150', cnt: 50 }, { id: 'new_item_180', cnt: 100 }];   // 魔法寶石 ×50 ＋ 金屬塊 ×100
+const MYSTICWAND_RECIPES = [
+    { result: 'wpn_steel_manawand_blue', src: 'wpn_manawand', srcName: '瑪那魔杖' },
+    { result: 'wpn_steel_manawand_red',  src: 'wpn_strwand',  srcName: '力量魔法杖' },
+];
+// 背包＋倉庫中可作素材的 +7 以上來源魔杖；未鎖定。成品為 +0 白板 → 挑「最不值錢」的那把：強化值最低者優先，同強化值再避開有詞綴／屬性／席琳套裝者。
+function findMysticWandSource(srcId) {
+    let cands = player.inv.filter(i => i.id === srcId && (i.en || 0) >= 7 && !i.lock);
+    try { loadWarehouse().items.filter(i => i.id === srcId && (i.en || 0) >= 7 && !i.lock).forEach(i => cands.push(Object.assign({}, i, { _whSource: true }))); } catch (e) {}   // 🔧 倉庫中的 +7 魔杖亦可作素材（_whSource 標記：消耗時自倉庫精準扣除）
+    if (!cands.length) return null;
+    let _extra = i => (i.seteff ? 4 : 0) + (i.bless ? 2 : 0) + (i.attr ? 1 : 0);   // 附加價值愈高愈晚被消耗
+    return cands.slice().sort((a, b) => ((a.en || 0) - (b.en || 0)) || (_extra(a) - _extra(b)))[0];
+}
+function buildMysticWandCraftHTML() {
+    let html = `<div class="text-amber-300 font-bold text-sm mt-4 mb-2 px-1 border-t border-slate-700 pt-3">🔮 鋼鐵瑪那魔杖（消耗 +7 以上的來源魔杖；成品為 +0）</div>`;
+    MYSTICWAND_RECIPES.forEach((r, idx) => {
+        let resItem = DB.items[r.result];
+        let imgUrl = getIconUrl(resItem);
+        let matsOk = MYSTICWAND_MATS.every(m => materialObtainable(m.id, m.cnt));   // 🔧 含可遞迴合成（與惡魔王武器／琉米埃爾一致）
+        let src = findMysticWandSource(r.src);
+        let canMake = matsOk && !!src;
+        let srcColor = src ? 'text-green-400' : 'text-red-400';
+        let srcExtra = src ? `（將消耗 +${src.en || 0}）` : '';
+        let reqHtml = craftReqHtml(MYSTICWAND_MATS)
+            + `<span class="text-slate-500 mx-2 leading-none">+</span><span class="text-sm font-bold leading-none ${srcColor}">+7以上 ${r.srcName} ×1</span><span class="text-amber-300 text-xs ml-0.5">${srcExtra}</span>`;
+        html += `
+        <div class="list-item bg-slate-800 rounded mb-2 border border-slate-700 p-3" style="display:flex !important; justify-content:space-between !important; align-items:center !important; width:100% !important; box-sizing:border-box !important;">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <div class="w-12 h-12 bg-slate-900 rounded border border-slate-600 flex items-center justify-center shrink-0 tip-host">
+                    <img src="${imgUrl}" onerror="this.style.display='none';" class="w-10 h-10 object-contain pointer-events-none">
+                </div>
+                <div class="flex flex-col items-start gap-1.5">
+                    <span class="${getItemColor({ id: r.result })} font-bold text-lg leading-none truncate">${resItem.n}</span>
+                    <div class="flex items-center gap-2 flex-wrap"><span class="text-slate-400 text-sm">需求：</span>${reqHtml}</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button class="btn ${canMake ? 'bg-blue-700 hover:bg-blue-600 border-blue-500' : 'bg-slate-700 border-slate-600 opacity-60'} py-2 px-6 font-bold shadow" ${canMake ? '' : 'disabled'} onclick="doMysticWandCraft(${idx})">製作</button>
+            </div>
+        </div>`;
+    });
+    return html;
+}
+function doMysticWandCraft(idx) {
+    let r = MYSTICWAND_RECIPES[idx];
+    if (!r) return;
+    if (!RECIPE_BY_RESULT) buildRecipeIndex();
+    let lack = MYSTICWAND_MATS.filter(m => !materialObtainable(m.id, m.cnt)).map(m => `${DB.items[m.id].n} ${Math.max(0, m.cnt - invCountId(m.id))}`);   // 🔧 可遞迴合成者不算缺
+    let src = findMysticWandSource(r.src);
+    if (!src) lack.push(`+7以上 ${r.srcName} ×1`);
+    if (lack.length) { logSys(`<span class="text-red-400 font-bold">材料不足，無法製作。</span><span class="text-red-300">（尚缺：${lack.join('、')}）</span>`); return; }
+    MYSTICWAND_MATS.forEach(m => ensureMaterial(m.id, m.cnt, 0));   // 🔧 先自動補製可合成的中間物
+    MYSTICWAND_MATS.forEach(m => consumeMaterialById(m.id, m.cnt));
+    if (src._whSource) { whRemoveStackByUid(src.uid, 1); }   // 來源魔杖在倉庫：自倉庫精準消耗該實例
+    else if ((src.cnt || 1) > 1) src.cnt -= 1; else player.inv = player.inv.filter(i => i.uid !== src.uid);   // 消耗 1 把來源魔杖（背包）
+    gainItem(r.result, 1, true, false);   // 成品恆 +0 白板（不繼承來源的強化值／屬性／詞綴）；走 gainItem → 自動登錄裝備收集冊
+    logSys(`<span class="text-amber-200 font-bold">神秘的魔法師</span> 製作完成：<span class="${getItemColor({ id: r.result })} font-bold">${DB.items[r.result].n}</span>`);
+    updateUI(); renderTabs(true); saveGame();
+    renderUniversalCraft(document.getElementById('interaction-content'), 'npc_mystic_mage');
 }
 
 // 2. 渲染茉莉的製作介面
@@ -932,7 +997,7 @@ function doCraft(npcId, recipeIdx, sherine) {
         renderFinnCraft(document.getElementById('interaction-content'), npcId);
     } else if (npcId === 'npc_joel' || npcId === 'npc_ryan') {
         renderJoelCraft(document.getElementById('interaction-content'), npcId);
-    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide', 'npc_kororanz', 'npc_sebas'].includes(npcId)) {
+    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide', 'npc_kororanz', 'npc_sebas', 'npc_mystic_mage'].includes(npcId)) {
         renderUniversalCraft(document.getElementById('interaction-content'), npcId);
     }
 

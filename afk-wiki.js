@@ -1920,6 +1920,17 @@
         return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + lmWhere + ' 製作　材料：' + esc(mats) + '（會繼承來源戰士團裝備的強化值與詞綴，含舊席琳詞綴）</div>';
       }).join('');
     }
+    // 🔷🔶 鋼鐵瑪那魔杖:神秘的魔法師客製製作(消耗 +7 以上瑪那魔杖/力量魔法杖 + 素材,不在 CRAFT_RECIPES 裡)
+    if (typeof MYSTICWAND_RECIPES !== 'undefined' && MYSTICWAND_RECIPES) {
+      var mwInfo = npcInfo['npc_mystic_mage'] || { name: '神秘的魔法師', town: '象牙塔' };
+      var mwWhere = esc(mwInfo.name) + (mwInfo.town ? '（' + esc(mwInfo.town) + '）' : '');
+      var mwMats = (typeof MYSTICWAND_MATS !== 'undefined' && MYSTICWAND_MATS) ? MYSTICWAND_MATS : [];
+      html += '<div class="m-wiki-sub">🔮 ' + mwWhere + '（鋼鐵瑪那魔杖・客製）</div>';
+      html += MYSTICWAND_RECIPES.map(function (r) {
+        var mats = itemName(r.src) + '（須 +7 以上）×1' + (mwMats.length ? '、' + mwMats.map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') : '');
+        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + mwWhere + ' 製作　材料：' + esc(mats) + '（成品為 <b>+0</b> 白板，不繼承來源魔杖的強化值／詞綴／屬性）</div>';
+      }).join('');
+    }
     return html;
   }
 

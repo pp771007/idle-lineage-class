@@ -393,6 +393,15 @@
         (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_lumiel', req: req, yield: 1, note: '消耗 +7 以上的「' + (r.srcName || r.src) + '」，會繼承它的強化值／詞綴／席琳套裝效果' });
       });
     }
+    // 🔷🔶 鋼鐵瑪那魔杖:神秘的魔法師客製製作(消耗 +7 以上瑪那魔杖/力量魔法杖 + 素材,不在 CRAFT_RECIPES 裡,要另外補)
+    if (typeof MYSTICWAND_RECIPES !== 'undefined' && MYSTICWAND_RECIPES) {
+      var mwMats = (typeof MYSTICWAND_MATS !== 'undefined' && MYSTICWAND_MATS) ? MYSTICWAND_MATS : [];
+      MYSTICWAND_RECIPES.forEach(function (r) {
+        if (!r || !r.result) return;
+        var req = [{ id: r.src, cnt: 1, plus7: true }].concat(mwMats);
+        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_mystic_mage', req: req, yield: 1, note: '消耗 +7 以上的「' + (r.srcName || r.src) + '」；成品為 +0 白板，不繼承強化值／詞綴／屬性' });
+      });
+    }
   }
   function buildNpcInfo() {
     _npcInfo = {};

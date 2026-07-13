@@ -643,6 +643,7 @@ function _mobImgAnchor(imgEl) {
 function vfxKill(mob) {
     try {
         if (!mob) return;   // 🎚️ v3.0.1 關閉特效時「保留死亡動畫」：不再整個 return，改為只擋「傷害數字/頭目閃光」等純裝飾（見下），死亡序列殘影(death_*.png)＋死亡特效層(death_effect)照播＝怪物死亡畫面不消失
+        if (typeof state !== 'undefined' && state.ff) return;   // 🌙 離線/背景補跑：killMob 每殺都會呼叫，此時格子 DOM 仍在（畫面未重繪）→ 會整套建 DOM＋開 setInterval 逐幀。補跑跳過，回前景由正常渲染重畫
         let ml = document.getElementById('mob-list');
         let slot = ml && ml.querySelector('.mob-target[data-uid="' + mob.uid + '"]');
         if (!slot) return;
@@ -1419,6 +1420,7 @@ function _mobAnimProbe(name) {
 // 🎬 觸發單次動作（js/04 攻擊/技能掛點呼叫）：鎖定動作（登場/技能）播放中→忽略新觸發（強制放完）
 function _mobAnimTrigger(m, k) {
     if (!m) return;
+    if (typeof state !== 'undefined' && state.ff) return;   // 🌙 離線/背景補跑：不登記動作動畫，否則切回前景時全場怪物同步爆播攻擊/技能（sprite 幀動畫路徑，同 vfxKill）
     let cur = m._animAct;
     if (cur && cur.lock) {   // 鎖定動作播放中？（以快取序列長度判斷是否還沒播完）
         let a = _mobAnimCache[m.n];

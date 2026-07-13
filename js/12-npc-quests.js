@@ -58,8 +58,11 @@ function whItemSubCat(id){
     if(_whCraftMatIds[id] || /^mat_/.test(id) || d.type === 'etc') return 'craft';   // type:'etc' 幾乎全為製作材料(聖地遺物/黑血痕/黑魔法粉等)
     return 'other';
 }
-// 子分類下拉選項（依主分類動態給）：武器/防具用圖鑑類型；道具用自訂六類
+// 子分類下拉選項（依主分類動態給）：武器/防具用圖鑑類型；道具用自訂六類；遺物依裝備型別分三類
 function whSubCatOptions(){
+    if(_whFilter === 'relic') return [
+        { key:'wpn', name:'武器' }, { key:'arm', name:'防具' }, { key:'acc', name:'飾品' }
+    ];
     if(_whFilter === 'item') return [
         { key:'card', name:'卡片' }, { key:'skill', name:'技能' }, { key:'craft', name:'製作' },
         { key:'quest', name:'任務' }, { key:'scroll', name:'卷軸' }, { key:'other', name:'其他' }
@@ -71,6 +74,12 @@ function whSubCatOptions(){
 }
 // 倉庫物品是否符合「主分類＋子分類」：子分類空＝只看主分類
 function whMatchFilter(id){
+    // 🏺 遺物：橫跨武器/防具/飾品的獨立分類（不動 whCategory → 遺物在原本的武器/防具分類仍查得到）
+    if(_whFilter === 'relic'){
+        let d = DB.items[id];
+        if(!isRelic(d)) return false;
+        return !_whSubFilter || d.type === _whSubFilter;
+    }
     if(whCategory(id) !== _whFilter) return false;
     if(!_whSubFilter) return true;
     if(_whFilter === 'item') return whItemSubCat(id) === _whSubFilter;
@@ -370,8 +379,9 @@ function renderWarehouseNPC(div){
                 <option value="weapon" ${_whFilter==='weapon'?'selected':''}>武器</option>
                 <option value="armor" ${_whFilter==='armor'?'selected':''}>防具</option>
                 <option value="item" ${_whFilter==='item'?'selected':''}>道具</option>
+                <option value="relic" ${_whFilter==='relic'?'selected':''}>遺物</option>
             </select>
-            <select onchange="whSetSubFilter(this.value)" class="bg-slate-900 border border-slate-600 text-white rounded py-1 px-2 text-sm" title="細分類：武器/防具依圖鑑類型，道具分卡片/技能/製作/任務/卷軸/其他">
+            <select onchange="whSetSubFilter(this.value)" class="bg-slate-900 border border-slate-600 text-white rounded py-1 px-2 text-sm" title="細分類：武器/防具依圖鑑類型，道具分卡片/技能/製作/任務/卷軸/其他，遺物分武器/防具/飾品">
                 <option value="">全部</option>
                 ${whSubCatOptions().map(o => `<option value="${o.key}" ${_whSubFilter===o.key?'selected':''}>${o.name}</option>`).join('')}
             </select>

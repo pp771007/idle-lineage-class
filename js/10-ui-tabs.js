@@ -1430,7 +1430,7 @@ function buildQuickHeader(type) {
     // 🔧 表頭上緣亦覆蓋容器的 12px 上內距(p-3)：往上拉時 sticky 黏在裁切邊(top/margin-top:-12)、paddingTop:12 維持按鈕原位 → 物品也不會從按鈕「上方」透出（滾動後＝滾動前）。用 inline style（Tailwind CDN JIT 不保證新 class 即時生成）
     hdr.style.top = '-12px'; hdr.style.marginTop = '-12px'; hdr.style.paddingTop = '12px';
     if (jnk.active) {   // 快速廢品進行中：取消／確認／全選（無數值選擇）
-        let eligible = _qjEligibleItems(type);
+        let eligible = _qjSelectAllItems(type);   // 🏺 全選框只反映非遺物的勾選狀態（遺物不受全選影響）
         let allSel = eligible.length > 0 && eligible.every(i => jnk.sel[i.uid]);
         let someSel = eligible.some(i => jnk.sel[i.uid]);
         hdr.innerHTML = `<div class="flex items-center gap-1 bg-slate-900/80 border border-amber-800/60 rounded p-1">
@@ -1463,7 +1463,13 @@ function _qjSync(type) {
     _qjEligibleItems(type).forEach(i => { if (!st.known[i.uid]) { st.known[i.uid] = true; if (i.junk) st.sel[i.uid] = true; } });
 }
 function cancelQuickJunk(type) { let st = quickJunk[type]; st.active = false; st.sel = {}; st.known = {}; renderTabs(true); }
-function quickJunkSelectAll(type, checked) { let st = quickJunk[type]; st.sel = {}; if (checked) _qjEligibleItems(type).forEach(i => st.sel[i.uid] = true); renderTabs(true); }
+// 🏺 「全選」的作用範圍排除遺物（用戶要求：全選不要順手把遺物標成廢品；遺物仍可逐件手動勾選）
+function _qjSelectAllItems(type) { return _qjEligibleItems(type).filter(i => !isRelic(DB.items[i.id])); }
+function quickJunkSelectAll(type, checked) {
+    let st = quickJunk[type];
+    _qjSelectAllItems(type).forEach(i => { if (checked) st.sel[i.uid] = true; else delete st.sel[i.uid]; });   // 只動非遺物：手動勾選的遺物不因全選／取消全選被改掉
+    renderTabs(true);
+}
 function toggleQuickJunkItem(type, uid) { let st = quickJunk[type]; if (st.sel[uid]) delete st.sel[uid]; else st.sel[uid] = true; renderTabs(true); }
 // 確認：依勾選最終狀態設定每件 junk（勾＝廢品、未勾＝取消廢品），同步 junkPrefs（記憶/取消記憶）
 function runQuickJunk(type) {

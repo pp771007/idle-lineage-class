@@ -1674,6 +1674,7 @@ function interactNPC(npcId, townId) {
     } else if (npc.type === 'warehouse') {
         renderWarehouseNPC(contentDiv);   // 🔧 v2.6.77 正常情況已在 interactNPC 開頭早退開浮動倉庫；此分支僅剩 openWarehouseWindow 不存在時的舊式後備
     } else if (npc.id === 'npc_baowu') {
+        try { if (typeof _petRosterResync === 'function') _petRosterResync(); } catch (e) {}   // 🔄 開啟寵物保管前先與共用桶同步（顯示別角色最新裝備/出戰狀態·防過期鏡像）
         renderPetStorageNPC(contentDiv);
     } else if (npc.id === 'npc_isba') {
         renderIsbaTravel(contentDiv);

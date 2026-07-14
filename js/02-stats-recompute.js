@@ -805,14 +805,14 @@ function enterHiddenArea(hiddenId) {
     changeMap(true);   // force：繞過權限/鑰匙/受控限制；changeMap 讀 #map-select.value=hiddenId 進入並記入 lastBattleMap（供村莊「出發」一鍵返回）
     logCombat(`<span class="font-bold" style="color:#e879f9;text-shadow:0 0 8px #c026d3;">空間的裂隙在你眼前展開，你踏入了 ${HIDDEN_AREA_NAMES[hiddenId] || '隱藏狩獵區域'}。</span>`, 'magic');
 }
-// 🌀 順移按鈕：已學傳送術且 MP 足夠→傳送術；否則消耗瞬間移動卷軸；皆無則提示
+// 🌀 順移按鈕：優先消耗 瞬間移動卷軸；沒有卷軸才判定手動施放傳送術（MP 足夠時）；皆無則提示
 function playerTeleport() {
+    let _it = player.inv.find(i => i.id === 'scroll_teleport' && (i.cnt || 1) >= 1);
+    if (_it) { state._manualTpUntil = (state.ticks || 0) + 50; useItem(_it.uid, false); return; }   // 🕒 手動瞬移後 5 秒內抑制自動瞬移/自動購買
     if (player.skills && player.skills.includes('sk_teleport')) {
         let _sk = DB.skills.sk_teleport;
         if (player.mp >= player.d.getMpCost(_sk.mp, _sk.tier)) { state._manualTpUntil = (state.ticks || 0) + 50; manualCast('sk_teleport'); return; }   // 🕒 手動瞬移後 5 秒內抑制自動瞬移/自動購買
     }
-    let _it = player.inv.find(i => i.id === 'scroll_teleport' && (i.cnt || 1) >= 1);
-    if (_it) { state._manualTpUntil = (state.ticks || 0) + 50; useItem(_it.uid, false); return; }   // 🕒 手動瞬移後 5 秒內抑制自動瞬移/自動購買
     logSys('<span class="text-slate-400">你尚未學會傳送術，也沒有瞬間移動卷軸。</span>');
 }
 

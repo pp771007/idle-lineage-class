@@ -531,8 +531,14 @@ function _bgmLoadCfg() {
 function _bgmSaveCfg() { try { if (typeof _lsSet === 'function') _lsSet('fb5_bgm', JSON.stringify(_bgmCfg)); } catch (e) {} }
 function _bgmTargetVol() { return Math.max(0, Math.min(1, _bgmCfg.vol / 100)); }
 
-// 預解析各場景的實際 URL（依序試 mp3→ogg→wav）；缺檔→_bgmUrl[scene]=null
+// 預解析各場景的實際 URL：副檔名查 BGM_INDEX（js/sfx-index.js，掃 assets/bgm/ 自動產生）直接組網址，零網路請求。
+//   ⚠ 不可退回「開 <audio> 探測 mp3→ogg→wav」：探測用的 preload='metadata' 在 Chrome 實測會把整首拉下來
+//     （每首 2~2.7MB），而 _bgmInit 開場就把「全部曲目」各探一次 → 每次載入頁面燒 10MB 以上；
+//     且音檔走 Range 請求（206）依設計進不了 SW 快取，只能靠瀏覽器 HTTP 快取，命中不穩＝反覆重抓。
+//   索引本身沒載到（極舊快取）才降級成探測，避免整組 BGM 啞掉。
 function _bgmResolve(scene, file) {
+    var idx = (typeof BGM_INDEX !== 'undefined') && BGM_INDEX;
+    if (idx) { _bgmUrl[scene] = idx[file] ? ('assets/bgm/' + file + '.' + idx[file]) : null; return; }   // 查表即知副檔名；查無此曲＝沒這個檔→不播
     var exts = ['mp3', 'ogg', 'wav'], i = 0;
     (function tryNext() {
         if (i >= exts.length) { _bgmUrl[scene] = null; return; }

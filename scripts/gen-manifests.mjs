@@ -41,21 +41,28 @@ if (existsSync('assets')) {
 }
 
 if (existsSync('assets/sfx')) {
-  // 音效「檔名 → 實際副檔名」索引。js/17-audio.js 據此直接組正確網址。
-  //   沒有它的話,音效一律逐一試 .mp3→.ogg→.wav:音效庫沒有任何 mp3,故每個音效至少撈回一個
+  // 音效／BGM 的「檔名 → 實際副檔名」索引。js/17-audio.js 據此直接組正確網址,不用探測。
+  //   音效沒有它的話,一律逐一試 .mp3→.ogg→.wav:音效庫沒有任何 mp3,故每個音效至少撈回一個
   //   404(GitHub Pages 的錯誤頁 ~9KB、進不了快取)→ 每次開遊戲、每張地圖的怪都重付一次。
-  const byName = {};
-  for (const p of readdirSync('assets/sfx')) {
-    const m = p.match(/^(.+)\.(mp3|ogg|wav)$/);
-    if (m) byName[m[1]] = m[2];
-  }
-  const names = Object.keys(byName).sort();
-  const body = names.map((n) => JSON.stringify(n) + ':' + JSON.stringify(byName[n])).join(',');
+  //   BGM 沒有它的話,開場會對「全部曲目」各開一個 <audio> 探測副檔名,Chrome 的 metadata 預載
+  //   實測會把整首(每首 2~2.7MB)拉下來 → 每次載入頁面燒 10MB 以上,且音檔走 Range(206)進不了 SW 快取。
+  const extIndex = (dir) => {
+    const byName = {};
+    for (const p of readdirSync(dir)) {
+      const m = p.match(/^(.+)\.(mp3|ogg|wav)$/);
+      if (m) byName[m[1]] = m[2];
+    }
+    const names = Object.keys(byName).sort();
+    return { names, body: names.map((n) => JSON.stringify(n) + ':' + JSON.stringify(byName[n])).join(',') };
+  };
+  const sfx = extIndex('assets/sfx');
+  const bgm = existsSync('assets/bgm') ? extIndex('assets/bgm') : { names: [], body: '' };
   writeFileSync('js/sfx-index.js',
-    '/* 自動產生 — 由 scripts/gen-manifests.mjs 掃 assets/sfx/ 重產,勿手改。\n' +
-    ' * 音效檔名 → 實際副檔名。索引裡沒有的名稱＝沒有這個音檔,17-audio.js 直接靜音、不發請求。 */\n' +
-    'var SFX_INDEX = {' + body + '};\n');
-  console.log('[gen-manifests] js/sfx-index.js →', names.length, '筆');
+    '/* 自動產生 — 由 scripts/gen-manifests.mjs 掃 assets/sfx/ 與 assets/bgm/ 重產,勿手改。\n' +
+    ' * 檔名 → 實際副檔名。索引裡沒有的名稱＝沒有這個音檔,17-audio.js 直接靜音/不播、不發請求。 */\n' +
+    'var SFX_INDEX = {' + sfx.body + '};\n' +
+    'var BGM_INDEX = {' + bgm.body + '};\n');
+  console.log('[gen-manifests] js/sfx-index.js → 音效', sfx.names.length, '筆 / BGM', bgm.names.length, '筆');
 }
 
 {

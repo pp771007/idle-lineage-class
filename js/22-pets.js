@@ -946,9 +946,23 @@ function petRevive(uidv, method) {   // 隊伍面板按鈕：rez=返生術（立
 }
 
 // ---------- 八、包武 寵物保管 UI（傭兵公會式介面）----------
+// 🐾 「被誰帶出戰」標籤：唯讀讀該存檔位摘要（slotSummary 只讀 localStorage·絕不呼叫任何寫檔函式）。
+//    每次重繪每格快取一次：slotSummary 要解壓＋JSON.parse 整份存檔，20 隻寵物逐隻讀會卡。
+function _petOutOwnerLabel(slot, cache) {
+    let k = String(slot);
+    if (cache[k] !== undefined) return cache[k];
+    let label = '存檔' + k;
+    try {
+        let s = (typeof slotSummary === 'function') ? slotSummary(k) : null;
+        if (s) label = (s.name || s.cls) + ' Lv.' + s.lv + '（存檔' + k + '）';
+    } catch (e) {}
+    cache[k] = label;
+    return label;
+}
 function renderPetStorageNPC(div, confirmUid) {
     let list = petRoster();
     let cha = (player.d && player.d.cha) || 0;
+    let _ownerCache = {};
     let rows = list.map(p => {
         let def = PET_BOOK[p.form] || {};
         let d = petDerive(p) || {};
@@ -976,7 +990,7 @@ function renderPetStorageNPC(div, confirmUid) {
             <span class="flex-1 min-w-0">
                 <span class="font-bold ${isOut ? 'text-emerald-300' : 'text-white'}">${p.form}</span>
                 <span class="text-amber-300"> Lv.${p.lv}</span>
-                <span class="text-slate-400 text-xs">（${PET_KIND_LABEL[def.kind] || ''}·魅力${need}${isOut ? '·本角色出戰中' : (otherOut ? '·其他角色出戰中' : '')}）</span><br>
+                <span class="text-slate-400 text-xs">（${PET_KIND_LABEL[def.kind] || ''}·魅力${need}${isOut ? '·本角色出戰中' : ''}）</span>${otherOut ? `<span class="text-sky-300 text-xs font-bold">　🧑‍🤝‍🧑 ${_petOutOwnerLabel(p.outSlot, _ownerCache)} 出戰中</span>` : ''}<br>
                 <span class="text-xs text-slate-300">HP ${p.hp}/${p.mhp}　MP ${p.mp}/${p.mmp + (d.mmpBonus || 0)}　EXP ${expPct}%　攻1D${d.dice}+${d.flat + cb.dmg} 命中${d.hit + cb.hit} AC${d.ac} 減免${d.dr} ER${d.er} MR${d.mr}</span>
             </span>
             <span class="flex gap-1 shrink-0 flex-wrap justify-end" style="max-width:210px">

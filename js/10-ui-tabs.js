@@ -829,6 +829,16 @@ function buildItemDescHTML(item) {
             if(_ph > 0) _parts.push('額外命中 +' + _ph);
             if(_parts.length) desc += `<br><span class="text-amber-300">夥伴${_parts.join('、')}（每強化 +1，上限 +5）。</span>`;
         }
+        // 🛡️ 寵物防具：依強化等級動態顯示夥伴加成（每強化 +1 → 防禦再 -1，上限 +5）
+        if(d.petAc || d.petMr || d.petInt || d.petWis) {
+            let en = capEn(item.en, d);
+            let _parts = [];
+            if(d.petAc) _parts.push('防禦 -' + ((d.petAc || 0) + en));
+            if(d.petMr) _parts.push('魔法防禦 +' + d.petMr);
+            if(d.petInt) _parts.push('智力 +' + d.petInt + '（技能傷害 +' + d.petInt + '）');
+            if(d.petWis) _parts.push('精神 +' + d.petWis + '（MP上限 +' + (d.petWis * 5) + '·MP恢復 +' + d.petWis + '）');
+            if(_parts.length) desc += `<br><span class="text-amber-300">夥伴${_parts.join('、')}（每強化 防禦再 -1，上限 +5）。</span>`;
+        }
         // 🛡️ 臂甲：依強化值動態顯示門檻特效現值＋每強化HP（🏺 遺物臂甲 noEnhance：跳過強化相關文字，特效寫在 d:）
         if(d.armguard && !d.noEnhance) {
             let en = capEn(item.en, d);

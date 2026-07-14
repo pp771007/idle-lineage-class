@@ -471,9 +471,10 @@ d.mr += (baseMr + bonusMr);
     if (player.skills.includes('sk_warrior_crush')) d.meleeDmg += 2 + Math.max(0, p.lv - 44);   // ⚔️ 粉碎：近距離傷害+2；玩家等級45起每升一級+1
     
     let spdMult = 1.0;
-    if(p.buffs.haste > 0 || p._equipHaste) spdMult *= 0.67;   // 自我加速 / 加速 / 裝備常駐加速 +33%
-    if(p.buffs.brave > 0) spdMult *= 0.67;   // 勇敢藥水 +33%
-    if(p.buffs.elfcookie > 0) spdMult *= 0.85; // 精靈餅乾 +15%
+    let _mercPots = !!p._mercPermanentPotions;   // 🤝 傭兵預設常駐職業藥水效果（不消耗道具、不寫進一般 buff 計時）
+    if(p.buffs.haste > 0 || p._equipHaste || _mercPots) spdMult *= 0.67;   // 自我加速 / 加速 / 裝備常駐加速 +33%
+    if(p.buffs.brave > 0 || (_mercPots && ['knight','dragon','warrior','royal'].includes(p.cls))) spdMult *= 0.67;   // 勇敢藥水 +33%（可用職業的傭兵常駐）
+    if(p.buffs.elfcookie > 0 || (_mercPots && p.cls === 'elf')) spdMult *= 0.85; // 精靈餅乾 +15%（妖精傭兵常駐）
     if(p.buffs.sk_dark_walkhaste > 0) spdMult *= 0.85; // 🔧 行走加速：攻速+15%（與加速術等相乘疊加）
     { let _clvW = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; let _clvOn = !p.classicMode && ((p.statuses && p.statuses.cleave > 0) || (p.mastery === 'k_cleave' && _clvW && _clvW.eff === 'cleave')); if(_clvOn) spdMult *= (p.mastery === 'k_cleave' ? 0.50 : 0.80); }   // 切割：攻速+20%（🏅 切割精通：+50%・持切割武器常駐），與其他加速相乘疊加；🎮 經典模式停用
     { let _swMelee = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(p.mastery === 'e_sword' && _swMelee && !_swMelee.w2h && !_swMelee.isBow && !_swMelee.ranged) spdMult *= (1/1.5); }   // 🏅 劍術精通：持單手近戰武器攻速+50%（與加速/勇敢/餅乾/變身相乘疊加）
@@ -486,7 +487,7 @@ d.mr += (baseMr + bonusMr);
       let _polySpd = 0; if (_polyOn) { for (let _k in p.eq) { let _e = p.eq[_k]; let _ed = _e && DB.items[_e.id]; if (_ed && _ed.polyAtkSpdPct) _polySpd += _ed.polyAtkSpdPct; } }
       if (_polySpd > 0) spdMult *= (1 / (1 + _polySpd / 100)); }   // 🏺 遺物 浣熊的變身葉：變身狀態下攻速 +polyAtkSpdPct%
     if(p.buffs.blue > 0) d.mpR += getWisBlueBonus(d.wis);          // 藍色藥水：依精神提升MP恢復
-    if(p.buffs.cautious > 0) { d.magicDmg += 2; d.mpR += 2; }      // 慎重藥水
+    if(p.buffs.cautious > 0 || (_mercPots && p.cls === 'mage')) { d.magicDmg += 2; d.mpR += 2; }      // 慎重藥水（法師傭兵常駐）
     if(p.buffs.sk_reduction_armor > 0) d.dr += Math.floor(p.lv/10);   // 增幅防禦：等同傷害減免 floor(等級/10)，併入 DR 顯示與計算
     if(p.statuses && p.statuses.evilAura > 0) { d.ac += 10; d.er -= 10; }   // 🔧 邪靈之氣減益：AC+10、ER−10（持續6秒，由黑暗精靈使施放）
     

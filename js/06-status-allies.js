@@ -273,6 +273,7 @@ function buildAlly(slotN) {
     let p; try { p = JSON.parse(raw).p; } catch(e) { return null; }
     if (!p || !p.cls) return null;
     let ally = JSON.parse(JSON.stringify(p));   // 深拷貝，不動原存檔
+    ally._mercPermanentPotions = true;   // 🤝 傭兵常駐職業藥水效果（加速全職；勇敢/餅乾/慎重依職業，見 js/02 recomputeStats）
     // 安全防護：補齊 calcStats 會取用的欄位，並清掉協力者自身的召喚/夥伴/變身
     ally.buffs = ally.buffs || {}; ally.statuses = ally.statuses || {}; ally.eq = ally.eq || {}; ally.skills = ally.skills || [];
     ally.blessings = (ally.blessings && typeof ally.blessings === 'object') ? ally.blessings : {};
@@ -1990,6 +1991,7 @@ function alliesTick() {
     if (!player.allies || !player.allies.length) return;
     player.allies.forEach(ally => {
         if (!ally) return;
+        if (!ally._mercPermanentPotions) { ally._mercPermanentPotions = true; try { _allyLevelRecompute(ally); } catch (e) {} }   // 🤝 舊存檔既有傭兵：第一次 tick 補上常駐職業藥水效果
         if (ally._downed) { if ((ally._reviveCd || 0) > 0) ally._reviveCd--; if ((ally._reviveCd || 0) <= 0) tryAutoReviveMercScroll(ally); return; }   // 🤝 Phase 3：倒地傭兵完全停止行動（不立方/不颶風/不回魔/不攻擊），僅倒數復活冷卻（含背景補跑）；🎫 v2.6.6：15 秒冷卻結束→身上有復活卷軸自動使用
         if (processAllyStatusTick(ally)) return;   // 🤝 Phase4：異常狀態 DoT 結算（中毒/灼燒/燙傷/出血→可致倒地）；倒地則本回合不行動
         if ((ally._potCd || 0) > 0) ally._potCd--;   // 🍶 傭兵自動喝藥水冷卻（每 tick 遞減·~1 秒）

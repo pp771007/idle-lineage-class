@@ -83,13 +83,18 @@ const _PET_G = {
 };
 // 兩隻同等寵物的持續輸出以接近一名同等玩家為目標；裝備、魅力與遺物仍作為額外養成收益。
 const PET_DMG_TUNE = { basic: 1.20, skill: 1.10 };
+const PET_TIER_DMG_MULT = [1.14, 1.46, 1.00];   // 🐾 與下方生存力曲線合併後：一般平均總傷約+20%、高等約+50%；黃金龍維持原值
+const PET_HIT_TUNE = 5;                         // 🐾 全寵物命中補強（仍受等級差、目標 AC 與骰 1 必失影響）
 function _petClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function petDerive(p) {
     let def = PET_BOOK[p.form]; if (!def) return null;
     let g = _PET_G[def.kind], lv = p.lv || 1, t = def.tier || 0;
     let speedMul = _petClamp(Math.sqrt(60 / Math.max(1, def.apm)), 0.80, 1.25);
     let hpAvg = ((def.hpUp && def.hpUp[0]) || 0) / 2 + ((def.hpUp && def.hpUp[1]) || 0) / 2;
-    let durableMul = hpAvg <= 5 ? 1.05 : (hpAvg <= 8 ? 1 : (hpAvg <= 11 ? 0.92 : 0.85));
+    const oldDurableMul = hpAvg <= 5 ? 1.05 : (hpAvg <= 8 ? 1 : (hpAvg <= 11 ? 0.92 : 0.85));
+    // 生存力換輸出：低血成長寵物明顯偏攻擊，高血成長寵物偏坦；一般／高等的普攻與技能都套用。
+    const survivalDmgMult = hpAvg <= 5 ? 1.25 : (hpAvg <= 8 ? 1.08 : (hpAvg <= 11 ? 0.90 : 0.75));
+    const durableMul = t === 2 ? oldDurableMul : 1;   // 黃金龍只有單一型態，保留既有基本傷害，不參與同階血量取向比較
     let hpAc = hpAvg > 11 ? -2 : (hpAvg > 8 ? -1 : (hpAvg <= 5 ? 1 : 0));
     let hpDr = hpAvg > 11 ? 2 : (hpAvg > 8 ? 1 : 0);
     let hasMagic = def.sk.some(s => s.kind === 'magic');
@@ -114,7 +119,8 @@ function petDerive(p) {
         kind: def.kind, tier: t,
         dice: dice,
         flat: flat,
-        hit: g.hit0 + Math.floor(lv * g.hitG) + speedHit + t * 3 + elite.hit,
+        damageMult: t === 2 ? 1 : (PET_TIER_DMG_MULT[t] || 1) * survivalDmgMult,
+        hit: g.hit0 + Math.floor(lv * g.hitG) + speedHit + t * 3 + elite.hit + PET_HIT_TUNE,
         skillFlat: Math.floor(lv * g.skillG * castMul * skillTier * PET_DMG_TUNE.skill) + _gInt,
         ac: 10 - Math.floor(lv / g.acDiv) - t * g.acTier + hpAc + elite.ac - _gAc,
         dr: Math.floor(lv / g.drDiv) + t * g.drTier + hpDr + elite.dr,
@@ -688,6 +694,7 @@ function petAttackOnce(p, d, target, forceCrit, addDmg, skName) {
         if (heavy || (r !== 1 && hv >= r)) {
             let dmg = (heavy ? d.dice : roll(1, d.dice)) + d.flat + cb.dmg + (addDmg || 0) + pg.dmg + (_ia ? _ia.ed : 0) - (target.dr || 0);
             dmg = Math.max(1, Math.floor(dmg));
+            dmg = Math.max(1, Math.floor(dmg * (d.damageMult || 1)));   // 🐾 型態增傷＋低血高傷取向（普攻／extra 技能共用）
             if (skName && typeof _relicPetSkillMult === 'function') dmg = Math.max(1, Math.floor(dmg * _relicPetSkillMult()));
             markBossPhysicalHit(target);
             target.curHp -= dmg; target.justHit = 'none'; mobWake(target);
@@ -741,6 +748,7 @@ function petCastSkill(p, d, target) {
                 let dmg = Math.floor(core * mrMult(effMr));
                 if (sk.ele && sk.ele !== 'none' && m.e && m.e !== 'none' && typeof elementCounterMult === 'function') dmg = Math.floor(dmg * elementCounterMult(sk.ele, m.e));
                 dmg = Math.max(1, dmg - (m.dr || 0));
+                dmg = Math.max(1, Math.floor(dmg * (d.damageMult || 1)));   // 🐾 傷害技能同享型態增傷＋低血高傷取向
                 if (typeof _relicPetSkillMult === 'function') dmg = Math.max(1, Math.floor(dmg * _relicPetSkillMult()));   // 🏺 馴獸師的訓狗棒：寵物技能×1.5
                 if (sk.n && sk.n.includes('冰錐') && typeof equipSkillDmgMult === 'function') dmg = Math.max(1, Math.floor(dmg * equipSkillDmgMult(DB.skills.sk_ice_spike, 'sk_ice_spike')));   // 🏺 v3.2.35 暴走兔最愛的胡蘿蔔：攜帶的暴走兔/高等暴走兔施放的冰錐也 ×1.5（掃玩家裝備 skillDmgMult.sk_ice_spike·與訓狗棒相乘）
                 m.curHp -= dmg; m.justHit = sk.ele || 'none'; mobWake(m);

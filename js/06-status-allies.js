@@ -312,6 +312,7 @@ function buildAlly(slotN) {
 function allyUnbonusBonus(ally, t) {
     let w = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
     let v = (w && (w.unBonus || w.unDice || w.sp === 'elf') && t && (t.un || t.isWolf)) ? roll(1, 20) : 0;
+    if (!v && ally.buffs && ally.buffs.sk_holy_wpn > 0 && t && t.un) v += roll(1, 20);   // ✨ 神聖武器（傭兵）：僅對不死 +1D20，與武器 unBonus 互斥不疊加（鏡像玩家 js/03）
     if (w && w.giantBonus && t && t.race === '巨人') v += roll(1, 20);   // 🏺 遺物 傑克的彈弓（傭兵）：對巨人加成 +1D20（鏡像玩家 js/03）
     return v;
 }
@@ -387,6 +388,7 @@ function allyAttackOnce(ally) {
         let isRanged = !!(wpn && wpn.ranged);
         let hitB = (isRanged ? (d.rangedHit||0) : (d.meleeHit||0)) + (d.extraHit||0) + (ally._setBeauty5 ? (ally._beautyMissStack || 0) : 0);   // 🔮 v2.6.21 麗人5/5：未命中堆疊命中（鏡像玩家 js/03:763·取代舊「重擊→必中」）
         let dmgB = isRanged ? (d.rangedDmg||0) : (d.meleeDmg||0);
+        if (wpn && wpn.hasteStrike && ally.buffs && ally.buffs.haste > 0) { hitB += 30; dmgB += 30; }   // 🏺 殺人蜂的尾刺（傭兵）：加速狀態時 +30 命中/傷害（命中後於下方清除加速·鏡像玩家 js/03）
         let critR = isRanged ? (d.rangedCrit||0) : (d.meleeCrit||0);
         let critD = isRanged ? (d.rangedCritDmg||0) : (d.meleeCritDmg||0);
         let _evSure = !!ally._darkEvadeSure, _evCrit = !!ally._darkEvadeCrit;   // 🆕 v2.6.13 #5b 迴避精通：迴避後下一次一般攻擊必中(_evSure)且必爆(_evCrit)
@@ -417,7 +419,7 @@ function allyAttackOnce(ally) {
         if (!heavy && !_grazeA && !ally.classicMode && ally.eq && ally.eq.wpn && getWeaponTags(ally.eq.wpn.id).includes('鋼爪') && Math.random() < 0.05) heavy = true;   // ⚔️ 鋼爪內建特性（傭兵·鏡像玩家 getPhysicalDmg）：一般攻擊命中(非擦傷)額外 5% 重擊·經典停用
         let isCrit = !_grazeA && (_evCrit || (Math.random()*100 < critR));   // 🆕 v2.6.13 #5b 迴避精通：迴避後下一擊必爆；🥊 v2.6.20 擦傷不爆
         let critMult = isCrit ? (1 + critD/100) : 1;
-        let wpnRoll = heavy ? dice : roll(1, dice);
+        let wpnRoll = (heavy || (!isRanged && ally.buffs && ally.buffs.sk_elf_flamesoul > 0)) ? dice : roll(1, dice);   // 🔥 烈焰之魂（傭兵）：近距離一般攻擊武器擲骰必定最大值（鏡像玩家 js/03）
         let _hsT = mobHardSkin(t);   // 🔧 穿透精通用：被硬皮扣減前的量
         let _hsSub = (wpn && wpn.ignHardSkin) ? 0 : _hsT;   // 🗡️ 貫穿（暗黑十字弓）：傭兵攻擊無視硬皮額外減傷（_hsT 仍保留供穿透精通加回）
         let dmg = Math.max(1, Math.floor((wpnRoll + dmgB) * critMult) + (d.extraDmg||0) - (t.dr||0) - _hsSub);   // 🔧 硬皮：額外物理減傷（貫穿時不扣）
@@ -458,9 +460,16 @@ function allyAttackOnce(ally) {
         if (wpn && wpn.raceFlat && t.race === wpn.raceFlat.race) dmg = dmg + (wpn.raceFlat.add || 0);   // 🏺 遺物 上古蜘蛛之爪：對特定種族（動物）額外固定傷害
         if (wpn && wpn.eleBonusDmg && t.e === wpn.eleBonusDmg.ele) dmg += (wpn.eleBonusDmg.add || 0);   // 🏺 遺物 兇殘惡鬼的毒牙（傭兵）：對特定屬性敵人額外固定傷害 +N
         if (wpn && wpn.immParalyzeBonusDmg && (t.boss || t.immParalyze || t.immStun)) dmg += wpn.immParalyzeBonusDmg;   // 🏺 遺物 屍毒之針（傭兵）：對免疫麻痺目標額外固定傷害 +N +N（傭兵鏡像玩家）
+        if (heavy && wpn && wpn.heavyMult) dmg = Math.max(1, Math.floor(dmg * wpn.heavyMult));   // 🏺 鎧甲守衛的笨重巨劍（傭兵）：重擊傷害 ×heavyMult（鏡像玩家 js/03）
+        if (t._fireVulnUntil > state.ticks && getWpnEle(ally.eq ? ally.eq.wpn : null, wpn) === 'fire') dmg = Math.max(1, Math.floor(dmg * 1.3));   // 🏺 灼熱蜥蜴長舌（傭兵受益端）：目標帶火屬性弱點時受火屬性攻擊 +30%（鏡像玩家 js/03）
+        if (ally.statuses && ally.statuses.broken > 0) dmg = Math.max(1, Math.floor(dmg * 0.8));   // 🐍 壞物術（易碎泥偶自傷·傭兵）：期間物理傷害 -20%（鏡像玩家 js/03）
+        if (wpn && wpn.selfBreakProc && Math.random() < 0.03) { dmg = Math.max(1, Math.floor(dmg * 1.5)); if (!ally.statuses) ally.statuses = {}; ally.statuses.broken = (wpn.selfBreakProc.dur || 5) * 10; }   // 🐍 特產易碎泥偶（傭兵）：3% 傷害×1.5＋自身陷入壞物術（鏡像玩家 js/04）
+        if (ally.d && ally.d.instakillFull && t.curHp === t.hp) { let _rif = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (_rif !== -1 && tryInstakill(t, { p: ally.d.instakillFull, tag: null }, `【協力·${ally._allyName}】隱蔽的死亡草葉`, _rif)) return; }   // 🏺 隱蔽的死亡草葉（傭兵）：命中滿血非BOSS怪機率即死（鏡像玩家 js/04）
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
         if (t.curHp > 0) consumeStrawCurse(t);   // 🐍 詛咒稻草人：傭兵主攻擊亦消耗並額外扣 80 水魔傷（鏡像玩家）
         if (wpn && wpn.strawCurse && t.curHp > 0 && Math.random() * 100 < wpn.strawCurse.rate) { if (!t.st) t.st = newMobStatus(); t.st.strawCurse = Math.max(t.st.strawCurse || 0, wpn.strawCurse.stacks || 3); }   // 🐍 傭兵種下詛咒稻草人（鏡像玩家）
+        if (wpn && wpn.onHitEleVuln === 'fire' && t.curHp > 0) t._fireVulnUntil = state.ticks + 30;   // 🏺 灼熱蜥蜴長舌（傭兵施加端）：命中使目標獲得火屬性弱點 3 秒（與玩家共用 _fireVulnUntil）
+        if (wpn && wpn.hasteStrike && ally.buffs && ally.buffs.haste > 0) { ally.buffs.haste = 0; try { _allyLevelRecompute(ally); } catch (e) {} }   // 🏺 殺人蜂的尾刺（傭兵）：一般攻擊命中時失去加速狀態（鏡像玩家 js/04）
         if (ally._setDragonblood2 && dmg > 0) ally.curHp = Math.min(ally.mhp || 1, (ally.curHp || 0) + Math.max(1, Math.floor(dmg * ((ally.curHp < (ally.mhp || 1) * 0.5) ? 0.05 : 0.01))));   // 🐉 v2.6.9 #1b 龍血2/5（傭兵）：造成物理傷害吸血1%（自身HP<50%→5%）·回復戰鬥HP(curHp)
         // 🔧 黑暗妖精傭兵：預設攻擊自動維持附加劇毒（學過 sk_dark_poison 即視為常駐增益）；命中 50%／劇毒精通 100% 使目標中毒（與玩家同規則）
         if (ally.cls === 'dark' && ally.skills && ally.skills.includes('sk_dark_poison') && t.curHp > 0 && Math.random() < (allyHasMastery(ally, 'd_poison') ? 1 : 0.5)) {
@@ -539,6 +548,13 @@ function allyDualWieldOffhandAttack(ally, t) {
     logCombat(`<span class="font-bold" style="color:#fbbf24;text-shadow:0 0 6px #d97706;">【協力·${ally._allyName}·迅猛雙斧】</span>副手 ${owpn.n} 追擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');
     _allyDamageMob(ally, t, dmg, getWpnEle(ally.eq.offwpn, owpn));
 }
+// 🔮 幻覺套裝（傭兵）魔傷掛鉤（鏡像玩家 illusionMagicDmg·js/04）：2件→回 Lv/10 MP；5件→魔法「技能」傷害×2（自動攻擊衍生如共鳴光箭不加倍）
+function _allyIllusionMagicDmg(ally, dmg, isSkill) {
+    if (!ally || dmg <= 0) return dmg;
+    if (ally._setIllusion2) { let r = Math.floor((ally.lv || 1) / 10); if (r > 0) ally.mp = Math.min(ally.mmp || 0, (ally.mp || 0) + r); }
+    if (ally._setIllusion5 && isSkill) dmg = dmg * 2;
+    return dmg;
+}
 // 法師協力：依其選定攻擊魔法施放（手動重現 castSkill 魔法傷害公式：單體/全體、魔攻係數、法師倍率、魔暴、MR減免、剋屬性固定加值）
 function allyCastMagic(ally, sk) {
     if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'skill', sk && sk.n);   // 🤝 v3.0.70 隊員戰場 sprite：施法動作
@@ -573,6 +589,10 @@ function allyCastMagic(ally, sk) {
             totalDmg += dd;
         });
         totalDmg = Math.max(1, Math.floor(totalDmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
+        if (sk.hpCost && ally._setDragonblood5) totalDmg = Math.max(1, Math.floor(totalDmg * 1.2));   // 🐉 龍血5/5（傭兵）：HP 消耗技傷害 +20%（鏡像玩家 js/07:637）
+        totalDmg = _allyIllusionMagicDmg(ally, totalDmg, true);   // 🔮 幻覺2/5回MP＋5/5魔法技能傷害加倍（鏡像玩家 illusionMagicDmg）
+        { let _sidA = sk._sidCache || (sk._sidCache = Object.keys(DB.skills).find(k => DB.skills[k] === sk) || '');   // allyCastMagic 未帶 skId → 反查一次並快取（skillDmgMult 以技能 id 為 key）
+          totalDmg = Math.max(1, Math.floor(totalDmg * equipSkillDmgMult(sk, _sidA, ally))); }   // 🏺 遺物 特定技能傷害倍率（傭兵·掃 ally.eq·鏡像玩家 js/07:639）
         t.curHp -= totalDmg;
         _burstDmg += totalDmg;   // 🔧 魔爆累計
         t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic';
@@ -649,11 +669,12 @@ function allyCastNonDamage(ally, sk) {
     // 純異常狀態：所有存活目標皆已具該狀態 → 退回一般攻擊（不重複施放、不浪費 MP，與玩家 castSkill 8235 一致）
     if (sk.status && targets.every(m => m.st && m.st[sk.status.kind] > 0)) return false;
     let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+    cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
     if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半（與魔導精通疊加）
     if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) cost = Math.max(1, Math.ceil(cost * 0.5));   // 🏅 魔導精通（傭兵）：同屬性 MP -50%(2026-07 30%→50%)
     if (_allyRoyalFreeCast) cost = 0;   // 👑 v2.7.94 王族魔法精通：免MP額外施放（allyRoyalFreeCast·鏡像玩家 js/07:302 _royalFreeCast）
     if ((ally.mp || 0) < cost) return false;
-    ally.mp -= cost;
+    ally.mp -= cost; allyManaMasteryRefund(ally, cost);
     let _sv = player; player = ally;   // 以傭兵自身魔法命中判定（applyMobStatus/tryInstakill 內部讀 player）
     let _ikKills = [];                  // 🔧 即死成功的目標 uid：延後到還原 player 後再 killMob（結算與 UI 歸真實玩家）
     try {
@@ -682,9 +703,10 @@ function allyCastPhysicalSkill(ally, sk) {
     if (sk.reqWpn === 'bow'    && !(wpn && wpn.isBow))  return false;   // 需弓
     if (sk.reqWpn === 'nonbow' && !(wpn && !wpn.isBow)) return false;   // 需「有武器且非弓」（衝擊之暈）
     let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+    cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
     if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
     if ((ally.mp || 0) < cost) return false;
-    ally.mp -= cost;
+    ally.mp -= cost; allyManaMasteryRefund(ally, cost);
     let hits = sk.hits || 1, totalDmg = 0, landed = 0, logHits = [];
     let _royalMult = royalAllyMult();   // 👑 換身前先取王族魅力加成（換身期間 player=ally 會讀到傭兵自身職業，故先快照主玩家的倍率）
     let _sv = player; player = ally;   // 異常命中(applyMobStatus/tryInstakill)以傭兵自身判定
@@ -724,8 +746,9 @@ function allyMageAct(ally) {
     let d = ally.d || {};
     if (sk && sk.type === 'atk' && sk.dmgType !== 'physical' && (sk.dmgDice || sk.multiDmg)) {
         let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+        cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
         if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
-        if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
+        if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyManaMasteryRefund(ally, cost); allyCastMagic(ally, sk); return; }
     } else if (sk && sk.type === 'atk' && (sk.status || sk.instakill)) {
         if (allyCastNonDamage(ally, sk)) return;   // 🔧 非傷害攻擊技能（緩速/弱化/疾病/即死…）；不適用則退回基礎光箭
     }
@@ -814,6 +837,7 @@ function allyStrikeRoll(ally, t, opts) {
     let isRanged = !!(wpn && wpn.ranged);
     let hitB = (isRanged ? (d.rangedHit||0) : (d.meleeHit||0)) + (d.extraHit||0) + (ally._setBeauty5 ? (ally._beautyMissStack || 0) : 0);   // 🔮 v2.6.21 麗人5/5：未命中堆疊命中（鏡像玩家 js/03:763）
     let dmgB = isRanged ? (d.rangedDmg||0) : (d.meleeDmg||0);
+    if (wpn && wpn.hasteStrike && ally.buffs && ally.buffs.haste > 0) { hitB += 30; dmgB += 30; }   // 🏺 殺人蜂的尾刺（傭兵·連擊/反擊/居合/副手共用）：加速時 +30/+30（加速清除只在主攻擊命中·鏡像玩家 js/03）
     let critR = isRanged ? (d.rangedCrit||0) : (d.meleeCrit||0);
     let critD = isRanged ? (d.rangedCritDmg||0) : (d.meleeCritDmg||0);
     let hit = true, heavy = false, graze = false;
@@ -835,7 +859,7 @@ function allyStrikeRoll(ally, t, opts) {
     if (ally._setBeauty5 && ally._beautyMissStack) ally._beautyMissStack = 0;   // 🔮 v2.6.21 麗人5/5：命中（含forceHit/擦傷/粉碎）→堆疊歸零（鏡像玩家 787）
     let isCrit = !graze && (opts.forceCrit || (Math.random()*100 < critR));   // 🏅 反擊精通（傭兵）：反擊/居合必定爆擊；🥊 v2.6.20 擦傷不爆
     let critMult = isCrit ? (1 + critD/100) : 1;
-    let wpnRoll = heavy ? dice : roll(1, dice);
+    let wpnRoll = (heavy || (!isRanged && ally.buffs && ally.buffs.sk_elf_flamesoul > 0)) ? dice : roll(1, dice);   // 🔥 烈焰之魂（傭兵·連擊/反擊/居合/副手共用·鏡像玩家 js/03）
     let dmg = Math.max(1, Math.floor((wpnRoll + dmgB) * critMult) + (d.extraDmg||0) - (t.dr||0) - mobHardSkin(t));   // 🔧 硬皮：額外物理減傷
     { let _unb = allyUnbonusBonus(ally, t); if (_unb) dmg += _unb; }   // 🔧 對不死/狼人加成 +1D20（與玩家一致；連擊/魔擊共用此計算）
     if (opts.mult) dmg = Math.max(1, Math.floor(dmg * opts.mult));
@@ -845,6 +869,9 @@ function allyStrikeRoll(ally, t, opts) {
     dmg = Math.max(1, Math.floor(dmg * (opts.noEnhance ? 1 : wpnEnFinalMult(wpnInst))));   // 🔧 武器強化 +11~+20：最終傷害倍率（noEnhance＝副手不另計強化）
     dmg = Math.max(1, Math.floor(dmg * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷：物理攻擊樞紐（普攻技/連擊/魔擊/反擊/居合/穿透/雙持/鐵衛/物理技/屠宰者皆經此·鏡像玩家 getPhysicalDmg rlFuryMult；原物理傭兵全無紅獅5）
     { let _aw = wpn; if (_aw && _aw.finalMult) dmg = Math.max(1, Math.floor(dmg * _aw.finalMult)); }   // 🏛️ 武器最終傷害倍率（古老武器 ×2）
+    if (t._fireVulnUntil > state.ticks && getWpnEle(wpnInst, wpn) === 'fire') dmg = Math.max(1, Math.floor(dmg * 1.3));   // 🏺 灼熱蜥蜴長舌（傭兵受益端·連擊/反擊/居合/副手共用·鏡像玩家 js/03）
+    if (heavy && wpn && wpn.heavyMult) dmg = Math.max(1, Math.floor(dmg * wpn.heavyMult));   // 🏺 鎧甲守衛的笨重巨劍（傭兵·鏡像玩家 js/03）
+    if (ally.statuses && ally.statuses.broken > 0) dmg = Math.max(1, Math.floor(dmg * 0.8));   // 🐍 壞物術（傭兵·鏡像玩家 js/03）
     return { hit: true, dmg: dmg, heavy: heavy, crit: isCrit };
 }
 // 共鳴光箭（傭兵版）：公式同玩家 procLightArrow；回魔（傷害/10、至少1）恢復到傭兵自身 MP
@@ -866,7 +893,9 @@ function allyProcLightArrow(ally, t) {
     dmg = Math.max(1, Math.floor(dmg * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（共鳴光箭·鏡像玩家 procLightArrow）
     let _allyReso = allyHasMastery(ally, 'm_resonance');   // 🔧 傭兵共鳴精通：光箭+5、回魔/5
     if (_allyReso) dmg = Math.max(1, dmg + 5);
+    dmg = Math.max(1, Math.floor(dmg * equipSkillDmgMult(DB.skills['sk_lightarrow'], 'sk_lightarrow', ally)));   // 🏺 遺物 特定技能傷害倍率（傭兵共鳴光箭·鏡像玩家 procLightArrow）
     dmg = Math.max(1, Math.floor(dmg * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷（共鳴光箭·原全無·鏡像玩家 procLightArrow rlFuryMult）
+    dmg = _allyIllusionMagicDmg(ally, dmg, false);   // 🔮 幻覺2/5（傭兵）：共鳴光箭回 Lv/10 MP（自動攻擊衍生→5件不加倍·鏡像玩家 js/03:1040）
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     ally.mp = Math.min(ally.mmp||0, (ally.mp||0) + Math.max(1, Math.floor(dmg/(_allyReso ? 5 : 10))));   // 共鳴回魔 → 傭兵自身
     logCombat(`<span class="text-cyan-300 font-bold">【協力·${ally._allyName}·共鳴】</span>光箭對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。${isCrit?' (爆擊!)':''}`, 'magic');
@@ -976,6 +1005,7 @@ function allyProcFreeMagicSkill(ally, t, skId, en) {
     });
     total = Math.floor(total * enhanceWpnFinalMult(en, ally.eq && ally.eq.wpn && DB.items[ally.eq.wpn.id]));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
     total = Math.max(1, Math.floor(total * elementCounterMult(sk.ele, t.e)));   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
+    total = Math.max(1, Math.floor(total * equipSkillDmgMult(sk, skId, ally)));   // 🏺 遺物 特定技能傷害倍率（傭兵武器免費施法·冰之女王魔杖冰錐×暴走兔胡蘿蔔等·鏡像玩家 js/04）
     if (total > 0) {
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
         logCombat(`<span class="font-bold" style="color:#93c5fd;text-shadow:0 0 6px #2563eb;">【協力·${ally._allyName}·${sk.n}】</span>額外施放，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 <span class="${isCrit ? 'text-yellow-500 font-bold' : 'text-cyan-300'}">${total}</span> 點傷害${isCrit ? '（爆擊!）' : ''}。`, 'player-special');
@@ -1106,6 +1136,7 @@ function allyWeaponProcs(ally, target, hitInfo) {
             _ts.forEach(m => {
                 if (!m || m.curHp <= 0 || m._dead) return;
                 let dmg = roll(1, Math.max(1, Math.floor(d.str || 1))) + 25;
+                dmg = Math.max(1, Math.floor(dmg * fragileMult(m)));   // 🔮 脆弱（白鳥5/破甲·傭兵龍的一擊·鏡像玩家 js/04 原漏乘）
                 dmg = Math.max(1, Math.floor(dmg * wpnEnFinalMult(wpnInst)));   // 🔧 武器強化 +11~+20：最終傷害倍率
                 dmg = Math.max(1, Math.floor(dmg * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷（龍的一擊·原全無·鏡像玩家 dragonStrike rlFuryMult）
                 logCombat(`龍之衝擊命中 <span class="${getMobColor(m.lv)}">${m.n}</span>，造成 ${dmg} 點固定傷害。`, 'player');
@@ -1170,6 +1201,13 @@ function allyOnHitEffects(ally, t, res) {
     let _bleedChance = _allyCanBleed ? ((d.str||0)/60) : 0;
     if (_bleedChance > 0 && t.curHp > 0 && !t._dead && !ally.classicMode && Math.random() < _bleedChance) {   // 🎮 經典模式：傭兵停用出血
         applyBleed(t, res.dmg, allyHasMastery(ally, 'd_bleed') ? 10 : 5, allyHasMastery(ally, 'd_bleed'));   // 🔧 出血精通：上限 10 層 + 每層 +10%
+    }
+    // ⚔️ 戰斧投擲（傭兵·鏡像玩家 js/04）：下一次近戰一般攻擊附加出血、一次性消耗。
+    //    傭兵本來就會自我維持此 buff（reqWpnBlunt 已把關＝必為近戰），但攻擊端從無掛點＝白扣 MP。
+    if (ally.buffs && ally.buffs.sk_warrior_throwaxe > 0) {
+        if (t.curHp > 0 && !t._dead) applyBleed(t, res.dmg, 5, allyHasMastery(ally, 'k_dualaxe'));   // 🏅 雙斧精通：每層 +10%
+        ally.buffs.sk_warrior_throwaxe = 0;
+        logCombat(`<span class="font-bold" style="color:#f87171;">【協力·${ally._allyName}·戰斧投擲】</span>斧刃撕裂了敵人，造成出血！`, 'player');
     }
     if (getWeaponTags(wpnInst.id).includes('單手鈍器') && t.curHp > 0 && !t._dead && !ally.classicMode) {   // 鈍擊：延遲目標攻擊 1 秒；🎮 經典模式：傭兵停用鈍擊
         t._bluntShow = state.ticks + 30;
@@ -1308,14 +1346,16 @@ function allyElfAct(ally) {
         let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
         let hasBow = !!(wpn && wpn.isBow);
         let cost = Math.max(1, Math.ceil((sk.mp||0) * (1 - (d.mpReduce||0)/100)));
+        cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
         if (ally._setApprentice5 && (ally.mp||0) < (ally.mmp||0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
-        if (hasBow && (ally.mp||0) >= cost) { ally.mp -= cost; allyTripleShot(ally); return; }
+        if (hasBow && (ally.mp||0) >= cost) { ally.mp -= cost; allyManaMasteryRefund(ally, cost); allyTripleShot(ally); return; }
     } else if (sk && sk.type === 'atk' && sk.dmgType !== 'physical' && (sk.dmgDice || sk.multiDmg)) {
         // 傷害魔法：比照法師，MP 足夠則優先施放（妖精魔法不享有法師倍率，由 allyCastMagic 依職業處理）
         let cost = Math.max(1, Math.ceil((sk.mp||0) * (1 - (d.mpReduce||0)/100)));
+        cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
         if (ally._setApprentice5 && (ally.mp||0) < (ally.mmp||0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半（與魔導精通疊加）
         if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) cost = Math.max(1, Math.ceil(cost * 0.5));   // 🏅 魔導精通（傭兵）：同屬性魔法消耗MP -50%(2026-07 30%→50%)
-        if ((ally.mp||0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
+        if ((ally.mp||0) >= cost) { ally.mp -= cost; allyManaMasteryRefund(ally, cost); allyCastMagic(ally, sk); return; }
     } else if (sk && sk.type === 'atk' && (sk.status || sk.instakill)) {
         if (allyCastNonDamage(ally, sk)) return;   // 🔧 非傷害攻擊技能（地面障礙/魔法消除/封印禁地/釋放元素…）；不適用則退回物理攻擊+連射
     }
@@ -1329,9 +1369,10 @@ function allyDarkAct(ally) {
     if (ally._atkSkill === 'sk_dark_armorbreak') {
         let sk = DB.skills['sk_dark_armorbreak']; let d = ally.d || {};
         let cost = Math.max(1, Math.ceil(((sk && sk.mp) || 0) * (1 - (d.mpReduce || 0) / 100)));
+        cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
         if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
         if (sk && sk.status && !(t.st && t.st[sk.status.kind] > 0) && (ally.mp || 0) >= cost) {
-            ally.mp -= cost;
+            ally.mp -= cost; allyManaMasteryRefund(ally, cost);
             logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n}，撕裂 <span class="${getMobColor(t.lv)}">${t.n}</span> 的防護！（受傷提高，持續 ${sk.status.dur||8} 秒）`, 'magic');
             let _sv = player; player = ally; try { applyMobStatus(t, sk.status, sk.n); } finally { player = _sv; }   // 以傭兵自身魔法命中判定
             return;
@@ -1344,8 +1385,9 @@ function allyDarkAct(ally) {
         if (_sk && _sk.type === 'atk' && _sk.dmgType !== 'physical' && (_sk.dmgDice || _sk.multiDmg)) {
             // 🖤 v2.7.92 傷害魔法（光箭/冰箭/風刃/火箭/地獄之牙·黑妖 Lv12/24 可學）：比照騎士，MP 足夠優先施放（無法師倍率，由 allyCastMagic 依職業處理）。修稽核C類：原本只認 status/instakill→純傷害魔法默默退普攻
             let cost = Math.max(1, Math.ceil((_sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+            cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
             if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
-            if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyCastMagic(ally, _sk); return; }
+            if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyManaMasteryRefund(ally, cost); allyCastMagic(ally, _sk); return; }
         } else if (_sk && _sk.type === 'atk' && (_sk.status || _sk.instakill) && allyCastNonDamage(ally, _sk)) return;   // 🔧 其他非傷害攻擊技能（純異常狀態/即死）：通用施放；不適用則退回一般攻擊
     }
     allyAttackOnce(ally);
@@ -1360,8 +1402,9 @@ function allyKnightAct(ally) {
             if (allyCastPhysicalSkill(ally, sk)) return;                                   // 衝擊之暈等物理技
         } else if (sk.dmgDice || sk.multiDmg) {
             let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));   // 騎士可學的傷害魔法（光箭/冰箭/風刃；無法師倍率，由 allyCastMagic 依職業處理）
+            cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
             if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
-            if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
+            if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyManaMasteryRefund(ally, cost); allyCastMagic(ally, sk); return; }
         } else if (sk.status || sk.instakill) {
             if (allyCastNonDamage(ally, sk)) return;                                       // 非傷害狀態/即死技（騎士目前學不到，保留通用分支）
         }
@@ -1377,9 +1420,10 @@ function allyWarriorAct(ally) {
         let targets = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
         if (targets.length) {
             let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+            cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
             if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
             if ((ally.mp || 0) >= cost) {
-                ally.mp -= cost;
+                ally.mp -= cost; allyManaMasteryRefund(ally, cost);
                 let base = 50 + Math.max(0, (ally.lv || 1) - 30);
                 targets.forEach(m => { if (!m || m.curHp <= 0 || m._dead) return; let dmg = Math.max(1, Math.floor(base * fragileMult(m))); dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   /* 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100) */ m.curHp -= dmg; m.justHit = 'magic'; mobWake(m); });
                 logCombat(`<span class="font-bold" style="color:#fca5a5;text-shadow:0 0 6px #dc2626;">【協力·${ally._allyName}·咆哮】</span>咆哮震懾全場，對所有敵人造成約 ${base} 點固定傷害。`, 'player-special');   // _combatSrc='mercenary' 期間→自動歸傭兵來源
@@ -1391,8 +1435,9 @@ function allyWarriorAct(ally) {
     } else if (sk && sk.type === 'atk' && sk.dmgType !== 'physical' && (sk.dmgDice || sk.multiDmg)) {
         // ⚔️ v2.7.92 傷害魔法（光箭/冰箭/風刃·戰士 Lv15 可學）：比照騎士，MP 足夠優先施放（無法師倍率，由 allyCastMagic 依職業處理）。修稽核C類：原本只認 roarFixed→三箭默默退普攻
         let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+        cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
         if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
-        if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
+        if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyManaMasteryRefund(ally, cost); allyCastMagic(ally, sk); return; }
     } else if (sk && sk.type === 'atk' && (sk.status || sk.instakill)) {
         if (allyCastNonDamage(ally, sk)) return;   // 非傷害狀態/即死技（通用分支·比照騎士）
     }
@@ -1418,10 +1463,11 @@ function allyRoyalAct(ally) {
     if (sk && sk.type === 'atk' && sk.callAllies) {                                          // 👑 呼喚盟友：號召所有傭兵各補一刀
         let allies = (player.allies || []).filter(a => a && a.curHp > 0);
         let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+        cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
         if (allyHasMastery(ally, 'k_royal_pledge')) cost = Math.ceil(cost / 2);              // 🏅 血盟精通（傭兵）：呼喚盟友消耗 MP 減半
         if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
         if (allies.length && (ally.mp || 0) >= cost) {
-            ally.mp -= cost;
+            ally.mp -= cost; allyManaMasteryRefund(ally, cost);
             logCombat(`<span class="text-amber-300 font-bold">【協力·${ally._allyName}·呼喚盟友】</span>號召盟友一同出擊！`, 'player-special');   // _combatSrc='mercenary' 期間→自動歸傭兵來源
             allies.forEach(a => { try { allyAttackOnce(a); } catch(e){} });                 // 含自己在內各補一次普攻；allyAttackOnce 為純普攻不會再觸發技能→無遞迴
             return;
@@ -1429,8 +1475,9 @@ function allyRoyalAct(ally) {
     } else if (sk && sk.type === 'atk' && sk.dmgType !== 'physical' && (sk.dmgDice || sk.multiDmg)) {
         // 👑 v2.7.92 傷害魔法（一二階＋魔法精通三~五階：光箭~冰錐/極道落雷/燃燒的火球…）：比照騎士，MP 足夠優先施放（無法師倍率，由 allyCastMagic 依職業處理）。修稽核C類：原本只認 callAllies→17 個可學法師魔法全默默退普攻
         let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
+        cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
         if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
-        if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
+        if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyManaMasteryRefund(ally, cost); allyCastMagic(ally, sk); return; }
     } else if (sk && sk.type === 'atk' && (sk.status || sk.instakill)) {
         if (allyCastNonDamage(ally, sk)) return;   // 👑 v2.7.92 非傷害狀態/即死技（毒咒/闇盲咒術/壞物術/緩速術/木乃伊的詛咒/黑闇之影/起死回生術…）：通用施放；不適用則退回一般攻擊
     }
@@ -1473,8 +1520,9 @@ function allyIllusionAct(ally) {
             if (allyCastPhysicalSkill(ally, sk)) return;
         } else if (sk.dmgDice || sk.multiDmg) {                     // 混亂/幻想（傷害魔法 + 附帶 混亂/沉睡，由 allyCastMagic 套狀態）
             let cost = (sk.mp || 0) > 0 ? Math.max(1, Math.ceil(sk.mp * (1 - (d.mpReduce || 0) / 100))) : 0;
+            cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
             if (cost > 0 && ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半
-            if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
+            if ((ally.mp || 0) >= cost) { ally.mp -= cost; allyManaMasteryRefund(ally, cost); allyCastMagic(ally, sk); return; }
         } else if (sk.status || sk.instakill) {                     // 恐慌（純狀態）
             if (allyCastNonDamage(ally, sk)) return;
         }
@@ -1505,6 +1553,7 @@ function allyCubeTick(ally) {
             if (t && t.curHp > 0 && !t._dead) {
                 let dd = Math.max(1, Math.floor(summonElementDamage(c.dice, c.ele || 'none', t, 0, 1) * illuLvMult(ally) * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔮 傭兵等級加成；固定數值DoT→乘武器最終傷害加成
                 dd = Math.max(1, Math.floor(dd * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
+                dd = _allyIllusionMagicDmg(ally, dd, true);   // 🔮 幻覺2/5回MP＋5/5加倍（傭兵立方·鏡像玩家 js/07:98）
                 t.curHp -= dd; t.justHit = (c.ele && c.ele !== 'none') ? c.ele : 'magic'; mobWake(t);
                 logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>的【${sk.n}】對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dd} 點傷害。`, 'dot', 'mercenary');   // 🟢 立方傷害＝DoT(綠)、傭兵來源
                 if (t.curHp <= 0) { let i = mapState.mobs.findIndex(x => x && x.uid === t.uid); if (i !== -1) killMob(i); }   // 擊殺歸玩家（killMob 不換身）
@@ -1516,7 +1565,7 @@ function allyCubeTick(ally) {
         if (!live.length) return;
         if (c.kind === 'dmg') {
             let txt = [];
-            live.forEach(m => { let dd = Math.max(1, Math.floor(summonElementDamage(c.dice, c.ele || 'none', m, 0, 1) * illuLvMult(ally) * wpnEnFinalMult(ally.eq && ally.eq.wpn))); dd = Math.max(1, Math.floor(dd * royalAllyMult()));   /* 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100) */ m.curHp -= dd; m.justHit = (c.ele && c.ele !== 'none') ? c.ele : 'magic'; mobWake(m); txt.push(dd); });   // 🔮 立方傷害：傭兵等級加成 ×(1+等級/50)；🔧 固定數值DoT→乘武器最終傷害加成(施法者武器 +11~+20)
+            live.forEach(m => { let dd = Math.max(1, Math.floor(summonElementDamage(c.dice, c.ele || 'none', m, 0, 1) * illuLvMult(ally) * wpnEnFinalMult(ally.eq && ally.eq.wpn))); dd = Math.max(1, Math.floor(dd * royalAllyMult()));   /* 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100) */ dd = _allyIllusionMagicDmg(ally, dd, true);   /* 🔮 幻覺2/5回MP＋5/5加倍（傭兵立方·鏡像玩家 js/07:110） */ m.curHp -= dd; m.justHit = (c.ele && c.ele !== 'none') ? c.ele : 'magic'; mobWake(m); txt.push(dd); });   // 🔮 立方傷害：傭兵等級加成 ×(1+等級/50)；🔧 固定數值DoT→乘武器最終傷害加成(施法者武器 +11~+20)
             logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>的【${sk.n}】對全體造成 ${txt.join('、')} 點傷害。`, 'dot', 'mercenary');   // 🟢 立方傷害＝DoT(綠)、傭兵來源
             live.forEach(m => { if (m.curHp <= 0) { let i = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (i !== -1) killMob(i); } });   // 擊殺歸玩家（killMob 不換身）
             renderMobs();
@@ -1578,8 +1627,9 @@ function allyCastCrush(ally, sk) {
     let t = getTarget(); if (!t || t.curHp <= 0) return false;
     let d = ally.d || {};
     let cost = (sk.mp || 0) > 0 ? Math.max(1, Math.ceil(sk.mp * (1 - (d.mpReduce || 0) / 100))) : 0;
+    cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
     if ((ally.mp || 0) < cost) return false;
-    ally.mp -= cost;
+    ally.mp -= cost; allyManaMasteryRefund(ally, cost);
     // 🦴 骷髏毀壞（傭兵）：先即死判定（起死回生式·vs不死非BOSS·以傭兵魔法命中換身判定）；成功則擊殺、不造成傷害（粉碎能量無 instakill→跳過）
     if (sk.instakill) {
         let _sv = player; player = ally; let _ok = false;
@@ -1609,8 +1659,9 @@ function allyCastFixedStatus(ally, sk) {
     if (sk.noRecastStatus && t.st && t.st[sk.noRecastStatus] > 0) return false;   // 已有狀態：不重複（不耗 MP）
     let d = ally.d || {};
     let cost = (sk.mp || 0) > 0 ? Math.max(1, Math.ceil(sk.mp * (1 - (d.mpReduce || 0) / 100))) : 0;
+    cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
     if ((ally.mp || 0) < cost) return false;
-    ally.mp -= cost;
+    ally.mp -= cost; allyManaMasteryRefund(ally, cost);
     if (Math.random() < fs.chance) {
         if (!t.st) t.st = newMobStatus();
         t.st[fs.kind] = (fs.dur || 16) * 10;
@@ -1628,8 +1679,9 @@ function allyCastSlaughter(ally, sk) {
     if (!wpn || wpn.isBow || wpn.ranged) return false;   // 需近距離武器
     let d = ally.d || {};
     let cost = (sk.mp || 0) > 0 ? Math.max(1, Math.ceil(sk.mp * (1 - (d.mpReduce || 0) / 100))) : 0;
+    cost = _allyAtkMpCost(ally, cost);   // 🔮 魔力精通：攻擊技耗魔加倍；🏺 巫師的黑暗魔導書：滿血耗魔減半（走 getMpCost 的路徑已內建·此處補 inline 站點）
     if ((ally.mp || 0) < cost) return false;
-    ally.mp -= cost;
+    ally.mp -= cost; allyManaMasteryRefund(ally, cost);
     let layers = t.weakExpose || 0, bonus = layers > 0 ? 10 * layers : 0;
     let consume = layers > 0 && !allyHasMastery(ally, 'k_weakness');   // 🏅 弱點精通（傭兵）：屠宰者不消耗弱點曝光
     let _chain = allyHasMastery(ally, 'k_chainblade');
@@ -1641,6 +1693,7 @@ function allyCastSlaughter(ally, sk) {
         let dmg = res.dmg;
         if (bonus > 0) { dmg += bonus; applied = true; }   // 🐉 弱點曝光（傭兵）：成功觸發後，三刀每一擊命中都吃 +10/層（不再僅首擊）
         if (_chain && t.weakExpose > 0) dmg = Math.floor(dmg * (1 + 0.1 * Math.min(5, t.weakExpose)));   // 🏅 鎖刃精通（傭兵）：每層弱點曝光最終傷害 +10%
+        if (sk.hpCost && ally._setDragonblood5) dmg = Math.max(1, Math.floor(dmg * 1.2));   // 🐉 龍血5/5（傭兵）：HP 消耗技傷害 +20%（屠宰者·鏡像玩家 js/07:414）
         dmg = Math.max(1, Math.floor(dmg * elementCounterMult(getWpnEle(ally.eq ? ally.eq.wpn : null, wpn), t.e)));   // ⚔️ 武器屬性剋制倍率（屠宰者每擊）
         dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); total += dmg; mobWake(t);
@@ -1659,7 +1712,7 @@ function allyCastMpDmg(ally, sk) {
     let t = getTarget(); if (!t || t.curHp <= 0) return false;
     let spend = Math.max(1, Math.floor((ally.mmp || 0) * sk.mpDmgPct));
     if ((ally.mp || 0) < spend) return false;
-    ally.mp -= spend;
+    ally.mp -= spend; allyManaMasteryRefund(ally, spend);
     let dmg = spend;
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     if (t.st && (t.st.confuse > 0 || t.st.panic > 0)) effMr -= 10;   // 🔮 混亂/恐慌：MR -10（與玩家心靈破壞一致）
@@ -1760,6 +1813,22 @@ function _mercAutoOn(ally, sid) {
     if (ally && ally._autoBuff && Object.prototype.hasOwnProperty.call(ally._autoBuff, sid)) return !!ally._autoBuff[sid];   // 🆕 v3.0.97 隊伍面板「逐兵自動維持」覆寫優先（setAllyAutoBuff·存 ally._autoBuff·隨存檔）
     return !!(ally && ally.config && ally.config.autoBuffSkills && ally.config.autoBuffSkills[sid]);   // 否則沿用來源角色存檔的自動施放勾選快照
 }
+// 🔮 魔力精通（傭兵）：傭兵消耗 MP 時，隊友（玩家＋其他傭兵）恢復消耗量 10% 的 MP（鏡像玩家 manaMasteryRefund·排除施法者自身）。
+//    ⚠️所有「傭兵攻擊技 inline 扣 MP」的站點都要成對呼叫這支；buff/淨化/治癒等走 ally.d.getMpCost 的路徑亦然。
+function allyManaMasteryRefund(ally, spent) {
+    if (!spent || spent <= 0 || !allyHasMastery(ally, 'i_mana')) return;
+    let give = Math.max(1, Math.floor(spent * 0.10));
+    if (player && (player.mmp || 0) > 0 && !player.dead) player.mp = Math.min(player.mmp, (player.mp || 0) + give);
+    (player.allies || []).forEach(a => { if (a && a !== ally && !a._downed && (a.mmp || 0) > 0) a.mp = Math.min(a.mmp, (a.mp || 0) + give); });
+}
+// 🔮 魔力精通（傭兵）：攻擊技 MP 消耗加倍（與 MP 上限加倍配套）。走 ally.d.getMpCost 的路徑已於 js/02 內建，此 helper 只補「inline 自算 cost」的攻擊技站點。
+// 🏺 巫師的黑暗魔導書（傭兵）：滿血時技能消耗 MP 減半（同上，getMpCost 路徑已內建）。
+function _allyAtkMpCost(ally, cost) {
+    if (allyHasMastery(ally, 'i_mana')) cost *= 2;
+    let w = (ally && ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
+    if (w && w.fullHpMpHalf && (ally.curHp || 0) >= (ally.mhp || 1)) cost = Math.max(1, Math.ceil(cost / 2));
+    return cost;
+}
 // 🔮 v2.7.96 幻術士傭兵立方屬性抗性 rider（補 parity）：玩家立方 buff 給 d:{resFire/resEarth/resWind:+30}(recompute 讀 player.buffs)；傭兵立方走 allyCubeTick 不寫 ally.buffs→抗性原本拿不到。改在重算後(buildAlly/_allyLevelRecompute)直接補「已學會＋來源有勾自動施放」的立方抗性到 ally.d（與 allyCubeTick 傷害的勾選閘一致；受屬性攻擊時 js/04:891-894/1007-1010 讀 ally.d.res*）。
 function _applyMercCubeRes(ally) {
     if (!ally || ally.cls !== 'illusion' || !ally.d || !ally.skills) return;
@@ -1836,8 +1905,9 @@ function allyMaintainBuffs(ally) {
             if (sk.awaken && ally.mastery !== 'k_awaken' && _MERC_AWAKENS.some(a => (ally.buffs[a] || 0) > 0)) continue;   // 覺醒互斥（覺醒精通可同時三種）
             if (sk.haste && ((ally.buffs.haste || 0) > 0 || ally._equipHaste)) continue;
             let cost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(sk.mp, sk.tier) : (sk.mp || 0);
+            if (ally._setIllusion3 && isSupportSkill(sk)) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 幻覺3/5（傭兵）：輔助技能 MP 消耗 -50%（鏡像玩家 js/07:178/310）
             if ((ally.mp || 0) < cost) continue;        // 只付 MP（傭兵不付 HP·比照既有設計）
-            ally.mp -= cost;
+            ally.mp -= cost; allyManaMasteryRefund(ally, cost);
             ally.buffs[sid] = sk.dur;
             if (sk.awaken && ally.mastery !== 'k_awaken') _MERC_AWAKENS.forEach(_ak => { if (_ak !== sid) ally.buffs[_ak] = 0; });
             if (sk.haste) ally.buffs.haste = Math.max(ally.buffs.haste || 0, sk.dur);
@@ -1855,7 +1925,8 @@ function allyMaintainBuffs(ally) {
             if (_sumSid) {
                 let _ssk = DB.skills[_sumSid];
                 let _scost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(_ssk.mp, _ssk.tier) : (_ssk.mp || 0);
-                if ((ally.mp || 0) >= _scost) { ally.mp -= _scost; setupSummon(_sumSid, _ssk, ally); }
+                if (ally._setIllusion3 && isSupportSkill(_ssk)) _scost = Math.max(1, Math.ceil(_scost / 2));   // 🔮 幻覺3/5（傭兵）：輔助技能 MP 消耗 -50%（鏡像玩家 js/07:178/310）
+                if ((ally.mp || 0) >= _scost) { ally.mp -= _scost; allyManaMasteryRefund(ally, _scost); setupSummon(_sumSid, _ssk, ally); }
             }
         }
     }
@@ -1883,10 +1954,11 @@ function allyTryDispel(ally) {
     if (!sk) return false;
     let skd = DB.skills[sk]; if (!skd) return false;
     let cost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(skd.mp, skd.tier) : (skd.mp || 0);
+    if (ally._setIllusion3 && isSupportSkill(skd)) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 幻覺3/5（傭兵）：輔助技能 MP 消耗 -50%（鏡像玩家 js/07:178/310）
     if ((ally.mp || 0) < cost) return false;
     let _tgt = teamCleanseOne(kinds);   // 🆕 v2.6.29 一次只解一人·優先主要玩家
     if (!_tgt) return false;            // 保險（teamHasCurableStatus 已檢查·理論上非 null）
-    ally.mp -= cost;
+    ally.mp -= cost; allyManaMasteryRefund(ally, cost);
     logCombat(`<span class="text-emerald-300 font-bold">協力·${ally._allyName}</span> 施放 ${skd.n}，解除了 ${_dispelTargetName(_tgt)} 的負面狀態。`, 'heal', 'mercenary');
     return true;
 }
@@ -1918,8 +1990,9 @@ function alliesTick() {
             if (!_mercAutoOn(ally, _hid)) continue;   // 👑 v2.7.95 團隊 HoT(生命的祝福/體力回復術)也吃「開啟閘」：來源角色沒勾自動施放→傭兵不耗 MP 放（比照玩家 autoActions js/07:814-817）
             if (player.hots && player.hots[_hid] && player.hots[_hid].ticksLeft > 0) continue;   // 已在持續→不重複(單一團隊實例·後放取代先放)
             let _hcost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(_hsk.mp || 0, _hsk.tier) : (_hsk.mp || 0);   // 🛡️ v2.6.69 審計#20：套 mpReduce/學徒折扣（比照傭兵攻擊技/淨化）
+            if (ally._setIllusion3 && isSupportSkill(_hsk)) _hcost = Math.max(1, Math.ceil(_hcost / 2));   // 🔮 幻覺3/5（傭兵）：輔助技能 MP 消耗 -50%（鏡像玩家 js/07:178/310）
             if ((ally.mp || 0) < _hcost) continue;
-            ally.mp -= _hcost; applyTeamHot(_hid, _hsk, ally.d, ally);
+            ally.mp -= _hcost; allyManaMasteryRefund(ally, _hcost); applyTeamHot(_hid, _hsk, ally.d, ally);
             logCombat(`<span class="text-emerald-300 font-bold">協力·${ally._allyName}</span> 施放 ${_hsk.n}，全隊開始持續回復 HP。`, 'heal', 'mercenary');
         }
         // 🔄 傭兵轉換技能(轉換技能欄選 type:'convert' 者)：比照玩家轉換魔法·每 30tick·安全區/硬控/沉默不施放·MP<90%·HP 高於「停耗HP技」門檻才施放(消耗HP換MP)。立方和諧不走這裡(由 allyCubeTick 處理)。
@@ -1975,17 +2048,19 @@ function allyTryHeal(ally) {
     //    吸血只回復施放者本人 → 只看「自身」HP 門檻；有存活目標且 MP 足夠→走 allyCastMagic（其 lifesteal 分支回復 ally.curHp）
     if (sk.type === 'atk' && sk.healSlot) {
         let cost0 = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(sk.mp || 0, sk.tier) : (sk.mp || 0);
+        if (ally._setIllusion3 && isSupportSkill(sk)) cost0 = Math.max(1, Math.ceil(cost0 / 2));   // 🔮 幻覺3/5（傭兵）：輔助技能 MP 消耗 -50%（鏡像玩家 js/07:178/310）
         if ((ally.mp || 0) < cost0) return false;
         let thr0 = ((ally._healHpPct != null ? ally._healHpPct : 70) / 100);
         if (((ally.curHp || 0) / (ally.mhp || 1)) >= thr0) return false;
         let t0 = getTarget(); if (!t0 || t0.curHp <= 0) return false;
-        ally.mp -= cost0;
+        ally.mp -= cost0; allyManaMasteryRefund(ally, cost0);
         allyCastMagic(ally, sk);
         return true;
     }
     let isHeal = (sk.type === 'heal' && !sk.autoBuff && !sk.hot && !['sk_antidote', 'sk_holy_light', 'sk_cancel'].includes(sid));
     if (!isHeal) return false;
     let cost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(sk.mp || 0, sk.tier) : (sk.mp || 0);   // 🛡️ v2.6.69 審計#20：治癒也吃 mpReduce/學徒折扣（原收原價·與攻擊技/淨化收費標準不一）
+    if (ally._setIllusion3 && isSupportSkill(sk)) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 幻覺3/5（傭兵）：輔助技能 MP 消耗 -50%（鏡像玩家 js/07:178/310）
     if ((ally.mp || 0) < cost) return false;
     let thr = ((ally._healHpPct != null ? ally._healHpPct : 70) / 100);
     let cand = [];
@@ -1999,7 +2074,7 @@ function allyTryHeal(ally) {
         if (pct < lowestPct) { lowestPct = pct; lowest = c; }
     }
     if (!lowest) return false;   // 無人需要治癒
-    ally.mp -= cost;
+    ally.mp -= cost; allyManaMasteryRefund(ally, cost);
     let d = ally.d || {};
     let _coef = 1 + (3 * (d.magicDmg || 0) / 16);
     let heal = sk.healDice

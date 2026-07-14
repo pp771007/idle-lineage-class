@@ -463,9 +463,10 @@ function consumeStrawCurse(m) {
     if (m.curHp <= 0) { let ri = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (ri !== -1) killMob(ri); }
 }
 // 🏺 遺物 特定技能傷害倍率：掃描所有裝備欄，若帶 skillDmgMult{skId或技能名:倍率} 則相乘（暴走兔胡蘿蔔=冰錐 sk_ice_spike ×1.5、光束強化魔杖=光箭 sk_lightarrow/究極光裂術 sk_disintegrate ×1.5）。施放(castSkill·js/07)與觸發(procFreeMagicSkill)兩路徑皆呼叫。
-function equipSkillDmgMult(sk, skId) {
-    let m = 1; if (!player || !player.eq) return m;
-    for (let k in player.eq) { let e = player.eq[k]; if (!e) continue; let dd = DB.items[e.id]; if (!dd || !dd.skillDmgMult) continue; let v = dd.skillDmgMult[skId] || (sk && sk.n && dd.skillDmgMult[sk.n]); if (v) m *= v; }
+function equipSkillDmgMult(sk, skId, owner) {
+    let o = owner || player;   // owner：傭兵亦適用（掃該傭兵自己的裝備欄）
+    let m = 1; if (!o || !o.eq) return m;
+    for (let k in o.eq) { let e = o.eq[k]; if (!e) continue; let dd = DB.items[e.id]; if (!dd || !dd.skillDmgMult) continue; let v = dd.skillDmgMult[skId] || (sk && sk.n && dd.skillDmgMult[sk.n]); if (v) m *= v; }
     return m;
 }
 // 🔧 免費施放法師單體傷害魔法（不耗MP/不需學習）：套用與一般魔法相同的魔攻係數/法師加成/屬性剋制/魔防；並依武器強化值 ×(1+強化/20)

@@ -391,15 +391,25 @@ function allyAttackOnce(ally) {
         let critD = isRanged ? (d.rangedCritDmg||0) : (d.meleeCritDmg||0);
         let _evSure = !!ally._darkEvadeSure, _evCrit = !!ally._darkEvadeCrit;   // 🆕 v2.6.13 #5b 迴避精通：迴避後下一次一般攻擊必中(_evSure)且必爆(_evCrit)
         if (_evSure || _evCrit) { ally._darkEvadeSure = false; ally._darkEvadeCrit = false; }
-        let hv = Math.max(0, Math.min(20, (ally.lv||1) + hitB - t.lv + mobEffAC(t, ally)));
+        // 🌀 怪物迴避率（傭兵·鏡像玩家 js/04:13）：被迴避仍判定普攻特效/連擊/副手（與未命中分支一致）
+        if (!_evSure && t.er && roll(1, 100) <= t.er) {
+            logCombat(`<span class="${getMobColor(t.lv)}">${t.n}</span> 成功迴避 <span class="text-sky-300 font-bold">協力·${ally._allyName}</span> 的攻擊。`, 'evade');
+            allyWeaponProcs(ally, t, { hit: false, dmg: 0 });
+            if (wpn && wpn.eff === 'combo' && Math.random() * 100 < (wpn.comboRate || 0)) allyComboAttack(ally, t, true);
+            if (ally.eq && ally.eq.offwpn) allyDualWieldOffhandAttack(ally, t);
+            return;
+        }
+        let hv = stretchHitValue((ally.lv||1) + hitB - t.lv + mobEffAC(t, ally));   // 命中軟地板曲線（鏡像玩家 getPhysicalDmg·怪物 AC 以此曲線為錨）
+        if (ally.buffs && ally.buffs.sk_warrior_outlaw > 0) hv = Math.max(hv, 10);   // ⚔️ 亡命之徒（傭兵）：一般攻擊最低命中率 50%（鏡像玩家 js/03:872）
         let _cwA = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;   // 🥊 v2.6.20 重擊特效武器(粉碎·雙手鈍器)
         let _isCrushA = !!(_cwA && _cwA.eff === 'crush');
         let r = roll(1,20);
         let _grazeA = false, _crushA = false;
         let _normA = _evSure || (r === 20) || (r !== 1 && hv >= r) || (r === 1 && ally.buffs && ally.buffs.sk_elf_preciseshot > 0);
-        if (!_normA) {   // 🥊 v2.6.20 骰19：粉碎武器→重擊命中；否則→擦傷(50%·不爆)；其餘未命中（鏡像玩家 getPhysicalDmg 782/785）
-            if (_isCrushA && r === 19) _crushA = true;
-            else if (r === 19) _grazeA = true;
+        // 🥊 粉碎：骰19重擊；🏺 風化的巨型方尖碑 heavyRatePct 每 5% 再往下擴一個骰面。優先於普通命中判定（鏡像玩家 js/03:883）
+        if (_isCrushA && r !== 20 && r >= 19 - Math.round(((_cwA && _cwA.heavyRatePct) || 0) / 5)) { _crushA = true; _normA = true; }
+        if (!_normA) {   // 🥊 v2.6.20 骰19：擦傷(50%·不爆)；其餘未命中（鏡像玩家 getPhysicalDmg 782/785）
+            if (r === 19) _grazeA = true;
             else { if (ally._setBeauty5) ally._beautyMissStack = (ally._beautyMissStack || 0) + 10;   /* 🔮 v2.6.21 麗人5/5：未命中→命中堆疊+10（鏡像玩家 786） */ logCombat(`<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>的攻擊未命中。`, 'miss'); allyWeaponProcs(ally, t, { hit: false, dmg: 0 }); if (wpn && wpn.eff === 'combo' && Math.random() * 100 < (wpn.comboRate || 0)) allyComboAttack(ally, t, true); if (ally.eq && ally.eq.offwpn) allyDualWieldOffhandAttack(ally, t); return; }   // 🔧 未命中也判定共鳴/魔擊/月光爆裂/連擊/迅猛雙斧（與玩家一致）
         }
         if (ally._setBeauty5 && ally._beautyMissStack) ally._beautyMissStack = 0;   // 🔮 v2.6.21 麗人5/5：命中（含擦傷/粉碎）→堆疊歸零（鏡像玩家 787）
@@ -810,12 +820,14 @@ function allyStrikeRoll(ally, t, opts) {
     if (opts.forceHeavy) { heavy = true; }
     else if (opts.forceHit) { heavy = !opts.noHeavy && (roll(1, 20) === 20); }
     else {
-        let hv = Math.max(0, Math.min(20, (ally.lv||1) + hitB - t.lv + mobEffAC(t, ally)));
+        let hv = stretchHitValue((ally.lv||1) + hitB - t.lv + mobEffAC(t, ally));   // 命中軟地板曲線（鏡像玩家 getPhysicalDmg）
+        if (ally.buffs && ally.buffs.sk_warrior_outlaw > 0) hv = Math.max(hv, 10);   // ⚔️ 亡命之徒（傭兵）：一般攻擊最低命中率 50%（鏡像玩家 js/03:872）
         let _isCrushS = !!(wpn && wpn.eff === 'crush');   // 🥊 v2.6.20 重擊特效武器(粉碎·雙手鈍器)
         let r = roll(1, 20);
         let _norm = ((r === 20) || (r !== 1 && hv >= r) || (r === 1 && ally.buffs && ally.buffs.sk_elf_preciseshot > 0));   // 🏹 精準射擊（妖精傭兵·存檔時持有此buff）：擲骰1由必定未命中→必定命中
-        if (_norm) { hit = true; heavy = !opts.noHeavy && (r === 20); }
-        else if (_isCrushS && r === 19) { hit = true; heavy = !opts.noHeavy; }   // 🥊 v2.6.20 粉碎：骰19重擊命中（鏡像玩家 782）
+        // 🥊 粉碎：骰19重擊命中；🏺 風化的巨型方尖碑 heavyRatePct 每 5% 再往下擴一個骰面。優先於普通命中判定（鏡像玩家 js/03:883）
+        if (_isCrushS && r !== 20 && r >= 19 - Math.round(((wpn && wpn.heavyRatePct) || 0) / 5)) { hit = true; heavy = !opts.noHeavy; }
+        else if (_norm) { hit = true; heavy = !opts.noHeavy && (r === 20); }
         else if (r === 19) { hit = true; graze = true; }   // 🥊 v2.6.20 擦傷：骰19本應未命中→命中但50%不爆（鏡像玩家 785）
         else hit = false;
     }
@@ -1119,7 +1131,7 @@ function allyOnHitEffects(ally, t, res) {
     let wpn = DB.items[wpnInst.id];
     if (!wpn) return;
     let d = ally.d || {};
-    if (wpn.eff === 'pierce' && !ally.classicMode) {   // 穿透：場上有其他敵人時，依機率額外攻擊另一名敵人（各自獨立判定命中）；🎮 經典模式：傭兵停用穿透
+    if (wpn.eff === 'pierce' && (!ally.classicMode || wpn.classicOk)) {   // 穿透：場上有其他敵人時，依機率額外攻擊另一名敵人（各自獨立判定命中）；🎮 經典模式：傭兵停用穿透（classicOk 的武器＝經典亦可觸發·鏡像玩家）
         let pc = (wpn.pierceChance !== undefined) ? wpn.pierceChance : 100;
         let others = [];
         mapState.mobs.forEach((m, i) => { if (m && m.curHp > 0 && !m._dead && m.uid !== t.uid) others.push(i); });

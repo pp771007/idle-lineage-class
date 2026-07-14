@@ -153,7 +153,7 @@ function playerAttack() {
 
 		// 穿透（貝卡合金）：場上有兩名以上敵人時，普攻額外攻擊「主目標以外隨機一名敵人」，
 		// 每個波及目標各自獨立判定是否命中，命中則造成與主目標相同的傷害與屬性；僅一名敵人時與一般近戰相同（不額外攻擊）。
-        if (wpn && wpn.eff === 'pierce' && !player.classicMode) {   // 🎮 經典模式：停用穿透
+        if (wpn && wpn.eff === 'pierce' && (!player.classicMode || wpn.classicOk)) {   // 🎮 經典模式：停用穿透（classicOk 的武器＝經典亦可觸發）
             let _pc = (wpn.pierceChance !== undefined) ? wpn.pierceChance : 100;   // 穿透發動機率(%)，未設定視為100%
             let otherIdx = [];
             mapState.mobs.forEach((m, i) => { if (m && m.curHp > 0 && !m._dead && m !== target) otherIdx.push(i); });

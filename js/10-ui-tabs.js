@@ -1799,6 +1799,7 @@ function _craftEquipNeeds(){
     try{if(typeof CRAFT_RECIPES!=='undefined')Object.values(CRAFT_RECIPES).flat().forEach(add);}catch(e){}
     try{if(typeof DEMONKING_RECIPES!=='undefined')DEMONKING_RECIPES.forEach(add);}catch(e){}
     try{if(typeof LUMIEL_RECIPES!=='undefined')LUMIEL_RECIPES.forEach(add);}catch(e){}
+    try{if(typeof MYSTICWAND_RECIPES!=='undefined')MYSTICWAND_RECIPES.forEach(add);}catch(e){}   // 🔮 鋼鐵瑪那魔杖改造：來源魔杖（瑪那魔杖／力量魔法杖）也是製作素材，別被自動販賣賣掉
     return (_craftEquipNeedCache=out);
 }
 function _craftReserveMap(r){let x={};if(r.protectCraftEquip){let sets=Math.max(1,Number(r.craftSets)||1);Object.entries(_craftEquipNeeds()).forEach(([id,n])=>x[id]=n*sets);}return x;}

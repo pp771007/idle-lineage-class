@@ -53,12 +53,12 @@
       '<div class="afk-si-row afk-si-verrow"><span class="afk-si-ver"></span></div>' +
       '<div class="afk-si-row afk-si-updrow"><span class="afk-si-upd"></span></div>';
     menu.appendChild(foot);
-    // 連結:巴哈討論串 + 加入Line群(各自一列;afk-skin 會排到框內較下方)
+    // 連結:巴哈討論串一列;Line群與Discord群同一列(afk-skin 會排到框內較下方)
     var links = document.createElement('div');
     links.id = 'afk-syncinfo-links';
     links.innerHTML =
       '<div class="afk-si-row"><a class="afk-si-link" href="https://forum.gamer.com.tw/C.php?bsn=84452&amp;snA=8362" target="_blank" rel="noopener">巴哈討論串</a>（本加掛版發布在 <a class="afk-si-link" href="https://forum.gamer.com.tw/Co.php?bsn=84452&amp;sn=37297" target="_blank" rel="noopener">301</a> 樓）</div>' +
-      '<div class="afk-si-row"><a class="afk-si-link" href="https://line.me/ti/g2/RRXPx6rMc8ZhxiuNSSziKtcjnhc2AXEPuIOpVA?utm_source=invitation&amp;utm_medium=link_copy&amp;utm_campaign=default" target="_blank" rel="noopener">[加入Line群討論]</a></div>';
+      '<div class="afk-si-row"><a class="afk-si-link" href="https://line.me/ti/g2/RRXPx6rMc8ZhxiuNSSziKtcjnhc2AXEPuIOpVA?utm_source=invitation&amp;utm_medium=link_copy&amp;utm_campaign=default" target="_blank" rel="noopener">[加入Line群討論]</a> <a class="afk-si-link" href="https://discord.gg/NNe6Un7PK" target="_blank" rel="noopener">[加入Discord群]</a></div>';
     menu.appendChild(links);
     console.log('[AFK-syncinfo] hooks OK — 首頁顯示原作者與加掛版版本號。');
 

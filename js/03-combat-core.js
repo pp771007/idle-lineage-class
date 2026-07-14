@@ -346,6 +346,12 @@ function tick() {
 
         // --- 異常狀態處理（倒數、中毒 DoT），死亡則跳過 ---
         if (processMobStatusTick(m, i)) continue;
+        // 👑 戰鬥頭目：每 5 秒恢復 HP。近 5 秒內曾被物理命中→只回 1%；完全沒被物理打到→回 5%（攻城建築不適用）
+        if (m.boss && !m.siegeEnemy && m.race !== '建築' && state.ticks % 50 === 0 && m.curHp > 0 && m.curHp < m.hp) {
+            let _recentPhys = m._lastPhysicalHitTick != null && state.ticks - m._lastPhysicalHitTick <= 50;
+            m.curHp = Math.min(m.hp, m.curHp + Math.max(1, Math.floor(m.hp * (_recentPhys ? 0.01 : 0.05))));
+            if (!state.ff) renderMobs();
+        }
         // 常駐被動：HP 未滿 100% 時回復（依等級 15 / 40），不受異常狀態影響；間隔由 regenEvery 決定(預設10 ticks=每1秒)
         if (m.regenHp && state.ticks % (m.regenEvery || 10) === 0 && m.curHp > 0 && m.curHp < m.hp) {
             m.curHp = Math.min(m.hp, m.curHp + m.regenHp);
@@ -954,7 +960,13 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     if (player.statuses && player.statuses.broken > 0) _outDmg = Math.max(1, Math.floor(_outDmg * 0.8));   // 🐍 壞物術（特產易碎泥偶自傷）：期間玩家一般攻擊物理傷害 -20%
     let _dualX2 = false;   // ⚔️ 雙刀內建特性：一般攻擊命中(非擦傷) 5% 機率最終傷害×2（🎮 經典模式停用）
     if (_natRoll && !graze && !player.classicMode && getWeaponTags(_swingId).includes('雙刀') && Math.random() < 0.05) { _dualX2 = true; _outDmg = Math.max(1, _outDmg * 2); }
+    markBossPhysicalHit(target);
     return { dmg: _outDmg, hit: true, heavy: heavy, crit: isCrit, graze: graze, crush: crush, dualx2: _dualX2, ranged: isRanged };
+}
+// 👑 記錄頭目「最近一次被物理命中」的時間點（供 tick 的頭目回血判斷：5 秒內有物理命中→只回 1%，否則回 5%）。
+//    用 state.ticks（遊戲時鐘）而非 Date.now()，離線補跑壓縮時間時才不會失真。
+function markBossPhysicalHit(m) {
+    if (m && m.boss && typeof state !== 'undefined') m._lastPhysicalHitTick = state.ticks;
 }
 
 function consumeArrow() {

@@ -58,8 +58,9 @@ function whItemSubCat(id){
     if(_whCraftMatIds[id] || /^mat_/.test(id) || d.type === 'etc') return 'craft';   // type:'etc' 幾乎全為製作材料(聖地遺物/黑血痕/黑魔法粉等)
     return 'other';
 }
-// 子分類下拉選項（依主分類動態給）：武器/防具用圖鑑類型；道具用自訂六類；遺物依裝備型別分三類
+// 子分類下拉選項（依主分類動態給）：武器/防具用圖鑑類型；道具用自訂六類；遺物依裝備型別分三類；席琳遺骸依套裝名
 function whSubCatOptions(){
+    if(_whFilter === 'remains') return (typeof SHERINE_EFFECTS !== 'undefined' ? SHERINE_EFFECTS : []).map(n => ({ key:n, name:n }));
     if(_whFilter === 'relic') return [
         { key:'wpn', name:'武器' }, { key:'arm', name:'防具' }, { key:'acc', name:'飾品' }
     ];
@@ -73,7 +74,15 @@ function whSubCatOptions(){
     return options;
 }
 // 倉庫物品是否符合「主分類＋子分類」：子分類空＝只看主分類
-function whMatchFilter(id){
+//   it＝物品實例（可省略）；只有「席琳遺骸」的子分類要看實例上的套裝詞綴（seteff），其餘分類只看物品 id
+function whMatchFilter(id, it){
+    // 🦴 席琳遺骸：獨立分類，子分類＝套裝名（詞綴存在實例的 seteff 上，同一件遺骸可能是任一套裝）
+    if(_whFilter === 'remains'){
+        let d = DB.items[id];
+        if(!d || !d.remains) return false;
+        if(!_whSubFilter) return true;
+        return !!(it && it.seteff && it.seteff.slice(0, 2) === _whSubFilter);
+    }
     // 🏺 遺物：橫跨武器/防具/飾品的獨立分類（不動 whCategory → 遺物在原本的武器/防具分類仍查得到）
     if(_whFilter === 'relic'){
         let d = DB.items[id];
@@ -355,8 +364,8 @@ function renderWarehouseNPC(div){
     _activePanel = null;   // 倉庫不需自動刷新
     let w = loadWarehouse();
     let mkBtn = (it, act) => `<button onclick="${act}('${it.uid}')" data-tip-uid="${it.uid}" data-tip-src="${act === 'whWithdraw' ? 'wh' : 'inv'}" class="tip-host btn w-full text-left py-1.5 px-2 text-sm bg-slate-800 hover:bg-slate-700 border-slate-600">${getItemFullName(it)}</button>`;
-    let _invItems = player.inv.filter(it => whMatchFilter(it.id) && !it.lock);   // 🔒 鎖定物品不顯示於倉庫存放清單（用戶要求：鎖定物品存放時不顯示）
-    let _whItems  = w.items.filter(it => whMatchFilter(it.id));
+    let _invItems = player.inv.filter(it => whMatchFilter(it.id, it) && !it.lock);   // 🔒 鎖定物品不顯示於倉庫存放清單（用戶要求：鎖定物品存放時不顯示）
+    let _whItems  = w.items.filter(it => whMatchFilter(it.id, it));
     let invHtml = _invItems.length ? _invItems.map(it => WH_NO_STORE.includes(it.id)
         ? `<div data-tip-uid="${it.uid}" data-tip-src="inv" class="tip-host w-full text-left py-1.5 px-2 text-sm bg-slate-900/60 border border-slate-700 rounded opacity-50 cursor-not-allowed">${getItemFullName(it)} <span class="text-xs text-red-400">（不可存）</span></div>`
         : mkBtn(it, 'whDeposit')).join('') : '<div class="text-slate-500 text-sm text-center py-4">此分類背包沒有物品</div>';
@@ -380,8 +389,9 @@ function renderWarehouseNPC(div){
                 <option value="armor" ${_whFilter==='armor'?'selected':''}>防具</option>
                 <option value="item" ${_whFilter==='item'?'selected':''}>道具</option>
                 <option value="relic" ${_whFilter==='relic'?'selected':''}>遺物</option>
+                <option value="remains" ${_whFilter==='remains'?'selected':''}>席琳遺骸</option>
             </select>
-            <select onchange="whSetSubFilter(this.value)" class="bg-slate-900 border border-slate-600 text-white rounded py-1 px-2 text-sm" title="細分類：武器/防具依圖鑑類型，道具分卡片/技能/製作/任務/卷軸/其他，遺物分武器/防具/飾品">
+            <select onchange="whSetSubFilter(this.value)" class="bg-slate-900 border border-slate-600 text-white rounded py-1 px-2 text-sm" title="細分類：武器/防具依圖鑑類型，道具分卡片/技能/製作/任務/卷軸/其他，遺物分武器/防具/飾品，席琳遺骸依套裝名">
                 <option value="">全部</option>
                 ${whSubCatOptions().map(o => `<option value="${o.key}" ${_whSubFilter===o.key?'selected':''}>${o.name}</option>`).join('')}
             </select>

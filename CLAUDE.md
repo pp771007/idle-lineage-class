@@ -7,6 +7,16 @@
 - 結構:`index.html`(殼)＋`js/*.js`(遊戲邏輯,00-data…等多檔)＋`css/`(樣式)＋`assets/`(圖,含 `anim/` 動畫幀)＋`public/assets/`(登入圖)＋根目錄 `afk-*.js`(外掛)。遊戲全域(`DB`/`tick`/`saveGame`/`MAP_CATEGORIES`…)定義在 `js/*.js`(一般 script,全域共用),外掛 `<script>` 排在 `</body>` 前、作者 js 之後,載入時全域已就緒。
 - **要看原版更新了什麼 / 選擇性移植原版功能 → 跑 `/upstream-diff` skill**(`.claude/skills/upstream-diff/`,2026-07-10 建):以 `upstream-checkpoint.json` 的 `reviewedUpstreamCommit` 為錨點,對上游本機 clone(`D:/otherPersonRepos/idle-lineage-class`)diff 分析 → 產出功能菜單報告(`upstream-reviews/`)給使用者挑 → 逐功能 3-way 移植(分家點兩邊 blob 等價,`git apply -3` 可用;assets 用 `git archive | tar -x` 搬,中文檔名安全)。**🚨 分家後兩邊每支核心 js 都各自改過,絕不可整檔覆蓋**;舊的「整檔覆蓋式自動同步」永久作廢(腳本留在 git 歷史,勿撈回來用)。
 
+## 🧩 移植一整個子系統後,要另外驗「掛點有沒有接、素材有沒有搬」——程式碼搬過來不等於功能會動
+
+寵物/召喚系統移植後同時中了三種:`petsGainExp()` 定義好好的但**全 repo 沒有任何呼叫點**(寵物永遠 0 經驗)、9 隻召喚物缺 8 方向動畫圖(戰場上**隱形**)、16 個寵物道具缺圖示(破圖)。共通點是**功能看起來在、實際半殘,且不會拋錯、smoke 也抓不到**——玩家回報才知道。
+
+移植完(或大範圍搬功能後)跑這三項:
+
+1. **掛點**:新模組「對外要被別人呼叫」的函式逐支 `grep -rn '<函式名>' js/ afk-*.js` ——**只找到定義那一行 = 漏掛**。反向也要:上游是在哪呼叫的(`grep` 上游 clone),那個呼叫點在我們這邊是不是被舊版程式碼覆蓋掉了(我們的 `js/05` 停在舊經驗模型,整段沒有那行)。
+2. **素材**:用**遊戲自己組路徑的那支函式**去驗檔案存在,不要憑欄位。物品圖示走 `getIconUrl(d)`(多數道具沒有 `icon`/`img` 欄位、是拿**中文名**去組 `assets/icons/{items,armors,weapons,accessories}/<名>.png`——查 `d.icon` 會得到「全部都在」的假綠燈,踩過);戰場 sprite 分兩種路徑:怪物走 `assets/anim/<名>/idle_0.png`(平面),**寵物/召喚物/精靈走 `assets/anim/<名>/d0..d7/`(8 方向),缺 8 方向就完全不顯示、無錯誤訊息**。
+3. **跟上游對素材清單**:`git -C <上游> -c core.quotepath=false ls-files assets | sort` 與我方 `comm -23` 比一次(**兩邊都要 `core.quotepath=false`,否則中文檔名一邊是 `\3xx` 跳脫、diff 全錯**)。差集要逐一判斷「屬於沒移植的功能(可略)」還是「該搬卻漏搬」。
+
 ## 🔁 修完 bug 後:先判斷「這條值不值得留」,要留先問過使用者才寫(2026-07-12 改訂,取代舊的「一律寫回」)
 
 > 舊規則是「踩到就寫進 CLAUDE.md」,結果堆了一堆**只發生過一次、成因早已被移除或被自動檢查擋掉**的舊案,把真正該記的東西稀釋掉。現在改成:

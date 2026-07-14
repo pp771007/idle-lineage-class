@@ -132,6 +132,29 @@
     };
   }
 
+  // ---- 木人場禁止瞬移：包住 doTeleport（清空 mapState.mobs＝連訓練假怪一起清掉）與瞬移卷軸的 useItem。
+  //   自動化的「遇BOSS自動逃離」與「自動瞬移找BOSS(傳送控制戒指)」都會在木人場成立——找BOSS那條的條件是
+  //   「場上沒有BOSS就瞬移」，而訓練假怪多半不是BOSS → 進場沒幾秒就把假怪整批清光（看起來像怪被打死/消失），
+  //   還會白吃卷軸（有勾自動購買就一直買）。原作的排除清單（村莊/攻城/純BOSS房/軍王之室/傲慢/裂痕/遺忘之島）
+  //   認不得木人場這張外掛地圖，故在此擋掉：木人場本來就不需要換場。
+  if (typeof window.doTeleport === 'function') {
+    var _origDoTeleport = window.doTeleport;
+    window.doTeleport = function () {
+      if (inTrain()) return;
+      return _origDoTeleport.apply(this, arguments);
+    };
+  }
+  if (typeof window.useItem === 'function') {
+    var _origUseItem = window.useItem;
+    window.useItem = function (uidv) {
+      if (inTrain() && player && player.inv) {
+        var it = player.inv.find(function (i) { return i && i.uid === uidv; });
+        if (it && it.id === 'scroll_teleport') return;   // 不消耗卷軸、不清場（自動與手動皆擋）
+      }
+      return _origUseItem.apply(this, arguments);
+    };
+  }
+
   // ---- 玩家打不死：包住 killPlayer。**只看地圖 mapState.current === TRAIN_MAP**（不靠 active 旗標）：
   //   最穩——人在木人場就絕不會死(連被秒殺也是),旗標若殘留也不影響;正常地圖 id 永遠不是 afk_dummy → 攔截絕不洩到一般遊戲(在外面照常會死)。
   var _origKillPlayer = window.killPlayer;

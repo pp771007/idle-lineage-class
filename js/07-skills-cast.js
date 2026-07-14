@@ -74,11 +74,10 @@ function summonAttack(sm, owner) {
     }
 
     // === 魅力召喚物：近戰多段(floor(魅力/6)次) / 屬性精靈(單次遠距) ===
-    // 🏅 精靈精通：屬性精靈/強力屬性精靈 數量＝1+魅力/10（60魅力上限7隻，各自完整攻擊一次）
-    // 🔧 召喚「數量」(段數/隻數) 以魅力 60 封頂；超過 60 只提升下方的傷害與命中，不再增加數量
+    // 🔧 召喚「數量」(段數) 以魅力 60 封頂；超過 60 只提升下方的傷害與命中，不再增加數量
+    // 🧝 屬性精靈固定 1 隻（玩家端 js/23 亦同）：精靈精通改為讓強力屬性精靈昇華成精靈王，不再增加隻數
     let chaCnt = Math.min(60, cha);
-    let hits = (sm.kind === 'melee') ? Math.max(1, Math.floor(chaCnt / 6))
-        : (((owner.mastery === 'e_spirit') && (sm.skId === 'sk_elf_summon' || sm.skId === 'sk_elf_summon2')) ? Math.min(7, 1 + Math.floor(chaCnt / 10)) : 1);
+    let hits = (sm.kind === 'melee') ? Math.max(1, Math.floor(chaCnt / 6)) : 1;
     let hitLvOff = sm.hitLvOff || 0;
     // 🏅 召喚精通：造屍術/召喚術的「傷害與命中判定魅力」改為 魅力×1.2（攻擊段數仍依原魅力）
     let chaEff = ((owner.mastery === 'm_summon') && (sm.skId === 'sk_zombie' || sm.skId === 'sk_summon')) ? cha * 1.2 : cha;

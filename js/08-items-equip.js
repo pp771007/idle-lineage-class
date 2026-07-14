@@ -1084,8 +1084,7 @@ function renderStatusEffects() {
                     let _chaC = Math.min(60, player.d.cha || 0);
                     let cnt = (k === 'sk_charm') ? 0
                         : (_creature.kind === 'melee') ? Math.floor(_chaC / 6)
-                        : (hasMastery('e_spirit') && (k === 'sk_elf_summon' || k === 'sk_elf_summon2')) ? Math.min(7, 1 + Math.floor(_chaC / 10))   // 🏅 精靈精通：屬性精靈顯示數量 1+魅力/10（上限7）
-                        : 0;
+                        : 0;   // 🧝 屬性精靈固定 1 隻（精靈精通＝昇華成精靈王，不加隻數）→ 不顯示數量後綴
                     let suffix = cnt > 1 ? ` ${cnt}` : '';
                     buffs.push(`<span class="${getBuffColor(k, DB.skills[k])} font-bold">${_creature.n}${suffix}</span>`);
                 }

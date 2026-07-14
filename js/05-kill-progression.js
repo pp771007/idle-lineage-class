@@ -200,8 +200,11 @@ function killMob(idx) {
     // 🔧 轉場建築（往上層的樓梯 / 遺忘之島傳送門）：擊敗即進入下一層/島，不顯示「擊敗了…」戰鬥訊息（race 建築且 noAutoTeleport，排除攻城塔/城門）
     let _hideKillMsg = (mob.race === '建築' && mob.noAutoTeleport);
     if(!_hideKillMsg) logCombat(`擊敗了 <span class="${getMobColor(mob.lv)}">${mob.n}</span>！`, 'player-heavy');  // 👈 新增
+    // 🐾 寵物份額＝不乘玩家等級係數（getExpGainMult 在玩家滿等 100 時為 0）→ 玩家滿等後寵物仍能繼續成長
+    let _petExpGain = Math.floor(mob.exp * (player.classicMode ? 0.5 : 1) * (1 + dollFieldVal('expBonus') / 100));
     player.exp += Math.floor(mob.exp * getExpGainMult(player.lv) * (player.classicMode ? 0.5 : 1) * (1 + dollFieldVal('expBonus') / 100));   // 🎮 經典模式：經驗值減半；🪆 魔法娃娃 expBonus%
     checkLvUp();
+    if (typeof petsGainExp === 'function') petsGainExp(_petExpGain);   // 🐾 出戰寵物均分這份額（升級需求＝玩家表的 1/10）
     // 🤝 協力傭兵經驗平分：每名非倒地傭兵各得「以自身等級計算」的 MERC_EXP_SHARE（不減玩家）；經驗滿即「自動升級＋重算戰力（即時變強）」。_expGained 記受雇期間賺到的總量供解雇 delta-merge 回寫。
     if (player.allies && player.allies.length && mob.exp) {
         let _cm = player.classicMode ? 0.5 : 1;

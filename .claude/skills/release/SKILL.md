@@ -27,10 +27,10 @@ disable-model-invocation: true
    - 上一版 tag：`git tag --sort=-creatordate | head -5` 取最新的 `vX.Y.Z`（首次發版時上一版是舊日期式 tag `vYYYYMMDD-HHMM`）。
    - `git log <上一版tag>..HEAD --oneline` 逐條看，翻成玩家視角的白話條目（照上面的鐵則取捨）。
 
-3. **決定版本號並讓使用者確認**
+3. **決定版本號（自己決定，不要問使用者・2026-07-14 使用者明訂）**
    - 讀 `version.json` 的 `app` 當現行版本。
-   - 依改動建議 bump：大改版/不相容變動 → major；新功能 → minor；純修正/微調 → patch。
-   - 用 AskUserQuestion 讓使用者確認「版本號 + 更新說明草稿」再往下。
+   - 依改動 bump：大改版/不相容變動 → major；新功能 → minor；純修正/微調 → patch。
+   - 直接往下做，版本號與更新說明在最後回報時一併告知即可。
 
 4. **bump 版本 + commit + push**
    - 改 `version.json` 的 `app` 為新版本（`stamp-sw-version.mjs` 會保留此欄位，之後照跑不會弄丟）。

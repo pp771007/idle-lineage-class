@@ -22,7 +22,8 @@
 ## 🏷️ 版本號與發版(/release)
 
 - **加掛版有自己的版本號(semver,`v1.0.0` 起跳)**,與原作者的版本(v3.0.x)脫鉤:存在 `version.json` 的 `app` 欄位,首頁由 `afk-syncinfo.js` 讀取顯示「加掛版 vX.Y.Z」。`stamp-sw-version.mjs` 重寫 version.json 時會**保留 `app` 欄位**,只有發版時才 bump(大改版→major、新功能→minor、純修正→patch)。
-- **發版流程已包成 `/release` skill**(`.claude/skills/release/`):使用者說「發版」就跑它——整理上次 tag 之後的 commits → 草擬玩家視角更新說明 → 與使用者確認版本號 → bump `version.json` 的 `app`+stamp+commit+push → 等 Pages 上線 → `git tag vX.Y.Z` + `gh release create`(標題 `《放置天堂 - 以血為盟》加掛版 vX.Y.Z`)。
+- **發版流程已包成 `/release` skill**(`.claude/skills/release/`):使用者說「發版」就跑它——整理上次 tag 之後的 commits → 草擬玩家視角更新說明 → bump `version.json` 的 `app`+stamp+commit+push → 等 Pages 上線 → `git tag vX.Y.Z` + `gh release create`(標題 `《放置天堂 - 以血為盟》加掛版 vX.Y.Z`)。
+- **版本號自己決定,不要再問使用者(使用者明訂・2026-07-14)**:依改動性質套 semver 規則(大改版→major、新功能→minor、純修正→patch)直接 bump 下去,發完在回報裡告知版本號與更新說明即可。
 - **更新說明鐵則(使用者明訂・2026-07-07)**:只寫玩家需要知道的——功能更新、問題修正、玩起來有感的調整;**白話、不要術語**(寫「離線結算大幅加快,掛一整天回來幾秒算完」,不要寫「混合快速結算管線」);內部重構/文件/CI/腳本改動一律不寫。
 - 舊 tag 格式 `vYYYYMMDD-HHMM` 是自動同步時代的產物,**不再使用**;歷史 Release 保留不動。
 - 需要台灣時間戳時注意:**Windows git-bash 的 `TZ='Asia/Taipei' date` 不生效**(沒 tzdata,默默給 UTC;踩過 2026-07-06 tag 時間差 8 小時)→ 用 `date -u -d '+8 hours' +%Y%m%d-%H%M` 換算。

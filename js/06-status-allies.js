@@ -1793,8 +1793,24 @@ function allyActWithSkillGate(ally, actFn) {
     }
 }
 // 🔮 v2.6.4 立方：和諧＝回「全隊」MP（玩家＋全體非倒地傭兵各回 amount·夾各自上限）。玩家 cubeTick(js/07)與傭兵 allyCubeTick 共用。
+// 🐾 治癒/輔助的受益者（單一真相）：玩家＋未倒地傭兵＋出戰未倒地寵物。
+//    欄位是異質的：玩家 hp/mhp・statuses；傭兵 curHp/mhp・statuses；寵物 hp/mhp・_statuses（無 curHp）。
+//    下面的存取器讓「瞬間治癒／團隊 HoT／淨化／回魔」共用同一組人，不必各自判斷型別。
+function healBeneficiaries() {
+    let arr = [];
+    if (typeof player !== 'undefined' && player && !player.dead) arr.push(player);
+    (typeof player !== 'undefined' && player && player.allies || []).forEach(a => { if (a && !a._downed && (a.curHp || 0) > 0) arr.push(a); });
+    try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed && (p.hp || 0) > 0) arr.push(p); }); } catch (e) {}
+    return arr;
+}
+function _supHp(m) { return (m === player) ? (m.hp || 0) : (m && m.curHp != null ? (m.curHp || 0) : (m ? (m.hp || 0) : 0)); }   // 傭兵＝curHp；玩家/寵物＝hp
+function _supMhp(m) { return (m && m.mhp) || 1; }
+function _supHeal(m, amt) { let mx = _supMhp(m), v = Math.min(mx, _supHp(m) + amt); if (m === player) m.hp = v; else if (m.curHp != null) m.curHp = v; else m.hp = v; }
+function _supName(m) { if (m === player) return (player && player.name) || '你'; if (m && m.curHp != null) return '協力·' + (m._allyName || '傭兵'); return '寵物·' + ((m && m.form) || '夥伴'); }
+function _supStatuses(m) { return (m && m.statuses) ? m.statuses : ((m && m._statuses) ? m._statuses : null); }
 function teamRecoverMp(amount) {
     if (player) player.mp = Math.min(player.mmp || 0, (player.mp || 0) + amount);
+    try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed && p.mmp != null) p.mp = Math.min(p.mmp || 0, (p.mp || 0) + amount); }); } catch (e) {}   // 🐾 回魔也惠及出戰寵物
     (player && player.allies || []).forEach(a => { if (a && !a._downed) a.mp = Math.min(a.mmp || 0, (a.mp || 0) + amount); });
 }
 // 🍶🛡️ v2.6.4：把「喝藥水門檻」與「停耗HP技門檻」拆成兩個獨立設定；皆回退舊 _hpSafePct(相容既有存檔)、再回退 0。
@@ -1952,10 +1968,10 @@ function allyMaintainBuffs(ally) {
 }
 // 🆕 v2.6.28 淨化共用（魔法相消術/聖潔之光/解毒術·玩家與傭兵共用）：施法者(自己)受硬控(石化/冰凍/暈眩/麻痺/沉睡)或沉默/魔封→無法施放；否則幫隊員解可解狀態。
 //    v2.6.29 改「一次只解一人·優先主要玩家」：teamCleanseOne 依 _dispelTeamMembers 順序(玩家排首→傭兵)找第一個有可解狀態者，只清除該一人的該類狀態並回傳被解者。
-function _dispelTeamMembers() { let arr = []; if (typeof player !== 'undefined' && player) { arr.push(player); (player.allies || []).forEach(a => { if (a && !a._downed) arr.push(a); }); } return arr; }
-function teamHasCurableStatus(kinds) { return _dispelTeamMembers().some(m => m && m.statuses && kinds.some(k => (m.statuses[k] || 0) > 0)); }
-function teamCleanseOne(kinds) { let members = _dispelTeamMembers(); for (let i = 0; i < members.length; i++) { let m = members[i]; if (m && m.statuses && kinds.some(k => (m.statuses[k] || 0) > 0)) { kinds.forEach(k => { if (m.statuses[k]) m.statuses[k] = 0; }); return m; } } return null; }   // 一次只解一人·優先主要玩家（player 已排首）·回傳被解者供 log
-function _dispelTargetName(m) { return (typeof player !== 'undefined' && m === player) ? '自己' : ('協力·' + (m && m._allyName ? m._allyName : '傭兵')); }
+function _dispelTeamMembers() { let arr = []; if (typeof player !== 'undefined' && player) { arr.push(player); (player.allies || []).forEach(a => { if (a && !a._downed) arr.push(a); }); } try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed) arr.push(p); }); } catch (e) {} return arr; }   // 🐾 淨化也惠及出戰寵物
+function teamHasCurableStatus(kinds) { return _dispelTeamMembers().some(m => { let st = _supStatuses(m); return st && kinds.some(k => (st[k] || 0) > 0); }); }
+function teamCleanseOne(kinds) { let members = _dispelTeamMembers(); for (let i = 0; i < members.length; i++) { let m = members[i]; let st = _supStatuses(m); if (st && kinds.some(k => (st[k] || 0) > 0)) { kinds.forEach(k => { if (st[k]) st[k] = 0; }); return m; } } return null; }   // 一次只解一人·優先主要玩家（player 已排首）·回傳被解者供 log
+function _dispelTargetName(m) { if (typeof player !== 'undefined' && m === player) return '自己'; if (m && m.curHp != null) return '協力·' + (m._allyName || '傭兵'); if (m && m.form) return '寵物·' + m.form; return '傭兵'; }
 function dispelCasterBlocked(st) { return !!(st && (st.stun > 0 || st.freeze > 0 || st.stone > 0 || st.paralyze > 0 || st.sleep > 0 || st.silence > 0 || st.magicseal > 0)); }
 // 🆕 v2.6.28 傭兵淨化改「幫隊員解狀態」（原 v2.6.15 #6 自我硬控自救→取消）：自己非硬控(石化/冰凍/暈眩/麻痺/沉睡)且非沉默/魔封才施放。優先相消>聖潔>解毒。
 //    v2.6.29 改「一次只解一人·優先主要玩家」：teamCleanseOne 只解隊列首位有可解狀態者（player 排首）。
@@ -2083,14 +2099,10 @@ function allyTryHeal(ally) {
     if (ally._setIllusion3 && isSupportSkill(sk)) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 幻覺3/5（傭兵）：輔助技能 MP 消耗 -50%（鏡像玩家 js/07:178/310）
     if ((ally.mp || 0) < cost) return false;
     let thr = ((ally._healHpPct != null ? ally._healHpPct : 70) / 100);
-    let cand = [];
-    if (!player.dead) cand.push(player);
-    cand.push(ally);
-    if (player.allies) for (let a of player.allies) if (a && a !== ally && !a._downed && (a.curHp || 0) > 0) cand.push(a);
+    let cand = healBeneficiaries();   // 🐾 玩家＋全體傭兵（含自己）＋出戰寵物
     let lowest = null, lowestPct = thr;   // 只考慮低於門檻者
     for (let c of cand) {
-        let cur = (c === player) ? c.hp : c.curHp, max = c.mhp || 1;
-        let pct = (cur || 0) / max;
+        let pct = _supHp(c) / _supMhp(c);
         if (pct < lowestPct) { lowestPct = pct; lowest = c; }
     }
     if (!lowest) return false;   // 無人需要治癒
@@ -2101,12 +2113,11 @@ function allyTryHeal(ally) {
         ? Math.max(1, Math.floor((rollDice(sk.healDice[0], sk.healDice[1]) + (sk.healBase || 0)) * _coef))
         : Math.max(1, (sk.valBase || 0) + roll(sk.valDice[0], sk.valDice[1]) + (d.magicDmg || 0));
     heal = waterVitalHeal(heal);   // 🆕 v2.6.17 水之元氣改全隊生效：傭兵治癒也吃隊長「水之元氣」加倍（waterVitalHeal 讀真隊長 player.buffs＋共用 7 秒冷卻·此處 player 為真隊長非換身）
-    if (lowest === player) { player.hp = Math.min(player.mhp, player.hp + heal); }
-    else { lowest.curHp = Math.min(lowest.mhp, (lowest.curHp || 0) + heal); }
+    _supHeal(lowest, heal);   // 🐾 被治癒者可能是玩家/傭兵/寵物（欄位異質，走統一存取器）
     // 🎬 v3.0.95 傭兵治癒視覺回饋：①施放者播施法動作 ②治癒特效疊在被治癒者 sprite 身上（無 sprite→戰鬥區預設錨點；未註冊技能名靜默略過）
     if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'skill', sk.n);
     if (typeof playSelfFx === 'function') { try { playSelfFx(sk.n, (typeof _partyMemberRect === 'function') ? _partyMemberRect(lowest) : null); } catch (e) {} }
-    let _who = (lowest === player) ? (player.name || '你') : ('協力·' + lowest._allyName);
+    let _who = _supName(lowest);
     logCombat(`<span class="text-emerald-300 font-bold">協力·${ally._allyName}</span> 施放 ${sk.n}，為 ${_who} 恢復 ${heal} 點 HP。`, 'heal', 'mercenary');
     return true;
 }

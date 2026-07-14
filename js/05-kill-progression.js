@@ -229,30 +229,10 @@ function killMob(idx) {
         // 🔧 金幣不再逐殺輸出於系統日誌；改由 gameLoop 累積、flushAwaySummary 以「掛機期間獲得總金幣」統一顯示。
 
     }
-	// 誘捕判定（誘捕上限改於「使用肉」時以 floor(魅力/7) 判定）
-    if (player.buffs.taming > 0 || player._allLures) {   // 🐾 遺物 馴獸師的飼料袋（_allLures）：不必吃肉即視為誘捕狀態
-        let collarDrop = null;
-        if (mob.n.includes("杜賓狗")) collarDrop = 'new_item_184';
-        else if (mob.n.includes("狼")) collarDrop = 'new_item_185';
-        else if (mob.n.includes("哈士奇")) collarDrop = 'new_item_collar_husky';
-        else if (mob.n.includes("牧羊犬")) collarDrop = 'new_item_238'; // 已改為編號
+    // 🐾 誘捕捕捉：身上有對應的誘捕狀態、且擊殺對應動物 → 寵物保管獲得該寵物並失去該狀態
+    //   （舊的「肉→taming→項圈」與「屬性怪掉舊進化果實」已隨項圈系統移除；新的進化果實改由亞丁「諾斯」製作）
+    if (typeof petCaptureOnKill === 'function') petCaptureOnKill(mob);
 
-        if (collarDrop) {   // 誘捕擊殺必定捕獲（100%）
-            gainItem(collarDrop, 1);
-            logSys(`<span class="text-green-300 font-bold">誘捕成功！獲得 ${DB.items[collarDrop].n}。</span>`);
-            if (!player._allLures) player.buffs.taming = 0;   // 🐾 一般誘捕（吃肉）捕獲後消耗；飼料袋提供的誘捕不消耗
-        }
-    }
-    
-    // === 🐾 進化果實：擊敗屬性怪物 0.0001%×怪物等級 機率掉落對應屬性果實 ===
-    if (!_kbNoReward) {
-        let _fruitByEle = { water: 'new_fruit_rabbit', fire: 'new_fruit_fox', earth: 'new_fruit_beagle', wind: 'new_fruit_stbernard' };
-        let _fruitId = _fruitByEle[mob.e];
-        if (_fruitId && Math.random() < (0.000001 * (mob.lv || 1) * classicDropMult())) {   // 0.0001% × 怪物等級（🎮 經典×1/10）
-            gainItem(_fruitId, 1);
-            logSys(`<span class="text-green-300 font-bold">✦ 你從敵人殘骸中發現了 ${DB.items[_fruitId].n}！</span>`);
-        }
-    }
 
     // === 🔧 卡瑞：擊殺後扣除四樣任務道具各一個 ===
     if (mob.n === '卡瑞') {

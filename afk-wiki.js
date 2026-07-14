@@ -1479,94 +1479,67 @@
   }
 
   function renderPets() {
-    var note = '<div class="m-wiki-note">「帶寵物（誘捕）」是<b>任何職業</b>都能玩的夥伴系統，戰力吃「魅力」。流程：吃肉開誘捕 → 打死犬抓項圈 → 吹哨子叫出來 → 夥伴幫你打（每次攻擊消耗 1 塊肉）。</div>';
-    var secs = [
-      { t: '① 怎麼抓（誘捕）', lines: [
-        '吃一塊「肉」→ 得到「誘捕」狀態，持續 300 秒。',
-        '誘捕狀態下<b>打死犬類怪</b>（杜賓狗／狼／哈士奇／牧羊犬）→ <b>100% 必定捕獲</b>，拿到對應的「項圈」。抓到一隻後誘捕狀態就消失，要再抓得再吃一塊肉。',
-        '能帶的項圈總數上限 ＝ <b>魅力 ÷ 7</b>（無條件捨去），<b>硬上限 8 個</b>——魅力 ≥56 即達 8、再高也是 8。已達上限時吃肉沒用（不會消耗肉）。'
-      ]},
-      { t: '② 怎麼叫出來（哨子）', lines: [
-        '用「哨子」→ 依你持有的各種項圈，一次把對應夥伴全部叫出來（可多種犬並存，每種數量＝你持有該項圈的個數）。哨子使用<b>不消耗</b>。',
-        '夥伴會一直跟著，<b>關掉遊戲再回來也還在</b>（會存進存檔）；要收回得<b>再吹一次哨子</b>，或把項圈賣掉／丟掉。',
-        '把項圈賣掉或丟掉 → 對應夥伴會自動離開。'
-      ]},
-      { t: '③ 夥伴怎麼打（每次攻擊消耗 1 塊肉）', lines: [
-        '每 2 秒攻擊一次，每隻夥伴的攻擊次數＝你持有該項圈的數量。',
-        '<b>每次攻擊消耗 1 塊肉，肉用完就停止攻擊</b>——所以帶寵打怪要先囤肉。',
-        '命中 ＝ 玩家等級 ＋ 魅力 ＋ 該犬命中偏移 ＋ 寵物裝備命中 － 怪等 ＋ 怪防禦（帶「召喚控制戒指」再 +5）。',
-        '傷害 ＝ 1 ～（玩家等級＋該犬傷害偏移）之間，再 ＋魅力 ＋寵物裝備傷害 －怪的傷害減免，並帶該犬的屬性（吃屬性相剋）。',
-        '命中與傷害都吃<b>完整魅力</b>（連超過 60 的都算）；「能帶幾隻」另有<b>硬上限 8 個</b>。',
-        '👑 <b>王族「夥伴精通」</b>：學了夥伴精通後，項圈夥伴的傷害／命中<b>魅力係數 ×1.2</b>，且觸發魔法每次額外＋完整魅力固定傷害（見「職業專精」分頁）。'
-      ]},
-      { t: '④ 進化：把基礎犬變更強', lines: [
-        '玩家<b>等級 30 以上</b>、持有對應基礎項圈時，用「進化果實」把 <b>1 個基礎項圈 ＋ 1 顆果實</b>進化成進化夥伴（哪隻變哪隻、強在哪見上方兩張表）。',
-        '<b>進化果實哪來</b>：打死「對應屬性」的怪有機率掉，機率 ＝ <b>0.0001% × 怪物等級</b>（怪越高越好掉）。水屬掉「暴走兔」、火屬掉「狐狸」、地屬掉「小獵犬」、風屬掉「聖伯納」。',
-        '進化夥伴每擊 10% 追加的法術，<b>用你自己的施法數值、必定命中、吃魔防</b>。'
-      ]},
-      { t: '⑤ 寵物裝備（之牙）：再幫夥伴加傷害／命中', blocks: [
-        { t: 'p', p: '裝在<b>「寵物裝備」欄</b>的飾品「之牙」，<b>只加成你帶的項圈夥伴、不影響自己</b>，且所有夥伴一起吃（不分種類數量）：' },
-        { t: 'tbl', h: ['之牙', '傷害', '命中'], rows: [['獵犬之牙', '—', '+2'], ['鋼鐵之牙', '+2', '—'], ['破滅之牙', '+2', '+3'], ['勝利之牙', '+3', '+1']] },
-        { t: 'p', p: '可用「對飾品施法的卷軸」強化：<b>每 +1 → 傷害與命中各 +1，最高 +5</b>（安定值 0、每次強化有失敗風險）。在 <b>諾斯（亞丁）</b> 製作。' }
-      ]},
-      { t: '⑥ 項圈保管（找亞丁的包武）', lines: [
-        '<b>亞丁的包武</b>可幫你保管「項圈」，最多 <b>8 個</b>。暫時用不到、或超過攜帶上限的項圈寄放在這，背包就不會被塞滿。存／取都不花錢。',
-        '<b>每個角色（存檔位）各自獨立、不共通</b>——和「倉庫」（四個角色共用）不同，存在包武這裡的項圈只有該角色本人拿得到。',
-        '<b>用「回憶蠟燭」重置能力值時不會清掉包武保管的項圈</b>（只清背包裡的項圈）。怕洗能力值把項圈也洗掉，就先寄放到包武這。',
-        '<b>存入不限魅力，提領才看魅力</b>：取回時一樣受「能帶幾隻」限制（魅力 ÷ 7）——已帶滿就提不出來，要先提升魅力或放走部分夥伴。',
-        '鎖定與未鎖定的同種項圈會分開保管、各自存取，提領後維持原本的鎖定狀態。'
-      ]},
-      { t: '肉、哨子、犬在哪', lines: [
-        '肉、哨子都是消耗道具，很便宜（肉 1 金幣）。',
-        '犬類怪散布在各地圖，想知道哪裡有，用「掉落查詢」搜 杜賓狗／狼／哈士奇／牧羊犬 看出沒地圖。'
-      ]}
-    ];
-    var cards = secs.map(function (s) {
-      var body = s.blocks
-        ? s.blocks.map(function (b) { return b.t === 'tbl' ? wTbl(b.h, b.rows) : '<div class="m-wiki-desc" style="margin-top:4px;">・' + b.p + '</div>'; }).join('')
-        : s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
-      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + body + '</div>';
-    }).join('');
-    var dogTable = '';
-    if (typeof PET_DEF !== 'undefined' && PET_DEF) {   // 讀遊戲的犬定義,作者新增犬種/進化夥伴會自動出現
-      // 基礎犬 → 進化後寵物 對照(讀進化果實 eff:evolve 的 evolveFrom→evolveTo,再用 PET_DEF.collar 反查名稱;為權威來源、非靠屬性猜)
-      var evolveTo = {}, petByCollar = {};
-      if (typeof DB !== 'undefined' && DB.items) Object.keys(DB.items).forEach(function (id) { var it = DB.items[id]; if (it && it.eff === 'evolve' && it.evolveFrom && it.evolveTo) evolveTo[it.evolveFrom] = it.evolveTo; });
-      Object.keys(PET_DEF).forEach(function (nm) { if (PET_DEF[nm].collar) petByCollar[PET_DEF[nm].collar] = nm; });
-      var evoOf = function (nm) { var c = PET_DEF[nm].collar, ec = c && evolveTo[c]; return ec ? (petByCollar[ec] || '') : ''; };
-      var td = 'style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;"';
-      var rowOf = function (nm) {
-        var p = PET_DEF[nm], extra;
-        if (p.proc) {   // 進化夥伴 → 顯示每擊追加的法術
-          var proc = (typeof DB !== 'undefined' && DB.skills && DB.skills[p.proc]) ? DB.skills[p.proc].n : p.proc;
-          extra = '<td ' + td + '>追加 ' + esc(proc) + '</td>';
-        } else {        // 基礎犬 → 顯示可進化成的夥伴
-          var ev = evoOf(nm);
-          extra = '<td ' + td + '>' + (ev ? '可進化為 ' + esc(ev) : '—') + '</td>';
-        }
-        return '<tr>' +
-          '<td ' + td + '><b>' + esc(nm) + '</b></td>' +
-          '<td ' + td + '>' + esc(p.eleName) + '屬性</td>' +
-          '<td ' + td + '>傷害偏移 +' + p.diceOff + '</td>' +
-          '<td ' + td + '>命中偏移 +' + p.hitOff + '</td>' +
-          extra +
-          '</tr>';
-      };
-      var baseN = [], evoN = [];
-      Object.keys(PET_DEF).forEach(function (nm) { (PET_DEF[nm].proc ? evoN : baseN).push(nm); });
-      var _eleOrder = { fire: 0, earth: 1, water: 2, wind: 3 };   // 火地水風:統一基礎犬/進化夥伴兩表的寵物順序
-      var _byEle = function (a, b) { var ea = _eleOrder[PET_DEF[a].ele], eb = _eleOrder[PET_DEF[b].ele]; return (ea != null ? ea : 9) - (eb != null ? eb : 9); };
-      baseN.sort(_byEle); evoN.sort(_byEle);
-      var tbl = function (title, hint, names) {
-        if (!names.length) return '';
-        return '<div class="m-wiki-card"><div class="m-wiki-name">' + title + '</div>' +
-          '<div class="m-wiki-desc" style="color:#94a3b8;margin:2px 0 6px;">' + hint + '</div>' +
-          '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><tbody>' + names.map(rowOf).join('') + '</tbody></table></div>';
-      };
-      dogTable = tbl('基礎犬的特性', '傷害偏移越高，傷害上限越高；命中偏移越高，越容易打中。屬性決定相剋。最右欄是用對應進化果實能進化成的夥伴。', baseN) +
-        tbl('進化夥伴的特性', '由基礎犬進化而來（見下方「④ 進化」）；傷害另加魅力×倍率，每次攻擊還有 10% 追加對應法術。', evoN);
+    var note = '<div class="m-wiki-note">寵物是<b>獨立的實體</b>：有自己的等級、HP／MP、技能，會自己攻擊、喝藥水、被打死。任何職業都能養。</div>';
+
+    // 誘捕道具 → 抓得到什麼（讀遊戲的 PET_LURES；新增誘捕道具會自動出現）
+    var lureRows = [];
+    if (typeof PET_LURES !== 'undefined' && typeof DB !== 'undefined' && DB.items) {
+      var itemOfLure = {};
+      Object.keys(DB.items).forEach(function (id) { var d = DB.items[id]; if (d && d.eff === 'petlure' && d.lure) itemOfLure[d.lure] = d; });
+      Object.keys(PET_LURES).forEach(function (k) {
+        var cfg = PET_LURES[k], it = itemOfLure[k];
+        var got = Object.keys(cfg.mobs || {}).map(function (m) { return cfg.mobs[m] === m ? esc(m) : (esc(m) + ' → ' + esc(cfg.mobs[m])); });
+        lureRows.push([it ? '<b>' + esc(it.n) + '</b>' : esc(k), esc(cfg.n), got.join('、')]);
+      });
     }
-    return note + dogTable + cards;   // 兩張寵物特性表移到最上面(緊接 note),操作說明在下
+
+    // 寵物圖鑑（讀遊戲的 PET_BOOK）
+    var kindZh = { phys: '物理型', spec: '特殊型', mag: '魔法型' };
+    var tierZh = { 0: '一般', 1: '高等', 2: '黃金龍' };
+    var bookRows = [];
+    if (typeof PET_BOOK !== 'undefined') {
+      Object.keys(PET_BOOK).forEach(function (nm) {
+        var d = PET_BOOK[nm];
+        var skn = (d.sk && d.sk.length) ? d.sk.map(function (x) { return esc(x.n); }).join('、') : '—';
+        bookRows.push(['<b>' + esc(nm) + '</b>', tierZh[d.tier] || '', kindZh[d.kind] || '', String(d.cha), d.evo ? esc(d.evo) : '—', skn]);
+      });
+    }
+
+    var chaRows = [
+      ['一般的狗／貓／熊之類', '6'],
+      ['虎男／高麗幼犬／袋鼠／熊貓／猴子', '12'],
+      ['頑皮龍／淘氣龍', '15'],
+      ['黃金龍', '20']
+    ];
+    var evoRows = [
+      ['<b>進化果實</b>', '對應的<b>高等</b>型態'],
+      ['<b>勝利果實</b>', '<b>黃金龍</b>（任何一般型態都可以）']
+    ];
+
+    return note
+      + wCard('① 怎麼抓：用誘捕道具，然後把牠打死',
+          wDesc('使用誘捕道具 → 獲得對應的<b>誘捕狀態（600 秒）</b>。期間<b>擊殺對應的動物</b>就會捕獲，牠進入「寵物保管」，同時誘捕狀態消失（一次一隻）。')
+          + wDesc('誘捕道具由對應的動物身上掉落（10%）；「漂浮之眼肉」由漂浮之眼掉落。想知道動物在哪張圖，用「掉落查詢」搜牠的名字。')
+          + wTbl(['誘捕道具', '獲得的狀態', '打死誰 → 抓到什麼'], lureRows))
+      + wCard('② 出戰：最多 4 隻，而且要「魅力夠養」',
+          wDesc('在<b>亞丁「包武」的寵物保管</b>裡讓寵物出戰。上限 <b>4 隻</b>，而且<b>每隻會佔用魅力</b>——出戰寵物佔用的魅力總和不能超過你的魅力。')
+          + wTbl(['寵物', '佔用魅力'], chaRows)
+          + wDesc('寵物保管上限 <b>20 隻</b>，<b>同模式的所有角色共用</b>（和倉庫一樣的概念）。魅力變低（例如重置配點）時，超出的寵物會自動收回保管，不會消失。'))
+      + wCard('③ 戰鬥：牠自己會打，也會幫你挨打',
+          wDesc('有敵人時自動攻擊最近的敵人，沒敵人時在場上閒晃。<b>牠會被怪鎖定</b>，幫你分擔挨打；被鎖定的機率看類型：<b>物理型 4、特殊型 3、魔法型 2</b>（杜賓狗系與狼系體型小，降為 3）。')
+          + wDesc('你的<b>治癒術、團隊持續回復、淨化、回魔</b>都會惠及出戰中的寵物。')
+          + wDesc('HP 歸 0 →<b>倒地</b>。<b>5 秒後</b>身上有復活卷軸會自動復活；返生術可立即復活；<b>走進安全區（村莊）免費復活</b>。')
+          + wDesc('經驗：把你<b>實際獲得的經驗複製一份</b>，均分給出戰中的寵物（<b>不會扣你的經驗</b>）。寵物的升級需求是玩家的 <b>1/10</b>。'))
+      + wCard('④ 裝備：每隻各自穿',
+          wDesc('寵物裝備（<b>之牙</b>＝武器、<b>寵物盔甲</b>＝防具）<b>不是裝在你身上</b>，要到包武的寵物保管替<b>單一寵物</b>裝上。')
+          + wDesc('之牙用「對飾品施法的卷軸」強化、寵物防具用「對防具施法的卷軸」強化，<b>上限都是 +5</b>：之牙每 +1 → 傷害與命中各 +1；寵物防具每 +1 → 防禦再 -1。'))
+      + wCard('⑤ 進化（Lv30 以上，限一般型態）',
+          wDesc('在包武的寵物保管，對 <b>Lv30 以上的一般型態</b>寵物按進化：')
+          + wTbl(['消耗', '進化成'], evoRows)
+          + wDesc('兩種果實都由<b>亞丁「諾斯」</b>製作。進化後<b>等級歸 1</b>、HP／MP 變成進化前的 50%；高等型態與黃金龍都是<b>最終型態</b>，不能再進化。')
+          + wDesc('另外，<b>頑皮幼龍蛋</b>（擊敗安塔瑞斯／法利昂／巴拉卡斯必得）可以直接孵出<b>淘氣龍或頑皮龍</b>（各 50%）。'))
+      + wCard('⑥ 寵物圖鑑',
+          wTbl(['寵物', '階級', '類型', '佔用魅力', '可進化成', '技能'], bookRows));
   }
 
   function renderSet() {

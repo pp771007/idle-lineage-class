@@ -77,7 +77,7 @@ const EQUIP_CAT_BONUS = {
     ring:   { stat: 'mpR',     val: 1,  label: 'MP自然恢復量 +1' },
     belt:   { stat: 'weight',  val: 20, label: '負重 +20' },
     ear:    { stat: 'mpR',     val: 1,  label: 'MP自然恢復量 +1' },
-    pet:    { stat: 'petHit',  val: 1,  label: '項圈夥伴命中率 +1' },
+    pet:    { stat: 'petHit',  val: 1,  label: '寵物命中率 +1' },
     doll:   { stat: 'allattr', val: 1,  label: '全屬性 +1' }   // 🪆 魔法娃娃全收集：六維各+1。實際套用在 js/02 Phase1(屬性須在換算衍生值前計入)；此處僅供收集冊顯示 label，equipCollectionBonus 對 allattr 做 no-op 避免 Phase3 重複套用
 };
 
@@ -109,7 +109,8 @@ function equipCatKey(id, d) {
         return 'wpn_other';
     }
     if (d.type === 'arm') {
-        if (d.armguard) return 'armguard';                           // 臂甲（slot:shield 但 armguard 旗標）
+        if (d.slot === 'petarm') return 'pet';   // 🐾 寵物防具（type:arm 但歸「寵物裝備」分類，不是玩家防具）
+        if (d.armguard) return 'armguard';                           // 臂甲（slot:shield但 armguard 旗標）
         if (d.slot === 'helm') return 'helm';
         if (d.slot === 'armor') return 'armor';
         if (d.slot === 'shin') return 'shin';   // 🦵 脛甲（盔甲下方·額外防具）
@@ -125,7 +126,7 @@ function equipCatKey(id, d) {
         if (d.slot === 'ring') return 'ring';
         if (d.slot === 'belt') return 'belt';
         if (d.slot === 'ear1' || d.slot === 'ear2' || d.slot === 'ear') return 'ear';
-        if (d.slot === 'pet') return 'pet';
+        if (d.slot === 'pet' || d.slot === 'petwpn' || d.slot === 'petarm') return 'pet';   // 🐾 之牙(petwpn)與寵物防具(petarm)同歸「寵物裝備」分類
         if (d.slot === 'doll') return 'doll';
         return null;
     }

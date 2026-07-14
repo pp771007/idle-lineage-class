@@ -905,26 +905,33 @@ const DB = {
         "panacea_white": { n: "純白的萬能藥", type: "misc", req: "all", p: 5000, c: "text-slate-100", noUse: true, d: "純白無瑕、尚未沾染屬性的萬能藥原料（無法直接使用，僅作製作材料）。使用回憶蠟燭重置配點時，依已使用過的萬能藥瓶數獲得。可在象牙塔的塔斯處，以 3 個製作成任一屬性的萬能藥。", gachaWeight: 0 },
         "panacea_cha": { n: "萬能藥(CHA)", type: "misc", req: "all", p: 10000, c: "text-pink-300", d: "令人顧盼生輝、風采動人的靈藥。可永久提升魅力+1，直到使用回憶蠟燭為止（最多60瓶，不可突破屬性上限60）", eff: "panacea", pstat: "cha", plv: 50, gachaWeight: 0 },
         
-        "new_item_142": { n: "哨子", type: "pot", req: "all", p: 165, d: "可用於呼叫或解散寵物", eff: "whistle", gachaWeight: 0 },
-        "new_item_collar_husky": { n: "項圈 (哈士奇)", p: 10, gachaWeight: 0 },
-        "new_item_238": { n: "項圈 (牧羊犬)", p: 10, gachaWeight: 0 },
-        // ===== 🐾 寵物進化系統：進化果實（消耗道具，Lv30+且有對應基礎項圈才能使用）=====
-        "new_fruit_rabbit":    { n: "進化果實：暴走兔", type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_collar_husky", evolveTo: "new_collar_rabbit", d: "玩家等級30以上、且持有 項圈 (哈士奇) 時可使用：將一個 項圈 (哈士奇) 進化為 項圈 (暴走兔)。", gachaWeight: 0 },
-        "new_fruit_fox":       { n: "進化果實：狐狸",   type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_184",          evolveTo: "new_collar_fox",    d: "玩家等級30以上、且持有 項圈 (杜賓狗) 時可使用：將一個 項圈 (杜賓狗) 進化為 項圈(狐狸)。", gachaWeight: 0 },
-        "new_fruit_beagle":    { n: "進化果實：小獵犬", type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_238",          evolveTo: "new_collar_beagle", d: "玩家等級30以上、且持有 項圈 (牧羊犬) 時可使用：將一個 項圈 (牧羊犬) 進化為 項圈(小獵犬)。", gachaWeight: 0 },
-        "new_fruit_stbernard": { n: "進化果實：聖伯納", type: "pot", req: "all", p: 0, c: "text-green-300", eff: "evolve", evolveFrom: "new_item_185",          evolveTo: "new_collar_stbernard", d: "玩家等級30以上、且持有 項圈 (狼) 時可使用：將一個 項圈 (狼) 進化為 項圈 (聖伯納)。", gachaWeight: 0 },
-        // 進化項圈（呼叫進化夥伴所需；不可存倉）
-        "new_collar_rabbit":    { n: "項圈 (暴走兔)",  p: 10, c: "text-cyan-300", gachaWeight: 0 },
-        "new_collar_fox":       { n: "項圈 (狐狸)",   p: 10, c: "text-orange-300", gachaWeight: 0 },
-        "new_collar_beagle":    { n: "項圈 (小獵犬)", p: 10, c: "text-amber-300", gachaWeight: 0 },
-        "new_collar_stbernard": { n: "項圈 (聖伯納)",  p: 10, c: "text-emerald-300", gachaWeight: 0 },
+        // ===== 🐾 寵物系統 v2：誘捕道具（使用後獲得對應誘捕狀態 600 秒；期間擊殺對應動物 → 寵物保管獲得該寵物並失去狀態）=====
+        //   舊項圈系統（哨子／項圈／肉／舊進化果實）已移除；舊存檔的項圈由 petMigrateLegacy 轉成新寵物。
+        "item_eye_meat":      { n: "漂浮之眼肉",       type: "pot", req: "all", p: 100, c: "text-pink-300",    eff: "petlure", lure: "lure_general",  dur: 600, d: "漂浮之眼身上切下的奇特肉塊，散發野獸無法抗拒的氣味。使用後獲得「一般誘捕」600秒：期間擊殺 狼／牧羊犬／杜賓狗／哈士奇／熊／貓／浣熊／聖伯納犬／狐狸／小獵犬／柯利 時，寵物保管將獲得基本等級的該寵物並失去此狀態。", gachaWeight: 0 },
+        "item_carrot":        { n: "胡蘿蔔",           type: "pot", req: "all", p: 100, c: "text-orange-300",  eff: "petlure", lure: "lure_rabbit",   dur: 600, d: "水靈飽滿的胡蘿蔔，暴走兔見了會不顧一切衝過來。使用後獲得「暴走兔誘捕」600秒：期間擊殺 暴走兔 時，寵物保管將獲得基本等級的暴走兔並失去此狀態。", gachaWeight: 0 },
+        "item_tiger_feed":    { n: "虎男誘食",         type: "pot", req: "all", p: 100, c: "text-amber-300",   eff: "petlure", lure: "lure_tiger",    dur: 600, d: "馴獸師特製的腥香餌食，能喚醒猛虎心中的認主之念。使用後獲得「虎男誘捕」600秒：期間擊殺 老虎 時，寵物保管將獲得基本等級的虎男並失去此狀態。", gachaWeight: 0 },
+        "item_kangaroo_feed": { n: "袋鼠的飼料",       type: "pot", req: "all", p: 100, c: "text-lime-300",    eff: "petlure", lure: "lure_kangaroo", dur: 600, d: "混入香草的特調飼料，袋鼠聞了便會收起拳頭。使用後獲得「袋鼠誘捕」600秒：期間擊殺 袋鼠 時，寵物保管將獲得基本等級的袋鼠並失去此狀態。", gachaWeight: 0 },
+        "item_panda_feed":    { n: "熊貓的飼料",       type: "pot", req: "all", p: 100, c: "text-slate-100",   eff: "petlure", lure: "lure_panda",    dur: 600, d: "以嫩竹筍壓成的飼料磚，是熊貓無法拒絕的美味。使用後獲得「熊貓誘捕」600秒：期間擊殺 熊貓 時，寵物保管將獲得基本等級的熊貓並失去此狀態。", gachaWeight: 0 },
+        "item_monkey_feed":   { n: "猴子的飼料",       type: "pot", req: "all", p: 100, c: "text-yellow-200",  eff: "petlure", lure: "lure_monkey",   dur: 600, d: "塞滿堅果與香蕉乾的飼料袋，猴群為之瘋狂。使用後獲得「猴子誘捕」600秒：期間擊殺 猴子 時，寵物保管將獲得基本等級的猴子並失去此狀態。", gachaWeight: 0 },
+        "item_koreadog_feed": { n: "高麗犬誘食",       type: "pot", req: "all", p: 100, c: "text-cyan-200",    eff: "petlure", lure: "lure_koreadog", dur: 600, d: "熬煮入味的肉乾誘食，幼犬聞香便搖著尾巴跟來。使用後獲得「高麗幼犬誘捕」600秒：期間擊殺 高麗幼犬 時，寵物保管將獲得基本等級的高麗幼犬並失去此狀態。", gachaWeight: 0 },
+        // 🐾 進化材料（在包武的寵物保管介面對 Lv30 以上的寵物按進化時消耗；由亞丁「諾斯」製作）
+        "item_dragon_heart":  { n: "龍之心",   type: "etc", req: "all", p: 5000, c: "text-red-300",    noUse: true, gachaWeight: 0, d: "幼龍胸腔中仍在搏動的緋紅心臟，蘊含純粹的龍之力。製作材料：亞丁「諾斯」可用它製作勝利果實。" },
+        "item_evo_fruit":     { n: "進化果實", type: "etc", req: "all", p: 0,    c: "text-green-300",  noUse: true, gachaWeight: 0, d: "蘊含生命躍遷之力的神祕果實。可讓一般型態的寵物進化為高等型態（寵物需 Lv30 以上）。亞丁「諾斯」可製作：光明的鱗片×100＋綠寶石×20＋金幣20000。" },
+        "item_victory_fruit": { n: "勝利果實", type: "etc", req: "all", p: 0,    c: "text-yellow-300", noUse: true, gachaWeight: 0, d: "凝聚龍之心力量的黃金果實。可讓一般型態的寵物直接進化為黃金龍（寵物需 Lv30 以上）。亞丁「諾斯」可製作：龍之心×1＋高品質紅寶石×5。" },
+        // ===== 🦴 寵物武器（之牙）：在包武的寵物保管替「單一寵物」裝上，能力只影響該寵物；可用對飾品施法的卷軸強化至 +5 =====
+        "pet_fang_hound":   { n: "獵犬之牙", type: "acc", slot: "petwpn", req: "all", safe: 0, p: 10000,  c: "text-white", petHit: 2,            d: "獵犬的尖牙磨成的護符，喚醒寵物的野性。", gachaWeight: 10 },
+        "pet_fang_steel":   { n: "鋼鐵之牙", type: "acc", slot: "petwpn", req: "all", safe: 0, p: 10000,  c: "text-white", petDmg: 2,            d: "以鋼鐵鑄成的森冷利齒，使寵物撕咬更為兇猛。", gachaWeight: 10 },
+        "pet_fang_ruin":    { n: "破滅之牙", type: "acc", slot: "petwpn", req: "all", safe: 0, p: 100000, c: "text-white", petDmg: 2, petHit: 3, d: "沾染破滅氣息的獠牙，令寵物的撕咬帶來毀滅。", gachaWeight: 0 },
+        "pet_fang_victory": { n: "勝利之牙", type: "acc", slot: "petwpn", req: "all", safe: 0, p: 100000, c: "text-white", petDmg: 3, petHit: 1, d: "銘刻無數勝戰的榮耀之牙，激起寵物的鬥志。", gachaWeight: 0 },
+        // ===== 🛡️ 寵物防具：在包武的寵物保管替「單一寵物」裝上；防具卷軸強化規則、安定值 0、上限 +5，每 +1 防禦再 -1（petAc/petMr/petInt/petWis 只作用於該寵物）=====
+        "pet_arm_leather":  { n: "寵物皮盔甲",     type: "arm", slot: "petarm", req: "all", safe: 0, maxEn: 5, p: 3800,  c: "text-white", petAc: 4,  d: "以高級皮革縫製的輕便護甲。", gachaWeight: 0 },
+        "pet_arm_bone":     { n: "寵物骷髏盔甲",   type: "arm", slot: "petarm", req: "all", safe: 0, maxEn: 5, p: 6000,  c: "text-white", petAc: 7,  d: "綴滿骨片的猙獰護甲，令寵物氣勢懾人。", gachaWeight: 0 },
+        "pet_arm_steel":    { n: "寵物鋼鐵盔甲",   type: "arm", slot: "petarm", req: "all", safe: 0, maxEn: 5, p: 12000, c: "text-white", petAc: 8,  d: "鋼鐵鍛成的堅實護甲。", gachaWeight: 0 },
+        "pet_arm_cross":    { n: "寵物十字盔甲",   type: "arm", slot: "petarm", req: "all", safe: 0, maxEn: 5, p: 25000, c: "text-white", petAc: 13, d: "胸口鑄有十字徽記的重護甲。", gachaWeight: 0 },
+        "pet_arm_chain":    { n: "寵物鏈甲",       type: "arm", slot: "petarm", req: "all", safe: 0, maxEn: 5, p: 45000, c: "text-white", petAc: 20, d: "細密鎖環編成的全身鏈甲。", gachaWeight: 0 },
+        "pet_arm_mithril":  { n: "寵物米索莉盔甲", type: "arm", slot: "petarm", req: "all", safe: 0, maxEn: 5, p: 75000, c: "text-white", petAc: 12, petMr: 10, petInt: 1, petWis: 1, d: "米索莉鍛造的名匠護甲，輕盈而蘊含魔力。", gachaWeight: 0 },
         // 不死鳥之心（製作材料，不死鳥 1% 掉落）
         "new_phoenix_heart": { n: "不死鳥之心", type: "etc", p: 0, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "不死鳥體內不滅的核心。製作材料。" },
-        // ===== 🦴 寵物裝備（之牙）：裝在「寵物裝備」欄，能力只影響項圈夥伴，可用對飾品施法的卷軸強化至+5 =====
-        "pet_fang_hound":   { n: "獵犬之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 10000,  c: "text-white", petHit: 2,            d: "獵犬的尖牙磨成的護符，喚醒項圈夥伴的野性。寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 10 },
-        "pet_fang_steel":   { n: "鋼鐵之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 10000,  c: "text-white", petDmg: 2,            d: "以鋼鐵鑄成的森冷利齒，使項圈夥伴撕咬更為兇猛。寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 10 },
-        "pet_fang_ruin":    { n: "破滅之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 100000, c: "text-white", petDmg: 2, petHit: 3, d: "沾染破滅氣息的獠牙，令項圈夥伴的撕咬帶來毀滅。寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 0 },
-        "pet_fang_victory": { n: "勝利之牙", type: "acc", slot: "pet", req: "all", safe: 0, p: 100000, c: "text-white", petDmg: 3, petHit: 1, d: "銘刻無數勝戰的榮耀之牙，激起項圈夥伴的鬥志。寵物裝備（裝在「寵物裝備」欄，只加成所有項圈夥伴、不影響玩家；對飾品施法的卷軸可強化，上限+5）。", gachaWeight: 0 },
         // 🪆 魔法娃娃（slot:doll·全職業·裝備後滑鼠游標變成 assets/doll/<物品名稱>.png；亦帶屬性加成）。dollTier=階級(1~6)；袋子開出/合成取得（價格0·無法強化·不可賣）。
         // 特殊效果引擎欄位：procBonusDmg{rate,dmg}=攻擊機率額外傷害、procPoisonRate=攻擊機率中毒、procSkill+procRateBase=攻擊機率觸發技能、procDmgReduce{rate,amount}=受傷機率減免、abnormalResist=機率抵抗異常、freezeResist/stunResist=抵抗(100=免疫)、immParalyze/immSlow/immPoison=免疫、expBonus/goldBonus=經驗/金錢%、potionBonus=藥水恢復%、weightCap=負重、er/magicHit/extraMp/mdmg=ER/魔法命中/額外魔點/固定魔傷。
         "doll_野狼寶寶":   { n: "魔法娃娃：野狼寶寶", type: "acc", slot: "doll", req: "all", safe: 0, p: 0, doll: true, dollTier: 1, noEnhance: true, gachaWeight: 0, c: "text-slate-200", procBonusDmg: { rate: 3, dmg: 15 }, d: "一階魔法娃娃。一般攻擊時 3% 機率該次攻擊額外傷害 +15。裝於魔法娃娃欄，游標變其模樣。" },
@@ -990,7 +997,6 @@ const DB = {
         "new_item_bless_arm": { n: "賦予盔甲祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧恩』處用來祝福防具（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
         "new_item_bless_acc": { n: "賦予飾品祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧恩』處用來祝福飾品（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
         "new_item_uncurse": { n: "解除詛咒的卷軸", type: "misc", p: 0, c: "text-cyan-200", d: "於象牙塔『碧恩』處用來移除裝備的詛咒（無法直接使用）。", noUse: true, gachaWeight: 0 },   // 🔧 潘朵拉不出（改由克里斯特兌換）
-        "new_item_143": { n: "肉", type: "pot", req: "all", p: 1, d: "食用後獲得『誘捕』狀態300秒", eff: "meat", gachaWeight: 0 },
         "new_item_144": { n: "夏洛伯之爪", p: 1, c: "text-blue-300", gachaWeight: 0 },   // 🔧 試煉材料統一藍色
         "new_item_145": { n: "阿吐巴圖騰", p: 667, gachaWeight: 0 },
         "new_item_146": { n: "那魯加圖騰", p: 334, gachaWeight: 0 },
@@ -1059,8 +1065,6 @@ const DB = {
         "mat_silverore":   { n: "銀礦石",     p: 100,  gachaWeight: 0, d: "夾雜著銀脈的粗礦，於爐火中提煉方能顯露其皎潔本色。於庫普處以 10 個＋500 金幣可精煉成『銀』。" },
         "mat_silver":      { n: "銀",         p: 500,  gachaWeight: 0, d: "提煉至純的皎潔白銀，自古便是邪祟畏懼之物。可用於打造銀光系武器（對不死/狼人有效）。" },
         "new_item_183": { n: "骨頭碎片", p: 10, gachaWeight: 0 },
-        "new_item_184": { n: "項圈 (杜賓狗)", p: 10, gachaWeight: 0 },
-        "new_item_185": { n: "項圈 (狼)", p: 10, gachaWeight: 0 },
         "new_item_186": { n: "糖果", p: 10, gachaWeight: 0 },
         "new_item_187": { n: "藍色布料", p: 220, gachaWeight: 0 },
         "new_item_188": { n: "紅色布料", p: 220, gachaWeight: 0 },

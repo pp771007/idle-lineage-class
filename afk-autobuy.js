@@ -1,12 +1,11 @@
 /*
  * afk-autobuy.js — 外掛自動購買:在「自動買銀箭」下方加一個「外掛」框,提供
- *   ① 肉耗盡時自動購買        (寵物項圈每 2 秒消耗 = 總項圈數 的肉,沒肉夥伴就停手)
  *   ② 自動購買魔法卷軸(魔法屏障) (原版只有自動「施放」、沒有自動「補貨」,卷軸用完屏障就斷)
  *
  * 設計:完全不改原作者程式碼。
  *   - UI:把一個自製框注入到原設定面板「自動買銀箭」那張卡片下方(找 #set-auto-buy-arrow 定位)。
  *   - 邏輯:包住全域 tick(),每隔幾 tick 檢查庫存,低於門檻就照原版商店價買一批補滿。
- *           「補庫存」而非攔截消耗點 → 遊戲原本的消耗邏輯(寵物吃肉/屏障施放)一直有貨可用。
+ *           「補庫存」而非攔截消耗點 → 遊戲原本的消耗邏輯(屏障施放)一直有貨可用。
  *   - 離線:js/offline.js(核心離線結算)是「迴圈呼叫真正的 tick()」,故本檔掛在 tick 上 →
  *           正常與離線共用同一套邏輯,自動一致,不必為離線另寫。離線(state.ff)時不寫日誌避免洗頻。
  *   - 設定持久化:原版存檔只記內建的 set-* 勾選;本檔兩個勾選「依存檔位(currentSlot)分開」存
@@ -20,11 +19,6 @@
 (function () {
   'use strict';
 
-  var MEAT_ID   = 'new_item_143';        // 肉:商店一份 1000 個,單價 shopPrice(100)
-  var MEAT_MIN  = 2000;                   // 低於這個量就補(緩衝要高於寵物單輪總消耗)
-  var MEAT_BUNDLES = 3;                   // 每次補 3 份 = 3000 個
-  var MEAT_BUNDLE_UNIT = 100;            // 一份 1000 個的金幣單價(對齊原版 buyItem)
-  var MEAT_BUNDLE_AMT  = 1000;
 
   var SCROLL_ID = 'scroll_magicbarrier';  // 魔法卷軸(魔法屏障):商店單買,單價 = DB.items 的 p(1500)
   var SCROLL_MIN = 3;                      // 低於這個量就補
@@ -73,14 +67,6 @@
   function autoBuyCheck() {
     if (typeof player === 'undefined' || !player) return;
 
-    if (prefOn('meat') && invCount(MEAT_ID) < MEAT_MIN) {
-      var mCost = shopPrice(MEAT_BUNDLE_UNIT) * MEAT_BUNDLES;
-      if (player.gold >= mCost) {
-        player.gold -= mCost;
-        gainItem(MEAT_ID, MEAT_BUNDLE_AMT * MEAT_BUNDLES, true, true);
-        buyLog('自動花費 ' + mCost + ' 金幣補充了 ' + (MEAT_BUNDLE_AMT * MEAT_BUNDLES) + ' 個肉。');
-      }
-    }
 
     if (prefOn('magicbarrier') && invCount(SCROLL_ID) < SCROLL_MIN) {
       var def = (typeof DB !== 'undefined' && DB.items) ? DB.items[SCROLL_ID] : null;
@@ -96,7 +82,7 @@
   }
 
   // ----- 包住 tick:正常與離線(離線=迴圈呼叫 tick)共用 --------------------
-  // 🚀 快轉(state.ff)時降頻 ×10(每 100 拍=遊戲 10 秒檢查一次):肉/卷軸消耗速度慢,10 秒內見底
+  // 🚀 快轉(state.ff)時降頻 ×10(每 100 拍=遊戲 10 秒檢查一次):卷軸消耗速度慢,10 秒內見底
   //   再補完全來得及;invCount 每次全背包掃兩趟,離線補跑 86 萬拍時降頻省下 90% 的掃描。
   var _tick = window.tick;
   window.tick = function () {
@@ -124,12 +110,10 @@
     box.innerHTML =
       '<div class="text-sm text-amber-400 mb-2 border-b border-slate-700 pb-1 font-bold">🔌 外掛</div>' +
       '<div class="flex flex-col gap-2 text-sm">' +
-        '<label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-auto-buy-meat" class="w-4 h-4"><span class="text-rose-300">自動購買肉（' + (MEAT_BUNDLE_AMT * MEAT_BUNDLES) + '）</span></label>' +
         '<label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-auto-buy-magicbarrier" class="w-4 h-4"><span class="text-cyan-300">自動購買魔法卷軸(魔法屏障)（' + SCROLL_REFILL + '）</span></label>' +
       '</div>';
     card.parentNode.insertBefore(box, card.nextSibling);
 
-    bindChange('set-auto-buy-meat', 'meat');
     bindChange('set-auto-buy-magicbarrier', 'magicbarrier');
     restoreForSlot();   // 注入當下若已在遊戲中(熱重載/外掛後載)也立即還原該角色設定
     return true;
@@ -144,9 +128,7 @@
 
   // 進到某角色時,把勾選框 UI 同步成該存檔位存的設定
   function restoreForSlot() {
-    var m = document.getElementById('set-auto-buy-meat');
     var s = document.getElementById('set-auto-buy-magicbarrier');
-    if (m) m.checked = prefOn('meat');
     if (s) s.checked = prefOn('magicbarrier');
   }
 
@@ -164,7 +146,7 @@
 
   function init() {
     if (!injectUI()) console.warn('[AFK-autobuy] 找不到設定面板的「自動買銀箭」(#set-auto-buy-arrow),UI 未注入(自動購買邏輯仍會運作)。');
-    console.log('[AFK-autobuy] hooks OK — 外掛自動購買(肉 / 魔法卷軸)已啟用(設定依存檔位分開)。');
+    console.log('[AFK-autobuy] hooks OK — 外掛自動購買(魔法卷軸)已啟用(設定依存檔位分開)。');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

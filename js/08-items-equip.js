@@ -289,20 +289,7 @@ function useItem(u, silent = false, keepModal = false) {
     }
 
     // 🐾 進化果實：玩家等級30以上、且道具欄有對應基礎項圈才能使用 → 消耗 1 基礎項圈 + 1 果實，獲得 1 進化項圈
-    if (d.eff === 'evolve') {
-        if (silent) return;
-        if ((player.lv || 1) < 30) { logSys('<span class="text-red-400">等級不足：進化果實需要玩家等級 30 以上才能使用。</span>'); return; }
-        let baseId = d.evolveFrom, toId = d.evolveTo;
-        let baseStack = player.inv.find(i => i.id === baseId && (i.cnt || 0) > 0);
-        if (!baseStack) { logSys(`<span class="text-red-400">你沒有可進化的 ${DB.items[baseId] ? DB.items[baseId].n : '對應項圈'}，無法使用此進化果實。</span>`); return; }
-        baseStack.cnt--; if (baseStack.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== baseStack.uid);   // 消耗 1 基礎項圈
-        item.cnt--; if (item.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== item.uid);                 // 消耗 1 果實
-        gainItem(toId, 1);                                                                                       // 獲得 1 進化項圈
-        logSys(`<span class="text-amber-300 font-bold">進化成功！</span>你的 ${DB.items[baseId].n} 進化為 <span class="text-amber-300 font-bold">${DB.items[toId].n}</span>！`);
-        renderTabs(); updateUI(); saveGame();
-        if (!document.getElementById('item-modal').classList.contains('hidden')) closeModal();
-        return;
-    }
+    // 🚫 舊「進化果實（項圈進化）」已隨項圈系統移除；新的進化在包武的寵物保管介面對 Lv30 以上寵物按進化鈕（消耗 進化果實／勝利果實）。
 
     // 🏛️ 上鎖的歐西里斯寶箱：開啟選擇數量，每開 1 個消耗 1 顆 龜裂之核，依機率獲得底比斯寶物
     if (d.eff === 'osiris_box') {
@@ -395,33 +382,13 @@ function useItem(u, silent = false, keepModal = false) {
             }
             player.buffs.poly = d.dur;
             if(!silent) logSys(`使用變形卷軸，變身為 <span class="${player.poly.c}">${player.poly.n}</span>。`);
-		} else if (d.eff === 'meat') {
-            // 肉：食用後獲得「誘捕」狀態；但 8 種項圈(杜賓狗/狼/哈士奇/牧羊犬/聖伯納/暴走兔/狐狸/小獵犬)總數達到 floor(魅力/7) 時無法誘捕
-            let limit = Math.min(8, Math.floor((player.d.cha || 0) / 7));   // 🔧 硬上限 8：不論魅力多高，項圈夥伴攜帶上限封頂 8
-            if (totalCollarCount() >= limit) {
-                if(!silent) logSys(`你持有的項圈數量已達上限，無法再進行誘捕。`);
-                return;   // 不消耗肉
-            }
-            player.buffs.taming = 300;
-            if(!silent) logSys(`你吃下了肉，獲得增益 <span class="text-pink-300 font-bold">誘捕</span>，持續300秒。`);
-            // 落到下方 consume(item)，消耗一塊肉
-        } else if (d.eff === 'whistle') {
-            // 哨子：使用不消耗。身上有任一夥伴 → 解除全部；否則依持有的各種項圈獲得對應夥伴（可多種並存）
-            if (!player.partners) player.partners = [];
-            if (player.partners.length > 0) {
-                player.partners = [];
-                if(!silent) logSys(`你收起了哨子，所有夥伴都離開了。`);
-            } else {
-                let added = [];
-                for (let nm in PET_DEF) {
-                    let cnt = petCollarCount(nm);
-                    if (cnt > 0) { player.partners.push(nm); added.push(`夥伴：${nm}${cnt > 1 ? (' ' + cnt) : ''}`); }
-                }
-                if (added.length) { if(!silent) logSys(`吹響哨子！獲得增益 ${added.join('、')}，持續到關閉遊戲或再次使用哨子。`); }
-                else { if(!silent) logSys(`你沒有任何項圈，哨子沒有作用。`); }
-            }
-            updateUI();
-            return;   // 哨子不消耗
+		} else if (d.eff === 'petlure') {
+            // 🐾 誘捕道具（漂浮之眼肉/胡蘿蔔/虎男誘食/袋鼠·熊貓·猴子的飼料/高麗犬誘食）：
+            //   使用後獲得對應「誘捕」狀態 600 秒；期間擊殺對應動物 → 寵物保管獲得該寵物並失去該狀態。
+            //   （舊的「肉 eff:'meat' 誘捕項圈」與「哨子 eff:'whistle'」已隨項圈系統移除）
+            if (silent) return;
+            if (typeof petUseLureItem !== 'function' || !petUseLureItem(d, silent)) return;   // 失敗不消耗
+            // 落到下方 consume(item)，消耗 1 個
         } else if (d.eff === 'magicbarrier') {
             // 魔法卷軸：與魔法屏障法術共用 player.buffs.sk_magic_shield，不可疊加
             if ((player.magicShieldCd || 0) > 0) {
@@ -704,6 +671,8 @@ function playerHasWindHelm() {
 // silent=true：戰鬥中自動換裝（如箭矢用完自動補上），不關掉玩家正在看的物品視窗
 function equipItem(item, silent) {
     let d = DB.items[item.id];
+    // 🐾 寵物裝備（之牙／寵物防具）不裝在玩家身上：改為在包武的寵物保管替「單一寵物」裝上
+    if (d && (d.slot === 'petwpn' || d.slot === 'petarm')) { if (!silent) logSys('<span class="text-amber-300">寵物裝備請到 亞丁「包武」的寵物保管，替單一寵物裝上。</span>'); return; }
     let slot = d.type === 'wpn' ? 'wpn' : d.slot;
     if (d.isArrow) slot = 'arrow'; // 如果是箭矢，強制分配到 arrow 欄位
     // ⚔️ 迅猛雙斧雙持：已學迅猛雙斧且主手已是單手鈍器時，再裝單手鈍器 → 放副手 offwpn 欄
@@ -838,7 +807,6 @@ function buyItem(id, qty) {
     // 箭 / 銀箭 / 肉：一「份」= 1000，單價固定，qty 代表份數
     let bundle = (id === 'wpn_5')        ? { unit: 100, amount: 1000, n: '箭',   suffix: '根' }
                : (id === 'wpn_22')       ? { unit: 200, amount: 1000, n: '銀箭', suffix: '根' }
-               : (id === 'new_item_143') ? { unit: 100, amount: 1000, n: '肉',   suffix: '個' }
                : null;
     if (bundle) {
         let cost = shopPrice(bundle.unit) * qty;
@@ -1076,14 +1044,8 @@ function renderStatusEffects() {
       if(_polyDisp && !_skipIconized) buffs.push(`<span class="${_polyDisp.c} font-bold">變身:${_polyDisp.n}</span>`); }
 
     // 🤝 協力傭兵已改由「協力傭兵隊伍」面板(#squad-panel)顯示 HP/MP/EXP/狀態，移除此處「狀態」欄的重複「協力：XX」條目
-    // 👇 補上夥伴與誘捕狀態的顯示（可同時多種夥伴，數字=持有項圈數量，為1不顯示）
-    if(player.partners && player.partners.length) {
-        player.partners.forEach(nm => {
-            let cnt = petCollarCount(nm);
-            buffs.push(`<span class="text-orange-400 font-bold">夥伴：${nm}${cnt > 1 ? (' ' + cnt) : ''}</span>`);
-        });
-    }
-    if(player.buffs.taming > 0) buffs.push(`<span class="text-pink-300 font-bold">誘捕</span>`);
+    // 🐾 誘捕狀態（7 種，期間擊殺對應動物即捕獲）
+    if (typeof PET_LURES !== 'undefined') Object.keys(PET_LURES).forEach(k => { if ((player.buffs[k] || 0) > 0) buffs.push(`<span class="text-pink-300 font-bold">${PET_LURES[k].n}</span>`); });
 
     // 🔮 席琳套裝：達 2 件以上（觸發套裝能力）的組別顯示於資訊面板（n/5）
     if (player._sherineSetCnt) {

@@ -949,6 +949,15 @@ function mercAggroWeight(c) {
     if (c.cls === 'elf' || c.cls === 'dark' || c.cls === 'royal') return 4 + _agB;          // 近戰輕裝
     return 1 + _agB;
 }
+// 🐾 寵物被攻擊的權重（物理/魔法受害者池共用）：預設吃 PET_KIND_WEIGHT（物理4/特殊3/魔法2）；
+//    PET_AGGRO_OVERRIDE 個別覆寫（杜賓狗系/狼系雖是物理型，但體型小、降為 3）。
+const PET_AGGRO_OVERRIDE = { '杜賓狗': 3, '高等杜賓狗': 3, '狼': 3, '高等狼': 3 };
+function petAggroWeight(p) {
+    if (!p) return 2;
+    if (PET_AGGRO_OVERRIDE[p.form] != null) return PET_AGGRO_OVERRIDE[p.form];
+    let d = (typeof PET_BOOK !== 'undefined') && PET_BOOK[p.form];
+    return (d && typeof PET_KIND_WEIGHT !== 'undefined' && PET_KIND_WEIGHT[d.kind]) || 2;
+}
 // 🏺 聖甲蟲的孵育巢（aggroHide 旗標）：掃 entity 全部裝備欄是否裝備「迴避仇恨」物品（玩家/傭兵通用）。
 function _hasAggroHide(c) {
     if (!c || !c.eq) return false;
@@ -970,16 +979,19 @@ function enemyAttackChooseVictim(mob, idx) {
     try { if (typeof playMobAttack === 'function') playMobAttack(mob); } catch (e) {}   // 🔊 怪物一般攻擊音（每次普攻動作一次·不分打玩家/傭兵·查無對應則靜音·函式內 _sfxAudible 含 state.ff 守衛）
     if (player.dead) { enemyPhysicalAttack(mob, idx); return; }   // 玩家已死：照舊（enemyPhysicalAttack 內部即 return）
     let allies = (player.allies || []).filter(a => a && !a._downed && (a.curHp || 0) > 0);
-    if (!allies.length && !_hasAggroHide(player)) { enemyPhysicalAttack(mob, idx); return; }   // 無傭兵且玩家未裝孵育巢：照舊打玩家（快速路徑）
+    let pets = (typeof petsOutList === 'function') ? petsOutList().filter(p => p && !p._downed && (p.hp || 0) > 0) : [];   // 🐾 出戰寵物也會被鎖定（權重見 petAggroWeight）
+    if (!allies.length && !pets.length && !_hasAggroHide(player)) { enemyPhysicalAttack(mob, idx); return; }   // 無傭兵且玩家未裝孵育巢：照舊打玩家（快速路徑）
     let pool = aggroVictimPool(allies);   // 🏺 聖甲蟲的孵育巢：未裝備者優先被指定攻擊
     allies = pool.allies;
     let pw = pool.playerIn ? mercAggroWeight(player) : 0;
     let total = pw; for (let a of allies) total += mercAggroWeight(a);
+    for (let p of pets) total += petAggroWeight(p);
     if (total <= 0) { enemyPhysicalAttack(mob, idx); return; }
     let r = Math.random() * total;
     r -= pw;
     if (r < 0) { enemyPhysicalAttack(mob, idx); return; }   // 抽中玩家
     for (let a of allies) { r -= mercAggroWeight(a); if (r < 0) { enemyAttackAlly(mob, a); return; } }
+    for (let p of pets) { r -= petAggroWeight(p); if (r < 0) { if (typeof enemyAttackPet === 'function') enemyAttackPet(mob, p); return; } }   // 🐾 抽中寵物
     // 浮點殘差後備：玩家在候選池→打玩家；玩家已退出候選（裝孵育巢）→打最後一名候選傭兵
     if (pool.playerIn || !allies.length) enemyPhysicalAttack(mob, idx);
     else enemyAttackAlly(mob, allies[allies.length - 1]);
@@ -1121,19 +1133,22 @@ function castMobMagic(mob, sk) {
     let redirectable = !!sk.dmg || ['stone', 'paralyze', 'silence', 'magicseal', 'freeze', 'scald', 'stun', 'slowatk', 'poison', 'burn', 'frost_breath'].includes(sk.type);   // ❄️ v3.1.54 寒冰吐息(frost_breath)納入可轉向→'寒冰吐息' 已在 MOB_PARTY_AOE_SKILLS→全體(玩家+傭兵)驅散增益＋緩速
     if (!redirectable) { applyMobMagic(mob, sk); return; }
     let allies = (player.allies || []).filter(a => a && !a._downed && (a.curHp || 0) > 0);
-    if ((typeof MOB_PARTY_AOE_SKILLS !== 'undefined') && MOB_PARTY_AOE_SKILLS.has(sk.skn)) {   // 全體：玩家＋全部非倒地傭兵
+    let pets = (typeof petsOutList === 'function') ? petsOutList().filter(p => p && !p._downed && (p.hp || 0) > 0) : [];   // 🐾 出戰寵物也會被指定魔法鎖定
+    if ((typeof MOB_PARTY_AOE_SKILLS !== 'undefined') && MOB_PARTY_AOE_SKILLS.has(sk.skn)) {   // 全體：玩家＋全部非倒地傭兵＋出戰寵物
         if (!player.dead) applyMobMagic(mob, sk);
         for (let a of allies) { if (mob.curHp <= 0) break; applyMobMagicToAlly(mob, sk, a); }
+        for (let p of pets) { if (mob.curHp <= 0) break; if (typeof applyMobMagicToPet === 'function') applyMobMagicToPet(mob, sk, p); }
         return;
     }
-    if (!allies.length && !_hasAggroHide(player)) { applyMobMagic(mob, sk); return; }   // 無傭兵且玩家未裝孵育巢→照舊打玩家
+    if (!allies.length && !pets.length && !_hasAggroHide(player)) { applyMobMagic(mob, sk); return; }   // 無傭兵且玩家未裝孵育巢→照舊打玩家
     let pool = aggroVictimPool(allies);   // 🏺 聖甲蟲的孵育巢：單體指定魔法同樣「未裝備者優先」（全體魔法走上方 AOE 分支不受影響）
     allies = pool.allies;
-    let pw = pool.playerIn ? mercAggroWeight(player) : 0, total = pw; for (let a of allies) total += mercAggroWeight(a);   // 單體：仇恨權重抽一名受害者
+    let pw = pool.playerIn ? mercAggroWeight(player) : 0, total = pw; for (let p of pets) total += petAggroWeight(p); for (let a of allies) total += mercAggroWeight(a);   // 單體：仇恨權重抽一名受害者
     if (total <= 0) { applyMobMagic(mob, sk); return; }
     let r = Math.random() * total; r -= pw;
     if (r < 0) { applyMobMagic(mob, sk); return; }
     for (let a of allies) { r -= mercAggroWeight(a); if (r < 0) { applyMobMagicToAlly(mob, sk, a); return; } }
+    for (let p of pets) { r -= petAggroWeight(p); if (r < 0) { if (typeof applyMobMagicToPet === 'function') applyMobMagicToPet(mob, sk, p); return; } }   // 🐾 抽中寵物
     // 浮點殘差後備：玩家在候選池→打玩家；否則打最後一名候選傭兵
     if (pool.playerIn || !allies.length) applyMobMagic(mob, sk);
     else applyMobMagicToAlly(mob, sk, allies[allies.length - 1]);

@@ -383,14 +383,14 @@ function castSkillInner(skId) {
             ? Math.max(1, Math.floor((rollDice(sk.healDice[0], sk.healDice[1]) + (sk.healBase || 0)) * _spCoefHeal))   // (XdY + healBase) × 魔法傷害公式
             : Math.max(1, (sk.valBase || 0) + roll(sk.valDice[0], sk.valDice[1]) + player.d.magicDmg);
         heal = waterVitalHeal(heal);   // 🔧 水之元氣：下次恢復魔法治癒加倍
-        // 🤝 v3.0.94 隊長治癒也幫隊員：目標＝隊伍(玩家＋未倒地傭兵)中 HP% 最低者（原僅治癒玩家自己；鏡像傭兵 allyTryHeal 的選人規則）
-        let _hTgt = player, _hPct = (player.mhp > 0) ? (player.hp / player.mhp) : 1;
-        (player.allies || []).forEach(a => { if (a && !a._downed && (a.curHp || 0) > 0 && (a.mhp || 0) > 0) { let _p2 = a.curHp / a.mhp; if (_p2 < _hPct) { _hPct = _p2; _hTgt = a; } } });
+        // 🤝🐾 隊長治癒也幫隊員：目標＝隊伍（玩家＋未倒地傭兵＋出戰寵物）中 HP% 最低者
+        let _cands = healBeneficiaries();
+        let _hTgt = player, _hPct = Infinity;
+        _cands.forEach(c => { let _mx = _supMhp(c); if (_mx > 0) { let _p2 = _supHp(c) / _mx; if (_p2 < _hPct) { _hPct = _p2; _hTgt = c; } } });
         _lastHealFxTarget = _hTgt;   // 🩹 記錄受益者→castSkill 把治癒特效疊在其身上
-        if (_hTgt === player) player.hp = Math.min(player.mhp, player.hp + heal);
-        else _hTgt.curHp = Math.min(_hTgt.mhp, (_hTgt.curHp || 0) + heal);
+        _supHeal(_hTgt, heal);
         player.cds.healSk = getAutoCastInterval();
-        logCombat(`施放 ${sk.n}，恢復了${_hTgt === player ? '' : (' 協力·' + _hTgt._allyName)} ${heal} 點 HP。${sk.msg || ''}`, 'heal');
+        logCombat(`施放 ${sk.n}，恢復了${_hTgt === player ? '' : (' ' + _supName(_hTgt))} ${heal} 點 HP。${sk.msg || ''}`, 'heal');
         return true;
     }
     

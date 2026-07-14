@@ -609,7 +609,7 @@
       for (k in ids) {
         var d = DB.items[k]; if (!d) continue;
         // 只認消耗品(藥水/卷軸/箭/肉):避免把「掉落的裝備被自動賣廢品」誤判成消耗
-        if (!(d.type === 'pot' || d.type === 'scroll' || d.isArrow || k === 'new_item_143')) continue;
+        if (!(d.type === 'pot' || d.type === 'scroll' || d.isArrow)) continue;
         var used = (sampleCnt0[k] || 0) + ((gainTally[k] || 0) - (sampleGain0[k] || 0)) - (cnt1[k] || 0);
         if (used > 0) consumePerTick[k] = used / winTicks;   // 每「拍」速率:消耗跟時間走(BOSS 一場耗時長、耗得多,按殺算會低估)
       }

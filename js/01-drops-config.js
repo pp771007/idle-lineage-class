@@ -217,7 +217,7 @@
         '思克巴女皇': [['acc_116',0.001], ['scroll_acc',0.01], ['bk_ice_lance',0.01], ['bk_summon',0.003], ['bk_ice_spike',0.5], ['bk_elf_lifespring',0.1], ['bk_mana_drain',0.1], ['bk_blizzard_storm',0.01], ['new_item_219',1]],   // ⚔️ 戰士試煉：神秘魔杖 1%
         '怪手': [['glv_glove',0.1], ['arm_99',0.001], ['new_item_150',1]],
         '惡魔': [['arm_69', 10], ['wpn_katana',5], ['wpn_2hsword',10], ['wpn_siruge',1], ['wpn_33',1], ['wpn_flaming_angel',0.5], ['amr_plate',5], ['arm_88',0.1], ['arm_63',10], ['arm_99',1], ['acc_117',0.01], ['amu_str',0.1], ['amu_int',0.15], ['acc_128',1], ['acc_129',1], ['acc_130',0.5], ['acc_131',0.5], ['scroll_weapon',10], ['scroll_armor',20], ['scroll_acc',1], ['new_item_152',0.5], ['new_item_153',0.1], ['new_item_159',0.1], ['bk_holy_barrier',0.5], ['bk_fire_storm',0.1], ['bk_elf_blazewpn',0.5], ['wpn_demon_scythe',0.1], ['arm_59',10], ['hlm_demon',1], ['amr_demon',1], ['glv_demon',1], ['bot_demon',1], ['wpn_dual_abyss',0.1], ['bk_elf_flamesoul',0.1], ['wpn_vengeance',0.1], ['wpn_hate_claw',0.01], ['wpn_shaha_bow',0.01]],   // 🆕 沙哈之弓 0.01%
-        '杜賓狗': [['new_item_143',10], ['new_item_179',100]],
+        '杜賓狗': [['new_item_179',100]],
         '格利芬': [['arm_62',0.5], ['new_item_150',1], ['new_item_152',0.5], ['new_item_155',0.5], ['new_item_158',0.5], ['new_item_161',0.5], ['bk_tornado',0.001], ['bk_elf_release',0.1], ['bk_elf_winddash',0.05], ['bk_elf_stormeye',0.001], ['bk_magic_shield',0.01], ['mat_griffon_feather',1], ['acc_demonbane',0.01]],
         '楊果里恩': [['scroll_weapon',0.1], ['scroll_armor',0.3], ['scroll_acc',0.01], ['bk_slow',0.1], ['bk_charm',0.05], ['bk_rock_prison',0.5]],
         '歐吉': [['wpn_battleaxe',5], ['wpn_giantaxe',1], ['wpn_berserker',0.01], ['arm_61',0.5], ['arm_47',0.03], ['acc_133',0.001], ['scroll_weapon',0.3], ['scroll_armor',1], ['new_item_167',0.01]],
@@ -232,7 +232,7 @@
         '法利昂': [['wpn_katana',10], ['wpn_siruge',5], ['amr_plate',10], ['arm_88',1], ['glv_glove',20], ['arm_80',0.1], ['acc_116',0.1], ['acc_117',0.1], ['acc_120',1], ['acc_127',5], ['acc_128',5], ['acc_129',5], ['blt_body',1], ['acc_130',1], ['acc_131',1], ['scroll_weapon',100], ['scroll_armor',100], ['scroll_acc',50], ['new_item_150',1], ['new_item_151',50], ['new_item_152',5], ['new_item_153',1], ['new_item_160',50], ['new_item_161',5], ['new_item_162',1], ['bk_slow',10], ['bk_holy_light',10], ['bk_regen',5], ['bk_summon',2], ['bk_blizzard',1], ['bk_resurrection',1], ['new_item_190',100], ['bk_elf_eleres',1], ['bk_counter_barrier',1]],
         '活鎧甲': [['item_olin_diary',0.01],['wpn_battleaxe',1], ['arm_60',1], ['arm_62',1], ['bk_holy_barrier',0.003], ['bk_weaken',0.1], ['mat_black_blood', 1], ['mat_moonlight_breath', 0.01], ['bk_regen',0.01]],   // 🆕 體力回復術 0.01%
         '海星': [['bk_ice_spike',0.1], ['scroll_acc',0.01]],
-        '漂浮之眼': [['new_item_143',20], ['new_item_150',1]],
+        '漂浮之眼': [['item_eye_meat',10], ['new_item_150',1]],
         '火炎蛋': [['scroll_weapon',1], ['scroll_armor',2], ['bk_fireball',0.1], ['bk_holy_light',0.1], ['scroll_poly',1], ['new_item_192',0.01], ['bk_fire_prison',0.01], ['bk_elf_attrfire',0.01]],
         '火焰弓箭手': [['hlm_mr', 1], ['wpn_32',0.1], ['arm_42',2], ['arm_67',4], ['arm_90',1], ['bk_dex_up',0.05], ['bk_slow',0.1], ['new_item_192',0.01], ['wpn_redflame_sword',0.1], ['wpn_redflame_bow',0.1]],   // 🆕 赤焰之劍/弓 各0.1%
         '火焰戰士': [['hlm_mr', 1], ['wpn_longsword',1], ['arm_42',2], ['arm_62',1], ['arm_105',3], ['new_item_192',0.01], ['wpn_redflame_sword',0.1], ['wpn_redflame_bow',0.1]],   // 🆕 赤焰之劍/弓 各0.1%
@@ -241,8 +241,8 @@
         '烈炎獸': [['scroll_weapon',1], ['scroll_armor',2], ['bk_holy_barrier',0.002], ['scroll_acc',0.01], ['new_item_192',0.01], ['bk_elf_magicerase',0.1], ['bk_shock_stun',0.05], ['bk_elf_attrfire',0.05], ['wpn_greatsword',0.1]],   // 🆕 巨劍 0.1%
         '熔岩高崙': [['wpn_2hsword',0.5], ['wpn_18',1], ['wpn_giantaxe',0.5], ['bk_slow',0.5], ['bk_str_up',0.05], ['scroll_acc',0.01], ['new_item_192',0.01], ['bk_elf_triple',0.01], ['item_time_orb',1], ['arm_stone_glove',0.05]],   // 🆕 石製手套 0.05%
         '爆彈花': [['bk_sleep_mist',0.01], ['scroll_acc',0.01]],
-        '牧羊犬': [['new_item_143',10], ['new_item_179',100]],
-		'哈士奇': [['new_item_143',10], ['new_item_179',100]],
+        '牧羊犬': [['new_item_179',100]],
+		'哈士奇': [['new_item_179',100]],
         '狼': [['wpn_5',1], ['new_item_195',1], ['new_item_179',100]],
         '狼人': [['arm_69', 0.1], ['wpn_longsword',0.1], ['wpn_2',1], ['wpn_10',3], ['wpn_13',2], ['arm_66',0.5], ['arm_103',1], ['bot_short',0.5], ['bk_dex_up',0.01], ['bk_vampire',0.05]],
         '獨眼巨人': [['arm_62',1], ['arm_47',0.01], ['scroll_weapon',1], ['scroll_armor',2], ['scroll_acc',0.01], ['bk_str_up',0.05], ['bk_summon',0.002], ['bk_rock_prison',0.5], ['bk_quake',0.003], ['bk_elf_groundtrap',0.1], ['bk_elf_earthbless',0.01], ['bk_weaken',0.1], ['bk_seal',0.05], ['acc_demonbane',0.01], ['item_cyclops_blood',1]],   // ⚔️ 戰士試煉：獨眼巨人的血 1%
@@ -687,6 +687,8 @@
         ['柯利', 'relic_collie_fur', 0.0001],
         ['袋鼠', 'relic_kangaroo_gloves', 0.0001],
         ['猴子', 'relic_monkey_staff', 0.0001],
+        ['熊貓', 'item_panda_feed', 10], ['高麗幼犬', 'item_koreadog_feed', 10], ['暴走兔', 'item_carrot', 10],
+        ['袋鼠', 'item_kangaroo_feed', 10], ['猴子', 'item_monkey_feed', 10], ['老虎', 'item_tiger_feed', 10],
     ].forEach(function (r) { (MOB_DROPS[r[0]] = MOB_DROPS[r[0]] || []).push([r[1], r[2]]); });
     // 🏺 v3.1.15：潛行者的祕密箱子 改由「密密」掉落（原艾爾摩法師取消，該怪僅保留凋零法師的護身符）；巨大鱷魚的狩獵牙 改由「巨大鱷魚」掉落（原格利芬取消，該怪僅保留獅鷲的鋒利鷹爪）。
 
@@ -1202,18 +1204,7 @@ let createBase = {
 };
 let curCreate = { rawCls: 'm_royal', cls: 'royal', str:0, dex:0, con:0, int:0, wis:0, cha:0 };
 
-// ===== 犬類夥伴定義：項圈ID / 屬性 / 傷害骰偏移(1D(等級+diceOff)+魅力) / 命中偏移 =====
-const PET_DEF = {
-    '杜賓狗': { collar:'new_item_184', ele:'fire',  eleName:'火', diceOff:5, hitOff:0 },
-    '狼':     { collar:'new_item_185', ele:'wind',  eleName:'風', diceOff:1, hitOff:4 },
-    '哈士奇': { collar:'new_item_collar_husky', ele:'water', eleName:'水', diceOff:3, hitOff:2 },
-    '牧羊犬': { collar:'new_item_238', ele:'earth', eleName:'地', diceOff:4, hitOff:1 },
-    // 🐾 進化夥伴：傷害=1D(等級+diceOff)+魅力×chaMult；命中=等級+魅力×hitChaMult+hitOff−怪等級+怪AC；每擊10%觸發 proc 法術(套用玩家施法數值)
-    '暴走兔': { collar:'new_collar_rabbit',    ele:'water', eleName:'水', diceOff:11, hitOff:5, chaMult:1.2, hitChaMult:1.3, proc:'sk_ice_spike' },
-    '狐狸':   { collar:'new_collar_fox',       ele:'fire',  eleName:'火', diceOff:18, hitOff:3, chaMult:1.3, hitChaMult:1.2, proc:'sk_fireball' },     // 🔧 火箭→燃燒的火球
-    '小獵犬': { collar:'new_collar_beagle',    ele:'earth', eleName:'地', diceOff:15, hitOff:4, chaMult:1.3, hitChaMult:1.2, proc:'sk_rock_prison' },  // 🔧 地獄之牙→岩牢
-    '聖伯納': { collar:'new_collar_stbernard', ele:'wind',  eleName:'風', diceOff:10, hitOff:6, chaMult:1.2, hitChaMult:1.3, proc:'sk_thunder' }        // 🔧 風刃→極道落雷
-};
+// 🚫 舊項圈夥伴 PET_DEF 已移除——寵物的唯一真相＝js/22-pets.js 的 PET_BOOK（39 種型態，各自有等級/技能/裝備）。
 // 🦴 寵物裝備加成：裝在 player.eq.pet 的「之牙」→ 夥伴額外傷害/命中（含強化：每+1 各+1，飾品上限+5）
 // 🏺 遺物 馴獸師的訓狗棒：隊伍（玩家＋非倒地傭兵）任一人裝備 petSkillDmgMult → 夥伴 proc 技能傷害 ×N（多件不疊加·取最高）
 function _relicPetSkillMult() {
@@ -1222,15 +1213,18 @@ function _relicPetSkillMult() {
     if (typeof player !== 'undefined' && player) { _scan(player); (player.allies || []).forEach(function (a) { if (a && !a._downed) _scan(a); }); }
     return m;
 }
-function petGearBonus() {
+// 🦴 寵物裝備加成（個別裝備制）：讀「該寵物」p.eq.wpn 的之牙 → 額外傷害/命中（含強化：每 +1 各 +1，上限 +5）；收集冊/遺物的全體加成照舊
+function petGearBonus(p) {
     let _collHit = (player._equipPetHit || 0);   // 🗡️ 裝備收集冊：寵物裝備部位全收集 → 夥伴命中加成（不需裝備之牙也生效）
-    // 🏺 遺物「所有項圈夥伴額外傷害/命中」：掃玩家全部裝備欄的 petDmgAll/petHitAll 加總（牧神的放牧棍 傷害+3；食人妖精王的尖刺項圈 傷害/命中各+3；即使非寵物裝備欄的武器/防具/腰帶亦生效）
+    // 🏺 遺物「所有寵物額外傷害/命中」：掃玩家＋未倒地傭兵全部裝備欄的 petDmgAll/petHitAll 加總（牧神的放牧棍、食人妖精王的尖刺項圈…；武器/防具/腰帶皆生效）
+    //    範圍與 _relicPetSkillMult（訓狗棒）一致——傭兵持有也生效
     let _allDmg = 0, _allHit = 0;
-    if (player.eq) { for (let _k in player.eq) { let _e = player.eq[_k]; if (!_e) continue; let _dd = DB.items[_e.id]; if (_dd && _dd.petDmgAll) _allDmg += _dd.petDmgAll; if (_dd && _dd.petHitAll) _allHit += _dd.petHitAll; } }
-    let inst = player.eq && player.eq.pet;
+    let _scanPA = function (c) { if (!c || !c.eq) return; for (let _k in c.eq) { let _e = c.eq[_k]; if (!_e) continue; let _dd = DB.items[_e.id]; if (_dd && _dd.petDmgAll) _allDmg += _dd.petDmgAll; if (_dd && _dd.petHitAll) _allHit += _dd.petHitAll; } };
+    _scanPA(player); (player.allies || []).forEach(function (a) { if (a && !a._downed) _scanPA(a); });
+    let inst = p && p.eq && p.eq.wpn;   // 該寵物自己裝的「之牙」
     let d = inst ? DB.items[inst.id] : null;
     if(!inst || !d) return { dmg:_allDmg, hit:_collHit + _allHit };
-    let en = capEn(inst.en || 0, d);   // 飾品上限 +5
+    let en = capEn(inst.en || 0, d);   // 上限 +5
     return { dmg: (d.petDmg || 0) + en + _allDmg, hit: (d.petHit || 0) + en + _collHit + _allHit };
 }
 // 🐾 召喚物裝備加成（喚獸師的訓練鞭 summonDmg/summonHit）：掃 owner(玩家或傭兵) 全部裝備欄加總，餵給 summonAttack 的命中/傷害。
@@ -1265,13 +1259,6 @@ function petProcSpellDamage(skId, target) {
     let dmg = Math.max(1, Math.floor((core + (player.d.extraMp || 0)) * mrMult(effMr)) - (target.dr || 0));
     if (hasMastery('k_royal_pet')) dmg += (player.d.cha || 0);   // 👑 夥伴精通：項圈夥伴觸發魔法額外+魅力固定傷害
     return dmg;
-}
-function petCollarCount(name) {
-    let cid = PET_DEF[name] && PET_DEF[name].collar; if(!cid) return 0;
-    return player.inv.filter(i => i.id === cid).reduce((s,i) => s + (i.cnt || 1), 0);
-}
-function totalCollarCount() {
-    return Object.keys(PET_DEF).reduce((s,nm) => s + petCollarCount(nm), 0);
 }
 
 function uid() { return Math.random().toString(36).substr(2, 9); }

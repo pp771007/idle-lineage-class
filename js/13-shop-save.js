@@ -174,18 +174,18 @@ let _currentShopNpc = ''; // 用來記住目前是哪位商人
 
 // 根據 NPC ID 取得該商人販售的所有物品
 const SHOP_LISTS = {
-    npc_boni: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','new_item_143','candle'],   // 🏴‍☠️ 波尼（海賊島村莊 雜貨商人）
+    npc_boni: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle'],   // 🏴‍☠️ 波尼（海賊島村莊 雜貨商人）
     npc_linda: ['bk_elf_mr','bk_elf_mind','bk_elf_worldtree','bk_elf_purify','bk_elf_firewpn','bk_elf_windshot','bk_elf_earthguard','bk_elf_eleres','bk_elf_singleres'],
     npc_bayes: ['bk_fireball','bk_vampire','bk_rock_prison','bk_thunder','bk_ice_spike','bk_bless_wpn'],
     npc_gilen: ['bk_heal1','bk_sunlight','bk_shield','bk_lightarrow','bk_teleport','bk_icearrow','bk_windblade','bk_holy_wpn','bk_antidote','bk_cold_shiver','bk_poison_curse','bk_ench_wpn','bk_reveal','bk_load_up','bk_firearrow','bk_hell_fang','bk_heal_mid','bk_shield2','bk_energy_sense','bk_chill','bk_aurora','bk_dark_blind','bk_undead_bane'],
     npc_vangil: ['arm_103','arm_105','arm_108','arm_42','arm_43','hlm_mr','arm_68','arm_66','arm_67','amr_robe','arm_65','arm_63','arm_69','arm_60','arm_61','arm_62','amr_plate'],
     npc_evert: ['new_item_189','new_item_188','new_item_187'],
     npc_wino: ['wpn_shortsword','wpn_9','wpn_scimitar','wpn_37','wpn_invader','wpn_longsword','wpn_damascus','wpn_silversword','wpn_2hsword','wpn_katana','wpn_10','wpn_13','wpn_1','wpn_battleaxe','wpn_19','wpn_38','wpn_20','wpn_silveraxe','wpn_witchwand','wpn_18','wpn_giantaxe','wpn_28','wpn_14','wpn_6','wpn_3','wpn_17','wpn_15','wpn_7','wpn_21','wpn_16','wpn_halberd','wpn_12'],
-    npc_skvati: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle','new_item_143','wpn_claw_bronze','wpn_claw_steel','wpn_claw_shadow','wpn_claw_damascus','wpn_dual_bronze','wpn_dual_steel','wpn_dual_shadow','wpn_dual_damascus'],
+    npc_skvati: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle','wpn_claw_bronze','wpn_claw_steel','wpn_claw_shadow','wpn_claw_damascus','wpn_dual_bronze','wpn_dual_steel','wpn_dual_shadow','wpn_dual_damascus'],
     npc_saedia: ['bk_dark_str','bk_dark_mrup','bk_dark_stealth','bk_dark_poison','bk_dark_refine','bk_dark_dex','bk_dark_poisonres','bk_dark_burn','bk_dark_walkhaste'],
     npc_sphere: ['mem_confuse','mem_mirror','mem_crush','mem_ogre','mem_focus','mem_skullbreak','mem_lich','mem_endure'],   // 🔮 史菲爾只販賣這 8 種記憶水晶；其餘水晶改由掉落/製作/兌換取得（日光術改由吉蘭購得）
     npc_sempal: ['bk_dragon_guardbreak','bk_dragon_slaughter','bk_dragon_flameslash','bk_dragon_terror'],   // 🐉 森帕爾：4 種龍騎士書板（消滅者鎖鏈劍改為潘朵拉/普洛凱爾試煉取得）
-    default: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','potion_brave','new_item_140','new_item_139','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','new_item_142','candle','new_item_143']
+    default: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','potion_brave','new_item_140','new_item_139','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','new_item_142','candle']
 };
 // 🔧 商店販售清單（單一來源）：getShopItemsForNpc 與潘朵拉權重覆寫共用此表
 function getShopItemsForNpc(npcId) {
@@ -238,8 +238,8 @@ function renderShopItems() {
         let dim = learned || cantLearn;
 
         // 箭矢與肉的顯示判斷
-        let nameDisp = id === 'wpn_5' ? '箭 (1000根)' : (id === 'wpn_22' ? '銀箭 (1000根)' : (id === 'new_item_143' ? '肉 (1000個)' : d.n));
-        let priceDisp = id === 'wpn_5' ? shopPrice(100).toLocaleString() : (id === 'wpn_22' ? shopPrice(200).toLocaleString() : (id === 'new_item_143' ? shopPrice(100).toLocaleString() : shopPrice(d.p || 0).toLocaleString()));
+        let nameDisp = id === 'wpn_5' ? '箭 (1000根)' : (id === 'wpn_22' ? '銀箭 (1000根)' : d.n);
+        let priceDisp = id === 'wpn_5' ? shopPrice(100).toLocaleString() : (id === 'wpn_22' ? shopPrice(200).toLocaleString() : shopPrice(d.p || 0).toLocaleString());
 
         el.innerHTML = `
             <div class="flex items-center gap-4 min-w-0 flex-1 ${dim ? 'opacity-50' : ''}">
@@ -845,6 +845,7 @@ function saveGame() {
         // 🚨 寫入失敗（儲存空間滿/瀏覽器拒寫）一定要讓玩家知道：先前忽略 _lzSet 的回傳值，玩家會在「進度其實沒存進去」的情況下繼續玩，
         //    倉庫存取還可能因此複製或吃掉道具。失敗時設 _saveBroken，由倉庫存取閘擋下（見 js/12 whSaveBlocked）。
         if (!_lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })))) throw new Error('persistent storage write failed');
+        if (typeof petRosterSave === 'function' && !petRosterSave()) throw new Error('pet roster write failed');   // 🐾 寵物名冊是獨立的共用桶，與角色存檔一起成敗
         _saveBroken = false;
     } catch (e) {
         try { console.error('[saveGame] failed', e); } catch (_e) {}
@@ -957,9 +958,9 @@ function loadGame() {
         if(!player.lastMapByCat) player.lastMapByCat = {};
         if(player.tracking === undefined) player.tracking = null;
         // 相容舊存檔：單一 partner → partners 陣列
-        if(player.partners === undefined) player.partners = (player.partner ? [player.partner] : []);
         if(player.allies === undefined || !Array.isArray(player.allies)) player.allies = [];   // 協力角色（其他存檔位）
-        if(!Array.isArray(player.petStorage)) player.petStorage = [];   // 🐾 包武寵物保管（項圈，每角色獨立）
+        // 🐾 寵物系統 v2：舊項圈／肉／哨子／舊進化果實／舊 petStorage 一次性轉換與清除（轉成新寵物存進共用名冊）
+        try { if (typeof petMigrateLegacy === 'function') petMigrateLegacy(); } catch (e) { console.warn('petMigrateLegacy', e); }
         // 相容舊存檔：返生術改為被動技能，清除先前施放殘留的無作用 buff；初始化復活卷軸冷卻
         if(player.buffs) player.buffs.sk_resurrection = 0;
         if(player.buffs && player.buffs.haste >= 999999) player.buffs.haste = 0;   // 修復舊版伊娃之盾殘留的永久加速（改由 _equipHaste 旗標處理）
@@ -1172,15 +1173,7 @@ function confirmRespec() {
     player.alloc = { str:_respec.draft.str, dex:_respec.draft.dex, con:_respec.draft.con, int:_respec.draft.int, wis:_respec.draft.wis, cha:_respec.draft.cha };
     player.panacea = { str:0, dex:0, con:0, int:0, wis:0, cha:0 }; player.panaceaUsed = 0;
     if (used > 0) { gainItem('panacea_white', used, true, true); logSys(`回收已使用的萬能藥，獲得 <span class="text-slate-100 font-bold">純白的萬能藥</span> ×${used}。`); }
-    let collarIds = Object.keys(PET_DEF).map(nm => PET_DEF[nm].collar);
-    let collars = player.inv.filter(i => collarIds.includes(i.id));
-    if (collars.length > 0) {
-        let g = 0, cnt = 0;
-        collars.forEach(i => { g += getSellPrice(i) * (i.cnt || 1); cnt += (i.cnt || 1); });
-        player.inv = player.inv.filter(i => !collarIds.includes(i.id));
-        player.gold += g; player.partners = [];
-        logSys(`重置配點：自動賣出所有項圈共 ${cnt} 個，獲得 <span class="text-yellow-400 font-bold">${g}</span> 金幣。`);
-    }
+    try { if (typeof _petEnforceCarry === 'function') { _petEnforceCarry(); petRosterSave(); } } catch (e) {}   // 🐾 魅力變動 → 出戰上限可能下降，超出的寵物收回保管
     player.bonus = left;
     _respec = null;
     calcStats(); renderTabs(true); updateUI(); saveGame();
@@ -1204,17 +1197,7 @@ function resetStatsCandle() {
     if (_usedPanacea > 0) { gainItem('panacea_white', _usedPanacea, true, true); logSys(`回收已使用的萬能藥，獲得 <span class="text-slate-100 font-bold">純白的萬能藥</span> ×${_usedPanacea}。`); }
     // 可重新分配的點數 = 創角可分配點數 + (等級-49) 升級點數
     player.bonus = b.pts + Math.max(0, player.lv - 49);
-    // 重置點數時：自動賣出背包內所有項圈，並解除對應夥伴
-    let collarIds = Object.keys(PET_DEF).map(nm => PET_DEF[nm].collar);
-    let collars = player.inv.filter(i => collarIds.includes(i.id));
-    if (collars.length > 0) {
-        let g = 0, cnt = 0;
-        collars.forEach(i => { g += getSellPrice(i) * (i.cnt || 1); cnt += (i.cnt || 1); });
-        player.inv = player.inv.filter(i => !collarIds.includes(i.id));
-        player.gold += g;
-        player.partners = [];   // 項圈已全數賣出，解除所有夥伴
-        logSys(`重置配點：自動賣出所有項圈共 ${cnt} 個，獲得 <span class="text-yellow-400 font-bold">${g}</span> 金幣。`);
-    }
+    try { if (typeof _petEnforceCarry === 'function') { _petEnforceCarry(); petRosterSave(); } } catch (e) {}   // 🐾 魅力變動 → 出戰上限可能下降，超出的寵物收回保管
     calcStats();
     updateUI();
     logSys(`所有配點已重置，請重新分配。`);

@@ -467,6 +467,7 @@ function tick() {
                     ? Math.max(1, Math.floor((rollDice(_h.healDice[0], _h.healDice[1]) + (_h.healBase || 0)) * _h.spCoef * (_h.healMult || 1)))
                     : Math.max(1, Math.floor((roll(_h.valDice[0], _h.valDice[1]) + (_h.magicDmg || 0)) * (_h.healMult || 1)));
                 player.hp = Math.min(player.mhp, player.hp + heal);   // 🔧 水之元氣不套用於持續回復(HoT)
+                try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed && (p.hp || 0) > 0) p.hp = Math.min(p.mhp || 1, p.hp + heal); }); } catch (e) {}   // 🐾 團隊 HoT 也回出戰寵物的血
                 _hotAllies.forEach(a => { a.curHp = Math.min(a.mhp || 1, (a.curHp || 0) + heal); });   // 🍃 全體傭兵同步回復
                 _h.ticksLeft--;
                 logCombat(`${_h.skName} 為全隊回復了 ${heal} 點 HP。${_h.msg || ''}`, 'heal');
@@ -477,69 +478,8 @@ function tick() {
     }
     // 🔧 誘捕倒數已併入 tick() 每秒區塊的統一 buff 遞減點
 
-    // 夥伴攻擊判定 (每20 ticks = 2秒)：每個夥伴消耗 =項圈數量 的肉，造成 =項圈數量 次屬性傷害
-    if (state.ticks % 20 === 0 && !player.dead && player.partners && player.partners.length > 0) {
-        // 賣出/丟棄項圈：自動解除沒有對應項圈的夥伴
-        player.partners = player.partners.filter(nm => {
-            if (petCollarCount(nm) > 0) return true;
-            logSys(`因為您丟棄或售出了項圈，夥伴【${nm}】已經離開了您。`);
-            return false;
-        });
-        let target = getTarget();
-        let cha = player.d.cha || 0;   // 誘捕夥伴：命中/傷害隨完整魅力提升（含超過60）；僅「項圈數量」另以60封頂
-        let pg = petGearBonus();   // 🦴 寵物裝備：夥伴額外傷害/命中（影響所有項圈夥伴）
-        if (target && target.curHp > 0 && player.partners.length > 0) {
-            _combatSrc = 'pet';   // ⚔️ 夥伴(項圈犬類)戰鬥訊息來源情境
-            let _dpsPetSnap = _dpsSnap();   // 🎯 DPS：夥伴階段起點快照
-            player.partners.forEach(nm => {
-                let pd = PET_DEF[nm]; if(!pd) return;
-                let hits = petCollarCount(nm);
-                for (let i = 0; i < hits; i++) {
-                    if (target.curHp <= 0) break;
-                    let meat = player.inv.find(it => it.id === 'new_item_143');
-                    if (!meat || meat.cnt <= 0) break;   // 沒有肉就停止
-                    meat.cnt--;
-                    if (meat.cnt <= 0) player.inv = player.inv.filter(it => it.id !== 'new_item_143');
-                    // 命中 = 玩家等級 + 魅力×hitChaMult + 偏移(+寵裝命中) - 怪物等級 + 怪物AC
-                    let hv = Math.max(1, Math.min(20, player.lv + Math.floor(cha * ((pd.hitChaMult || 1) * (hasMastery('k_royal_pet') ? 1.2 : 1))) + pd.hitOff + pg.hit - target.lv + mobEffAC(target) + (hasSummonCtrlRing() ? 5 : 0) + (typeof _relicPartnerHit === 'function' ? _relicPartnerHit(nm) : 0)));   // 🔧 召喚控制戒指：召喚物命中+5；👑 夥伴精通：魅力命中係數×1.2；🏺 遺物夥伴專屬命中（哈士奇的骨棒：哈士奇+6）
-                    let r = roll(1, 20);
-                    if (r === 20 || (r !== 1 && hv >= r) || (r === 19 && hasSummonCtrlRing())) {
-                        let dmg = Math.max(1, roll(1, Math.max(1, player.lv + pd.diceOff)) + Math.floor(cha * ((pd.chaMult || 1) * (hasMastery('k_royal_pet') ? 1.2 : 1))) + pg.dmg - (target.dr || 0));   // 👑 夥伴精通：魅力傷害係數×1.2
-                        dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：項圈夥伴造成傷害 ×(1+魅力/100)（非王族＝×1）
-                        target.curHp -= dmg; target.justHit = pd.ele; mobWake(target);
-                        logCombat(`夥伴 [${nm}] 撕咬 <span class="${getMobColor(target.lv)}">${target.n}</span>，造成 ${dmg} 點${pd.eleName}屬性傷害！`, 'player-special');
-                    } else {
-                        logCombat(`夥伴 [${nm}] 的攻擊未命中。`, 'miss');
-                    }
-                    // 🐾 進化夥伴：攻擊時 10% 觸發 proc 法術（傷害＝玩家自身施法數值；必定命中、吃魔抗）
-                    // 🔧 依技能 target:"all" → 對全場敵人各自結算（各吃自身魔抗/DR）；單體技能僅打當前目標
-                    if (pd.proc && target.curHp > 0 && Math.random() < 0.10) {
-                        let _ps = DB.skills[pd.proc];
-                        if (_ps) {
-                            let _pts = (_ps.target === 'all') ? mapState.mobs.filter(m => m && m.curHp > 0) : [target];
-                            let _ptexts = [];
-                            _pts.forEach(_pm => {
-                                let _pdmg = petProcSpellDamage(pd.proc, _pm);
-                                if (_pdmg > 0) {
-                                    _pdmg = Math.max(1, Math.floor(_pdmg * royalAllyMult() * _relicPetSkillMult()));   // 👑 王族魅力加成：夥伴 proc 法術傷害 ×(1+魅力/100)；🏺 遺物 馴獸師的訓狗棒：夥伴技能傷害 ×N
-                                    _pm.curHp -= _pdmg; _pm.justHit = _ps.ele || pd.ele; mobWake(_pm);
-                                    _ptexts.push(`<span class="${getMobColor(_pm.lv)}">${_pm.n}</span> ${_pdmg}`);
-                                }
-                            });
-                            if (_ptexts.length) logCombat(`夥伴 [${nm}] 額外施展 <span class="text-pink-300 font-bold">${_ps.n}</span> → ${_ptexts.join('、')}`, 'player-special');
-                            _pts.forEach(_pm => { if (_pm.curHp <= 0) { let _ri = mapState.mobs.findIndex(m => m && m.uid === _pm.uid); if (_ri !== -1) killMob(_ri); } });
-                        }
-                    }
-                }
-            });
-            let idx = mapState.mobs.findIndex(m => m && m.uid === target.uid);
-            if (target.curHp <= 0 && idx !== -1) killMob(idx);
-            else renderMobs();
-            renderTabs();   // 肉數量變動需刷新
-            { let _petd = _dpsDealt(_dpsPetSnap); if (_petd > 0) _dps.pet += _petd; }   // 🎯 DPS：結算夥伴階段輸出
-            _combatSrc = null;   // ⚔️ 結束夥伴來源情境
-        }
-    }
+    // 🐾 寵物系統 v2：出戰寵物獨立行動（攻速/施法/喝藥水/復活全在 petsTick 內；攻擊不再消耗肉）
+    if (typeof petsTick === 'function') { _combatSrc = 'pet'; try { petsTick(); } catch (e) {} _combatSrc = null; }
 }
 
 // 體能激發/能量激發：負重狀態下仍可自然恢復 HP、MP（身上任一 loadFreeRegen 增益生效即放行）

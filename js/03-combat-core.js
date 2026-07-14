@@ -434,7 +434,7 @@ function tick() {
     }
 
     if(!player.dead) { let _auraSnap = _dpsSnap(); try { relicAuraTick(); } catch(e){} let _auraDealt = _dpsDealt(_auraSnap); if(_auraDealt > 0) _dps.player += _auraDealt; }   // 🏺 蠅災的詛咒等 auraDmg：玩家階段週期全體固定魔傷（自帶快照→正確計入玩家 DPS）
-    if(!player.dead) { _combatSrc = 'summon'; let _dpsSumSnap = _dpsSnap(); summonTick(player.summon, () => { player.summon = null; }); summonTick(player.charmed, () => { player.charmed = null; }); if(player.cls === 'illusion') { cubeTick(); illuSummonTick(); } { let _sd = _dpsDealt(_dpsSumSnap); if (_sd > 0) _dps.summon += _sd; }   /* 🎯 DPS：召喚（玩家召喚/迷魅/幻術立方）輸出 */ _combatSrc = 'mercenary'; alliesTick(); _combatSrc = null; }   // ⚔️ 召喚(含迷魅)/傭兵 戰鬥訊息來源情境；🔮 幻術士立方週期效果＋幻術精通幻象
+    if(!player.dead) { _combatSrc = 'summon'; let _dpsSumSnap = _dpsSnap(); summonTick(player.summon, () => { player.summon = null; }); summonTick(player.charmed, () => { player.charmed = null; }); if (typeof summonV2Tick === 'function') { try { summonV2Tick(); } catch (e) {} }   /* 🧙 召喚獸 v2：有 HP 的多實體（召喚術/造屍術/屬性精靈）*/ if(player.cls === 'illusion') { cubeTick(); illuSummonTick(); } { let _sd = _dpsDealt(_dpsSumSnap); if (_sd > 0) _dps.summon += _sd; }   /* 🎯 DPS：召喚（玩家召喚/迷魅/幻術立方）輸出 */ _combatSrc = 'mercenary'; alliesTick(); _combatSrc = null; }   // ⚔️ 召喚(含迷魅)/傭兵 戰鬥訊息來源情境；🔮 幻術士立方週期效果＋幻術精通幻象
     if(!player.dead) pledgeBlessTick();   // 生命的祝福：場上血盟怪物持續治療
     // 盟主祝福到期清理（每秒檢查；到期即移除並重算屬性）
     if(!player.dead && player.blessings && state.ticks % 10 === 0) {
@@ -468,6 +468,7 @@ function tick() {
                     : Math.max(1, Math.floor((roll(_h.valDice[0], _h.valDice[1]) + (_h.magicDmg || 0)) * (_h.healMult || 1)));
                 player.hp = Math.min(player.mhp, player.hp + heal);   // 🔧 水之元氣不套用於持續回復(HoT)
                 try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed && (p.hp || 0) > 0) p.hp = Math.min(p.mhp || 1, p.hp + heal); }); } catch (e) {}   // 🐾 團隊 HoT 也回出戰寵物的血
+                try { if (typeof summonV2List === 'function') summonV2List().forEach(s2 => { if (s2 && !s2._downed && (s2.hp || 0) > 0) s2.hp = Math.min(s2.mhp || 1, s2.hp + heal); }); } catch (e) {}   // 🧙 召喚物同樣受惠
                 _hotAllies.forEach(a => { a.curHp = Math.min(a.mhp || 1, (a.curHp || 0) + heal); });   // 🍃 全體傭兵同步回復
                 _h.ticksLeft--;
                 logCombat(`${_h.skName} 為全隊回復了 ${heal} 點 HP。${_h.msg || ''}`, 'heal');

@@ -160,6 +160,13 @@ function chooseElfElement(ele) {
 }
 function _applyElfElement(ele) {
     player.elfEle = ele;
+    // 🧝 已召喚的屬性精靈跟著換屬性：先收回，自動重施會用新屬性召回（保留自動重施開關）
+    if ((player._summonV2Sk === 'sk_elf_summon' || player._summonV2Sk === 'sk_elf_summon2')
+        && typeof summonV2List === 'function' && summonV2List().length && typeof summonV2DismissAll === 'function') {
+        const _on = player._summonV2On;
+        summonV2DismissAll(true);
+        player._summonV2On = _on;
+    }
     applyElfBorder();
     calcStats();
     renderTabs();
@@ -844,7 +851,14 @@ function saveGame() {
         // 🔧 架構#6：寫入存檔版本（🛡️ 加完整性簽章後 💾 LZString 壓縮）；一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準
         // 🚨 寫入失敗（儲存空間滿/瀏覽器拒寫）一定要讓玩家知道：先前忽略 _lzSet 的回傳值，玩家會在「進度其實沒存進去」的情況下繼續玩，
         //    倉庫存取還可能因此複製或吃掉道具。失敗時設 _saveBroken，由倉庫存取閘擋下（見 js/12 whSaveBlocked）。
-        if (!_lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })))) throw new Error('persistent storage write failed');
+        // 🧙 召喚實體是執行期的東西、不入存檔（讀檔後由自動重施重建）：寫檔前暫清、寫完還原
+        let _sv2 = player.summonsV2;
+        if (_sv2 && _sv2.length) player.summonsV2 = [];
+        let _wrote;
+        try {
+            _wrote = _lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })));
+        } finally { if (_sv2 && _sv2.length) player.summonsV2 = _sv2; }
+        if (!_wrote) throw new Error('persistent storage write failed');
         if (typeof petRosterSave === 'function' && !petRosterSave()) throw new Error('pet roster write failed');   // 🐾 寵物名冊是獨立的共用桶，與角色存檔一起成敗
         _saveBroken = false;
     } catch (e) {
@@ -961,6 +975,7 @@ function loadGame() {
         if(player.allies === undefined || !Array.isArray(player.allies)) player.allies = [];   // 協力角色（其他存檔位）
         // 🐾 寵物系統 v2：舊項圈／肉／哨子／舊進化果實／舊 petStorage 一次性轉換與清除（轉成新寵物存進共用名冊）
         try { if (typeof petMigrateLegacy === 'function') petMigrateLegacy(); } catch (e) { console.warn('petMigrateLegacy', e); }
+        player.summonsV2 = [];   // 🧙 召喚實體不入檔；清掉舊存檔可能殘留的，由自動重施重建
         // 相容舊存檔：返生術改為被動技能，清除先前施放殘留的無作用 buff；初始化復活卷軸冷卻
         if(player.buffs) player.buffs.sk_resurrection = 0;
         if(player.buffs && player.buffs.haste >= 999999) player.buffs.haste = 0;   // 修復舊版伊娃之盾殘留的永久加速（改由 _equipHaste 旗標處理）

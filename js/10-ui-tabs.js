@@ -472,6 +472,7 @@ function onSummonToggle(sid) {
             calcStats();
             renderStatusEffects();
         }
+        if (typeof summonV2DismissAll === 'function' && ((player._summonV2Sk || 'sk_summon') === sid)) summonV2DismissAll();   // 🧙 取消勾選 → v2 召喚物也解散（並關掉自動重施）
     }
     updateSummonLock();
 }
@@ -561,7 +562,16 @@ function renderSkillSelects() {
             let __autoBuffAttr = (!__isPurify && !sk.summon && !sk.awaken && (sk.type === 'buff' || (sk.type === 'heal' && sk.autoBuff))) ? ` onchange="onAutoBuffToggle('${sid}')"` : '';
             let __span = __isPurify ? 'text-teal-300' : 'text-purple-300';
             let __ttl = __locked ? ' title="魔法相消術已涵蓋此效果"' : (__awakenLocked ? ' title="同時只能使用一種覺醒（需「覺醒精通」才能三種並用）"' : '');
-            buffHtml += `<label class="cursor-pointer flex items-center gap-2 ${(isAvail && !__locked && !__awakenLocked)?'':'opacity-50'}"${__ttl}><input type="checkbox" id="auto-sk-${sid}" ${checked} ${__dis}${sumAttr}${__awakenAttr}${__purAttr}${__autoBuffAttr}> <span class="${__span}">${sk.n}</span></label>`;
+            // 🧙 召喚術：戴召喚控制戒指可挑要召什麼（沒戴就顯示目前會召的預設）
+            let __sumSel = '';
+            if (sid === 'sk_summon' && isAvail && typeof summonV2ActiveForm === 'function') {
+                let __ring = (typeof hasSummonCtrlRing === 'function') && hasSummonCtrlRing(player);
+                let __cur = summonV2ActiveForm() || '—';
+                __sumSel = __ring
+                    ? ` <button onclick="openSummonSelect()" class="text-cyan-300 underline" style="font-size:11px;" title="召喚控制戒指：挑選要召喚的怪">［${__cur}］</button>`
+                    : ` <span class="text-slate-500" style="font-size:11px;" title="裝備召喚控制戒指才能挑選">［${__cur}］</span>`;
+            }
+            buffHtml += `<label class="cursor-pointer flex items-center gap-2 ${(isAvail && !__locked && !__awakenLocked)?'':'opacity-50'}"${__ttl}><input type="checkbox" id="auto-sk-${sid}" ${checked} ${__dis}${sumAttr}${__awakenAttr}${__purAttr}${__autoBuffAttr}> <span class="${__span}">${sk.n}</span>${__sumSel}</label>`;
         }
         if(sk.type === 'convert') {
             if (needLv !== undefined) cHtml += `<option value="${sid}" ${dis}>${sk.n}</option>`;   // 🔧 該職業無法學習的轉換技直接不顯示（如法師的心靈轉換/魂體轉換）；等級未達者仍顯示為灰字
@@ -2004,9 +2014,15 @@ function renderSquadPanel() {
     if (!panel) return;
     if (!_autoCollapseInit) { _autoCollapseInit = true; }   // 🔧 v2.6.76 收合偏好停用：自動化設定已改分頁內嵌(v2.6.74)、傭兵隊伍面板取消收合恆展開（舊 fb5_*_collapsed 偏好不再套用·防「收合過就永遠展不開」）
     let allies = (player && player.allies) ? player.allies.filter(Boolean) : [];
-    if (!allies.length) { panel.style.display = 'none'; _squadSig = ''; return; }
+    let _pets = (typeof petsOutList === 'function' && player && player.cls) ? petsOutList() : [];   // 🐾 出戰寵物
+    let _summons = (typeof summonV2List === 'function' && player && player.cls) ? summonV2List().filter(x => x && !x._downed && (x.hp || 0) > 0) : [];   // 🧙 召喚物
+    let _summonSk = (typeof summonV2ActiveSk === 'function') ? summonV2ActiveSk() : '';
+    let _summonVisible = _summons.length > 0 || !!(player && player._summonV2On && _summonSk && typeof summonV2Knows === 'function' && summonV2Knows(_summonSk));
+    if (!allies.length && !_pets.length && !_summonVisible) { panel.style.display = 'none'; _squadSig = ''; return; }
     panel.style.display = '';
-    let sig = allies.map(a => a._slot + ':' + (a._allyName || '') + ':' + (a._downed ? 'D' : '') + ':' + (a.lv || 1)).join('|');   // 名單/倒地/等級變動才重建結構（升級即更新 Lv 顯示）
+    let sig = allies.map(a => a._slot + ':' + (a._allyName || '') + ':' + (a._downed ? 'D' : '') + ':' + (a.lv || 1)).join('|')
+        + '#P' + _pets.map(p => p.uid + ':' + (p._downed ? 'D' : '') + ':' + (p.lv || 1)).join(',')
+        + '#S' + _summons.map(x => x.uid + ':' + (x.lv || 1)).join(',');   // 🐾🧙 寵物/召喚物變動也要重建（沒有傭兵時原本 sig 恆為空字串→面板永遠不重建）   // 名單/倒地/等級變動才重建結構（升級即更新 Lv 顯示）
     if (sig !== _squadSig) {
         _squadSig = sig;
         document.getElementById('squad-tab-team').innerHTML = allies.map(a => {
@@ -2031,7 +2047,9 @@ function renderSquadPanel() {
                 <div class="flex items-center gap-1"><span class="text-yellow-500 text-xs text-right" style="width:1.6rem;">EXP</span><div class="bar-bg flex-1 !h-4"><div id="squad-exp-${s}" class="bar-fill bg-yellow-500" style="width:0%"></div><div id="squad-exp-txt-${s}" class="bar-text text-white text-xs" style="line-height:16px;">0%</div></div></div>
                 <button onclick="switchToAllyChar('${s}')" class="mt-0.5 py-1 px-2 text-xs font-bold rounded border whitespace-nowrap" style="background:#065f46;border-color:#10b981;color:#a7f3d0;" title="儲存目前角色進度，並切換到此角色遊玩">💾 存檔並切換至此角色</button>
             </div>`;
-        }).join('');
+        }).join('')
+            + ((typeof renderPetTeamHTML === 'function') ? renderPetTeamHTML() : '')
+            + ((typeof renderSummonTeamHTML === 'function') ? renderSummonTeamHTML() : '');   // 隊伍排列：傭兵 → 寵物 → 召喚物
         document.getElementById('squad-tab-skill').innerHTML = allies.map(a => {
             let s = a._slot;
             let hpPct = (a._healHpPct != null) ? a._healHpPct : 70;

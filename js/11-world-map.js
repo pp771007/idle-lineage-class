@@ -1385,6 +1385,22 @@ function _applyMastery(id) {
         player.buffs[player.summon.skId] = 0; player.summon = null;   // 精靈精通解除：收回已召喚屬性精靈
         logSys('屬性精靈隨著精通的轉移而消散了。');
     }
+    // 🧝 精靈精通解除 → v2 的精靈實體全數收回（自動施放的勾選還在，下一拍會重新召出「非精靈王」版本）
+    if (prev === 'e_spirit' && (player._summonV2Sk === 'sk_elf_summon' || player._summonV2Sk === 'sk_elf_summon2')
+        && typeof summonV2List === 'function' && summonV2List().length && typeof summonV2DismissAll === 'function') {
+        const _onA = player._summonV2On;
+        summonV2DismissAll(true);
+        player._summonV2On = _onA;   // 保留自動重施開關（與勾選一致）
+        logSys('屬性精靈隨著精通的轉移而消散了。');
+    }
+    // 👑 切「入」精靈精通：在場的強力屬性精靈先收回 → 自動重施時昇華為精靈王
+    if (id === 'e_spirit' && prev !== 'e_spirit' && player._summonV2Sk === 'sk_elf_summon2'
+        && typeof summonV2List === 'function' && summonV2List().length && typeof summonV2DismissAll === 'function') {
+        const _on = player._summonV2On;
+        summonV2DismissAll(true);
+        player._summonV2On = _on;
+        logSys('精靈之力開始昇華——強力精靈將以「精靈王」之姿重新現身。');
+    }
     // 🐉 覺醒精通解除：離開覺醒精通後同時只能維持一種覺醒——清除多餘的覺醒增益（保留第一個生效者），
     //    否則先前同時開啟的三種覺醒會殘留到自然倒數結束（自動施放互斥只擋新施放、不會收回既有的）。
     if (id !== 'k_awaken' && player.buffs) {

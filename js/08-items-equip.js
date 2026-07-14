@@ -1063,6 +1063,7 @@ function renderStatusEffects() {
             // 迷魅術 / 各召喚術：狀態欄改顯示召喚物名稱（近戰召喚附上隨從數字 floor(魅力/6)，為1則不顯示）；
             //   召喚物不存在（死亡解除 / 被新召喚取代 / 已消失）時就不顯示，避免殘留。
             if(k === 'sk_charm' || DB.skills[k].summon) {
+                if(k !== 'sk_charm' && player._summonV2Sk === k) continue;   // 🧙 v2 召喚物已在戰場上有自己的血量框與隊伍列，狀態欄不再重複顯示
                 let _creature = (k === 'sk_charm') ? player.charmed : player.summon;
                 if(_creature && _creature.skId === k) {
                     let _chaC = Math.min(60, player.d.cha || 0);

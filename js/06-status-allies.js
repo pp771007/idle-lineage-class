@@ -274,6 +274,7 @@ function buildAlly(slotN) {
     if (!p || !p.cls) return null;
     let ally = JSON.parse(JSON.stringify(p));   // 深拷貝，不動原存檔
     ally._mercPermanentPotions = true;   // 🤝 傭兵常駐職業藥水效果（加速全職；勇敢/餅乾/慎重依職業，見 js/02 recomputeStats）
+    delete ally.summonsV2; delete ally._summonV2On; delete ally._summonV2Sk; delete ally._summonV2RecastCd;   // 🧙 v2 召喚是玩家專屬的執行期實體，不隨傭兵快照入檔
     // 安全防護：補齊 calcStats 會取用的欄位，並清掉協力者自身的召喚/夥伴/變身
     ally.buffs = ally.buffs || {}; ally.statuses = ally.statuses || {}; ally.eq = ally.eq || {}; ally.skills = ally.skills || [];
     ally.blessings = (ally.blessings && typeof ally.blessings === 'object') ? ally.blessings : {};
@@ -1801,6 +1802,7 @@ function healBeneficiaries() {
     if (typeof player !== 'undefined' && player && !player.dead) arr.push(player);
     (typeof player !== 'undefined' && player && player.allies || []).forEach(a => { if (a && !a._downed && (a.curHp || 0) > 0) arr.push(a); });
     try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed && (p.hp || 0) > 0) arr.push(p); }); } catch (e) {}
+    try { if (typeof summonV2List === 'function') summonV2List().forEach(x => { if (x && !x._downed && (x.hp || 0) > 0) arr.push(x); }); } catch (e) {}   // 🧙 召喚物也能被治癒
     return arr;
 }
 function _supHp(m) { return (m === player) ? (m.hp || 0) : (m && m.curHp != null ? (m.curHp || 0) : (m ? (m.hp || 0) : 0)); }   // 傭兵＝curHp；玩家/寵物＝hp

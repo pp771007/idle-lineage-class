@@ -713,7 +713,14 @@ function castSkillInner(skId) {
         if(sk.reqWpnMelee && (!player.eq.wpn || DB.items[player.eq.wpn.id].isBow || DB.items[player.eq.wpn.id].ranged)) return false;   // 🐉 燃燒擊砍：須裝備近距離武器
         if(sk.reqWpnBlunt && (!player.eq.wpn || !(getWeaponTags(player.eq.wpn.id).includes('單手鈍器') || getWeaponTags(player.eq.wpn.id).includes('雙手鈍器')))) return false;   // ⚔️ 戰斧投擲：須裝備單手／雙手鈍器
         if(sk.reqShield && !player.eq.shield && !(player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('武士刀'))) return false;   // 武士刀：免盾亦可施展
-        if(sk.summon) { setupSummon(skId, sk); player.mp -= cost; calcStats(); return true; }
+        // 🧙 召喚類 v2：召喚術／造屍術／屬性精靈 分流到 js/23（有 HP 的多實體）；其餘（迷魅怪等）走舊的 setupSummon
+        if(sk.summon) {
+            if (typeof SUMMON_V2_SKILLS !== 'undefined' && SUMMON_V2_SKILLS.includes(skId) && typeof summonV2CastFor === 'function') {
+                if (!summonV2CastFor(skId, false)) return false;
+                player.mp -= cost; calcStats(); return true;
+            }
+            setupSummon(skId, sk); player.mp -= cost; calcStats(); return true;
+        }
         // 淨化類：無對應可解除的負面狀態則不施放
         if(skId === 'sk_antidote' || skId === 'sk_holy_light' || skId === 'sk_cancel') {
             let _purifyOk = (skId === 'sk_antidote') ? (player.statuses.poison > 0)

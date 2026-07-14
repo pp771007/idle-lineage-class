@@ -552,8 +552,6 @@ const DARK_BLOCK = [
     '神官頭飾','神官法袍','神官長靴','神官斗篷','神官手套',   // 🔧 神官系列：黑暗妖精禁用（僅法師/妖精）
     '巨蟻女皇的金翅膀'   // 🔧 依文本（騎士/妖精）：黑暗妖精禁用（銀翅膀文本含黑暗妖精則可用）
 ];
-// 🔧 既有十字弓白名單：這些（輸入此規則前已存在的）十字弓黑暗妖精照舊可用；其餘/之後新增的十字弓改依文本(req)
-const DARK_XBOW_LEGACY = ['wpn_31', 'wpn_xbow_dark', 'wpn_xbow_gloom', 'wpn_xbow_rasta'];
 function darkEquipOk(d, id) {
     if (!d) return false;
     if (d.type === 'wpn') {
@@ -563,9 +561,9 @@ function darkEquipOk(d, id) {
         let tags = getWeaponTags(id);
         if (tags.includes('匕首') || tags.includes('單手劍') || tags.includes('鋼爪') || tags.includes('雙刀') || tags.includes('武士刀')) return true;   // 🔧 黑暗妖精亦可使用武士刀
         if (d.isBow) {
-            // 🔧 既有十字弓：黑暗妖精照舊可用（沿用通用規則的既有清單）；之後新增的十字弓一律依文本（req 含 dark 才可用）
-            if (DARK_XBOW_LEGACY.includes(id)) return true;
-            return (d.n || '').includes('十字弓') && (d.req || '').includes('dark');
+            // 🏹 弓具可否使用一律逐把由 req 顯式標示：req 必須明確列出 dark 才可用（req:'all' 的一般長弓不可用＝黑暗妖精不使用長弓，刻意非疏漏）。
+            //    ⚠️新增弓/十字弓要給黑暗妖精＝req 加 dark；不給＝req 不列 dark。
+            return typeof d.req === 'string' && d.req !== 'all' && d.req.split(',').includes('dark');
         }
         return false;                                                   // 單手鈍器/雙手鈍器/魔杖/雙手劍/矛 等：禁用
     }

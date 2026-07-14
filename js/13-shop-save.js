@@ -1145,6 +1145,7 @@ function loadGame() {
         // 計時器統一由 startGameTimers() 註冊（內含去重），含每 5 分鐘自動存檔。
         startGameTimers();
         logSys(`===== 歡迎回來 =====`);
+        try { if (typeof siegeUpkeepTick === 'function') siegeUpkeepTick(); } catch (e) {}   // 🛡️ 自動守城：補算關遊戲期間錯過的每日結算（逐日扣維持費，扣不動就停在失守那天）
         if (_offPre && typeof offlineAfterLoad === 'function') offlineAfterLoad(_offPre);   // 🌙 離線掛機：載入完成後結算離線收益（js/offline.js；不需結算時內部自行略過）
     }
 }

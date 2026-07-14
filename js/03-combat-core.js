@@ -218,6 +218,7 @@ function tick() {
     }
     if (state.ticks % 10 === 0) siegeTick();   // 攻城戰：每秒檢查時限
     if (state.ticks % 100 === 0) { try { refreshPandoraMarket(false); } catch (e) {} }   // 🔧 潘朵拉黑市：每 10 秒檢查是否到 10 分鐘換商品（含稀有公告）
+    if (state.ticks % 600 === 0 && typeof siegeUpkeepTick === 'function') { try { siegeUpkeepTick(); } catch (e) {} }   // 🛡️ 自動守城：每分鐘看一次有沒有跨過每日重置點（牆鐘判定·關遊戲期間錯過的由 loadGame 補算）
     if (state._junkSellAt == null) state._junkSellAt = state.ticks + JUNK_AUTOSELL_TICKS;   // 🗑️ 自動賣廢品倒數：預設 10 秒（JUNK_AUTOSELL_TICKS）
     if (state.ticks >= state._junkSellAt) { try { if (typeof autoSellJunk === 'function' && (!player || player.autoSellOn !== false)) autoSellJunk(); } catch (e) {} state._junkSellAt = state.ticks + JUNK_AUTOSELL_TICKS; }   // 🗑️ 倒數到→若「自動賣出」開啟(player.autoSellOn!==false·預設開)則賣出標示為廢品的物品並重新排程 10 秒；停止賣出時只重排程不賣。玩家手動標示廢品會把此時間往後推 10 秒（_bumpJunkSellTimer）。⚠️自動路徑 autoSellJunk() 不 saveGame（效能·靠其他存檔點落地）
     

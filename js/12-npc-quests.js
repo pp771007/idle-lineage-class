@@ -533,6 +533,7 @@ function renderPledgeNPC(div, faction) {
                     <button class="btn bg-red-800 hover:bg-red-700 border-red-500 text-red-100 py-3 px-3 font-bold flex-1 leading-tight flex flex-col items-center justify-center gap-0.5" onclick="openSiegeSelect('${faction}')"><span class="text-base">⚔ 攻城戰</span><span class="text-[10px] text-red-300 font-normal">選擇要攻打的城池</span></button>
                     <button class="btn bg-amber-700 hover:bg-amber-600 border-amber-400 text-amber-50 py-3 px-3 font-bold flex-1 leading-tight flex flex-col items-center justify-center gap-0.5" onclick="claimSiegeReward('${faction}')"><span class="text-base">🏆 領賞</span><span class="text-[10px] text-amber-200 font-normal">攻城後領取</span></button>
                 </div>
+                <div class="text-center text-xs text-slate-300 bg-slate-800/60 border border-slate-600 rounded px-2 py-1">${(typeof siegeStatusText === 'function') ? siegeStatusText() : ''}</div>
                 <div class="text-center text-amber-300 font-bold text-base">切換式自動續期：時間到自動扣王族搜索狀續期</div>
                 <div class="text-center text-slate-400 text-xs">持有王族搜索狀：<span class="text-green-400 font-bold">${warrant}</span> 張（點一下切換；開啟時未生效即扣 1 張啟用，到期自動扣 1 張續 24h，沒得扣或關閉即止）</div>
                 <div class="grid grid-cols-2 gap-2">${cards}</div>

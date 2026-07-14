@@ -667,7 +667,56 @@ function departToLastBattle() {
 }
 
 // ===== 攻城戰（第一階段：核心循環）=====
+// 🏰 時間規則：冷卻與占領結算都對齊「每日重置點」，不是「上一場結束 +24 小時」。
+//    滾動 24 小時會讓每天的開打時間單向往後漂（打一場又吃掉最多 30 分鐘）→ 想維持 8 折就得越睡越晚。
+//    對齊固定時點後，今晚幾點打、明晚就能幾點打。
+const SIEGE_RESET_HOUR = 5;                 // 每日重置點＝清晨 5 點（本地時間）
+const SIEGE_MIN_GAP_MS = 8 * 3600 * 1000;   // 兩場之間的最短間隔：擋掉「重置點前打一場、過了重置點又立刻打一場」
+const SIEGE_UPKEEP_WARRANTS = 5;            // 🛡️ 自動守城的每日維持費（宣戰是 10 張）
+function siegeNextResetTs(from) {           // from 之後的下一個重置點
+    let d = new Date(from);
+    d.setHours(SIEGE_RESET_HOUR, 0, 0, 0);
+    if (d.getTime() <= from) d.setDate(d.getDate() + 1);
+    return d.getTime();
+}
 function siegeWarrants() { return pledgeCountItem('new_item_241'); }   // 王族搜索狀數量
+function _siegeTimeText(ts) { let t = new Date(ts); let p2 = n => String(n).padStart(2, '0'); return `${t.getMonth() + 1}/${t.getDate()} ${p2(t.getHours())}:${p2(t.getMinutes())}`; }
+function siegeStatusText() {   // 盟主面板用：占領狀態＋下次可宣戰時間
+    let s = (player && player.siege) || {}, now = Date.now(), out = [];
+    if (s.victoryCity && (s.victoryUntil || 0) > now) {
+        let cfg = (typeof victoryCityCfg === 'function') ? victoryCityCfg() : null;
+        out.push(`🛡️ 占領中：${(cfg && cfg.castleName) || '城堡'}（下次自動守城 ${_siegeTimeText(s.victoryUntil)}，扣 ${SIEGE_UPKEEP_WARRANTS} 張；不足即失守）`);
+    }
+    out.push((s.cooldownUntil || 0) > now ? `⏳ 下次可宣戰：${_siegeTimeText(s.cooldownUntil)}` : '⚔ 現在可以宣戰');
+    return out.join('　｜　');
+}
+function siegeTakeWarrants(n) {   // 背包扣 n 張王族搜索狀（不足→不扣、回 false）
+    if (siegeWarrants() < n) return false;
+    let need = n;
+    for (let it of player.inv) { if (it.id === 'new_item_241' && need > 0) { let take = Math.min(it.cnt, need); it.cnt -= take; need -= take; } }
+    player.inv = player.inv.filter(it => it.cnt > 0);
+    return true;
+}
+// 🛡️ 自動守城：每到重置點自動扣維持費續約占領（不必上線）；付不出來就失守。
+//    用牆鐘判定→離線期間錯過的重置點，登入時在此一次補算（while 逐日結算，扣不動就停在失守那天）。
+function siegeUpkeepTick() {
+    let s = player && player.siege;
+    if (!s || !s.victoryCity || !(s.victoryUntil > 0)) return;
+    let changed = false, guard = 0;
+    while (Date.now() >= s.victoryUntil && guard++ < 400) {
+        let cfg = (typeof victoryCityCfg === 'function') ? victoryCityCfg() : null;
+        let cityName = (cfg && cfg.castleName) || '城堡';
+        if (siegeTakeWarrants(SIEGE_UPKEEP_WARRANTS)) {
+            s.victoryUntil = siegeNextResetTs(s.victoryUntil);
+            logSys(`🛡️🏰 <span class="text-yellow-300 font-bold">自動守城成功！</span>消耗 ${SIEGE_UPKEEP_WARRANTS} 張王族搜索狀，繼續占領${cityName}（全商店 8 折、城堡開放）。`);
+        } else {
+            s.victoryUntil = 0; s.victoryCity = null;
+            logSys(`🏰 <span class="text-red-300 font-bold">失守了…</span>王族搜索狀不足 ${SIEGE_UPKEEP_WARRANTS} 張，無法維持占領：8 折與城堡已關閉。`);
+        }
+        changed = true;
+    }
+    if (changed && !state.ff) { try { renderTabs(); updateUI(); saveGame(); } catch (e) {} }   // 補跑(state.ff)期間不重繪不存檔，由離線模組的檢查點統一負責
+}
 // 🔧 點「攻城戰」先開「選擇城池」介面（肯特城／風木城）；含開戰條件提示
 function openSiegeSelect(faction) {
     let s = player.siege || {};
@@ -727,9 +776,10 @@ function endSiege(result) {
     let s = player.siege; if (!s || !s.active) return;
     s.active = false; s.result = result; s.rewardPending = true;
     s.endTime = Date.now();   // 擊敗守護塔（獲勝）或時間到：攻城時間立即結束
-    s.cooldownUntil = Date.now() + 24*3600*1000;   // 不論勝負，24 小時後才能再次宣布
+    // 冷卻到「下一個每日重置點」（不再是滾動 24 小時→開打時間不會逐日往後漂）；最短間隔擋掉跨重置點連打
+    s.cooldownUntil = Math.max(siegeNextResetTs(Date.now()), Date.now() + SIEGE_MIN_GAP_MS);
     let _cfg = siegeCityCfg();
-    if (result === 'win') { s.victoryUntil = Date.now() + 24*3600*1000; s.victoryCity = _cfg.key; player.ismaelAccUsed = false; logSys(`🏆🏰 <span class="text-yellow-300 font-bold">攻城獲勝！</span>擊破了${_cfg.tower}！24 小時內全商店 8 折、開放「城堡」前往${_cfg.castleName}，回村按鈕變為回城。前往盟主處點「領賞」領取金幣獎勵。`); }
+    if (result === 'win') { s.victoryUntil = siegeNextResetTs(Date.now()); s.victoryCity = _cfg.key; player.ismaelAccUsed = false; logSys(`🏆🏰 <span class="text-yellow-300 font-bold">攻城獲勝！</span>擊破了${_cfg.tower}！占領${_cfg.castleName}：全商店 8 折、開放「城堡」、回村按鈕變為回城。<span class="text-amber-300">每天清晨 ${SIEGE_RESET_HOUR} 點會自動守城，消耗 ${SIEGE_UPKEEP_WARRANTS} 張王族搜索狀續約（不必上線）；不足即失守。</span>前往盟主處點「領賞」領取金幣獎勵。`); }
     else logSys(`🏰 <span class="text-slate-300 font-bold">攻城失敗…</span>時間到，未能攻下${_cfg.tower}。仍可前往盟主處點「領賞」領取獎勵。`);
     { let timer = document.getElementById('siege-timer'); if (timer) timer.classList.add('hidden'); }   // 結束隱藏倒數
     setMapSelectors(getHomeTown());

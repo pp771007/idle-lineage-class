@@ -509,9 +509,52 @@ function backToMenu() {
     if(anySaveExists()) document.getElementById('btn-load').classList.remove('hidden');
 }
 
+// 🎬 創角立繪逐幀動畫：每個職業一段動畫（幀圖在 assets/start/<key>/<幀號>.png，幀號是全域連號、各職業一段區間）。
+//    王族的美術檔名是 prince/princess，其餘與 rawCls 同名。
+const CREATION_CLASS_ANIM_FRAMES = {
+    prince: [714, 798], princess: [629, 710],
+    m_knight: [378, 448], f_knight: [315, 374],
+    m_mage: [531, 625], f_mage: [452, 527],
+    m_elf: [245, 311], f_elf: [166, 241],
+    m_dark: [90, 162], f_dark: [25, 86],
+    m_illusionist: [968, 1036], f_illusionist: [1039, 1125],
+    m_Dknight: [841, 905], f_Dknight: [908, 965],
+    m_warrior: [1992, 2076], f_warrior: [1908, 1991]
+};
+function creationAnimKey(c){ if(!c || c === 'none') return 'none'; return c === 'm_royal' ? 'prince' : (c === 'f_royal' ? 'princess' : c); }
+let creationClassAnim = { key: 'none', frame: 0, first: 0, last: 0, lastAt: 0, stepMs: 82, static: true };
+function setCreationClassAnimation(c){
+    const key = creationAnimKey(c);
+    const img = document.getElementById('class-preview-img');
+    if(key === 'none' || !CREATION_CLASS_ANIM_FRAMES[key]){
+        if(typeof stopCreationFrameSfx === 'function') stopCreationFrameSfx();
+        creationClassAnim = { key: 'none', frame: 0, first: 0, last: 0, lastAt: 0, stepMs: 82, static: true };
+        if(img){ img.src = 'assets/start/0.png'; img.style.display = 'block'; }
+        return;
+    }
+    const range = CREATION_CLASS_ANIM_FRAMES[key];
+    creationClassAnim = { key, frame: range[0], first: range[0], last: range[1], lastAt: 0, stepMs: 82, static: false };
+    if(img){ img.src = `assets/start/${key}/${range[0]}.png`; img.style.display = 'block'; }
+    if(typeof playCreationFrameSfx === 'function') playCreationFrameSfx(key, range[0]);
+    for(let n = range[0]; n <= Math.min(range[1], range[0] + 10); n++){ const pre = new Image(); pre.src = `assets/start/${key}/${n}.png`; }   // 先預抓前幾幀，免得第一輪卡頓
+}
+(function animateCreationClassPreview(){
+    function tick(now){
+        const panel = document.getElementById('creation-panel');
+        const img = document.getElementById('class-preview-img');
+        if(panel && img && !panel.classList.contains('hidden') && !creationClassAnim.static && now - creationClassAnim.lastAt >= creationClassAnim.stepMs){
+            creationClassAnim.frame = creationClassAnim.frame >= creationClassAnim.last ? creationClassAnim.first : creationClassAnim.frame + 1;
+            img.src = `assets/start/${creationClassAnim.key}/${creationClassAnim.frame}.png`;
+            if(creationClassAnim.frame === creationClassAnim.first && typeof playCreationFrameSfx === 'function') playCreationFrameSfx(creationClassAnim.key, creationClassAnim.frame);   // 每輪回到起始幀＝重播一次語音
+            creationClassAnim.lastAt = now;
+        }
+        requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+})();
 function selectClass(c) {
     curCreate.rawCls = c; // 記住玩家選的具體選項 (例如 f_knight)
-    
+
     // 1. 更新按鈕外觀 (先移除所有按鈕的 active，再幫目前點擊的加上 active)
     const btnIds = ['m_royal', 'f_royal', 'm_knight', 'f_knight', 'm_mage', 'f_mage', 'm_elf', 'f_elf', 'm_dark', 'f_dark', 'm_illusionist', 'f_illusionist', 'm_Dknight', 'f_Dknight', 'm_warrior', 'f_warrior'];
     btnIds.forEach(id => {
@@ -522,13 +565,7 @@ function selectClass(c) {
         document.getElementById('btn-class-' + c).classList.add('active');
     }
 
-    // 🎯 解除隱形死結：即時切換圖片路徑，並強制指定 display = 'block'
-    let previewImg = document.getElementById('class-preview-img');
-    if (previewImg) {
-        const _previewName = c === 'm_royal' ? 'prince' : (c === 'f_royal' ? 'princess' : c); // 👑 王族美術檔名為 prince/princess（非 m_royal/f_royal）
-        previewImg.src = `assets/start/${_previewName}.${c.includes('illusionist') ? 'jpg' : 'png'}`; // 🔮 幻術士起始圖為 jpg，其餘職業為 png
-        previewImg.style.display = 'block'; 
-    }
+    setCreationClassAnimation(c);   // 🎬 切換職業立繪逐幀動畫（並播該職業的語音）
 
     // 2. 判斷底層職業（⚠️ Dknight 含 'knight' 子字串，須先判斷；royal 無子字串衝突）
     if(c.includes('royal')) curCreate.cls = 'royal';   // 👑 王族

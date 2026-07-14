@@ -13,6 +13,22 @@ const SFX_DEFS = {
     hurt:    { file: 'hurt',    vol: 0.50, throttle: 120 },  // 玩家受到傷害
     levelup: { file: 'levelup', vol: 0.85, throttle: 0 },    // 升級
 };
+// 🎬 創角立繪動畫：每個職業的動畫在「某一幀」播一次專屬語音（幀號＝該職業動畫的起始幀，見 js/13 CREATION_CLASS_ANIM_FRAMES）。
+//    鍵名必須與 creationAnimKey() 一致（王族＝prince/princess）。
+const CREATION_FRAME_SFX = {
+    f_dark: { frame: 25, sound: 1603 }, m_dark: { frame: 90, sound: 1604 },
+    f_elf: { frame: 166, sound: 1595 }, m_elf: { frame: 245, sound: 1596 },
+    f_knight: { frame: 315, sound: 1601 }, m_knight: { frame: 378, sound: 1602 },
+    f_mage: { frame: 452, sound: 1599 }, m_mage: { frame: 531, sound: 1600 },
+    princess: { frame: 629, sound: 1597 }, prince: { frame: 714, sound: 1598 },
+    m_Dknight: { frame: 841, sound: 4764 }, f_Dknight: { frame: 908, sound: 4765 },
+    m_illusionist: { frame: 968, sound: 4766 }, f_illusionist: { frame: 1039, sound: 4767 },
+    m_warrior: { frame: 1992, sound: 6779 }, f_warrior: { frame: 1908, sound: 6787 }
+};
+Object.keys(CREATION_FRAME_SFX).forEach(function (key) {
+    SFX_DEFS['creation_' + key] = { file: '' + CREATION_FRAME_SFX[key].sound, vol: 0.65, throttle: 0 };
+});
+var _creationSfxActiveKey = null;
 var _sfxCfg = { on: true, vol: 50 };          // 預設開啟、音量 50%
 var _sfxPool = {}, _sfxIdx = {}, _sfxLast = {}, _sfxInited = false;
 var SFX_POOL_N = 4;
@@ -64,7 +80,21 @@ function _sfxSyncUI() {
     var v = document.getElementById('set-sfx-vol'); if (v) v.value = _sfxCfg.vol;
 }
 
-function setSfxOn(on) { _sfxCfg.on = !!on; _sfxSaveCfg(); _sfxSyncUI(); _powerSaveSync(); if (on) playSfx('attack'); }   // 開啟時試播回饋（toggle 點擊即 user gesture，解鎖播放）
+function setSfxOn(on) { _sfxCfg.on = !!on; _sfxSaveCfg(); _sfxSyncUI(); _powerSaveSync(); if (on) playSfx('attack'); else stopCreationFrameSfx(); }   // 開啟時試播回饋（toggle 點擊即 user gesture，解鎖播放）；關閉時把正在播的創角語音停掉
+// 🎬 創角語音：切換職業/關閉音效時要把上一段語音掐斷（語音較長，不掐會疊在一起）
+function stopCreationFrameSfx() {
+    if (!_creationSfxActiveKey) return;
+    var arr = _sfxPool[_creationSfxActiveKey];
+    if (arr && arr.length) arr.forEach(function (a) { try { a.pause(); a.currentTime = 0; } catch (e) {} });
+    _creationSfxActiveKey = null;
+}
+function playCreationFrameSfx(animKey, frame) {
+    var cfg = CREATION_FRAME_SFX[animKey];
+    if (!_sfxCfg.on || !cfg || cfg.frame !== frame) return;   // 只在該職業的觸發幀播（每輪動畫回到起始幀時響一次）
+    stopCreationFrameSfx();
+    _creationSfxActiveKey = 'creation_' + animKey;
+    playSfx(_creationSfxActiveKey);
+}
 // 🔋 音效/BGM 同時出現在「設定」分頁與標題畫面的省電模式（js/09），任一邊改都要讓另一邊的畫面跟上
 function _powerSaveSync() { try { if (typeof powerSaveSyncUI === 'function') powerSaveSyncUI(); } catch (e) {} }
 function setSfxVol(v) { _sfxCfg.vol = Math.max(0, Math.min(100, parseInt(v, 10) || 0)); _sfxSaveCfg(); }

@@ -1019,7 +1019,11 @@
       'body.m-mobile #login-meta-layer{position:relative !important;left:auto !important;top:auto !important;width:100% !important;max-width:330px !important;margin:6vh auto 0 !important;text-align:center !important;z-index:3 !important;}',
       'body.m-mobile #login-disclaimer{font-size:11px !important;}',
       'body.m-mobile #creation-panel{flex-direction:column !important;gap:12px !important;align-items:stretch !important;}',
-      'body.m-mobile .m-cre-avatar{width:100% !important;height:220px !important;}',
+      /* 立繪框:手機是「寬而矮」的橫框(桌機是 340×600 直框),而立繪圖是直的(160×270)。
+         沿用桌機的 object-cover + object-top 會把圖放大到填滿寬度、再從上緣裁掉 → 只看得到頭。
+         手機改 contain(完整入框·左右留邊)並把框加高,人物才看得完整。 */
+      'body.m-mobile .m-cre-avatar{width:100% !important;height:min(42vh,320px) !important;}',
+      'body.m-mobile #class-preview-img{object-fit:contain !important;object-position:center !important;}',
       'body.m-mobile .m-cre-right{width:100% !important;height:auto !important;}',
       'body.m-mobile .m-cre-row{flex-direction:column !important;height:auto !important;gap:12px !important;}',
       'body.m-mobile .m-cre-classbox{width:100% !important;height:auto !important;}',

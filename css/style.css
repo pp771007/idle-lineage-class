@@ -407,6 +407,17 @@
         .vfx-arrow { position: absolute; transform: translate(-50%,-50%); will-change: transform,opacity; pointer-events: none; image-rendering: crisp-edges; image-rendering: pixelated; filter: drop-shadow(0 1px 2px rgba(0,0,0,.55)); }
         .vfx-dmg { position: absolute; transform: translate(-50%,-50%); font-weight: 900; font-family: 'Arial Black','Segoe UI',system-ui,sans-serif; white-space: nowrap; letter-spacing: .5px; will-change: transform,opacity; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 7px rgba(0,0,0,.55); animation: vfxFloat .85s ease-out forwards; }
         .vfx-dmg.vfx-crit { animation: vfxCrit 1.05s cubic-bezier(.18,.85,.25,1) forwards; -webkit-text-stroke: 1px rgba(0,0,0,.45); }
+        /* ⚔️ 爆擊/重擊飄字：數字前加小字標籤（描邊比數字細，避免糊成一團） */
+        .vfx-dmg.vfx-heavy { -webkit-text-stroke: 1.25px #241600; text-shadow: 0 1px 0 #241600, 0 3px 3px rgba(0,0,0,.96), 0 0 3px rgba(255,213,79,.48); }
+        .vfx-dmg.vfx-critical { -webkit-text-stroke: 1.35px #260403; text-shadow: 0 1px 0 #260403, 0 3px 3px rgba(0,0,0,.96), 0 0 4px rgba(255,59,48,.55); }
+        .vfx-dmg-tag {
+            display: inline-block; margin-right: .3em;
+            font-family: "Microsoft JhengHei UI","Microsoft JhengHei","Segoe UI",sans-serif;
+            font-size: .58em; font-weight: 900; letter-spacing: .05em; vertical-align: .14em;
+            -webkit-text-stroke: .6px rgba(5,5,5,.96); paint-order: stroke fill;
+            text-shadow: 0 1px 1px rgba(0,0,0,.95);
+        }
+        .vfx-dmg-value { display: inline-block; }
         @keyframes vfxFloat {
             0%   { opacity: 0; transform: translate(-50%,-40%) scale(.55); }
             18%  { opacity: 1; transform: translate(-50%,-95%) scale(1.06); }
@@ -436,6 +447,45 @@
             80% { transform: translate(-2px,1px); }
         }
         .vfx-shake { animation: vfxShake .45s ease-in-out; }
+        /* 🐉 頭目降臨（四大龍出場）：強力震動＋名條（閃光/衝擊環由 JS element.animate 驅動·此處只放震動與名條樣式） */
+        @keyframes vfxBossShake {
+            0%,100% { transform: translate(0,0); }
+            7% { transform: translate(-12px,7px) rotate(-.4deg); }  16% { transform: translate(13px,-8px) rotate(.4deg); }
+            27% { transform: translate(-14px,-5px) rotate(-.3deg); } 39% { transform: translate(12px,7px) rotate(.3deg); }
+            51% { transform: translate(-9px,4px); }  63% { transform: translate(8px,-4px); }
+            76% { transform: translate(-5px,2px); }  88% { transform: translate(3px,-2px); }
+        }
+        .vfx-bossshake { animation: vfxBossShake .82s cubic-bezier(.36,.07,.19,.97); }
+        .vfx-boss-banner { position: absolute; transform: translate(-50%,-50%); text-align: center; pointer-events: none; white-space: nowrap; will-change: opacity,transform; z-index: 3; font-weight: 900; }
+        .vfx-boss-banner .vfx-boss-sub  { font-size: 15px; letter-spacing: .42em; opacity: .92; margin-bottom: 5px; }
+        .vfx-boss-banner .vfx-boss-name { font-size: 40px; letter-spacing: .05em; }
+        /* 🔥 頭目狂暴：HP 低於門檻時，怪物本體後方保留猩紅氣焰與呼吸光；不動 transform，避免干擾既有站位／逐幀 sprite。 */
+        @keyframes mobRageAuraPulse {
+            0%,100% { opacity: .48; transform: translateX(-50%) scale(.88,.84); filter: blur(7px); }
+            50%     { opacity: .94; transform: translateX(-50%) scale(1.08,1.13); filter: blur(10px); }
+        }
+        @keyframes mobRageRingPulse {
+            0%,100% { opacity: .45; transform: translateX(-50%) scale(.82); }
+            50%     { opacity: .96; transform: translateX(-50%) scale(1.12); }
+        }
+        @keyframes mobRageBodyPulse {
+            0%,100% { filter: drop-shadow(0 0 4px rgba(239,68,68,.58)) drop-shadow(0 0 9px rgba(127,29,29,.42)); }
+            50%     { filter: drop-shadow(0 0 8px rgba(251,113,133,.96)) drop-shadow(0 0 18px rgba(220,38,38,.72)); }
+        }
+        #battle-view .mob-target.mob-raging .mob-img-wrap { animation: mobRageBodyPulse 1.05s ease-in-out infinite; }
+        #battle-view .mob-target.mob-raging .mob-img-inner { position: relative; isolation: isolate; }
+        #battle-view .mob-target.mob-raging .mob-img-inner::before,
+        #battle-view .mob-target.mob-raging .mob-img-inner::after { content: ""; position: absolute; left: 50%; pointer-events: none; z-index: 0; }
+        #battle-view .mob-target.mob-raging .mob-img-inner::before {
+            bottom: -4%; width: 150%; height: 108%; border-radius: 48% 48% 38% 38%;
+            background: radial-gradient(ellipse at 50% 86%, rgba(255,232,138,.88) 0%, rgba(255,69,58,.76) 18%, rgba(190,18,60,.52) 45%, transparent 72%);
+            mix-blend-mode: screen; animation: mobRageAuraPulse .86s ease-in-out infinite;
+        }
+        #battle-view .mob-target.mob-raging .mob-img-inner::after {
+            bottom: -2%; width: 112%; height: 34%; border-radius: 50%; border: 2px solid rgba(251,113,133,.78);
+            box-shadow: 0 0 9px rgba(255,70,70,.95), inset 0 0 12px rgba(127,29,29,.78);
+            animation: mobRageRingPulse 1.05s ease-in-out infinite;
+        }
         /* 🔋 省電「戰鬥動畫關閉」的受擊回饋：怪物本體圖左右微晃(純 transform 合成器動畫·js/09 _renderMobsImpl 套用)。本體 img 無基礎 transform 可安全覆蓋；影子/武器層另有定位 transform 故不套 */
         @keyframes mobHitShake {
             0%,100% { transform: translateX(0); }

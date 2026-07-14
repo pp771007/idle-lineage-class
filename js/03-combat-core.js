@@ -746,6 +746,7 @@ function spawnMob(idx) {
     }
 
     applySherineGrace(idx);   // 🔮 席琳的恩賜：1% 機率場上一隻一般怪變恩賜怪（與時空裂痕共用 applySherineGrace）
+    if (base.boss && typeof vfxBossEntrance === 'function') { try { vfxBossEntrance(mapState.mobs[idx]); } catch (e) {} }   // 🐉 四大龍出場：降臨特效＋螢幕震動（cosmetic·函式內部只認名單內的頭目·吃省電/補跑）
     renderMobs();
 }
 

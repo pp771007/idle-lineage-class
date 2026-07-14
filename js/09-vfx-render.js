@@ -79,6 +79,7 @@ const SPELL_FX = {
     '魔法封印': { dir:'魔法封印', prefix:'2177-0', n:17, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
     '魔法消除': { dir:'魔法消除', prefix:'2181-0', n:19, fps:16, blend:'screen', h:1, ax:0.50, ay:0.55 },
     '黑闇之影': { dir:'黑闇之影', prefix:'2175-0', n:8, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
+    '龍捲風': { dir:'龍捲風', prefix:'758-0', n:20, fps:16, h:1.5, ax:0.50, ay:0.82, targetVc:0.9 },   // 🌪️ 幾何「自腳底」；塵土實體不加 screen（比照地裂術）
     // 🔮 保留：能量感測(byEle 屬性變體·手動 sense 掛點)
     '能量感測':   { dir: '能量感測',   n: 8, fps: 12, blend: 'screen', h: 0.85, ax: 0.50, ay: 0.55,
                     byEle: { fire: { prefix: '火' }, water: { prefix: '水' }, earth: { prefix: '地' }, wind: { prefix: '風' } } },
@@ -540,11 +541,22 @@ function _vfxFlush() {
 function _vfxNumber(x, y, dmg, ele, big) {
     if (_vfxNumOff()) return;   // 🔢 v3.0.2 「只關傷害數字」獨立開關：關掉所有飄動傷害數字(致命/非致命皆走此唯一渲染點)·其餘特效不受影響
     let el = document.createElement('div');
-    el.className = 'vfx-dmg' + (big ? ' vfx-crit' : '');
+    el.className = 'vfx-dmg' + (big ? ' vfx-crit' : '') + (big === 'crit' ? ' vfx-critical' : (big === 'heavy' ? ' vfx-heavy' : ''));
     el.style.left = x + 'px'; el.style.top = y + 'px';
     el.style.color = big === 'crit' ? '#ff3b30' : (big === 'heavy' ? '#ffd54f' : (_VFX_ELE_COLOR[ele] || '#f1f5f9'));   // 爆擊大紅／重擊大金／其餘依屬性
-    el.style.fontSize = (big ? 30 : 18) + 'px';
-    el.textContent = dmg >= 10000 ? (dmg / 1000).toFixed(1) + 'k' : ('' + dmg);
+    el.style.fontSize = (big ? 32 : 20) + 'px';
+    const dmgText = dmg >= 10000 ? (dmg / 1000).toFixed(1) + 'k' : ('' + dmg);
+    if (big === 'crit' || big === 'heavy') {   // ⚔️ 爆擊/重擊在數字前加小字標籤
+        const tag = document.createElement('span');
+        tag.className = 'vfx-dmg-tag';
+        tag.textContent = big === 'crit' ? '爆擊' : '重擊';
+        const value = document.createElement('span');
+        value.className = 'vfx-dmg-value';
+        value.textContent = dmgText;
+        el.append(tag, value);
+    } else {
+        el.textContent = dmgText;
+    }
     _vfxLayer().appendChild(el);
     el.addEventListener('animationend', () => el.remove(), { once: true });
     setTimeout(() => { if (el.parentNode) el.remove(); }, 1400);
@@ -946,6 +958,145 @@ function vfxCastShake() {
     } catch (e) {}
 }
 
+// 🐉 頭目降臨特效（四大龍出場）：全屏屬性染色閃光＋衝擊波環×3＋暗角脈衝＋名條＋強力震動。
+//   cosmetic-only（不改任何數值·全程 try/catch·吃 _vfxOff()＝含省電/補跑）；掛點＝js/03 spawnMob 生成頭目後、renderMobs 前。
+//   overlay 皆錨定 #battle-view rect（不依賴怪卡 DOM·先讀 rect 再震動→閃光/名條停在靜止位、戰場內容在其下震動）。每名 2 秒去重防同 tick 重觸。
+const BOSS_ENTRANCE_FX = {
+    '安塔瑞斯': { a: '#e6c15a', b: '#7c4a1e', label: '大地之龍　安塔瑞斯' },
+    '法利昂':   { a: '#38bdf8', b: '#075985', label: '深淵之龍　法利昂' },
+    '巴拉卡斯': { a: '#ff6a2a', b: '#9a1616', label: '炎之龍王　巴拉卡斯' },
+    '林德拜爾': { a: '#6ff0d6', b: '#0f766e', label: '暴風之龍　林德拜爾' },
+};
+let _bossEntranceLast = {};
+function vfxBossEntrance(mob) {
+    try {
+        if (!mob || _vfxOff()) return;
+        let cfg = BOSS_ENTRANCE_FX[mob.n]; if (!cfg) return;
+        let now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (_bossEntranceLast[mob.n] && now - _bossEntranceLast[mob.n] < 2000) return;   // 同名 2 秒去重（防同 tick 重觸；正常重生>5秒不受影響）
+        _bossEntranceLast[mob.n] = now;
+        let bv = document.getElementById('battle-view');
+        if (!bv || bv.classList.contains('hidden')) return;
+        let r = bv.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) return;   // 戰鬥區不可見（村莊）→不播
+        let layer = _vfxLayer();
+        let cx = r.left + r.width / 2, cy = r.top + r.height * 0.55;
+        let boxCss = 'position:absolute;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;pointer-events:none;border-radius:6px;';
+
+        bv.classList.remove('vfx-bossshake'); void bv.offsetWidth; bv.classList.add('vfx-bossshake');
+        bv.addEventListener('animationend', () => bv.classList.remove('vfx-bossshake'), { once: true });
+
+        let flash = document.createElement('div');
+        flash.style.cssText = boxCss + 'mix-blend-mode:screen;background:radial-gradient(circle at 50% 55%, ' + cfg.a + ' 0%, ' + cfg.b + '66 34%, transparent 70%);';
+        layer.appendChild(flash);
+        flash.animate([{ opacity: 0 }, { opacity: 0.95, offset: 0.12 }, { opacity: 0 }], { duration: 900, easing: 'ease-out' }).onfinish = () => flash.remove();
+
+        let vig = document.createElement('div');
+        vig.style.cssText = boxCss + 'background:radial-gradient(circle at 50% 55%, transparent 28%, rgba(0,0,0,.74) 100%);';
+        layer.appendChild(vig);
+        vig.animate([{ opacity: 0 }, { opacity: 1, offset: 0.22 }, { opacity: 0 }], { duration: 1000, easing: 'ease-out' }).onfinish = () => vig.remove();
+
+        for (let i = 0; i < 3; i++) {
+            let ring = document.createElement('div');
+            ring.style.cssText = 'position:absolute;left:' + cx + 'px;top:' + cy + 'px;width:44px;height:44px;border-radius:50%;transform:translate(-50%,-50%);border:5px solid ' + cfg.a + ';box-shadow:0 0 24px ' + cfg.a + ',inset 0 0 14px ' + cfg.a + ';pointer-events:none;';
+            layer.appendChild(ring);
+            let scale = 8 + i * 4;
+            ring.animate([
+                { transform: 'translate(-50%,-50%) scale(0.3)', opacity: 0.9 },
+                { transform: 'translate(-50%,-50%) scale(' + scale + ')', opacity: 0 }
+            ], { duration: 820 + i * 150, delay: i * 110, easing: 'cubic-bezier(.15,.6,.3,1)' }).onfinish = () => ring.remove();
+        }
+
+        let banner = document.createElement('div');
+        banner.className = 'vfx-boss-banner';
+        banner.style.left = cx + 'px';
+        banner.style.top = (r.top + r.height * 0.30) + 'px';
+        banner.style.color = cfg.a;
+        banner.style.textShadow = '0 0 10px ' + cfg.a + ', 0 0 24px ' + cfg.b + ', 0 2px 5px #000';
+        banner.innerHTML = '<div class="vfx-boss-sub">◈　頭 目 降 臨　◈</div><div class="vfx-boss-name">' + (cfg.label || mob.n) + '　現身！</div>';
+        layer.appendChild(banner);
+        banner.animate([
+            { opacity: 0, transform: 'translate(-50%,-50%) scale(1.65)' },
+            { opacity: 1, transform: 'translate(-50%,-50%) scale(1)', offset: 0.2 },
+            { opacity: 1, transform: 'translate(-50%,-50%) scale(1)', offset: 0.76 },
+            { opacity: 0, transform: 'translate(-50%,-50%) scale(1.08)' }
+        ], { duration: 1750, easing: 'ease-out' }).onfinish = () => banner.remove();
+    } catch (e) {}
+}
+
+// 🔥 頭目狂暴爆發：沿用「頭目降臨」的戰場名條語言，改成猩紅閃光、衝擊環與火星。
+//   只負責一次性視覺；持續氣焰由 .mob-raging CSS 控制，進出狂暴的偵測由 renderMobs 轉場負責。
+let _bossRageLast = {};
+function vfxBossRage(mob) {
+    try {
+        if (!mob || _vfxOff()) return;
+        let cfg = BOSS_ENTRANCE_FX[mob.n];
+        if (!cfg || !(Number(mob.rageHpPct) > 0)) return;
+        let now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (_bossRageLast[mob.uid] && now - _bossRageLast[mob.uid] < 1200) return;
+        _bossRageLast[mob.uid] = now;
+        let bv = document.getElementById('battle-view');
+        if (!bv || bv.classList.contains('hidden')) return;
+        let r = bv.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) return;
+        let layer = _vfxLayer();
+        let cx = r.left + r.width / 2, cy = r.top + r.height * 0.55;
+        let boxCss = 'position:absolute;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;pointer-events:none;border-radius:6px;';
+        let a = '#fb3b45', b = '#7f1018';
+
+        bv.classList.remove('vfx-bossshake'); void bv.offsetWidth; bv.classList.add('vfx-bossshake');
+        bv.addEventListener('animationend', () => bv.classList.remove('vfx-bossshake'), { once: true });
+
+        let flash = document.createElement('div');
+        flash.style.cssText = boxCss + 'mix-blend-mode:screen;background:radial-gradient(circle at 50% 55%, #fff1a8 0%, ' + a + 'cc 15%, ' + b + '99 42%, transparent 73%);';
+        layer.appendChild(flash);
+        flash.animate([{ opacity: 0 }, { opacity: 1, offset: .10 }, { opacity: .35, offset: .34 }, { opacity: 0 }], { duration: 1050, easing: 'ease-out' }).onfinish = () => flash.remove();
+
+        let vig = document.createElement('div');
+        vig.style.cssText = boxCss + 'background:radial-gradient(circle at 50% 55%, transparent 23%, rgba(70,0,8,.38) 54%, rgba(0,0,0,.88) 100%);';
+        layer.appendChild(vig);
+        vig.animate([{ opacity: 0 }, { opacity: 1, offset: .18 }, { opacity: 0 }], { duration: 1250, easing: 'ease-out' }).onfinish = () => vig.remove();
+
+        for (let i = 0; i < 4; i++) {
+            let ring = document.createElement('div');
+            ring.style.cssText = 'position:absolute;left:' + cx + 'px;top:' + cy + 'px;width:40px;height:40px;border-radius:50%;transform:translate(-50%,-50%);border:' + (5 - Math.min(i, 2)) + 'px solid ' + (i % 2 ? '#ffb347' : a) + ';box-shadow:0 0 26px ' + a + ',inset 0 0 16px ' + b + ';pointer-events:none;';
+            layer.appendChild(ring);
+            ring.animate([
+                { transform: 'translate(-50%,-50%) scale(.2)', opacity: .98 },
+                { transform: 'translate(-50%,-50%) scale(' + (8 + i * 3.4) + ')', opacity: 0 }
+            ], { duration: 780 + i * 145, delay: i * 95, easing: 'cubic-bezier(.12,.65,.24,1)' }).onfinish = () => ring.remove();
+        }
+
+        for (let i = 0; i < 18; i++) {
+            let spark = document.createElement('i');
+            let ang = (Math.PI * 2 * i / 18) + Math.random() * .28;
+            let dist = 75 + Math.random() * Math.min(210, r.width * .28);
+            let size = 3 + Math.random() * 5;
+            spark.style.cssText = 'position:absolute;left:' + cx + 'px;top:' + cy + 'px;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + (i % 3 ? a : '#ffd166') + ';box-shadow:0 0 10px ' + a + ';pointer-events:none;';
+            layer.appendChild(spark);
+            spark.animate([
+                { transform: 'translate(-50%,-50%) scale(1.2)', opacity: 1 },
+                { transform: 'translate(calc(-50% + ' + Math.cos(ang) * dist + 'px),calc(-50% + ' + Math.sin(ang) * dist + 'px)) scale(.15)', opacity: 0 }
+            ], { duration: 620 + Math.random() * 520, delay: 90 + Math.random() * 180, easing: 'cubic-bezier(.14,.66,.28,1)' }).onfinish = () => spark.remove();
+        }
+
+        let banner = document.createElement('div');
+        banner.className = 'vfx-boss-banner vfx-rage-banner';
+        banner.style.left = cx + 'px';
+        banner.style.top = (r.top + r.height * .30) + 'px';
+        banner.style.color = '#ffb4b9';
+        banner.style.textShadow = '0 0 8px #fff1a8, 0 0 18px ' + a + ', 0 0 34px ' + b + ', 0 2px 5px #000';
+        banner.innerHTML = '<div class="vfx-boss-sub">◆　頭 目 狂 暴　◆</div><div class="vfx-boss-name">' + (cfg.label || mob.n) + '　陷入狂暴！</div>';
+        layer.appendChild(banner);
+        banner.animate([
+            { opacity: 0, transform: 'translate(-50%,-50%) scale(1.8)' },
+            { opacity: 1, transform: 'translate(-50%,-50%) scale(.96)', offset: .17 },
+            { opacity: 1, transform: 'translate(-50%,-50%) scale(1.04)', offset: .72 },
+            { opacity: 0, transform: 'translate(-50%,-50%) scale(1.14)' }
+        ], { duration: 1900, easing: 'ease-out' }).onfinish = () => banner.remove();
+    } catch (e) {}
+}
+
 // 🔋 省電模式（僅標題畫面提供；遊戲中不再出現）：一顆「省電模式」鈕開 Modal，內含數個獨立開關，
 //    各自持久化於 localStorage、載入時套用到對應全域旗標。全部都是顯示/音效層，收益/戰鬥結果不受影響。
 //    - 戰鬥特效  __vfxOff     ：法術序列幀/命中衝擊/擊殺閃光/投射物/狀態疊層
@@ -1081,7 +1232,7 @@ function _renderMobsImpl() {
     if(state.ff) return; // 補跑期間不刷新畫面
     _initMobListGuard();
     if(_mobPointerDown) { _mobRebuildPending = true; return; }   // 🚀 按住怪物卡期間延後重繪→點擊切換目標不被中斷
-    let _slotHtmls = [], _forceHit = [], _shakeUids = [];   // 🚀 改差異更新：先各格產生 html 字串，最後只重建有變動的格；_shakeUids＝省電模式本幀被擊中的怪(DOM 寫入後套微晃 class)
+    let _slotHtmls = [], _forceHit = [], _shakeUids = [], _rageTransitions = [];   // 🚀 改差異更新：先各格產生 html 字串，最後只重建有變動的格；_shakeUids＝省電模式本幀被擊中的怪(DOM 寫入後套微晃 class)；_rageTransitions＝本幀「未狂暴→狂暴」的頭目
     let _showMobEleFlag = (typeof _relicShowMobEle === 'function') && _relicShowMobEle();   // 🏺 巨大螞蟻的複眼：狀態直接顯示敵人屬性（一次計算·全格共用）
 
     let _back = backSlotsActive();                                   // 🆕 五格模式：原三格(前排)＋後排兩格
@@ -1104,6 +1255,11 @@ function _renderMobsImpl() {
             m.justHit = false;
             m._spellHurt = false;
 
+            // 🔥 頭目狂暴轉場：嚴格低於門檻且仍存活才啟用；被吸血回到門檻以上會解除，之後再次跌破可重新提示。
+            let _rageNow = m.curHp > 0 && typeof mobRageActive === 'function' && mobRageActive(m);
+            if (_rageNow && !m._rageFxActive) { m._rageFxActive = true; _rageTransitions.push(m); }
+            else if (!_rageNow && m._rageFxActive) m._rageFxActive = false;
+
             let _badgeTags = '';
             if(_showMobStatus && m.st) {   // 🩹 狀態開關關閉時不顯示異常狀態徽章
                 let order = ['freeze','stun','stone','sleep','blind','weaken','disease','vacuum','broken','slow','mrhalf','magicseal','fragile','armorbreak','confuse','panic','guardbreak','terror','doom'];   // 🔮 含脆弱、🔧 破甲(黑妖破壞盔甲)、🔮 混亂/恐慌、🐉 護衛毀滅/恐懼/死神；中毒不顯示、出血改用 🩸 emoji（見下方圖片下方列）
@@ -1116,6 +1272,7 @@ function _renderMobsImpl() {
             if(_showMobStatus && m._grace) _badgeTags = `<span class="px-1 rounded bg-red-950/80 grace-badge text-[10px] font-bold">席琳恩賜</span>` + (_badgeTags ? ' ' + _badgeTags : '');
             // 🔧 頭目標籤：BOSS 名字下方常駐金色「頭目」標籤（置於最前）；🩹 狀態開關關閉時亦隱藏
             if(_showMobStatus && m.boss) _badgeTags = `<span class="px-1 rounded bg-amber-900/80 text-amber-200 text-[10px] font-bold border border-amber-500/60">頭目</span>` + (_badgeTags ? ' ' + _badgeTags : '');
+            if(_showMobStatus && _rageNow) _badgeTags = `<span class="px-1 rounded text-[10px] font-bold border" style="color:#fecdd3;background:rgba(127,29,29,.88);border-color:#fb7185;text-shadow:0 0 5px #ef4444;">狂暴</span>` + (_badgeTags ? ' ' + _badgeTags : '');
             // 徽章列固定常駐（單行、固定高度），避免有/無狀態時背景框忽大忽小
             let badges = `<div class="flex justify-center gap-0.5 mb-1 overflow-hidden" style="height:18px;">${_badgeTags}</div>`;
             // 🩹 狀態列（出血/猛爆毒/鈍擊/硬皮）：狀態開關關閉時清空內容（保留固定高度列避免版面跳動）
@@ -1136,7 +1293,7 @@ function _renderMobsImpl() {
             // ⚔️ v2.7.40 第二武器層(_w2·如伊弗利特雙武器/雙火焰)：與 _w 同機制·再疊一層 .mob-anim-weapon2
             let _weaponFx2 = MOB_ANIM_NAMES.has(m.n) && (typeof MOB_ANIM_WEAPON_FX2 !== 'undefined') && MOB_ANIM_WEAPON_FX2.has(m.n);
             let _weaponLayer2 = _weaponFx2 ? `<img class="mob-anim-weapon2 w-24 h-24 p-1 object-contain pointer-events-none" src="assets/anim/${_animDir(m.n)}/idle_w2_0.png" alt="" aria-hidden="true" onload="this.style.display='';this.style.visibility=''" onerror="this.style.visibility='hidden'">` : '';
-            _slotHtmls[_k] = `<div class="mob-target ${act}${_rowCls}${BOSS_BIG_MAPS.includes(mapState.current) ? ' boss-slot' : (m.boss ? ' boss-zoom' : '')}" data-uid="${m.uid}"${_scat}>
+            _slotHtmls[_k] = `<div class="mob-target ${act}${_rageNow ? ' mob-raging' : ''}${_rowCls}${BOSS_BIG_MAPS.includes(mapState.current) ? ' boss-slot' : (m.boss ? ' boss-zoom' : '')}" data-uid="${m.uid}"${_scat}>
                         <div class="flex justify-center items-center text-sm mb-1 mob-name">
                             <span class="${getMobNameClass(m)}" title="${m.n}">${m.n}</span>${(_showMobEleFlag && m.e && m.e !== 'none') ? ` <span class="text-[11px] font-bold" style="margin-left:3px;color:${(typeof RELIC_ELE_COLOR !== 'undefined' && RELIC_ELE_COLOR[m.e]) || '#cbd5e1'};" title="敵人屬性（巨大螞蟻的複眼）">[${(typeof RELIC_ELE_LABEL !== 'undefined' && RELIC_ELE_LABEL[m.e]) || ''}]</span>` : ''}
                         </div>
@@ -1189,6 +1346,15 @@ function _renderMobsImpl() {
             _img.classList.remove('mob-hit-shake'); void _img.offsetWidth; _img.classList.add('mob-hit-shake');
             _img.addEventListener('animationend', () => _img.classList.remove('mob-hit-shake'), { once: true });
         }
+    }
+    // 🔥 訊息與一次性爆發只在「進入狂暴」的轉場觸發；持續氣焰由上方 mob-raging class 維持。
+    for (let m of _rageTransitions) {
+        try {
+            let hitUp = Math.max(0, Math.round(((Number(m.rageHitMult) || 1) - 1) * 100));
+            let dmgUp = Math.max(0, Math.round(((Number(m.rageDmgMult) || 1) - 1) * 100));
+            if (typeof logCombat === 'function') logCombat(`<span class="font-bold" style="color:#fecdd3;text-shadow:0 0 7px #ef4444;">【頭目狂暴】</span><span class="${getMobColor(m.lv)}">${m.n}</span> 的力量失控！命中提升 ${hitUp}%、傷害提升 ${dmgUp}%！`, 'enemy', 'enemy');
+        } catch(e) {}
+        try { vfxBossRage(m); } catch(e) {}
     }
     try { _vfxFlush(); } catch(e){}   // ✨ VFX：格子重建後生成飄動傷害數字
 }

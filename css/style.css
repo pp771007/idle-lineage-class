@@ -404,6 +404,7 @@
         #vfx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 35; overflow: hidden; }   /* 🎚️ v3.0.73 掛在 #app-stage 內(見 js/09 _vfxLayer)：z-index 35＝高於戰鬥內容(怪/站位/狀態列 z≤30)、低於所有開啟式 UI(收集冊45/收藏46/物品modal50/浮動裝備70/浮動倉庫72)→死亡殘影等狩獵動畫不再蓋到這些介面·無 UI 時仍正常疊在背景/怪之上 */
         /* 🔧 v3.1.48 修：收藏面板 #collection-panel 用的 Tailwind 任意值 class `z-[46]` 未被預編譯靜態 CSS 收錄(z-[45] 有→四本收集冊正常)→computed z:auto→掉到與戰鬥 sprite 同一 #app-stage stacking context 且被其 positive z(玩家 sprite z:2、怪 z:1~5)蓋過→面板與背景模糊都被角色/怪物動態壓在下面。改用 ID 選擇器明確給 z-index(特異性勝過任何 class)，確保收藏面板(含 backdrop-blur)蓋在所有戰鬥動態之上。 */
         #collection-panel { z-index: 46; }
+        .vfx-arrow { position: absolute; transform: translate(-50%,-50%); will-change: transform,opacity; pointer-events: none; image-rendering: crisp-edges; image-rendering: pixelated; filter: drop-shadow(0 1px 2px rgba(0,0,0,.55)); }
         .vfx-dmg { position: absolute; transform: translate(-50%,-50%); font-weight: 900; font-family: 'Arial Black','Segoe UI',system-ui,sans-serif; white-space: nowrap; letter-spacing: .5px; will-change: transform,opacity; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 7px rgba(0,0,0,.55); animation: vfxFloat .85s ease-out forwards; }
         .vfx-dmg.vfx-crit { animation: vfxCrit 1.05s cubic-bezier(.18,.85,.25,1) forwards; -webkit-text-stroke: 1px rgba(0,0,0,.45); }
         @keyframes vfxFloat {

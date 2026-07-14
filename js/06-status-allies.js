@@ -360,6 +360,7 @@ function allyQiguAttack(ally, t, wpn) {
 function allyAttackOnce(ally) {
     if (!ally || !ally.d) return;
     let t = getTarget(); if (!t || t.curHp <= 0) return;
+    ally._faceTgtUid = t.uid;   // 🧭 三方向：記錄攻擊目標（只存 UID，避免傭兵與怪物互相引用）
     if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'attack');   // 🤝 v3.0.70 隊員戰場 sprite：攻擊動作
     let d = ally.d;
     // 🔮 幻術士傭兵 奇古獸攻擊（公式同玩家，用傭兵自身衍生值；裝奇古獸或魔劍精通）

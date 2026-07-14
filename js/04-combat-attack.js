@@ -1,5 +1,6 @@
 function playerAttack() {
     let target = getTarget();
+    if (target) player._faceTgtUid = target.uid;   // 🧭 三方向：只記可序列化的 UID（不能存怪物物件，否則存檔會循環引用）
     if(!target) return;
     if (typeof _playerMorphTrigger === 'function') { try { _playerMorphTrigger('attack'); } catch (e) {} }   // 🧝 v3.0.46 玩家變身 sprite：攻擊動作（含被迴避＝有揮擊）
     // 🔮 幻術士 奇古獸攻擊：裝備奇古獸(必中魔法)或魔劍精通(任意非弓武器套用奇古獸公式) → 走奇古獸路徑，繞過物理命中/迴避
@@ -26,6 +27,7 @@ function playerAttack() {
     if (wpn && wpn.isBow) {
         arrowData = consumeArrow();
         if (!arrowData) return; // 如果沒箭了，中斷攻擊
+        if (typeof playArrowFx === 'function') playArrowFx(player, target);   // 🏹 弓箭投射物（箭確實射出去了才播）
     }
 
     let isLarge = target.s === 'L';
@@ -729,6 +731,7 @@ function bombFlowerExplode() {
     if (hitAny && !state.ff) renderMobs();
 }
 function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = null) {   // atkDmg/atkDb：連擊技覆寫骰子/加值（如鐮刀劍氣斬 9×3D70+99，與一般攻擊不同）
+    if (mob) mob._facePartyKey = 'P';   // 🧭 八方向怪：面向「牠正在打的人」（只記可序列化的隊伍位置鍵，避免 mob↔player 互相引用）
     if(player.dead) return;
     if(inAbsBarrier()) return;   // 🛡️ 絕對屏障：不受任何傷害（敵方一般/連擊攻擊完全無效，亦不觸發反擊）
     if(!mob || mob.curHp <= 0) return;   // 🔧 攻擊者已死亡（如連擊中被反擊/居合反殺）：死怪不得繼續攻擊
@@ -1019,6 +1022,7 @@ function teamIlluAura(forWho) {
     return { ed: ed, eh: eh, md: md };
 }
 function enemyAttackAlly(mob, ally) {
+    if (mob && ally) mob._facePartyKey = 'A:' + String(ally._slot || '');   // 🧭 八方向怪：面向該傭兵
     if (!mob || mob.curHp <= 0 || !ally || ally._downed || (ally.curHp || 0) <= 0) return;
     if (typeof _mobAnimTrigger === 'function') _mobAnimTrigger(mob, 'attack');   // 🎞️ 序列幀：攻擊動作（打傭兵也播·鏡像 enemyPhysicalAttack·鎖定播放中會被忽略）
     let d = ally.d || {};

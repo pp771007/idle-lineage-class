@@ -1122,6 +1122,7 @@ function rapidfireProc(arrowData) {
         if (_alive.length === 0) break;
         let _ti = _alive[Math.floor(Math.random() * _alive.length)];
         let _t = mapState.mobs[_ti];
+        if (typeof playArrowFx === 'function') playArrowFx(player, _t, _r * 45);   // 🏹 連射每箭一支投射物（錯開 45ms，免得整束疊成一支）
         // 每箭各自接受命中判定（可能未命中，也可能重擊/爆擊）
         let _dice = _t.s === 'L' ? wpn.dmgL : wpn.dmgS;
         if (arrowData) _dice = _t.s === 'L' ? (wpn.dmgL + arrowData.dmgL) : (wpn.dmgS + arrowData.dmgS);

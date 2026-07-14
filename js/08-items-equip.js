@@ -733,6 +733,19 @@ function equipItem(item, silent) {
         returnEquipToInv('wpn');
         logSys(`裝備盾牌，已卸下雙手武器。`);
     }
+    // ⚔️ 副手位置互斥：戰士副手武器（迅猛雙斧 offwpn）與 盾牌／臂甲 共用副手位置，只能擇一裝備
+    if (slot === 'offwpn' && player.eq.shield) {   // 裝副手武器 → 卸下盾牌/臂甲
+        if (isEquipCursed('shield')) { logSys('<span class="text-red-400 font-bold">被詛咒的副手裝備無法卸下，無法持用副手武器！</span>'); return; }
+        let _sd = DB.items[player.eq.shield.id];
+        let _snm = (_sd && _sd.armguard) ? '臂甲' : '盾牌';
+        returnEquipToInv('shield');
+        logSys(`副手改持武器，已卸下${_snm}。`);
+    } else if (slot === 'shield' && player.eq.offwpn) {   // 裝盾牌/臂甲 → 卸下副手武器
+        if (isEquipCursed('offwpn')) { logSys('<span class="text-red-400 font-bold">被詛咒的副手武器無法卸下，無法裝備' + (d.armguard ? '臂甲' : '盾牌') + '！</span>'); return; }
+        let _on = DB.items[player.eq.offwpn.id];
+        returnEquipToInv('offwpn');
+        logSys(`副手改裝${d.armguard ? '臂甲' : '盾牌'}，已卸下副手武器${_on ? ' ' + _on.n : ''}。`);
+    }
 
     let invItem = player.inv.find(i => i.uid === item.uid);
     if (!invItem) return;

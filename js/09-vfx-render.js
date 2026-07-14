@@ -1795,6 +1795,7 @@ function _pmCurActivePrio() {   // 目前「仍在播放中」動作的權重（
     return ((Date.now() - st.t) < seq.length * fms) ? (_PM_PRIO[st.act] || 0) : 0;   // 仍在播→其權重·已播完→0(idle)
 }
 function _playerMorphTrigger(k, skId) {   // js/04 attack／castSkill·manualCast 包裝 skill／HP-delta hurt 呼叫（🗡️ v3.0.67 職業形態亦適用·呼叫端零改動）
+    if (typeof state !== 'undefined' && state.ff) return;   // 🌙 離線/背景補跑：純視覺·不登記動作（逐拍登記＝白費工，且回前景會爆播殘留動作；比照 _mobAnimTrigger / _petAnimAct）
     let form = _playerBattleForm(); if (!form) return;
     let st = _pmState;
     if (st.act === 'death') return;   // 死亡鎖定：復活前不接受任何動作（最高權重）
@@ -1807,6 +1808,7 @@ function _playerMorphTrigger(k, skId) {   // js/04 attack／castSkill·manualCas
 }
 // 🗡️ 攻擊連擊 burst：屠宰者/三重矢施放成功時，讓戰鬥 sprite 連播 hits 次攻擊動畫（壓縮在施法時間內播完·像一段快速連擊/連射），取代原施法動作。
 function _playerMorphAttackBurst(skId) {
+    if (typeof state !== 'undefined' && state.ff) return;   // 🌙 補跑期間不登記連擊動畫（同 _playerMorphTrigger）
     let form = _playerBattleForm(); if (!form) return;
     let st = _pmState;
     if (st.act === 'death') return;   // 死亡鎖定
@@ -1966,6 +1968,7 @@ function _partyRankBottom() {
 }
 function _allySpriteTrigger(ally, k, skId) {   // js/06 掛點：allyAttackOnce→'attack'·三施法函式→'skill'
     try {
+        if (typeof state !== 'undefined' && state.ff) return;   // 🌙 離線/背景補跑：純視覺·不登記動作（比照 _mobAnimTrigger / _petAnimAct）
         if (!ally || ally._slot == null) return;
         let st = _allySpriteStates[String(ally._slot)];
         if (!st || st.act === 'death') return;

@@ -1850,7 +1850,11 @@ function _applyMercCubeRes(ally) {
 }
 function _isMercSelfBuff(sk, sid) {
     if (!sk || sk.type !== 'buff') return false;
-    if (sk.summon || sk.cube || sk.hot || sk.illuSummon) return false;   // 🖤 v2.7.92 darkStealth 解除排除：稽核證實原「受擊迴避層#5另處理」註解不實（js/04 傭兵受擊路徑無 stealth 檢查）→改為正常維持（吃來源打勾快照閘）＋enemyAttackAlly 消費（100%迴避一次·5秒冷卻·鏡像玩家）
+    // 🔮 幻覺（歐吉/巫妖/鑽石高崙·illuSummon）開放給幻術士傭兵自動維持（隊伍面板逐兵勾選才會施放）：
+    //    維持 buff＝該傭兵自身吃到幻覺的屬性加成，並經 _teamAuraHas 提供全隊光環（隊長沒開時全隊也有）。
+    //    幻象召喚本身走 illuSummonTick 的「學過該技即召」路徑、不吃 buff，故不會因此重複召喚。
+    //    刻意不放進 TEAM_AURA_SKILLS：那條路徑有「隊上任一人已維持→不重複施放」去重，會讓傭兵不維持自己的幻覺 buff、拿不到自身加成。
+    if (sk.summon || sk.cube || sk.hot) return false;   // 🖤 v2.7.92 darkStealth 解除排除：稽核證實原「受擊迴避層#5另處理」註解不實（js/04 傭兵受擊路徑無 stealth 檢查）→改為正常維持（吃來源打勾快照閘）＋enemyAttackAlly 消費（100%迴避一次·5秒冷卻·鏡像玩家）
     if (typeof STORM_BUFF_SKILLS !== 'undefined' && STORM_BUFF_SKILLS.includes && STORM_BUFF_SKILLS.includes(sid)) return false;
     if (sid === 'sk_antidote' || sid === 'sk_holy_light' || sid === 'sk_cancel') return false;
     // 🌟 v3.0.99 隊長團隊光環（大地祝福/鋼鐵防護/水之元氣/化身＝TEAM_AURA_SKILLS）改「開放傭兵維持·全隊生效」→不再於此排除（原 v2.6.17 排除以免傭兵白耗MP·現由隊伍面板勾選＋_teamAuraHas 冗餘守衛控制）。
@@ -1862,7 +1866,8 @@ function _isMercSelfBuff(sk, sid) {
 }
 // 🆕 v3.0.97 傭兵「自動維持」可切換技能清單：列出受 _mercAutoOn 閘控制、可於隊伍面板逐兵開關的已學技能
 //   （自我增益 buff／召喚術／團隊 HoT／淨化／火牢·冰雪颶風／立方）。回傳 [{sid,n,cat}]（cat 供分組/tooltip）。
-//   ⚠️不含：完全免疫類與純玩家端效果（被 _isMercSelfBuff 排除·刻意不給傭兵）、立方和諧（由轉換技能欄控制）、幻覺幻象召喚（吃 i_illusion 精通非此閘）。
+//   ⚠️不含：完全免疫類與純玩家端效果（被 _isMercSelfBuff 排除·刻意不給傭兵）、立方和諧（由轉換技能欄控制）。
+//   🔮 幻覺（歐吉/巫妖/鑽石高崙）已納入（cat「幻覺」）：勾選＝維持該 buff＝自身吃屬性加成＋提供全隊光環。幻象召喚本身另吃 i_illusion 精通、不受此閘。
 function allyAutoCastableSkills(ally) {
     if (!ally || !ally.skills) return [];
     let seen = {}, out = [];
@@ -1876,6 +1881,7 @@ function allyAutoCastableSkills(ally) {
         else if (sk.cube && sid !== 'sk_illu_cube_harmony') cat = '立方';
         else if (sk.type === 'buff' && sk.summon) cat = '召喚';
         else if (typeof TEAM_AURA_SKILLS !== 'undefined' && TEAM_AURA_SKILLS.includes(sid)) cat = '團隊光環';   // 🌟 v3.0.99 隊長團隊光環（大地祝福/鋼鐵防護/水之元氣/化身）
+        else if (sk.illuSummon && _isMercSelfBuff(sk, sid)) cat = '幻覺';   // 🔮 幻覺（歐吉/巫妖/鑽石高崙）：勾選＝維持 buff→自身加成＋全隊光環
         else if (_isMercSelfBuff(sk, sid)) cat = '自我增益';
         if (!cat) continue;
         seen[sid] = true; out.push({ sid: sid, n: sk.n, cat: cat });

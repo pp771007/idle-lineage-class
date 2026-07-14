@@ -753,8 +753,10 @@ function allyMageAct(ally) {
         if (allyCastNonDamage(ally, sk)) return;   // 🔧 非傷害攻擊技能（緩速/弱化/疾病/即死…）；不適用則退回基礎光箭
     }
     allyAttackOnce(ally);   // 沒選攻擊魔法 / MP 不足 → 免費基礎光箭
+    allyRapidfire(ally);   // 🏹 連射：非弓/無 rapidfire 武器內部 no-op（原本只有妖精路徑會判定連射→其他職業拿連射弓等於沒效果）
 }
-// 妖精協力：連射（弓）— 依記錄的發動機率追加 1~3 箭，每箭約 30% 傷害，隨機命中場上敵人
+// 傭兵連射（弓）— 依記錄的發動機率追加 1~3 箭，每箭約 30% 傷害，隨機命中場上敵人。
+//   全職業普攻後都會判定（非弓／無 rapidfire 的武器在下方閘門直接 return＝no-op）。
 function allyRapidfire(ally) {
     if (ally.classicMode) return;   // 🎮 經典模式：傭兵停用連射
     let d = ally.d || {};
@@ -1391,10 +1393,11 @@ function allyDarkAct(ally) {
         } else if (_sk && _sk.type === 'atk' && (_sk.status || _sk.instakill) && allyCastNonDamage(ally, _sk)) return;   // 🔧 其他非傷害攻擊技能（純異常狀態/即死）：通用施放；不適用則退回一般攻擊
     }
     allyAttackOnce(ally);
+    allyRapidfire(ally);   // 🏹 連射：非弓/無 rapidfire 武器內部 no-op（原本只有妖精路徑會判定連射→其他職業拿連射弓等於沒效果）
 }
 // 騎士協力一次行動：依設定攻擊技能施放——物理技(衝擊之暈)、傷害魔法(光箭/冰箭/風刃)、或非傷害狀態/即死技；皆不適用(無目標/武器不符/MP不足)則退回一般攻擊(含看破/殺戮被動)
 function allyKnightAct(ally) {
-    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); return; }
+    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); allyRapidfire(ally); return; }
     let sk = DB.skills[ally._atkSkill];
     let d = ally.d || {};
     if (sk && sk.type === 'atk') {
@@ -1410,10 +1413,11 @@ function allyKnightAct(ally) {
         }
     }
     allyAttackOnce(ally);
+    allyRapidfire(ally);   // 🏹 連射：非弓/無 rapidfire 武器內部 no-op（原本只有妖精路徑會判定連射→其他職業拿連射弓等於沒效果）
 }
 // ⚔️ 戰士協力一次行動：依設定攻擊技能施放——咆哮（roarFixed・對全體造成 50+(等級-30) 固定無屬性傷害，不計 MR/DR/元素）；無此技／MP不足／無敵人則退回一般攻擊（含迅猛雙斧/狂暴等普攻特效）
 function allyWarriorAct(ally) {
-    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); return; }
+    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); allyRapidfire(ally); return; }
     let sk = DB.skills[ally._atkSkill];
     let d = ally.d || {};
     if (sk && sk.type === 'atk' && sk.roarFixed) {                                          // ⚔️ 咆哮：全體固定傷害（戰士唯一主動攻擊技）
@@ -1442,6 +1446,7 @@ function allyWarriorAct(ally) {
         if (allyCastNonDamage(ally, sk)) return;   // 非傷害狀態/即死技（通用分支·比照騎士）
     }
     allyAttackOnce(ally);
+    allyRapidfire(ally);   // 🏹 連射：非弓/無 rapidfire 武器內部 no-op（原本只有妖精路徑會判定連射→其他職業拿連射弓等於沒效果）
 }
 // 👑 v2.7.94 王族魔法精通（傭兵）：一般攻擊命中 10% 免MP額外施放「選定的攻擊魔法」（鏡像玩家 royalMagicFreeCast·js/04:211/js/07:248）。
 //    只放魔法類（傷害 dmgDice/multiDmg→allyCastMagic 本就不扣MP＝免費；狀態/即死→allyCastNonDamage 由 _allyRoyalFreeCast 旗標令 cost=0）；呼喚盟友(callAllies)/物理技不走此免費加放。
@@ -1457,7 +1462,7 @@ function allyRoyalFreeCast(ally) {
 }
 // 👑 王族協力一次行動：依設定攻擊技能施放——呼喚盟友（callAllies・所有上場傭兵立即各發動一次額外一般攻擊）、傷害魔法（v2.7.92·王族 Lv10/20 可學一二階＋魔法精通三~五階·比照騎士走 allyCastMagic）、非傷害狀態/即死技（allyCastNonDamage）；皆不適用則退回一般攻擊（王者加護被動由 recomputeStats 已套）
 function allyRoyalAct(ally) {
-    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); return; }
+    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); allyRapidfire(ally); return; }
     let sk = DB.skills[ally._atkSkill];
     let d = ally.d || {};
     if (sk && sk.type === 'atk' && sk.callAllies) {                                          // 👑 呼喚盟友：號召所有傭兵各補一刀
@@ -1482,11 +1487,12 @@ function allyRoyalAct(ally) {
         if (allyCastNonDamage(ally, sk)) return;   // 👑 v2.7.92 非傷害狀態/即死技（毒咒/闇盲咒術/壞物術/緩速術/木乃伊的詛咒/黑闇之影/起死回生術…）：通用施放；不適用則退回一般攻擊
     }
     allyAttackOnce(ally);
+    allyRapidfire(ally);   // 🏹 連射：非弓/無 rapidfire 武器內部 no-op（原本只有妖精路徑會判定連射→其他職業拿連射弓等於沒效果）
 }
 // 🐉 龍騎士協力一次行動：依設定攻擊技能施放——傷害魔法(岩漿噴吐/岩漿之箭/奪命之雷)、屠宰者(物理多段)、控制(護衛毀滅/恐懼無助/驚悚死神)；皆不適用則退回一般攻擊(含鎖鏈劍特效/弱點曝光/吸血)
 // ⚠️ 傭兵不付技能 HP 消耗：傭兵無 HP 再生且不被攻擊(ally.hp 僅吸血會增)，若扣 HP 則龍騎士 mp:0 的技能只能放數次後永久停擺；故僅付 MP（MP 有再生），效果等同玩家被再生支撐的連續施放。
 function allyDragonAct(ally) {
-    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); return; }
+    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); allyRapidfire(ally); return; }
     let sk = DB.skills[ally._atkSkill];
     if (sk && sk.type === 'atk') {
         // 🐉 龍騎士傭兵改吃 HP（資源＝HP，顯示也以 HP 為準）：HP 不足以負擔技能消耗 → 退回普攻；施放成功才扣 HP，且絕不會把傭兵打死（下限 1，傭兵不陣亡）。其餘 ally 子函式對 sk.mp=0 只扣 0 MP，故不重複扣。
@@ -1505,10 +1511,11 @@ function allyDragonAct(ally) {
         }
     }
     allyAttackOnce(ally);
+    allyRapidfire(ally);   // 🏹 連射：非弓/無 rapidfire 武器內部 no-op（原本只有妖精路徑會判定連射→其他職業拿連射弓等於沒效果）
 }
 // 🔮 幻術士協力一次行動：依設定攻擊技能施放——心靈破壞(消耗MP=傷害)、粉碎能量/骷髏毀壞(物理)、混亂/幻想(傷害魔法+附帶混亂/沉睡)、恐慌(純狀態)；皆不適用則退回奇古獸/一般攻擊
 function allyIllusionAct(ally) {
-    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); return; }
+    let t = getTarget(); if (!t || t.curHp <= 0) { allyAttackOnce(ally); allyRapidfire(ally); return; }
     let sk = DB.skills[ally._atkSkill]; let d = ally.d || {};
     if (sk && sk.type === 'atk') {
         if (sk.tagReq && !mobHasTag(t, sk.tagReq)) { allyAttackOnce(ally); return; }   // 骷髏毀壞：只對不死，否則退回奇古獸普攻（與玩家 9196 一致）
@@ -1528,6 +1535,7 @@ function allyIllusionAct(ally) {
         }
     }
     allyAttackOnce(ally);
+    allyRapidfire(ally);   // 🏹 連射：非弓/無 rapidfire 武器內部 no-op（原本只有妖精路徑會判定連射→其他職業拿連射弓等於沒效果）
 }
 // 🔮 幻術士傭兵 立方（常駐光環）：已學會的立方即視為常駐展開（傭兵無手動開關），每 cube.iv ticks 觸發一次。效果同玩家 cubeTick（dmg=全體傷害/slow=全體緩速/mrdown=目標魔抗減半/mp=自身回MP），但改用傭兵自身等級/MP；
 //   狀態命中換身用傭兵衍生值（abnormalMagicHit 讀 player.*），傷害換算 summonElementDamage 為純函式（不需換身），擊殺仍由 killMob 歸玩家（經驗/金錢）。安全區(村莊)不展開。
@@ -1962,6 +1970,14 @@ function allyTryDispel(ally) {
     logCombat(`<span class="text-emerald-300 font-bold">協力·${ally._allyName}</span> 施放 ${skd.n}，解除了 ${_dispelTargetName(_tgt)} 的負面狀態。`, 'heal', 'mercenary');
     return true;
 }
+// ⚔️ 傭兵一般行動間隔（全職業共用·比照玩家 player.d.aspd）：ally.d.aspd 已含 base×spdMult（加速術/強力加速/行走加速/勇敢/餅乾／切割·劍術·巨斧·雙斧·王族劍術·奇古·魔劍精通／覺醒/血之渴望/變身/負重）。
+//    切割「觸發」瞬間加速與緩速術是暫態、recompute 未含，於此補入。
+function allyAttackIntervalTicks(ally, st) {
+    let itv = Math.max(1, Math.round(((ally.d && ally.d.aspd) ? ally.d.aspd : atkSpdBaseItv(ally)) * 10));
+    if (!ally.classicMode && ally._cleaveTicks > 0 && !allyHasMastery(ally, 'k_cleave')) itv = Math.max(1, Math.round(itv * 0.8));   // 🔧 切割觸發：非切割精通者補 ×0.80（切割精通常駐 0.50 已在 spdMult）；🎮 經典模式停用
+    if (st && st.slowAtk > 0) itv *= 2;   // 🐢 緩速術：攻擊間隔翻倍（比照玩家 js/03）
+    return itv;
+}
 function alliesTick() {
     if (!player.allies || !player.allies.length) return;
     player.allies.forEach(ally => {
@@ -2017,20 +2033,14 @@ function alliesTick() {
         if (!_ccBlock && (ally._atkCd = (ally._atkCd || 0) - 1) <= 0) {
             ally._stunCycle = false;   // ⚔️ 硬直：攻擊週期結束→重置旗標（下週期被擊可再延遲一次）
             if (_castBlock) {   // 🤝 Phase4：沉默/魔法封印→只能基本攻擊（不施放 _atkSkill 與治癒）
-                ally._atkCd = (_ast.slowAtk > 0 ? 40 : 20); allyAttackOnce(ally);
+                ally._atkCd = allyAttackIntervalTicks(ally, _ast); allyAttackOnce(ally);
             } else if (ally._healSkill && allyTryHeal(ally)) {   // 🤝 Phase 3：隊伍有人低於門檻→改施放治癒（消耗本回合行動）
                 ally._atkCd = 20;
             } else if (ally.cls === 'mage') {
-                ally._atkCd = (_ast.slowAtk > 0 ? 40 : 20);   // 法師施法間隔 ~2 秒（緩速×2）
+                ally._atkCd = allyAttackIntervalTicks(ally, _ast);   // 法師改用真正的職業/武器攻速與常駐加速（原固定 2 秒·比照其他職業）
                 allyActWithSkillGate(ally, allyMageAct);   // ⏳ 法師：攻擊魔法週期施放·平時基礎光箭普攻
             } else {
-                let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
-                // ⚔️ v3.0.98 傭兵攻速改用 recompute 後的完整 ally.d.aspd（＝base×spdMult：加速術/強力加速/行走加速/勇敢/餅乾/切割·劍術·巨斧·雙斧·王族劍術·奇古·魔劍精通/覺醒/血之渴望/變身/負重 全含·比照玩家 player.d.aspd）。
-                //   原本只用 atkSpdBaseItv(base)＋手動 cleave/劍術/奇古 且 floor 8＝0.8s → 漏掉加速術等、且把已算的精通夾在 0.8s（傭兵過慢主因）。buff 變動由 allyMaintainBuffs→_allyLevelRecompute 即時重算 ally.d.aspd；floor 改 1 比照玩家(js/03:290)使加速確實生效。
-                let _itv = Math.max(1, Math.round(((ally.d && ally.d.aspd) ? ally.d.aspd : atkSpdBaseItv(ally)) * 10));
-                if (!ally.classicMode && ally._cleaveTicks > 0 && !allyHasMastery(ally, 'k_cleave')) _itv = Math.max(1, Math.round(_itv * 0.8));   // 🔧 切割「觸發」瞬間加速（_cleaveTicks·非精通暫態·recompute 未含）：非切割精通者補 ×0.80（切割精通常駐 0.50 已在 spdMult）；🎮 經典模式停用
-                if (_ast.slowAtk > 0) _itv *= 2;   // 🐢 緩速術：攻擊間隔翻倍（比照玩家 js/03:291·recompute 未含此暫態·物理職 else 分支原漏此判定）
-                ally._atkCd = _itv;
+                ally._atkCd = allyAttackIntervalTicks(ally, _ast);
                 let _actFn = (ally.cls === 'elf') ? allyElfAct : (ally.cls === 'dark') ? allyDarkAct : (ally.cls === 'knight') ? allyKnightAct : (ally.cls === 'dragon') ? allyDragonAct : (ally.cls === 'illusion') ? allyIllusionAct : (ally.cls === 'warrior') ? allyWarriorAct : (ally.cls === 'royal') ? allyRoyalAct : null;
                 if (_actFn) allyActWithSkillGate(ally, _actFn); else allyAttackOnce(ally);   // ⏳ 攻擊技能週期施放(每~2秒)·平時走職業各自普攻
             }
@@ -2120,7 +2130,7 @@ function allyTryPotion(ally) {
         stack = player.inv.find(i => i.id === potId && (i.cnt || 0) > 0);
         if (!stack) return;                                 // 保險：理論上已購入
     }
-    stack.cnt--; player.inv = player.inv.filter(i => (i.cnt || 0) > 0);   // 消耗隊長 1 瓶
+    stack.cnt--; if (stack.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== stack.uid);   // 消耗隊長 1 瓶（只移除喝空的那一疊；原本掃全背包 filter 會把 cnt 為 undefined 的舊物品一併誤刪）
     let _conPct = (typeof getConPotionPct === 'function') ? getConPotionPct((ally.d && ally.d.con) || 0) : 0;   // 比照玩家：CON 提升藥水恢復%
     let _dollPot = (ally.eq && ally.eq.doll && DB.items[ally.eq.doll.id]) ? (DB.items[ally.eq.doll.id].potionBonus || 0) : 0;   // 🆕 v2.6.10 #3：魔法娃娃 potionBonus%（吸血鬼娃娃）
     let h = Math.max(1, Math.floor(potionHealBase(pdef) * (1 + (_conPct + _dollPot) / 100)));   // 🍶 藥水基準改隨機區間 valMin~valMax（傭兵比照玩家）
@@ -2169,7 +2179,7 @@ function tryAutoReviveMercScroll(ally) {
         }
         if (!sc) return false;                                                                // 仍拿不到（未開自動買／金錢不足）→ 等待
     }
-    sc.cnt--; player.inv = player.inv.filter(i => (i.cnt || 0) > 0);                          // 消耗 1 張復活卷軸
+    sc.cnt--; if (sc.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== sc.uid);          // 消耗 1 張復活卷軸（只移除用空的那一疊）
     _reviveAllyDone(ally, '復活卷軸（自動）');
     return true;
 }

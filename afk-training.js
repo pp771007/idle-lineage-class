@@ -154,6 +154,22 @@
       return _origUseItem.apply(this, arguments);
     };
   }
+  // ---- 木人場禁止迷魅術：成功時原作直接把該怪從場上拿掉（mapState.mobs[idx]=null·js/07 mEff='charm'），
+  //   不經 killMob → 繞過上面的「怪打不死」攔截，訓練怪會少一隻。迷魅術是手動技（type:'manual'），
+  //   唯一入口是 manualCast；擋在這裡即可（不扣 MP、不變僕人）。
+  if (typeof window.manualCast === 'function') {
+    var _origManualCast = window.manualCast;
+    window.manualCast = function (skId) {
+      if (inTrain()) {
+        var sk = (typeof DB !== 'undefined' && DB.skills) ? DB.skills[skId] : null;
+        if (sk && sk.mEff === 'charm') {
+          if (typeof window.logSys === 'function') window.logSys('<span class="text-amber-300">木人場內無法使用迷魅術（會把訓練用的怪帶走）。</span>');
+          return;
+        }
+      }
+      return _origManualCast.apply(this, arguments);
+    };
+  }
 
   // ---- 玩家打不死：包住 killPlayer。**只看地圖 mapState.current === TRAIN_MAP**（不靠 active 旗標）：
   //   最穩——人在木人場就絕不會死(連被秒殺也是),旗標若殘留也不影響;正常地圖 id 永遠不是 afk_dummy → 攔截絕不洩到一般遊戲(在外面照常會死)。

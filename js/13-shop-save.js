@@ -757,10 +757,10 @@ function saveGame() {
     // 未載入角色不寫檔：主選單/創角時 player 是空白預設（cls 為 null），此時寫檔會把空白角色
     // 蓋進 lineage_idle_save_<currentSlot>（預設 1）→ 覆蓋玩家第 1 格真實存檔，且此路徑不留備份。
     // cls 在 startGame() 一開始就設好，故此防呆只擋「主選單空白」這唯一壞狀態。
-    if (!player || !player.cls) return;
+    if (!player || !player.cls) return false;
     // 死亡狀態不寫檔：避免把 player.dead=true 存進去，導致下次讀檔卡在死亡狀態而不出怪。
     // 死亡期間沒有可保存的進度，保留上一份「存活」存檔即可。
-    if (player.dead) return;
+    if (player.dead) return false;
     if (typeof sanitizeState === 'function') sanitizeState();   // 🛡️ 寫檔前合理性夾擠：把 runtime(Console)改出的不可能數值夾回合法範圍，連同簽章一起固化、不讓作弊值被存檔/匯出
     // 收集目前的自動化設定 UI 狀態（🛡️ 僅在 UI 已同步時重建；否則沿用記憶體中既有 config）
     if (_uiConfigReady) {
@@ -803,12 +803,28 @@ function saveGame() {
     });
     }   // ← _uiConfigReady 閘（審計#1）
 
-    _lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })));   // 🔧 架構#6：寫入存檔版本（🛡️ 加完整性簽章後 💾 LZString 壓縮）   // 🔧 一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準（迷魅重新計時 1 小時）
+    try {
+        // 🔧 架構#6：寫入存檔版本（🛡️ 加完整性簽章後 💾 LZString 壓縮）；一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準
+        // 🚨 寫入失敗（儲存空間滿/瀏覽器拒寫）一定要讓玩家知道：先前忽略 _lzSet 的回傳值，玩家會在「進度其實沒存進去」的情況下繼續玩，
+        //    倉庫存取還可能因此複製或吃掉道具。失敗時設 _saveBroken，由倉庫存取閘擋下（見 js/12 whSaveBlocked）。
+        if (!_lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })))) throw new Error('persistent storage write failed');
+        _saveBroken = false;
+    } catch (e) {
+        try { console.error('[saveGame] failed', e); } catch (_e) {}
+        if (!_saveBroken) {
+            _saveBroken = true;
+            logSys('<span class="text-red-400 font-bold">⚠ 遊戲進度儲存失敗（儲存空間可能已滿）。為避免道具遺失或複製，倉庫存取已暫停；請清理存檔空間後重新整理。</span>');
+        }
+        return false;
+    }
     if (typeof _dexFlushFf === 'function') _dexFlushFf();   // 🚀 快轉期間延後的收集冊寫入,隨存檔一併補寫（見 js/12 saveCardDex）
     _lastSaveMs = Date.now();   // 供 saveOnExit 去重（見下）；不影響任何 saveGame 呼叫端
     if (typeof offlineStamp === 'function') offlineStamp();   // 🌙 離線掛機錨點：存檔即蓋（js/offline.js；結算期間內部自動跳過，錨點只由檢查點推進）
     logSys(`遊戲進度已儲存。`);
+    return true;
 }
+let _saveBroken = false;   // 存檔寫入失敗中：倉庫存取暫停（見 js/12），避免在「進度存不進去」的狀態下搬道具
+function whSaveBlocked() { return _saveBroken; }
 
 // 關閉分頁 / 切到背景時補存一次：自動存檔每 5 分鐘一次，直接關掉最多會丟近 5 分鐘進度。
 // visibilitychange→hidden 是手機最可靠的時機（被系統殺背景時 pagehide/beforeunload 常不觸發）。

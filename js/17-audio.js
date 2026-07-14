@@ -546,6 +546,8 @@ function _bgmResolve(scene, file) {
 
 function _bgmIsCreateScreen() {   // 創角面板可見（#creation-panel 未 hidden）＝玩家正在創角
     if (typeof document === 'undefined') return false;
+    var g = document.getElementById('game-screen');
+    if (g && g.classList && !g.classList.contains('hidden')) return false;   // 🔊 已進遊戲(game-screen 顯示中)→絕非創角畫面（防 creation-panel classList 殘留誤判→登入/創角 BGM 卡住不切）
     var p = document.getElementById('creation-panel');
     return !!(p && p.classList && !p.classList.contains('hidden'));
 }

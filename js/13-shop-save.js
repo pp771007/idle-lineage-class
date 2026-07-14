@@ -549,7 +549,8 @@ function setCreationClassAnimation(c){
     function tick(now){
         const panel = document.getElementById('creation-panel');
         const img = document.getElementById('class-preview-img');
-        if(panel && img && !panel.classList.contains('hidden') && !creationClassAnim.static && now - creationClassAnim.lastAt >= creationClassAnim.stepMs){
+        const gs = document.getElementById('game-screen');   // 🔊 已進遊戲→停創角動畫（防 creation-panel classList 殘留→動畫續跑並每 loop 重觸發創角語音）
+        if(panel && img && !panel.classList.contains('hidden') && (!gs || gs.classList.contains('hidden')) && !creationClassAnim.static && now - creationClassAnim.lastAt >= creationClassAnim.stepMs){
             creationClassAnim.frame = creationClassAnim.frame >= creationClassAnim.last ? creationClassAnim.first : creationClassAnim.frame + 1;
             img.src = `assets/start/${creationClassAnim.key}/${creationClassAnim.frame}.png`;
             if(creationClassAnim.frame === creationClassAnim.first && typeof playCreationFrameSfx === 'function') playCreationFrameSfx(creationClassAnim.key, creationClassAnim.frame);   // 每輪回到起始幀＝重播一次語音
@@ -649,6 +650,11 @@ function onToggleTraditional(el) {
     });
 }
 function startGame() {
+    if(typeof stopCreationFrameSfx === 'function') stopCreationFrameSfx();
+    // 🔊 進遊戲：隱藏 creation-panel（原本只隱藏 creation-screen 父層·子面板 classList 無 .hidden 殘留）＋停創角動畫。
+    //    否則 _bgmIsCreateScreen()(js/17) 與創角逐幀動畫 tick 都看 creation-panel→誤判「還在創角」→登入/創角 BGM 一直播、創角語音每 loop 重觸發。
+    { let _cp = document.getElementById('creation-panel'); if(_cp) _cp.classList.add('hidden'); }
+    creationClassAnim.static = true;   // 立即停創角動畫迴圈
     document.getElementById('creation-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
     document.body.classList.add('game-bg-dim');   // 正式遊戲後：背景淡化

@@ -950,7 +950,7 @@ function vfxCastShake() {
 //    各自持久化於 localStorage、載入時套用到對應全域旗標。全部都是顯示/音效層，收益/戰鬥結果不受影響。
 //    - 戰鬥特效  __vfxOff     ：法術序列幀/命中衝擊/擊殺閃光/投射物/狀態疊層
 //    - 傷害數字  __vfxNumOff  ：飄動傷害數字
-//    - 戰鬥動畫  __animOff    ：怪物/傭兵/玩家的 sprite 動作幀（8fps ticker 直接早退＝最大省電項）
+//    - 戰鬥動畫  __animOff    ：怪物/傭兵/玩家的 sprite 動作幀（8fps ticker 直接早退＝最大省電項）；寵物/召喚物另有自己的 ticker（js/22 _petAnimApply），也讀此旗標→整組不顯示
 //    - 畫面流暢更新 __uiSlow  ：tick 尾端的血條/怪物重繪由每秒 10 次降為 2 次＋日誌捲動批次化（js/03、js/01 讀此旗標）
 //    - 戰鬥音效 / 背景音樂     ：沒有自己的旗標，直接讀寫 js/17-audio 的偏好（fb5_sfx / fb5_bgm）＝與遊戲內「設定」分頁的開關同一份
 const _VFX_PREF_KEY = 'lineage_vfx_off';
@@ -1001,7 +1001,7 @@ function toggleBgmPref() { try { setBgmOn(!_audioPrefOn(_BGM_CFG_KEY)); } catch 
 // 省電 Modal 的開關項目：label/desc 給玩家看;get()=目前「開啟」與否(開=效果有開=比較耗電)
 // 排序＝關掉後省電效果由高到低（畫面重繪 > 音訊播放）
 const _POWER_SAVE_ITEMS = [
-    { label: '🎬 戰鬥動畫', desc: '角色／傭兵／怪物的動作動畫，關閉後改為靜態圖（最省電的一項）', get: () => !window.__animOff, toggle: toggleAnimPref },
+    { label: '🎬 戰鬥動畫', desc: '角色／傭兵／寵物／召喚物／怪物的動作動畫，關閉後怪物改為靜態圖、其餘不顯示（最省電的一項）', get: () => !window.__animOff, toggle: toggleAnimPref },
     { label: '💧 畫面流暢更新', desc: '血條與戰鬥畫面每秒更新 10 次，關閉後降為每秒 2 次（數值照常計算）', get: () => !window.__uiSlow, toggle: toggleUiSlowPref },
     { label: '✨ 戰鬥特效', desc: '法術特效、命中火花、擊殺閃光', get: () => !window.__vfxOff, toggle: toggleVfxPref },
     { label: '🔢 傷害數字', desc: '戰鬥中飄出的傷害數字', get: () => !window.__vfxNumOff, toggle: toggleVfxNumPref },

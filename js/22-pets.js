@@ -1077,6 +1077,7 @@ function _petWanderStep(p, host, hostRect) {
 function _petAnimApply() {
     try {
         if (typeof document !== 'undefined' && document.hidden) return;
+        if (window.__animOff) { let _l = document.getElementById('pet-layer'); if (_l) _l.remove(); return; }   // 🔋 省電「戰鬥動畫」關閉：寵物/召喚物 sprite 比照玩家/傭兵不顯示（不建圖層、不探測幀、不推進動作）
         let bv = document.getElementById('battle-view');
         let host = _petLayerHost();
         let layer = _petLayerEl();

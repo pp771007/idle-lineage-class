@@ -32,7 +32,7 @@ const SUMMON_TIERS = [
         { n: '狂野之魔', lv: 28, hp: 160, aspd: 16, ring: true, proc: [{ kind: 'magic', p: 0.10, name: '水泡', ele: 'water' }] } ] },
     { reqLv: 40, div: 8,  cap: 5, ringCap: 6, mobs: [
         { n: '食人妖精',   lv: 32, hp: 450, aspd: 13 },
-        { n: '食人妖精王', lv: 32, hp: 270, aspd: 13, ring: true },
+        { n: '食人妖精王', lv: 32, hp: 400, aspd: 13, ring: true },
         { n: '冰人',       lv: 32, hp: 180, aspd: 17, ring: true, proc: [{ kind: 'magic', p: 0.10, name: '冰錐', ele: 'water' }] } ] },
     { reqLv: 44, div: 8,  cap: 5, ringCap: 6, mobs: [
         { n: '狂暴蜥蜴人', lv: 36, hp: 500, aspd: 17 },
@@ -90,7 +90,7 @@ function _sumCountFor(name) {   // 數量：floor((魅力+6)/div)·上限 cap（
     return Math.max(0, Math.min(cap, n));
 }
 // 傷害設計：整隊基準 DPS 由「魅力×玩家等級」連續成長，再由召喚階級按比例逐階增加。
-//   同階怪物不再因 HP 較低而取得過大的基礎傷害；差異改由 HP、攻速與特殊技能形成。
+//   同階以中位 HP 為基準套用溫和反向曲線：(中位HP/自身HP)^0.35；血越少 DPS 越高、血越多 DPS 越低。
 //   🧙 v3.2.23 混合制（用戶拍板）：每隻單價＝隊伍基準 ÷ 該階數量上限（固定·不隨實際隻數變）
 //   → 多隻＝成倍疊加（5 隻＝單隻的 5 倍·「單隻與多隻有正常倍數差」）；
 //   → 後期階級上限縮小（64 階 2 隻·68/72 階固定 1 隻）→ 單隻天生承載半隊/整隊基準，
@@ -111,13 +111,19 @@ function _sumSkillPower(s) {
     const cha = Math.max(0, (player.d && player.d.cha) || 0);
     return Math.max(1, Math.floor((s && s.lv || 1) + (player.lv || 1) * 0.35 + tierIdx * 2 + cha * 0.5));
 }
+function _sumHpDpsMult(t, m) {   // 同階生存力換輸出：低血較痛、高血較坦；0.35 次方避免血量差距被放大成失衡
+    const hps = ((t && t.mobs) || []).map(x => Math.max(1, x.hp || 1)).sort((a, b) => a - b);
+    if (!hps.length) return 1;
+    const refHp = hps[Math.floor(hps.length / 2)];
+    return Math.pow(refHp / Math.max(1, (m && m.hp) || refHp), 0.35);
+}
 function _sumDerive(mob) {
     const e = _sumTierOf(mob.form || mob.n) || _sumTierOf(mob.n);
     if (!e) return { flat: 0, dice: 1, aspd: 20, dmgMult: 1, hit: 0, ac: 10, dr: 0 };   // 🛡️ v3.2.40 防呆：未知 form（改名/殘留實體）回安全預設，不 null-deref（js/04 呼叫端無 try/catch）
     const t = e.tier, m = e.mob;
     const tierIdx = Math.max(0, SUMMON_TIERS.indexOf(t));
     const cha = Math.max(0, (player.d && player.d.cha) || 0);
-    const squadDps = (39 + 0.09 * cha * (player.lv || 1)) * (1 + tierIdx * 0.06) * (t.premium || 1);
+    const squadDps = (39 + 0.09 * cha * (player.lv || 1)) * (1 + tierIdx * 0.06) * (t.premium || 1) * _sumHpDpsMult(t, m);
     const designCount = Math.max(1, t.cap || 1);   // 🧙 v3.2.24 單價＝基準/上限·恆定（每隻獨立·第 6 隻同為全額不稀釋）
     const mean = (squadDps / designCount) * (m.aspd / 10);
     const flat = Math.round(mean * 0.55);

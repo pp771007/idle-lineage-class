@@ -1062,6 +1062,17 @@ function renderStatusEffects() {
     // 🐾 誘捕狀態（7 種，期間擊殺對應動物即捕獲）
     if (typeof PET_LURES !== 'undefined') Object.keys(PET_LURES).forEach(k => { if ((player.buffs[k] || 0) > 0) buffs.push(`<span class="text-pink-300 font-bold">${PET_LURES[k].n}</span>`); });
 
+    // 🔍 魔物追蹤（奧貝勒·8 小時）：原本只有回奧貝勒問才看得到剩餘時間 → 直接顯示在狀態列
+    //    追蹤是牆鐘計時（關遊戲也會流逝），故用 Date.now() 算剩餘
+    { let _tr = player.tracking;
+      if (_tr && _tr.until > Date.now()) {
+          let _left = _tr.until - Date.now();
+          let _h = Math.floor(_left / 3600000), _m = Math.floor((_left % 3600000) / 60000);
+          let _mn = (DB.mobs[_tr.mob] || {}).n || _tr.mob;
+          let _here = (_tr.map === mapState.current);   // 不在追蹤的那張圖 → 標灰提醒（此圖不會提高出現率）
+          buffs.push(`<span class="${_here ? 'text-cyan-300' : 'text-slate-500'} font-bold" title="${_here ? '追蹤中：此圖該怪出現率提高' : '追蹤的地圖不是這裡（要到 ' + ((typeof AFK_EXTRA !== 'undefined' && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(_tr.map) : _tr.map) + ' 才生效）'}">🔍 追蹤:${_mn} ${_h > 0 ? _h + '時' : ''}${_m}分</span>`);
+      } }
+
     // 🔮 席琳套裝：達 2 件以上（觸發套裝能力）的組別顯示於資訊面板（n/5）
     if (player._sherineSetCnt) {
         for (let _g in player._sherineSetCnt) {

@@ -235,7 +235,7 @@ function renderCastleGuard(div, city) {
     let intro = heal
         ? `雇用一名神官：<b class="text-green-300">當你的 HP 低於設定門檻時，每 5 秒為你施放一次治癒術</b>（只計基礎值、不受魔法傷害加成）。同時只能雇一名，更換前需先取消。神官不會攻擊；魔力耗盡會停止治療，待自動恢復至 50% MP 或回城補滿後再次生效。`
         : `雇用一名護衛替你承擔 <b class="text-amber-300">10% 的${cfg.label}傷害</b>（僅當你的 HP 低於設定門檻時發動）。同時只能雇一名，更換前需先取消。護衛不會攻擊；血量降到 1 會停止護衛，待自動恢復至 50% 或回城補滿後再次生效。`;
-    let _upkeepNote = `<div class="text-xs text-amber-300 bg-slate-800/60 border border-amber-800 rounded px-2 py-1">🛡️ 占領期間<b>每天清晨 ${SIEGE_RESET_HOUR} 點會自動續雇</b>，扣一次<b>全額雇用價</b>（＝你自己每天重雇一次的花費）；金幣不足時護衛會離開（城池不受影響）。</div>`;
+    let _upkeepNote = `<div class="text-xs text-amber-300 bg-slate-800/60 border border-amber-800 rounded px-2 py-1">🛡️ 占領期間<b>每天清晨 ${SIEGE_RESET_HOUR} 點自動續雇</b>，扣一次雇用價（雇用時標的金額）；金幣不足時護衛會離開，城池不受影響。</div>`;
     div.innerHTML = `<div class="flex flex-col gap-2 p-1"><div class="text-slate-300 text-sm leading-relaxed">${intro}</div>${_upkeepNote}${cur}${rows}</div>`;
 }
 function hireCastleGuard(city, idx) {
@@ -803,7 +803,7 @@ function endSiege(result) {
     // 冷卻到「下一個每日重置點」（不再是滾動 24 小時→開打時間不會逐日往後漂）；最短間隔擋掉跨重置點連打
     s.cooldownUntil = Math.max(siegeNextResetTs(Date.now()), Date.now() + SIEGE_MIN_GAP_MS);
     let _cfg = siegeCityCfg();
-    if (result === 'win') { s.victoryUntil = siegeNextResetTs(Date.now()); s.victoryCity = _cfg.key; player.ismaelAccUsed = false; logSys(`🏆🏰 <span class="text-yellow-300 font-bold">攻城獲勝！</span>擊破了${_cfg.tower}！占領${_cfg.castleName}：全商店 8 折、開放「城堡」、回村按鈕變為回城。<span class="text-amber-300">每天清晨 ${SIEGE_RESET_HOUR} 點自動守城，扣 ${SIEGE_UPKEEP_WARRANTS} 張王族搜索狀（＝重新宣戰的代價，不必上線）；有雇護衛的話另扣一次全額雇用價（＝每天重雇）。付不出來就失守／護衛離開。</span>前往盟主處點「領賞」領取金幣獎勵。`); }
+    if (result === 'win') { s.victoryUntil = siegeNextResetTs(Date.now()); s.victoryCity = _cfg.key; player.ismaelAccUsed = false; logSys(`🏆🏰 <span class="text-yellow-300 font-bold">攻城獲勝！</span>擊破了${_cfg.tower}！占領${_cfg.castleName}：全商店 8 折、開放「城堡」、回村按鈕變為回城。<span class="text-amber-300">每天清晨 ${SIEGE_RESET_HOUR} 點自動守城（不必上線）：扣 ${SIEGE_UPKEEP_WARRANTS} 張王族搜索狀；有雇護衛的話另扣一次雇用價。搜索狀不足＝失守，金幣不足＝護衛離開。</span>前往盟主處點「領賞」領取金幣獎勵。`); }
     else logSys(`🏰 <span class="text-slate-300 font-bold">攻城失敗…</span>時間到，未能攻下${_cfg.tower}。仍可前往盟主處點「領賞」領取獎勵。`);
     { let timer = document.getElementById('siege-timer'); if (timer) timer.classList.add('hidden'); }   // 結束隱藏倒數
     setMapSelectors(getHomeTown());

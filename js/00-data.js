@@ -796,7 +796,7 @@ const DB = {
         "item_orc_elder_head": { n: "妖魔長老首級", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "妖魔法師頂禮膜拜、供奉於暗壇的妖魔長老首級。可在沉默洞穴交給「康」交換影子面具。（無法使用）" },   // 🔧 任務道具：妖魔法師 1% 掉落
         "item_yeti_head": { n: "雪怪首級", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "自暴雪中的雪怪斬下、猶帶寒霜的巨大首級。可在沉默洞穴交給「布魯迪卡」交換影子長靴。（無法使用）" },   // 🔧 任務道具：雪怪 1% 掉落
         "item_mastery_proof": { n: "精通之證", p: 0, c: "text-blue-300", noUse: true, noSell: true, gachaWeight: 0, d: "證明你已踏碎自身極限的徽記，灼灼生輝。帶回威頓村交給「漢」，便能開啟職業精通之路。（唯一・無法存入倉庫・無法販售）" },   // 🏅 精通任務道具
-        "item_dragon_egg": { n: "幼龍蛋", type: "etc", req: "all", p: 0, c: "text-amber-300", noUse: true, maxHold: 1, gachaWeight: 0, d: "一顆尚在沉睡的幼龍蛋，蛋殼下彷彿有風在流動。擊敗安塔瑞斯／法利昂／巴拉卡斯必得。持有時於任何野外地圖有極微小機率引來傳說中的風龍「林德拜爾」；售價 0，但可隨時賣出以中止這份危險的緣分。（唯一・無法存入倉庫）" },   // 🐉 林德拜爾遭遇觸發道具
+        "item_dragon_egg": { n: "頑皮幼龍蛋", type: "etc", req: "all", p: 0, c: "text-amber-300", eff: "dragonegg", maxHold: 1, gachaWeight: 0, d: "一顆尚在沉睡的幼龍蛋，蛋殼下彷彿有風在流動。擊敗安塔瑞斯／法利昂／巴拉卡斯必得。持有時於任何野外地圖有極微小機率引來傳說中的風龍「林德拜爾」；也可以直接使用——若寵物保管未滿，將消耗蛋並隨機孵出 淘氣龍 或 頑皮龍 一隻。售價 0，但可隨時賣出以中止這份危險的緣分。（唯一・無法存入倉庫）" },   // 🐉 林德拜爾遭遇觸發道具＋🐾 可使用孵化
         "item_soul_orb": { n: "靈魂之球", type: "misc", p: 0, c: "text-slate-200", eff: "soulorb", gachaWeight: 0, d: "蘊含微弱靈魂之力的水晶球，貼近耳邊彷彿能聽見低語。據說與某把失去魔力的魔杖共鳴時，能喚回沉睡的傳說。" },   // 🔧 巴列斯任務道具（可使用）
         // ===== 🗼 傲慢之塔：道具／素材／裝備 =====（封印傳送符 item_pride_sealed_* 由 initPrideTalismans 程式化產生）
         "mat_chimera_snake":  { n: "奇美拉之皮(蛇)",   type: "etc", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "奇美拉身上蛇之部位的堅韌皮革。可在傲慢之塔入口交給巴姆特，製作 詛咒的皮革(地)。（製作材料）" },

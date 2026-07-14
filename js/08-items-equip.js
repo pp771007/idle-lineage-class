@@ -274,6 +274,8 @@ function useItem(u, silent = false, keepModal = false) {
     if (d.eff === 'card') { if (silent) return; if (typeof useCardItem === 'function') useCardItem(item); return; }
     if (d.eff === 'doll_bag') { if (silent) return; if (typeof openDollBag === 'function') openDollBag(item, false); return; }   // 🪆 開啟魔法娃娃的袋子
     if (d.eff === 'doll_box_high') { if (silent) return; if (typeof openDollBox === 'function') openDollBox(item, false); return; }   // 🎁 開啟高級魔法娃娃的盒子
+    // 🥚 頑皮幼龍蛋：攜帶引來林德拜爾的原功能不變；使用＝寵物保管未滿時消耗蛋，隨機孵出 淘氣龍／頑皮龍（petUseDragonEgg 自行扣蛋，保管滿則不消耗）
+    if (d.eff === 'dragonegg') { if (silent) return; if (typeof petUseDragonEgg === 'function') petUseDragonEgg(item); return; }
 
     // 🗼 封印的傲慢之塔傳送符：使用後解封，獲得對應的 傲慢之塔傳送符（消耗 1 個）
     if (d.eff === 'pride_unseal') {

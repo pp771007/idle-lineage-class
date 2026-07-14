@@ -3,8 +3,8 @@
   "localClone": "D:/otherPersonRepos/idle-lineage-class",
   "divergedAtUpstream": "8a701d846b729171248521bd4153533d8078b44e",
   "divergedAtOurs": "58ad5809f08a3b92e02c963ae8cebe553b482bf2",
-  "reviewedUpstreamCommit": "a3c8331b5a1664ec7a43925945779dfb0b49a2f4",
-  "reviewedAt": "2026-07-13 10:39 (UTC+8)",
-  "reports": ["upstream-reviews/2026-07-10-v3.0.65-to-v3.1.67.md", "upstream-reviews/2026-07-13-v3.1.67-to-v3.3.15.md"],
-  "note": "分家點=2026-07-05 最後一次自動同步(上游 v3.0.65)。divergedAt* 兩個 commit 內容等價(js/ 全檔 blob 相同)、永不改動,是 3-way 移植的共同祖先。reviewedUpstreamCommit=已完成差異分析的上游 commit,由 /upstream-diff 推進;分析報告存 upstream-reviews/ 並列進 reports。"
+  "reviewedUpstreamCommit": "869445e5c50e9aa0f3093eaf567ac62b2b6f508f",
+  "reviewedAt": "2026-07-14 15:58 (UTC+8)",
+  "reports": ["upstream-reviews/2026-07-10-v3.0.65-to-v3.1.67.md", "upstream-reviews/2026-07-13-v3.1.67-to-v3.3.15.md", "upstream-reviews/2026-07-14-v3.3.15-to-v3.4.23.md"],
+  "note": "分家點=2026-07-05 最後一次自動同步(上游 v3.0.65)。divergedAt* 兩個 commit 內容等價(js/ 全檔 blob 相同)、永不改動,是 3-way 移植的共同祖先。reviewedUpstreamCommit=已完成差異分析的上游 commit,由 /upstream-diff 推進;分析報告存 upstream-reviews/ 並列進 reports。2026-07-14 這輪已把上一份報告(v3.1.67-v3.3.15)的 14 個項目全數移植完成(含寵物 v2/召喚獸 v2/動畫三包),新報告 v3.3.15-v3.4.23 的項目尚未挑選。"
 }

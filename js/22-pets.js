@@ -990,6 +990,10 @@ function renderPetStorageNPC(div, confirmUid) {
     }).join('');
     let evoCnt = player.inv.filter(i => i.id === 'item_evo_fruit').reduce((s, i) => s + (i.cnt || 0), 0);
     let vicCnt = player.inv.filter(i => i.id === 'item_victory_fruit').reduce((s, i) => s + (i.cnt || 0), 0);
+    // 出戰/收回/進化都會整份重繪 → 兩層捲動位置（外層互動面板＋內層寵物清單）都會歸零，養一堆寵時每點一次就要重找那隻。重繪後還原。
+    let _outerTop = div.scrollTop;
+    let _listEl = div.querySelector('[data-petlist]');
+    let _listTop = _listEl ? _listEl.scrollTop : 0;
     div.innerHTML = `
     <div class="flex flex-col gap-3 p-1" data-petui="1">
         <div class="text-slate-300 text-sm leading-relaxed">包武：我幫你照顧捕獲的寵物。<b class="text-amber-300">最多保管 ${PET_STORAGE_MAX} 隻，同一模式的角色共通</b>。使用誘捕道具後擊殺對應的動物即可捕獲；點「出戰」讓寵物加入隊伍（最多 ${PET_CARRY_MAX} 隻·依寵物需求消耗魅力）。<b class="text-amber-300">只有「一般型態」的寵物（Lv30 以上）可進化，且有兩條路</b>：用「進化果實」→對應的高等型態，或用「勝利果實」→黃金龍；兩種果實都帶在身上時，進化前可自行選擇要走哪條路。高等型態與黃金龍都是最終型態、不會再進化——身上沒有果實可是不能進化的喔。</div>
@@ -999,8 +1003,11 @@ function renderPetStorageNPC(div, confirmUid) {
             <span>魅力：<span class="${petChaUsed() > cha ? 'text-red-400' : 'text-green-400'} font-bold">${petChaUsed()}/${cha}</span></span>
             <span>進化果實×<span class="text-amber-300 font-bold">${evoCnt}</span>　勝利果實×<span class="text-amber-300 font-bold">${vicCnt}</span></span>
         </div>
-        <div class="flex flex-col gap-1 overflow-y-auto pr-1" style="max-height:380px">${rows || '<div class="text-slate-500 text-sm text-center py-6">保管箱空空如也——去使用誘捕道具捕捉寵物吧！</div>'}</div>
+        <div data-petlist="1" class="flex flex-col gap-1 overflow-y-auto pr-1" style="max-height:380px">${rows || '<div class="text-slate-500 text-sm text-center py-6">保管箱空空如也——去使用誘捕道具捕捉寵物吧！</div>'}</div>
     </div>`;
+    div.scrollTop = _outerTop;
+    let _newList = div.querySelector('[data-petlist]');
+    if (_newList) _newList.scrollTop = _listTop;
 }
 
 // ---------- 九、隊伍清單（renderSquadPanel 掛點：傭兵卡下方）----------

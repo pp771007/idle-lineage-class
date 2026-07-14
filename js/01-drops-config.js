@@ -331,7 +331,7 @@
         '死亡的殭屍王': [['blt_mr',1],['wpn_2hsword',30], ['wpn_siruge',5], ['wpn_dual_abyss',0.05], ['arm_69',30], ['arm_59',3], ['amr_plate',30], ['acc_summon_ctrl',0.1], ['rng_water',0.2], ['rng_earth',0.5], ['rng_wind',0.2], ['rng_fire',0.1], ['acc_128',1], ['acc_130',1], ['scroll_weapon',30], ['scroll_armor',30], ['bk_dark_shadow',5], ['bk_zombie',5], ['bk_weaken',5], ['bk_disease',5], ['bk_resurrection',5], ['bk_seal',5], ['bk_dark_fang',5], ['item_pride_scroll_41',30], ['item_pride_sealed_41',1]],
         '殘暴的骷髏鬥士': [['amr_bone',2], ['scroll_weapon',2], ['item_pride_scroll_41',2], ['bk_dex_up',1], ['bk_haste_spell',0.5], ['bk_dark_double',0.1], ['bk_dark_erup',1]],
         // ===== 🗼 傲慢之塔 41~50 樓 =====
-        '幼龍': [['new_item_151',5], ['new_item_157',5], ['new_item_160',5], ['new_item_154',5], ['new_item_152',0.5], ['new_item_158',0.5], ['new_item_161',0.3], ['new_item_155',0.5], ['new_item_153',0.3], ['new_item_159',0.5], ['new_item_162',0.5], ['new_item_156',0.5], ['scroll_armor',1], ['item_pride_scroll_51',2.5], ['bk_fire_prison',0.05], ['wpn_qigu_resonance',0.01]],
+        '幼龍': [['item_dragon_heart',0.01], ['new_item_151',5], ['new_item_157',5], ['new_item_160',5], ['new_item_154',5], ['new_item_152',0.5], ['new_item_158',0.5], ['new_item_161',0.3], ['new_item_155',0.5], ['new_item_153',0.3], ['new_item_159',0.5], ['new_item_162',0.5], ['new_item_156',0.5], ['scroll_armor',1], ['item_pride_scroll_51',2.5], ['bk_fire_prison',0.05], ['wpn_qigu_resonance',0.01]],
         '火焰之靈魂(紅)': [['scroll_armor',0.5], ['item_pride_scroll_51',2]],
         '火焰之靈魂(藍)': [['item_pride_scroll_51',2]],
         '恐怖的鋼鐵高崙': [['mat_golem_heart',1],['scroll_acc',0.001],['arm_99',0.005], ['rng_earth',0.01], ['item_pride_scroll_51',2], ['bk_dark_fang',0.1], ['new_item_180',100], ['new_item_164',20], ['bk_elf_physboost',0.5], ['mat_steel_chunk',10]],
@@ -1037,7 +1037,7 @@ const MASTERY_DATA = {
     } },
     elf: { logo: 'assets/logo/妖精logo.png', boss: '變形怪首領', list: {
         e_rapid:  { n: '連射精通', pos: 'top',    msg: '提升連射傷害與數量',                   d: '連射傷害由30%提升為50%，額外箭數由1~3變成隨機1~5' },
-        e_spirit: { n: '精靈精通', pos: 'left',   msg: '可同時召喚多隻屬性精靈',               d: '召喚屬性精靈與召喚強力屬性精靈數量變成1+魅力/10，可同時擁有7隻屬性精靈或強力屬性精靈' },
+        e_spirit: { n: '精靈精通', pos: 'left',   msg: '呼喚元素精靈王降臨',                   d: '與元素締結最高階的契約，使「召喚強力屬性精靈」昇華為同屬性的精靈王：等級更高、更硬、傷害更重，攻擊命中後有機率席捲全場的同屬性法術。精靈仍是 1 隻。' },
         e_sword:  { n: '劍術精通', pos: 'right',  msg: '可使用騎士單手武器、攻速+50%、發動看破',         d: '可裝備騎士限定的單手武器；持單手近戰武器時攻擊速度+50%（與加速術/勇敢/精靈餅乾/變身相乘疊加）；近距離攻擊有機率發動看破' },
         e_magic:  { n: '魔導精通', pos: 'bottom', msg: '同屬性魔法省MP、可學高階法術',     d: '施放與自身同屬性的傷害魔法消耗MP減少50%，可學習冰雪暴、龍捲風、震裂術、火風暴' }
     } },

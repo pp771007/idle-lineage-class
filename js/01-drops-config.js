@@ -110,9 +110,9 @@
         '黑暗妖精警衛(十字弓)': [['wpn_xbow_heavy_rasta', 0.5], ['scroll_armor', 0.5], ['scroll_weapon', 0.5], ['bk_holy_dash', 0.05], ['bk_dark_poison', 1], ['bk_dark_burn', 1], ['bk_dark_poisonres', 1]],
         '黑暗妖精魔法學徒': [['wpn_wand_rasta', 1], ['amr_rasta_robe', 0.1], ['bk_dark_dex', 1], ['mat_black_blood', 1]],
         '黑暗妖精警衛(矛)': [['wpn_spear_rasta', 0.5], ['arm_rasta_leather', 0.5], ['shd_rasta', 1], ['scroll_armor', 0.5], ['scroll_weapon', 0.5], ['bk_dark_mrup', 1], ['bk_dark_burn', 1], ['bk_dark_fang', 0.1]],
-        '黑暗妖精巡守': [['wpn_small_katana', 1], ['wpn_bow_rasta', 2], ['arm_rasta_leather', 0.5], ['bot_rasta', 1]],
+        '黑暗妖精巡守': [['wpn_small_katana', 1], ['wpn_bow_rasta', 2], ['arm_rasta_leather', 0.5], ['bot_rasta', 1], ['mat_steel_chunk',5]],
         '黑暗妖精士兵': [['wpn_sword_rasta', 1], ['arm_rasta_leather', 0.5], ['bot_rasta', 1], ['scroll_armor', 0.5], ['scroll_weapon', 0.5], ['bk_dark_poison', 1], ['bk_dark_burn', 1], ['bk_dark_str', 1]],
-        '黑暗妖精將軍': [['scroll_acc',0.001],['scroll_armor', 0.5], ['scroll_weapon', 0.5], ['bk_reduction_armor', 0.05], ['bk_meteor', 0.001], ['bk_dark_poison', 1], ['bk_dark_burn', 1], ['bk_dark_poisonres', 1], ['bk_dark_dex', 0.6], ['bk_dark_double', 0.1], ['bk_dark_fang', 0.5], ['mat_black_blood', 1]],
+        '黑暗妖精將軍': [['scroll_acc',0.001],['scroll_armor', 0.5], ['scroll_weapon', 0.5], ['bk_reduction_armor', 0.05], ['bk_meteor', 0.001], ['bk_dark_poison', 1], ['bk_dark_burn', 1], ['bk_dark_poisonres', 1], ['bk_dark_dex', 0.6], ['bk_dark_double', 0.1], ['bk_dark_fang', 0.5], ['mat_black_blood', 1], ['mat_steel_chunk',10]],
         // ===== 魔獸訓練場 =====
         '拉斯塔巴德守門人': [['item_king_key', 1]],
         '黑虎': [['quest_ring_beasttamer', 0.05], ['mat_legion_beast', 0.05], ['clk_blacktiger', 0.5]],
@@ -132,7 +132,7 @@
         '水元素守護者': [['mat_legion_law', 0.05], ['mat_water_breath', 0.1]],
         '風元素守護者': [['mat_legion_law', 0.05], ['mat_wind_breath', 0.1]],
         '火元素守護者': [['mat_legion_law', 0.05], ['mat_fire_breath', 0.1]],
-        '黑暗妖精法師': [['mat_legion_law', 0.05], ['wpn_wand_rasta', 1], ['amr_rasta_robe', 0.1], ['bk_dark_dex', 1], ['bk_tornado', 0.05], ['bk_ice_spike', 1], ['bk_soul_up', 0.01]],
+        '黑暗妖精法師': [['mat_legion_law', 0.05], ['wpn_wand_rasta', 1], ['amr_rasta_robe', 0.1], ['bk_dark_dex', 1], ['bk_tornado', 0.05], ['bk_ice_spike', 1], ['bk_soul_up', 0.01], ['mat_steel_chunk',5]],
         '黑法師': [['scroll_acc',0.0001],['wpn_darkmage_wand', 0.01], ['amr_darkmage_robe', 0.05], ['acc_darkmage_amulet', 0.001], ['quest_ring_darkmage', 0.01]],
         // ===== 冥法軍訓練場 =====
         '黑暗復仇者': [['wpn_dark_sword', 0.01], ['amr_official', 0.05], ['mat_legion_necro', 0.1], ['arm_59', 0.1]],
@@ -167,7 +167,7 @@
         '夢魘': [['wpn_2hsword',3], ['scroll_weapon',5], ['scroll_armor',10], ['panacea_wis',1], ['bk_elf_triple',0.1]],
         '冰人': [['wpn_battleaxe',1], ['new_item_150',1], ['new_item_195',1], ['bk_elf_watervital',0.1]],
         '不死鳥': [['arm_69', 10], ['wpn_katana',5], ['wpn_siruge',1], ['amr_plate',5], ['arm_88',0.1], ['arm_63',10], ['acc_117',0.01], ['amu_str',0.1], ['acc_120',0.1], ['acc_128',1], ['acc_129',1], ['acc_130',0.5], ['acc_131',0.5], ['scroll_weapon',10], ['scroll_armor',20], ['scroll_acc',1], ['new_item_159',0.1], ['bk_sleep_mist',1], ['bk_holy_barrier',0.1], ['bk_meteor',0.05], ['bk_fire_storm',0.5], ['bk_elf_dancefire',1], ['bk_blaze',1], ['bk_elf_flamesoul',0.1], ['bk_fire_prison',1], ['bk_elf_attrfire',1], ['wpn_redflame_sword',0.1], ['wpn_redflame_bow',0.1]],   // 🆕 赤焰之劍/弓 各0.1%
-        '亞力安': [['scroll_weapon',1], ['scroll_armor',2], ['scroll_acc',0.01], ['bk_slow',0.5], ['bk_mummy_curse',0.5], ['bk_heal2',0.1], ['bk_holy_light',0.1], ['bk_haste_spell',0.5], ['bk_earthquake',0.1], ['bk_rock_prison',0.5], ['bk_greater_haste',0.1], ['bk_quake',0.005], ['bk_elf_groundtrap',0.1], ['acc_demonbane',0.01]],
+        '亞力安': [['scroll_weapon',1], ['scroll_armor',2], ['scroll_acc',0.01], ['bk_slow',0.5], ['bk_mummy_curse',0.5], ['bk_heal2',0.1], ['bk_holy_light',0.1], ['bk_haste_spell',0.5], ['bk_earthquake',0.1], ['bk_rock_prison',0.5], ['bk_greater_haste',0.1], ['bk_quake',0.005], ['bk_elf_groundtrap',0.1], ['acc_demonbane',0.01], ['mat_steel_chunk',5]],
         '人形殭屍': [['bk_vampire',0.1], ['bk_dark_shadow',0.1]],
         '人魚': [['scroll_acc',0.01], ['new_item_mermaid_scale', 1], ['bk_blizzard_storm', 0.001]],
         '伊弗利特': [['arm_69', 10], ['wpn_katana',2], ['amr_plate',5], ['arm_63',10], ['scroll_weapon',10], ['scroll_armor',20], ['scroll_acc',1], ['new_item_152',0.5], ['new_item_153',0.1], ['new_item_155',0.5], ['new_item_156',0.1], ['new_item_158',0.5], ['new_item_159',0.1], ['new_item_161',0.5], ['new_item_162',0.1], ['bk_fireball',3], ['bk_dex_up',1], ['bk_str_up',1], ['bk_cancel',1], ['bk_fire_storm',0.2], ['bk_elf_magicerase',1], ['bk_elf_triple',1], ['bk_blaze',1], ['bk_elf_attrfire',1], ['wpn_redflame_sword',0.1], ['wpn_redflame_bow',0.1]],   // 🆕 赤焰之劍/弓 各0.1%
@@ -182,7 +182,7 @@
         '卡司特王': [['wpn_battleaxe',2], ['wpn_giantaxe',0.5], ['wpn_berserker',0.01], ['arm_45',0.1], ['scroll_weapon',1], ['scroll_armor',2], ['new_item_155',0.5], ['new_item_156',0.05], ['bk_disease',0.1]],
         '卡士柏': [['item_olin_diary',1],['arm_87',5], ['arm_90',10], ['arm_55',1], ['acc_117',0.01], ['amu_str',0.1], ['scroll_weapon',10], ['scroll_armor',20], ['scroll_acc',1], ['new_item_150',1], ['new_item_157',5], ['new_item_158',0.5], ['new_item_159',0.1], ['bk_fireball',5], ['bk_elf_dancefire',1], ['bk_elf_earthshield',1], ['bk_blaze',1], ['acc_119',0.1], ['acc_125',0.1], ['wpn_mana_orb',0.1]],   // 🆕 瑪那水晶球 0.1%
         '史巴托': [['hlm_mr', 0.5], ['wpn_scimitar',1], ['arm_42',3], ['arm_60',1], ['scroll_acc',0.001], ['arm_105',1], ['new_item_150',1]],
-        '哈柏哥布林': [['hlm_mr', 0.5], ['wpn_9',3], ['arm_42',3], ['new_item_180',100]],
+        '哈柏哥布林': [['hlm_mr', 0.5], ['wpn_9',3], ['arm_42',3], ['new_item_180',100], ['mat_steel_chunk',3]],
         '哈維': [['rng_harpy',0.01], ['arm_62',0.5], ['new_item_150',1], ['bk_haste_spell',0.5], ['bk_holy_dash',0.05], ['bk_greater_haste',0.01], ['new_item_195',1], ['bk_elf_stormeye',0.001]],
         '哥布林': [['hlm_mr', 0.05], ['wpn_9',1], ['wpn_10',1], ['arm_42',5], ['bot_short',3]],
         '地獄犬': [['wpn_strwand',0.1], ['wpn_witchwand',0.5], ['scroll_acc',0.01], ['new_item_150',1], ['new_item_157',5], ['new_item_158',0.5], ['new_item_159',0.1], ['bk_fireball',0.5], ['bk_break',0.5], ['bk_holy_barrier',0.001], ['new_item_195',1], ['mat_black_blood', 2]],
@@ -271,7 +271,7 @@
         '那魯加妖魔': [['wpn_2hsword',0.1], ['wpn_invader',0.5], ['wpn_damascus',0.2], ['arm_64',5], ['arm_104',3], ['acc_123',0.01], ['new_item_146',1], ['new_item_157',5], ['new_item_200',1], ['item_orc_amulet',0.01], ['wpn_osis_hammer',0.0005]],
         '邪惡蜥蜴': [['scroll_weapon',1], ['scroll_armor',2], ['scroll_acc',0.01], ['new_item_151',5], ['new_item_152',0.5], ['new_item_153',0.1], ['bk_slow',0.5], ['bk_heal2',0.2], ['bk_holy_light',0.1], ['bk_cancel',0.02], ['bk_earthquake',0.02], ['bk_rock_prison',0.5], ['bk_quake',0.005], ['bk_elf_release',0.05], ['new_item_232',0.01], ['item_lizard_horn',0.01], ['glv_demon',0.01], ['acc_demonbane',0.01], ['bk_elf_watervital',0.1]],
         '都達瑪拉妖魔': [['hlm_mr', 0.5], ['arm_104',3], ['arm_42',5], ['acc_123',0.01], ['new_item_147',1], ['new_item_150',1], ['new_item_158',0.5], ['new_item_199',1], ['scroll_acc',0.001], ['item_orc_amulet',0.01], ['wpn_osis_hammer',0.0005]],
-        '鋼鐵高崙': [['mat_golem_heart',0.1],['scroll_weapon',1], ['scroll_armor',2], ['bk_str_up',0.05], ['new_item_164',1], ['new_item_180',100], ['bk_elf_soul',0.001], ['bk_elf_steelguard',0.001], ['bk_weaken',0.1], ['item_ancientkey',1], ['arm_stone_glove',0.05]],   // 🆕 石製手套 0.05%
+        '鋼鐵高崙': [['mat_golem_heart',0.1],['scroll_weapon',1], ['scroll_armor',2], ['bk_str_up',0.05], ['new_item_164',1], ['new_item_180',100], ['bk_elf_soul',0.001], ['bk_elf_steelguard',0.001], ['bk_weaken',0.1], ['item_ancientkey',1], ['arm_stone_glove',0.05], ['mat_steel_chunk',10]],   // 🆕 石製手套 0.05%
         '夢幻之島鎧甲守衛': [['arm_60',1], ['scroll_weapon',1], ['scroll_armor',2], ['bk_spike_armor',0.05], ['wpn_greatsword',0.1]],   // 🆕 巨劍 0.1%
         '長老': [['item_olin_diary',0.001],['arm_87',0.5], ['new_item_150',1], ['bk_thunder',0.1], ['bk_heal2',0.5], ['scroll_acc',0.01], ['acc_119',0.001], ['acc_125',0.001]],
         '夢幻之島閃電球': [['arm_45',0.1], ['scroll_weapon',1], ['scroll_armor',2], ['bk_thunder_storm',0.05], ['wpn_thunder_sword',0.05]],   // 🆕 雷雨之劍 0.05%
@@ -286,7 +286,7 @@
         '食人妖精王': [['wpn_battleaxe',3], ['wpn_10',2], ['wpn_giantaxe',0.5], ['wpn_berserker',0.02], ['arm_61',0.5], ['arm_47',0.05], ['scroll_weapon',1], ['scroll_armor',1.5], ['new_item_158',0.5], ['bk_fireball',0.5], ['bk_break',0.5], ['bk_holy_light',0.1], ['bk_disease',0.1], ['bk_shock_stun',0.01]],
         '食屍鬼': [['scroll_weapon',0.1], ['bk_berserk',0.01], ['new_item_204',1], ['new_item_205',1]],
         '馬庫爾': [['item_olin_diary',1],['arm_87',5], ['arm_90',10], ['arm_56',1], ['acc_116',0.01], ['amu_str',0.1], ['scroll_weapon',10], ['scroll_armor',20], ['scroll_acc',1], ['new_item_150',1], ['new_item_160',5], ['new_item_161',0.5], ['new_item_162',0.1], ['bk_elf_soul',1], ['bk_elf_lifespring',1], ['acc_119',0.1], ['acc_125',0.1]],
-        '骷髏': [['hlm_mr', 0.1], ['wpn_scimitar',1], ['arm_42',5], ['clk_mr',0.1], ['arm_105',0.5], ['new_item_150',1], ['bk_dex_up',0.01], ['new_item_183',50], ['new_item_203',1], ['new_item_214',1]],
+        '骷髏': [['hlm_mr', 0.1], ['wpn_scimitar',1], ['arm_42',5], ['clk_mr',0.1], ['arm_105',0.5], ['new_item_150',1], ['bk_dex_up',0.01], ['new_item_183',50], ['new_item_203',1], ['new_item_214',1], ['mat_steel_chunk',3]],
         '骷髏弓箭手': [['hlm_mr', 0.1], ['wpn_3',1], ['arm_42',3], ['clk_mr',0.1], ['new_item_150',1], ['bk_dex_up',0.01], ['new_item_183',50]],
         '骷髏斧手': [['hlm_mr', 0.1], ['wpn_1',5], ['arm_42',3], ['clk_mr',0.3], ['new_item_150',1], ['new_item_183',50]],
         '骷髏槍兵': [['hlm_mr', 0.1], ['wpn_4',3], ['arm_42',3], ['clk_mr',0.3], ['new_item_150',1], ['bk_dex_up',0.01], ['new_item_183',50]],
@@ -334,12 +334,12 @@
         '幼龍': [['new_item_151',5], ['new_item_157',5], ['new_item_160',5], ['new_item_154',5], ['new_item_152',0.5], ['new_item_158',0.5], ['new_item_161',0.3], ['new_item_155',0.5], ['new_item_153',0.3], ['new_item_159',0.5], ['new_item_162',0.5], ['new_item_156',0.5], ['scroll_armor',1], ['item_pride_scroll_51',2.5], ['bk_fire_prison',0.05], ['wpn_qigu_resonance',0.01]],
         '火焰之靈魂(紅)': [['scroll_armor',0.5], ['item_pride_scroll_51',2]],
         '火焰之靈魂(藍)': [['item_pride_scroll_51',2]],
-        '恐怖的鋼鐵高崙': [['mat_golem_heart',1],['scroll_acc',0.001],['arm_99',0.005], ['rng_earth',0.01], ['item_pride_scroll_51',2], ['bk_dark_fang',0.1], ['new_item_180',100], ['new_item_164',20], ['bk_elf_physboost',0.5]],
+        '恐怖的鋼鐵高崙': [['mat_golem_heart',1],['scroll_acc',0.001],['arm_99',0.005], ['rng_earth',0.01], ['item_pride_scroll_51',2], ['bk_dark_fang',0.1], ['new_item_180',100], ['new_item_164',20], ['bk_elf_physboost',0.5], ['mat_steel_chunk',10]],
         '火焰之魔法師': [['amu_str',0.01], ['acc_119',0.01], ['acc_125',0.01], ['acc_117',0.01], ['acc_summon_ctrl',0.01], ['scroll_weapon',0.4], ['scroll_armor',1], ['item_pride_scroll_51',2], ['bk_dark_crit',0.5]],
         '骨龍': [['scroll_acc',0.001],['acc_summon_ctrl',0.01], ['new_item_151',5], ['new_item_157',5], ['new_item_160',5], ['new_item_154',5], ['new_item_152',0.8], ['new_item_158',1], ['new_item_161',0.5], ['new_item_155',0.5], ['new_item_153',0.5], ['new_item_159',0.6], ['new_item_162',0.8], ['new_item_156',0.8], ['item_pride_scroll_51',2.5], ['bk_resurrection',0.25], ['bk_dark_crit',0.5], ['scroll_weapon',0.5], ['scroll_armor',1]],
         '地獄的黑豹': [['acc_124',1],['wpn_claw_abyss',0.05], ['amu_str',3], ['acc_128',5], ['blt_body',1], ['scroll_weapon',30], ['scroll_armor',30], ['item_pride_scroll_51',30], ['item_pride_sealed_51',1], ['wpn_dual_destroy',0.5], ['wpn_claw_destroy',0.5], ['wpn_pagrio_wrath',0.01]],
         // ===== 🗼 傲慢之塔 51~60 樓 =====
-        '受詛咒的妖魔殭屍': [['bk_berserk',0.2], ['item_pride_scroll_61',2]],
+        '受詛咒的妖魔殭屍': [['bk_berserk',0.2], ['item_pride_scroll_61',2], ['mat_steel_chunk',10]],
         '受詛咒的艾爾摩士兵': [['acc_demonbane',0.03], ['bk_berserk',0.3], ['item_pride_scroll_61',2]],
         '受詛咒的艾爾摩法師': [['scroll_acc',0.001],['acc_demonbane',0.03], ['item_pride_scroll_61',2], ['wpn_qigu_meditate',0.01]],
         '受詛咒的艾爾摩將軍': [['acc_demonbane',0.03], ['bk_shock_stun',0.02], ['bk_reduction_armor',0.1], ['bk_spike_armor',0.01], ['item_pride_scroll_61',2]],
@@ -351,7 +351,7 @@
         '火焰阿西塔基奧': [['wpn_2hsword',1], ['amu_cha',0.05], ['scroll_weapon',1], ['scroll_armor',1], ['bk_earthquake',0.5], ['bk_summon',0.1], ['bk_quake',1], ['item_pride_scroll_71',2], ['new_item_192',0.001]],
         '冷酷的艾莉絲': [['arm_99',1], ['amu_iris',0.1], ['amu_str',3], ['acc_128',5], ['acc_130',1], ['new_item_157',30], ['new_item_158',30], ['new_item_159',10], ['scroll_weapon',30], ['scroll_armor',30], ['bk_full_heal',5], ['bk_thunder_storm',1], ['bk_blizzard',1], ['item_pride_scroll_71',30], ['item_pride_sealed_71',1], ['bk_blizzard_storm',1]],
         // ===== 🗼 傲慢之塔 71~80 樓 =====
-        '暗黑黑騎士': [['acc_doro',0.1], ['item_pride_scroll_81',2], ['bk_reduction_armor',0.1], ['bk_spike_armor',0.01]],
+        '暗黑黑騎士': [['acc_doro',0.1], ['item_pride_scroll_81',2], ['bk_reduction_armor',0.1], ['bk_spike_armor',0.01], ['mat_steel_chunk',10]],
         '暗黑火焰戰士': [['new_item_139',1], ['scroll_armor',1], ['item_pride_scroll_81',1], ['bk_reduction_armor',0.1], ['bk_spike_armor',0.01]],
         '暗黑火焰弓箭手': [['new_item_139',1], ['scroll_armor',1], ['item_pride_scroll_81',1], ['bk_reduction_armor',0.1], ['bk_elf_triple',0.05]],
         '暗黑思克巴女皇': [['scroll_acc',0.001],['acc_summon_ctrl',0.01], ['acc_127',0.5], ['acc_129',1], ['blt_body',0.05], ['acc_131',0.05], ['new_item_158',1], ['item_pride_scroll_81',1], ['bk_elf_winddash',5], ['bk_elf_stormeye',1], ['bk_elf_stormshot',0.1], ['bk_elf_physboost',0.5]],
@@ -400,7 +400,7 @@
         '遺忘之島巨大牛人': [['wpn_katana',30], ['wpn_greatsword',1], ['item_unknown_spear',0.1], ['wpn_taurus_axe',0.5], ['amr_plate',30], ['glv_glove',30], ['amu_str',2], ['acc_127',5], ['blt_body',1], ['new_item_157',30], ['new_item_158',30], ['new_item_159',10], ['scroll_weapon',30], ['scroll_armor',30], ['item_ancient_scroll',0.5], ['bk_bless_wpn',5], ['bk_berserk',5], ['bk_full_heal',5], ['bk_elf_blazewpn',5], ['bk_elf_stormshot',1]],
         // ===== 🏛️ 隱藏狩獵區域（象牙塔系列）怪物掉落 =====
         '象牙塔石頭高崙': [['mat_golem_heart',0.1],['wpn_berserker',0.5],['new_item_151',1],['mem_golem',0.2]],
-        '象牙塔鋼鐵高崙': [['new_item_191',0.001],['new_item_180',100],['new_item_151',1],['mem_golem',0.2]],
+        '象牙塔鋼鐵高崙': [['new_item_191',0.001],['new_item_180',100],['new_item_151',1],['mem_golem',0.2], ['mat_steel_chunk',10]],
         '象牙塔活鎧甲': [['new_item_154',1],['bk_holy_barrier',0.03],['new_item_193',0.001], ['mat_moonlight_breath', 0.05]],
         '象牙塔密密': [['wpn_33',1],['wpn_katana',0.3],['wpn_2hsword',1],['wpn_demon_sword',0.001],['wpn_greatsword',1],['wpn_demon_dual',0.01],['wpn_demon_claw',0.01],['wpn_demon_xbow',0.01],['arm_62',1],['arm_69',0.3],['arm_61',5],['arm_59',0.1],['amr_plate',2],['glv_demon',0.1],['bot_demon',0.1],['scroll_weapon',2],['scroll_armor',2],['bk_mummy_curse',3],['bk_holy_dash',1],['bk_invisible',0.1],['bk_meteor',0.01],['bk_abs_barrier',0.1],['bk_soul_up',0.1],['bk_elf_soul',1],['bk_elf_preciseshot',0.01]],
         '象牙塔長者': [['wpn_38',3],['acc_117',0.005],['acc_125',0.01],['acc_119',0.01]],

@@ -1145,6 +1145,7 @@ const DB = {
         "mat_flame_eye":          { n: "炎魔之眼",       type: "etc", p: 1, c: "text-red-300", noUse: true, gachaWeight: 0, d: "炎魔之力的結晶，可作為試煉交付物。" },
         "mat_dragon_heart":       { n: "飛龍之心",       type: "etc", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "飛龍體內不滅的核心。王族聖器製作材料。" },
         "mat_golem_heart":        { n: "高崙之心",       type: "etc", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "高崙體內的核心。王族聖器製作材料。" },
+        "mat_steel_chunk":        { n: "鋼鐵塊",         type: "etc", p: 10, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "沉甸甸的粗鍛鋼鐵。寵物防具製作材料。" },
         "mat_icequeen_heart":     { n: "冰之女王之心",   type: "etc", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "冰之女王的寒冰核心。王族聖器製作材料。" },
         // ===== 🔥 50級試煉任務道具 =====
         "item_dantes_letter": { n: "丹特斯的召書", type: "etc", p: 1, c: "text-amber-300", noUse: true, noSell: true, gachaWeight: 0, d: "騎士 50 級試煉任務道具。無法刪除、無法存倉庫、最多持有 1 個。" },

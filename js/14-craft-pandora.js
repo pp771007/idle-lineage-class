@@ -83,7 +83,17 @@ const CRAFT_RECIPES = {
         { result: 'pet_fang_hound',   req: [{ id: 'new_item_180', cnt: 50 },  { id: 'new_item_152', cnt: 3 },  { id: 'gold', cnt: 100000 }] },
         { result: 'pet_fang_steel',   req: [{ id: 'new_item_180', cnt: 100 }, { id: 'new_item_161', cnt: 1 },  { id: 'gold', cnt: 100000 }] },
         { result: 'pet_fang_ruin',    req: [{ id: 'pet_fang_hound', cnt: 1 }, { id: 'mat_black_mithril', cnt: 10 }, { id: 'new_phoenix_heart', cnt: 1 }, { id: 'gold', cnt: 1000000 }] },
-        { result: 'pet_fang_victory', req: [{ id: 'pet_fang_steel', cnt: 1 }, { id: 'new_item_180', cnt: 50 }, { id: 'new_item_161', cnt: 2 }, { id: 'new_item_162', cnt: 1 }, { id: 'gold', cnt: 1000000 }] }
+        { result: 'pet_fang_victory', req: [{ id: 'pet_fang_steel', cnt: 1 }, { id: 'new_item_180', cnt: 50 }, { id: 'new_item_161', cnt: 2 }, { id: 'new_item_162', cnt: 1 }, { id: 'gold', cnt: 1000000 }] },
+        // 🐾 寵物進化果實（包武的寵物保管介面對 Lv30+ 寵物使用）
+        { result: 'item_evo_fruit',     req: [{ id: 'new_item_221', cnt: 100 }, { id: 'new_item_154', cnt: 20 }, { id: 'gold', cnt: 20000 }] },   // 進化果實＝光明的鱗片×100＋綠寶石×20＋金幣20000
+        { result: 'item_victory_fruit', req: [{ id: 'item_dragon_heart', cnt: 1 }, { id: 'new_item_159', cnt: 5 }] },                             // 勝利果實＝龍之心×1＋高品質紅寶石×5
+        // 🛡️ 寵物防具鍛造（皮→骷髏；鋼鐵→十字/鏈→米索莉·成品可作上位材料·doCraft 自動遞迴補製中間物）
+        { result: 'pet_arm_leather', req: [{ id: 'new_item_182', cnt: 20 }, { id: 'gold', cnt: 10000 }] },                                                                                             // 寵物皮盔甲＝高級皮革×20＋金幣10000
+        { result: 'pet_arm_bone',    req: [{ id: 'pet_arm_leather', cnt: 1 }, { id: 'new_item_182', cnt: 10 }, { id: 'new_item_183', cnt: 20 }, { id: 'gold', cnt: 50000 }] },                        // 寵物骷髏盔甲＝寵物皮盔甲×1＋高級皮革×10＋骨頭碎片×20＋金幣50000
+        { result: 'pet_arm_steel',   req: [{ id: 'mat_steel_chunk', cnt: 20 }, { id: 'new_item_180', cnt: 20 }, { id: 'gold', cnt: 100000 }] },                                                       // 寵物鋼鐵盔甲＝鋼鐵塊×20＋金屬塊×20＋金幣100000
+        { result: 'pet_arm_cross',   req: [{ id: 'pet_arm_steel', cnt: 1 }, { id: 'new_item_182', cnt: 50 }, { id: 'mat_steel_chunk', cnt: 20 }, { id: 'gold', cnt: 200000 }] },                      // 寵物十字盔甲＝寵物鋼鐵盔甲×1＋高級皮革×50＋鋼鐵塊×20＋金幣200000
+        { result: 'pet_arm_chain',   req: [{ id: 'pet_arm_steel', cnt: 1 }, { id: 'new_item_182', cnt: 50 }, { id: 'mat_steel_chunk', cnt: 100 }, { id: 'gold', cnt: 200000 }] },                     // 寵物鏈甲＝寵物鋼鐵盔甲×1＋高級皮革×50＋鋼鐵塊×100＋金幣200000
+        { result: 'pet_arm_mithril', req: [{ id: 'pet_arm_cross', cnt: 1 }, { id: 'new_item_182', cnt: 50 }, { id: 'new_item_153', cnt: 2 }, { id: 'new_item_177', cnt: 10 }, { id: 'mat_dragon_heart', cnt: 1 }, { id: 'gold', cnt: 300000 }] }   // 寵物米索莉盔甲＝寵物十字盔甲×1＋高級皮革×50＋高品質鑽石×2＋米索莉金屬板×10＋飛龍之心×1＋金幣300000
     ],
     // 🔥 炎魔之影（炎魔謁見所）：墮落鐮刀 + 墮落首級 → 炎魔的血光斗篷
     npc_flame_shadow: [

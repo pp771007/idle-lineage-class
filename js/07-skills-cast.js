@@ -1,6 +1,60 @@
+function isMageSummonMastered(sm, owner) {
+    return !!(sm && owner && owner.mastery === 'm_summon' && (sm.skId === 'sk_zombie' || sm.skId === 'sk_summon'));
+}
+// 👑 屬性精靈規格鏡像（buildSummon/refreshSummonBalance 兩處套用）：
+//   兩個精靈技能都改讀 js/23 的四屬性表（dice/scale/倍率/穿透/命中/攻速依屬性·王=精靈精通時的 sk_elf_summon2）。
+function _elfSpiritKingOverride(sm, owner) {
+    if (!sm || (sm.skId !== 'sk_elf_summon' && sm.skId !== 'sk_elf_summon2') || typeof _spiritSpec !== 'function') return sm;
+    const king = sm.skId === 'sk_elf_summon2' && owner && owner.mastery === 'e_spirit';
+    const spec = _spiritSpec(sm.skId, sm.ele, king);
+    sm.dmgDice = spec.dice; sm.elemScale = spec.scale; sm.dmgMult = spec.dmgMult;
+    sm.mrPenBase = spec.mrPenBase; sm.hitLvOff = spec.hitLvOff; sm.interval = spec.aspd;
+    if (king && typeof SPIRIT_ELE_ZH !== 'undefined' && sm.ele && SPIRIT_ELE_ZH[sm.ele]) sm.n = '夥伴：' + SPIRIT_ELE_ZH[sm.ele] + '之精靈王';
+    sm._king = king;   // 🧝 傭兵走無敵抽象召喚管線，但保留玩家 v2 的精靈王判定與 15% 全體技能
+    sm.form = sm.n || sm.form;
+    return sm;
+}
+function summonDamageMult(sm, owner, magicBased, teamMagicDmg) {
+    let magicDmg = Math.min(12, Math.max(0, ((owner.d && owner.d.magicDmg) || 0) + (teamMagicDmg || 0)));
+    let mult = (sm.dmgMult || 1) * (1 + magicDmg / (magicBased ? 40 : 80));
+    if(isMageSummonMastered(sm, owner)) mult *= 1.20;
+    if(owner && owner !== player && typeof royalAllyMult === 'function') mult *= royalAllyMult();   // 👑 傭兵召喚傷害亦吃隊長魅力倍率（本 repo royalAllyMult 停用＝×1）；玩家召喚不受影響
+    return mult;
+}
+function summonHitValue(sm, owner, target, gearHit) {
+    let cha = (owner.d && owner.d.cha) || 0;
+    let growth = Math.floor((owner.lv || 1) * 0.75 + cha * 0.35);
+    let masteryHit = isMageSummonMastered(sm, owner) ? 5 : 0;
+    let raw = (owner.lv || 1) + (sm.hitLvOff || 0) + growth + masteryHit - target.lv + mobEffAC(target) + (gearHit || 0);
+    return stretchHitValue(raw);
+}
+
 function summonAttack(sm, owner) {
     owner = owner || player;   // 🩸 v2.6.25 owner 參數化：owner=player（預設·玩家召喚）或 ally（傭兵召喚）；讀 owner.d.cha/lv/mastery/eq，killMob 仍歸真隊長（不換身）
     if(!sm) return;
+    // 🧙 傭兵召喚術／🧟 造屍術 v2 抽象輸出：本體不上場（無血條/不被攻擊）·每攻擊週期對目標打 count 隻份的玩家 v2 傷害；擊殺歸真隊長（summonV2AttackOnce 內 killMob·不換身）。
+    if(sm._v2form && typeof summonV2AttackOnce === 'function') {
+        let _s0, _d;
+        if(sm._v2zmb) {   // 🧟 造屍術：依殭屍階級 lv 走 _zmbDerive
+            _s0 = { skId: 'sk_zombie', form: sm._v2form, lv: sm._v2lv || 10 };
+            _d = _zmbDerive(_s0, owner);
+        } else {          // 🧙 召喚術：SUMMON_TIERS 選怪 → _sumDerive
+            let _lvm = _sumTierOf(sm._v2form);
+            _s0 = { skId: 'sk_summon', form: sm._v2form, lv: (_lvm && _lvm.mob && _lvm.mob.lv) || sm._v2lv || 1 };
+            _d = _sumDerive({ form: sm._v2form, n: sm._v2form }, owner);
+        }
+        let _cnt = Math.max(1, sm._v2count || 1);
+        for(let i = 0; i < _cnt; i++) { let _t = getTarget(); if(!_t) break; summonV2AttackOnce(_s0, _d, _t, owner); }
+        return;
+    }
+    // 🧝 傭兵屬性精靈保持無敵抽象實體，但攻擊完整改走玩家 v2 精靈公式：四屬性骰值/攻速、命中、裝備、MR穿透、剋制、幻覺光環及精靈王 15% 全體技。
+    if((sm.skId === 'sk_elf_summon' || sm.skId === 'sk_elf_summon2') && typeof spiritAttackOnce === 'function') {
+        let _st = getTarget(); if(!_st) return;
+        sm.form = sm.form || sm.n || '屬性精靈';
+        sm._king = sm.skId === 'sk_elf_summon2' && owner.mastery === 'e_spirit';
+        spiritAttackOnce(sm, _st, owner);
+        return;
+    }
     let t = getTarget(); if(!t) return;
     let cha = (owner.d && owner.d.cha) || 0;
     let _sgb = (typeof summonGearBonus === 'function') ? summonGearBonus(owner) : { dmg: 0, hit: 0 };   // 🏺 喚獸師的訓練鞭：召喚物額外傷害/命中（掃 owner 裝備欄）

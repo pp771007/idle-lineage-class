@@ -218,6 +218,26 @@ function summonTierByLevel(lv) {
 }
 function buildSummon(skId, def, durSec, owner) {
     owner = owner || player;   // 🩸 v2.6.25 owner 參數化：分階依 owner.lv、屬性精靈依 owner.elfEle（傭兵召喚共用）
+    // 🧙 傭兵召喚術改用玩家 v2 傷害模型（抽象輸出·不上場）：依傭兵等級＋召喚控制戒指選怪（SUMMON_TIERS）·每攻擊週期打 count 隻份 v2 傷害。玩家 sk_summon 走 js/23 v2 實體制不經此；此分支只作用於傭兵(owner!==player)。無法召喚(等級/魅力不足)則落回下方舊分階模型。
+    if (skId === 'sk_summon' && owner !== player && typeof mercSummonV2Plan === 'function') {
+        let _plan = mercSummonV2Plan(owner);
+        if (_plan) {
+            let _d0 = _sumDerive({ form: _plan.form, n: _plan.form }, owner);
+            return { skId: skId, n: _plan.form + ' ×' + _plan.count, _v2form: _plan.form, _v2count: _plan.count, _v2lv: _plan.lv,
+                interval: _d0.aspd || 20, cd: _d0.aspd || 20, kind: 'v2', ele: 'none', dmgDice: [1, 1], dmgDiv: 5, dmgLvDiv: 0, elemScale: 20, dmgMult: 1, hardSkinPen: 0, mrPenBase: 0, hitLvOff: 0, proc: null,
+                endTick: state.ticks + (durSec || 3600) * 10 };
+        }
+    }
+    // 🧟 傭兵造屍術改用玩家 v2 傷害模型（抽象輸出·不上場）：殭屍階級依傭兵等級（_zmbTierForPlayer）·單隻·每週期 1 刀 v2 傷害（_zmbDerive）。等級不足回 null 則落回下方舊模型。
+    if (skId === 'sk_zombie' && owner !== player && typeof _zmbTierForPlayer === 'function') {
+        let _zt = _zmbTierForPlayer(owner);
+        if (_zt) {
+            let _zd = _zmbDerive({ lv: _zt.lv, skId: 'sk_zombie' }, owner);
+            return { skId: skId, n: '人形殭屍 Lv.' + _zt.lv, _v2form: '人形殭屍', _v2zmb: true, _v2count: 1, _v2lv: _zt.lv,
+                interval: _zd.aspd || 12, cd: _zd.aspd || 12, kind: 'v2', ele: 'none', dmgDice: [1, 1], dmgDiv: 5, dmgLvDiv: 0, elemScale: 20, dmgMult: 1, hardSkinPen: 0, mrPenBase: 0, hitLvOff: 0, proc: null,
+                endTick: state.ticks + (durSec || 3600) * 10 };
+        }
+    }
     let base = def.tiered ? summonTierByLevel(owner.lv) : def;
     let ele = base.ele || 'none';
     if(def.eleFromPlayer) ele = owner.elfEle || 'none';
@@ -226,13 +246,47 @@ function buildSummon(skId, def, durSec, owner) {
         let eleZh = { fire:'火', water:'水', wind:'風', earth:'地', none:'無' }[ele] || '';
         nm = base.n.replace('{ele}', eleZh);
     }
-    return {
+    let _sm = {
         skId: skId, n: nm, dmgDice: base.dmgDice, interval: base.interval || 20,
         ele: ele, kind: base.kind || 'melee', hitLvOff: base.hitLvOff || 0,
         dmgDiv: base.dmgDiv || 5, dmgLvDiv: base.dmgLvDiv || 0, elemScale: base.elemScale || 20,
+        dmgMult: base.dmgMult || 1, hardSkinPen: base.hardSkinPen || 0, mrPenBase: base.mrPenBase || 0,
         proc: base.proc ? { ...base.proc, cdCur: base.proc.cd } : null,
         cd: base.interval || 20, endTick: state.ticks + (durSec || 3600) * 10
     };
+    if (typeof _elfSpiritKingOverride === 'function') _elfSpiritKingOverride(_sm, owner);   // 👑 精靈精通→精靈王（傭兵鏡像·規格讀 js/23 四屬性表）
+    return _sm;
+}
+function refreshSummonBalance(sm, owner) {   // 讀檔重算：既有召喚物同步目前的階級/倍率/穿透/間隔（不重召）
+    owner = owner || player;
+    if (sm && sm._v2zmb) {   // 🧟 傭兵造屍術 v2：依當前等級重算殭屍階級與攻速（抽象輸出·無 dmgDice）
+        let _zt = (typeof _zmbTierForPlayer === 'function') ? _zmbTierForPlayer(owner) : null;
+        if (_zt) { let _zd = _zmbDerive({ lv: _zt.lv, skId: 'sk_zombie' }, owner); sm._v2lv = _zt.lv; sm.interval = _zd.aspd || 12; sm.n = '人形殭屍 Lv.' + _zt.lv; }
+        return sm;
+    }
+    if (sm && sm._v2form) {   // 🧙 傭兵召喚術 v2：依當前等級/魅力/戒指重算選怪與攻速（抽象輸出·無 dmgDice·避免被下方舊分階模型洗回）
+        let _plan = (typeof mercSummonV2Plan === 'function') ? mercSummonV2Plan(owner) : null;
+        if (_plan) { let _d0 = _sumDerive({ form: _plan.form, n: _plan.form }, owner); sm._v2form = _plan.form; sm._v2count = _plan.count; sm._v2lv = _plan.lv; sm.interval = _d0.aspd || 20; sm.n = _plan.form + ' ×' + _plan.count; }
+        return sm;
+    }
+    if(!sm || !sm.skId || !DB.skills[sm.skId] || !DB.skills[sm.skId].summon) return sm;
+    let def = DB.skills[sm.skId].summon;
+    let base = def.tiered ? summonTierByLevel(owner.lv) : def;
+    sm.dmgDice = base.dmgDice;
+    sm.interval = base.interval || 20;
+    sm.hitLvOff = base.hitLvOff || 0;
+    sm.dmgDiv = base.dmgDiv || 5;
+    sm.dmgLvDiv = base.dmgLvDiv || 0;
+    sm.elemScale = base.elemScale || 20;
+    sm.dmgMult = base.dmgMult || 1;
+    sm.hardSkinPen = base.hardSkinPen || 0;
+    sm.mrPenBase = base.mrPenBase || 0;
+    if(base.proc) {
+        let oldCd = sm.proc && sm.proc.cdCur;
+        sm.proc = { ...base.proc, cdCur: Math.min(oldCd > 0 ? oldCd : base.proc.cd, base.proc.cd) };
+    } else sm.proc = null;
+    if (typeof _elfSpiritKingOverride === 'function') _elfSpiritKingOverride(sm, owner);   // 👑 讀檔重算後補套精靈王覆寫（否則被 def 原值洗回）
+    return sm;
 }
 function setupSummon(skId, sk, owner) {
     owner = owner || player;   // 🩸 v2.6.25 owner 參數化：owner=player（玩家）或 ally（傭兵）；召喚物存於 owner.summon
@@ -245,8 +299,9 @@ function setupSummon(skId, sk, owner) {
     if(owner === player) logCombat(`你召喚了 <span class="text-purple-300">${owner.summon.n}</span>。`, 'magic', 'summon');
     else logCombat(`<span class="text-emerald-300 font-bold">【協力·${owner._allyName}】</span>召喚了 <span class="text-purple-300">${owner.summon.n}</span>。`, 'magic', 'summon');
 }
-function summonElementDamage(dice, ele, t, flatBonus, mult) {
+function summonElementDamage(dice, ele, t, flatBonus, mult, mrPen) {
     let mrBase = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
+    mrBase = Math.max(0, mrBase - (mrPen || 0));   // 🧝 屬性精靈等的魔抗穿透（mrPenBase＋魅力/10；未傳＝0＝原行為）
     let mrFactor = mrMult(mrBase);
     let base = (roll(dice[0], dice[1]) + (flatBonus || 0)) * (mult || 1);
     return Math.max(1, Math.floor((Math.max(1, Math.floor(base * mrFactor) - (t.dr || 0))) * fragileMult(t) * elementCounterMult(ele, t.e)));   // 🔮 脆弱（白鳥5）＋⚔️屬性剋制 ×1.4(剋)/×0.6(被剋)

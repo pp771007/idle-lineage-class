@@ -987,6 +987,8 @@ function loadGame() {
         // 修復舊版「召喚死亡後 buff 未清除」卡關：載入時若目前沒有召喚物，清除殘留的召喚 buff，
         // 讓自動施放能立即重新召喚（不必等死亡復活或 buff 自然倒數）。
         if(player.charmed === undefined) player.charmed = null;   // 相容舊存檔：迷魅獨立槽位
+        if(player.summon && ['sk_zombie', 'sk_elf_summon', 'sk_elf_summon2'].includes(player.summon.skId)) player.summon = null;   // 🧟 造屍術/屬性精靈改走 v2 實體制：清除舊管線殘留（勾選仍在→v2 自動重新召喚）
+        if(player.summon && typeof refreshSummonBalance === 'function') refreshSummonBalance(player.summon, player);   // 召喚平衡改版：既有存檔中的召喚物同步新階級倍率、穿透與技能間隔
         if(!player.summon && player.buffs) {
             (player.skills || []).forEach(s => { if(DB.skills[s] && DB.skills[s].summon) player.buffs[s] = 0; });
         }

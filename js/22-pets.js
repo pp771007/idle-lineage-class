@@ -1248,6 +1248,21 @@ function petMigrateLegacy() {
         }
         if (Array.isArray(player.partners) && player.partners.length) player.partners = [];
         if (player.buffs && player.buffs.taming) delete player.buffs.taming;   // 舊誘捕 buff 移除
+        // 🏦 共用倉庫也要清：舊項圈/肉/哨子/舊進化果實若被存進倉庫，這裡沒清 → DB 已無該 id
+        //    → 倉庫顯示「未知的物品」、領出來背包也畫不出來（玩家回報）。項圈照樣轉成寵物，其餘回收。
+        let _whCleared = 0;
+        try {
+            if (typeof loadWarehouse === 'function' && typeof saveWarehouse === 'function') {
+                let w = loadWarehouse();
+                if (w && Array.isArray(w.items) && (typeof _whLoadOk === 'undefined' || _whLoadOk) && w.items.some(i => i && dead.includes(i.id))) {
+                    w.items.forEach(i => { if (i && _PET_LEGACY_COLLARS[i.id]) convert(i.id, i.cnt || 1); });
+                    _whCleared = w.items.filter(i => i && dead.includes(i.id)).length;
+                    w.items = w.items.filter(i => !(i && dead.includes(i.id)));
+                    saveWarehouse(w);
+                }
+            }
+        } catch (e) { console.warn('倉庫舊道具清理失敗', e); }
+        if (_whCleared && !converted && !lost) logSys(`<span class="text-amber-300">🏦 倉庫裡 ${_whCleared} 筆舊版寵物道具（已停用）已回收。</span>`);
         if (converted || lost) {
             petMarkDirty(); petRosterSave();
             logSys(`<span class="text-amber-300 font-bold">🐾 夥伴系統改版：</span>你的 ${converted} 個項圈已轉換為寵物並送往包武的寵物保管${lost ? `（保管已滿，${lost} 個項圈中的夥伴自行離去了）` : ''}。肉、哨子與舊版進化果實已停用回收。`);

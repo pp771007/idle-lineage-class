@@ -1809,6 +1809,7 @@ window.onload = () => {
     function findTipItem(src, uidv){
         try {
             if(src === 'wh'){ let w = loadWarehouse(); return ((w && w.items) || []).find(x => x.uid === uidv) || null; }
+            if(src === 'eq'){ for(let k in (player.eq || {})){ let e = player.eq[k]; if(e && e.uid === uidv) return e; } return null; }   // 裝備視窗的已裝備欄位
             return (player.inv || []).find(x => x.uid === uidv) || null;
         } catch(e){ return null; }
     }
@@ -1816,8 +1817,9 @@ window.onload = () => {
         let host = e.target && e.target.closest ? e.target.closest('.tip-host') : null;
         let ic = document.getElementById('interaction-content');
         let eb = document.getElementById('equip-book');
-        // 技能頁 host（data-tip-skill）與收集冊 host（data-tip-id）不限於 NPC 互動面板；其餘 host 仍限定於 interaction-content
-        let ok = host && ((ic && ic.contains(host)) || (eb && !eb.classList.contains('hidden') && eb.contains(host)) || host.hasAttribute('data-tip-skill') || host.hasAttribute('data-tip-id'));
+        let ew = document.getElementById('equipment-window');   // 裝備視窗（已裝備欄位＋側欄候選清單）
+        // 技能頁 host（data-tip-skill）與收集冊 host（data-tip-id）不限於 NPC 互動面板；其餘 host 仍限定於 interaction-content / 收集冊 / 裝備視窗
+        let ok = host && ((ic && ic.contains(host)) || (eb && !eb.classList.contains('hidden') && eb.contains(host)) || (ew && !ew.classList.contains('hidden') && ew.contains(host)) || host.hasAttribute('data-tip-skill') || host.hasAttribute('data-tip-id'));
         if(!ok){ hideTip(); return; }
         let el = getTip();
         let tSkill = host.getAttribute('data-tip-skill');

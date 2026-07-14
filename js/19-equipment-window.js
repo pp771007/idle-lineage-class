@@ -203,15 +203,20 @@
                 img.onerror = function () { this.style.display = 'none'; };
                 if (typeof isRelic === 'function' && isRelic(data)) img.classList.add('relic-glow');   // 🏺 已裝備遺物：藍光呼吸＋星芒（與背包一致）
                 slot.appendChild(img);
-                if (item.en) {
+                if ((Number(item.en) || 0) > 0) {
                     const badge = document.createElement('span');
                     badge.className = 'equipment-slot-enhance';
-                    badge.textContent = '+' + item.en;
+                    badge.textContent = '+' + capEn(item.en, data);   // 顯示「實際生效」的強化值（超過該裝備上限的部分不計）
                     slot.appendChild(badge);
+                } else if ((item.cnt || 1) > 1) {
+                    const count = document.createElement('span');   // 可堆疊的已裝備物（箭矢）：顯示剩餘數量
+                    count.className = 'equipment-slot-count';
+                    count.textContent = (item.cnt || 1).toLocaleString();
+                    slot.appendChild(count);
                 }
-                const fullName = document.createElement('span');
-                fullName.innerHTML = getItemFullName(item);
-                slot.title = fullName.textContent || fullName.innerText || data.n || item.id;
+                slot.classList.add('tip-host');   // 🖱️ hover 顯示完整資訊（與背包共用的 tooltip 系統，取代只有名字的原生 title）
+                slot.setAttribute('data-tip-uid', item.uid);
+                slot.setAttribute('data-tip-src', 'eq');
                 slot.onclick = function () {
                     clearTimeout(clickTimer);
                     clickTimer = setTimeout(function () {
@@ -262,8 +267,9 @@
             const d = DB.items[item.id];
             const row = document.createElement('button');
             row.type = 'button';
-            row.className = 'equipment-side-item' + (checkCanEquip(item) ? '' : ' cannot-equip');
-            row.title = plainItemName(item);
+            row.className = 'equipment-side-item tip-host' + (checkCanEquip(item) ? '' : ' cannot-equip');
+            row.setAttribute('data-tip-uid', item.uid);   // 🖱️ hover 顯示完整資訊（原本只有名字）
+            row.setAttribute('data-tip-src', 'inv');
             const icon = document.createElement('img');
             icon.src = getIconUrl(d);
             icon.alt = '';

@@ -1176,14 +1176,14 @@ function renderBianBless(el) {
         let it = player.eq[sl.k];
         let name = it ? getItemFullName(it) : '<span class="text-slate-500">（未裝備）</span>';
         let _cursed = !!(it && it.bless === 'cursed');
-        let _uncurse = _cursed ? `<button class="btn py-1 px-2 text-sm font-bold shrink-0 bg-cyan-800 border-cyan-500 text-cyan-100" onclick="doBianUncurse('${sl.k}')">解除詛咒</button>` : '';
-        // 🔧 詛咒裝備：祝福按鈕變灰禁用
-        let _blessBtn = (it && !_cursed)
-            ? `<button class="btn py-1 px-2 text-sm font-bold w-24 text-center bg-purple-800 border-purple-500 text-purple-100" onclick="doBianBless('${sl.k}')">祝福${sl.n}</button>`
-            : `<button class="btn py-1 px-2 text-sm font-bold w-24 text-center bg-slate-700 border-slate-600 text-slate-400 cursor-not-allowed" disabled title="${_cursed ? '被詛咒的裝備需先解除詛咒' : ''}">${_cursed ? '🔒 詛咒中' : '祝福'+sl.n}</button>`;
+        // 🔧 詛咒時「解除詛咒」佔用與「祝福」相同位置(右側·同寬 w-24)：連點祝福→中詛咒→原地變成解除詛咒，手指不用左右移動（上頭連點體驗）
+        let _btn;
+        if (_cursed) _btn = `<button class="btn py-1 px-2 text-sm font-bold w-24 text-center bg-cyan-800 border-cyan-500 text-cyan-100" onclick="doBianUncurse('${sl.k}')">解除詛咒</button>`;
+        else if (it) _btn = `<button class="btn py-1 px-2 text-sm font-bold w-24 text-center bg-purple-800 border-purple-500 text-purple-100" onclick="doBianBless('${sl.k}')">祝福${sl.n}</button>`;
+        else _btn = `<button class="btn py-1 px-2 text-sm font-bold w-24 text-center bg-slate-700 border-slate-600 text-slate-400 cursor-not-allowed" disabled>祝福${sl.n}</button>`;
         return `<div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-600 rounded p-2 text-sm">
             <span class="truncate"><b class="text-amber-300">${sl.n}</b>：${name}</span>
-            <div class="flex items-center gap-1 shrink-0">${_uncurse}${_blessBtn}</div>
+            <div class="flex items-center gap-1 shrink-0">${_btn}</div>
         </div>`;
     }).join('');
     el.innerHTML = `

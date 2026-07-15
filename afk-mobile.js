@@ -669,6 +669,15 @@
       'body.m-mobile.mview-config #squad-tab-team .bar-bg{height:16px !important;}',                                               /* HP/MP 條變細 */
       'body.m-mobile.mview-config #squad-tab-team .bar-text{line-height:16px !important;font-size:11px !important;}',
 
+      /* 🐾 手機「包武 寵物保管」清單:桌機是「鎖+縮圖+資訊+右側一排鈕」的單列橫排,右側鈕欄吃掉 ~210px,
+         手機寬度下把中間資訊欄壓到剩一字寬→寵物名整個直排(一字一行)、數值換行爆高。這裡把每列重排成堆疊卡片:
+         第1行 鎖+縮圖+資訊(佔滿剩餘寬、名字/數值正常橫排),操作鈕整組落到第2行、等寬平均分佈(順便放大點擊區)。
+         只 scope 手機+寵物清單([data-petlist] 的直接子列),桌機與其他面板零接觸;放生確認列(訊息+2鈕)同受惠自然分兩行。 */
+      'body.m-mobile [data-petlist] > div{flex-wrap:wrap !important;row-gap:7px;padding:8px !important;}',
+      'body.m-mobile [data-petlist] > div > span.flex-1{flex:1 1 0 !important;min-width:120px;}',
+      'body.m-mobile [data-petlist] > div > span:last-child{flex:1 1 100% !important;max-width:none !important;justify-content:stretch;gap:6px !important;}',
+      'body.m-mobile [data-petlist] > div > span:last-child > button{flex:1 1 0 !important;min-height:36px;padding:6px 4px !important;}',
+
       'body.m-mobile{padding:0 !important;}',
       /* iOS Safari 在 input 實際 font-size<16px 時 focus 會自動放大頁面(且新版 iOS 無視 maximum-scale),
          遊戲的數字輸入(商店數量/自動喝水%/倉庫/製作…)幾乎都是 13~14px → 一點就放大。

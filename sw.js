@@ -23,9 +23,9 @@
  *
  * 更新控制：
  *   - 導覽走 network-first → 線上開頁本來就是最新程式碼,SW 何時換版不影響使用者看到的畫面。
- *   - install 即 skipWaiting + activate 時 clients.claim → 新版 sw.js 一裝好就立刻接管。
- *     導覽已 network-first、頁面端也沒有 controllerchange→reload,所以「立刻接管」不會強制 reload、不打斷遊玩;
- *     好處是卡在舊 cache-first SW 的人載到新 sw.js 就即時換成 network-first,不必等「所有分頁徹底關閉」(iOS 上極不可靠)。
+ *   - 新版 sw.js 安裝後「停在 waiting」,等所有分頁/App 關閉後自然接手(⚠️ 刻意不 skipWaiting,
+ *     原因見 activate 前的說明——強行交接會和頁面的常駐請求互等死鎖,把更新後的第一次重整/登出卡住幾十秒)。
+ *     導覽 network-first＋js/css 以 ?v= 定址 → 舊 SW 服務新內容零差異,晚點接手沒有任何代價。
  *
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
@@ -49,14 +49,14 @@ const EXTERNAL_HOSTS = ['placehold.co'];
 //   離線時 fetch 會更快直接失敗、不會等滿這段;這只是「連得到但很慢/卡住」時不讓開場被網路拖死的安全閥。
 const NAV_TIMEOUT_MS = 4000;
 
-self.addEventListener('install', () => {
-  // 立刻接管(skipWaiting):導覽已 network-first、頁面端也沒有 controllerchange→reload,
-  //   所以 skipWaiting 不會強制 reload、不打斷遊玩,只是讓「新版 SW 馬上取代舊版」。
-  //   ★ 關鍵:卡在舊 cache-first SW 的人,一旦載到這支新 sw.js → 它即刻啟用+clients.claim 接管,
-  //     plain 網址的導覽就改走 network-first 拿最新;不必再靠「所有分頁/App 徹底關閉」(iOS 上極不可靠)。
-  //   不這樣的話新 SW 會停在 waiting 永不上場 → 用 ?new 看到最新、一刪掉 ?new 又被舊 SW 餵回舊版(踩過)。
-  self.skipWaiting();
-});
+// ⚠️ 這裡「刻意沒有 install + skipWaiting」——新版 SW 停在 waiting,等所有分頁/App 關閉後自然接手。
+//   skipWaiting 會死鎖(2026-07-15 headless 實測 3 次中 2 次重現):主選單 BGM 是 <audio> Range 串流、
+//   登入畫面立繪逐幀輪播,頁面永遠有進行中的 fetch 事件 → 舊 SW 靜不下來、交接一直 pending;
+//   此時使用者按重整/登出 → 導覽等交接、交接等頁面安靜、頁面等導覽完成才卸載 → 三方互等,
+//   卡到導覽逾時(45 秒以上)。這正是「每次更新後首頁/登出要等很久」的另一半成因(前一半是舊制整桶倒掉)。
+//   晚接手沒有代價:導覽 network-first＋?v= 定址,舊 SW 服務新內容零差異;新 SW 的快取策略改動
+//   等 App 下次重啟生效即可。(代價僅剩:若還有人卡在 2026-06-24 前的舊 cache-first SW,要多一次
+//   「關閉再開」才會換到 network-first;該批使用者事實上早已換完。)
 
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
@@ -75,7 +75,7 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('message', (e) => {
   const d = e.data || {};
-  if (d === 'skip-waiting' || d.type === 'skip-waiting') { self.skipWaiting(); return; }
+  // 沒有 skip-waiting 訊息:現行頁面不會送;舊版頁面殘留的送過來也一律忽略(skipWaiting 會觸發上述死鎖)。
   if (d.type === 'reconcile-images' && Array.isArray(d.manifest)) {
     e.waitUntil(reconcileImages(d.manifest, e.source));
   }
@@ -300,6 +300,10 @@ self.addEventListener('fetch', (e) => {
   try { url = new URL(req.url); } catch (err) { return; }
 
   const sameOrigin = url.origin === self.location.origin;
+
+  // 音檔(bgm/sfx)不攔截:<audio> 走 Range 串流,回應是 206、本來就進不了 Cache(cache.put 對 206 會
+  //   reject,離線行為不變);讓它流經 SW 只會讓 SW 掛著長壽的 fetch 事件(BGM 一放就是整首)、無法閒置。
+  if (sameOrigin && /\/assets\/(?:bgm|sfx)\//.test(url.pathname)) return;
 
   // 圖桶:同源 assets 圖
   if (sameOrigin && url.pathname.includes('/assets/')) {

@@ -361,6 +361,13 @@ async function exportSave(){
         let _obj = JSON.parse(data);
         let _whRaw = _lzGet(whKey());   // 🎮 目前角色（經典/非經典）對應的倉庫（💾 解壓成明文）
         if(_whRaw) _obj.wh = JSON.parse(_whRaw);
+        // 🐾 一併收錄共用寵物名冊（依角色模式取對應桶·匯入時可選還原）。桶內為 _saveWrap 簽章格式→先解簽取出陣列存明文。saveGame() 已於上方 flush petRosterSave→桶為最新。
+        try {
+            if (typeof _petBucketKey === 'function') {
+                let _petRaw = _lzGet(_petBucketKey());
+                if (_petRaw != null) { let _pu = _saveUnwrap(_petRaw); if (_pu && _pu.ok) { let _arr = JSON.parse(_pu.payload); if (Array.isArray(_arr)) _obj.pets = _arr; } }
+            }
+        } catch(e){}
         data = JSON.stringify(_obj);
     } catch(e){}
     data = _saveWrap(data);   // 🛡️ 匯出檔加完整性簽章（前綴 'SIG1:'，匯入時驗章；payload 仍為明文 JSON）
@@ -441,16 +448,34 @@ function importSave(n){
                     okText: '取代', danger: true, onOk: writeSave
                 });
             };
+            // 🐾 詢問是否一併還原共用寵物名冊（會覆蓋該模式現有名冊·同模式角色共用·比照倉庫）。桶存 _saveWrap 簽章格式。
+            let restorePets = function(cur, whMsg){
+                let petData = d.pets;
+                if(!(petData !== undefined && Array.isArray(petData) && petData.length)){ finish(cur, whMsg); return; }
+                gameConfirm({
+                    title: '一併還原寵物？',
+                    message: `此匯入檔包含寵物名冊（${petData.length} 隻）。\n⚠ 會覆蓋該角色所屬模式（${(d.p && d.p.classicMode) ? '經典' : '非經典'}）的共用寵物名冊。`,
+                    okText: '一併還原', cancelText: '不還原', danger: true,
+                    onOk: () => {
+                        let _petKey = (typeof PET_ROSTER_KEY !== 'undefined' ? PET_ROSTER_KEY : 'fb5_pet_roster') + (typeof modeSuffix === 'function' ? modeSuffix(!!(d.p && d.p.classicMode), false) : '');
+                        _lzSet(_petKey, _saveWrap(JSON.stringify(petData)));   // 💾 依匯入角色模式寫入對應桶（_saveWrap 簽章＋壓縮）
+                        try { if (typeof _petRosterKey !== 'undefined') _petRosterKey = null; } catch(e){}   // 失效記憶體快取→下次 petRoster() 從新桶重載
+                        finish(cur, whMsg + '\n寵物名冊已一併還原。');
+                    },
+                    onCancel: () => finish(cur, whMsg + '\n（寵物名冊維持原狀，未還原）'),
+                    onDismiss: () => finish(cur, whMsg + '\n（寵物名冊維持原狀，未還原）')
+                });
+            };
             let writeSave = function(){
-                // 🔧 抽出倉庫資料（若匯入檔含 wh）；寫入存檔位時不保留 wh 欄位
+                // 🔧 抽出倉庫（wh）與寵物名冊（pets）；寫入存檔位時不保留這兩個共用桶欄位
                 let whData = d.wh;
                 let saveText = text;
-                if(whData !== undefined){ let _c = {}; for(let k in d){ if(k !== 'wh') _c[k] = d[k]; } saveText = JSON.stringify(_c); }
+                if(whData !== undefined || d.pets !== undefined){ let _c = {}; for(let k in d){ if(k !== 'wh' && k !== 'pets') _c[k] = d[k]; } saveText = JSON.stringify(_c); }
                 let cur = _lsGet('lineage_idle_save_' + n);
                 if(cur) _lsSet('lineage_idle_save_' + n + '_bak', cur);   // 匯入前自動備份原存檔
                 _lzSet('lineage_idle_save_' + n, _saveWrap(saveText));   // 💾 匯入 → 以本機簽章重新封裝後壓縮存入（之後讀檔即可驗章）
-                // 🔧 詢問是否一併還原共用倉庫（會覆蓋現有倉庫，四個存檔位共用）
-                if(whData === undefined){ finish(cur, ''); return; }
+                // 🔧 詢問是否一併還原共用倉庫（覆蓋現有倉庫·四存檔位共用）→ 接著問寵物 → finish
+                if(whData === undefined){ restorePets(cur, ''); return; }
                 let _cnt = (whData.items && whData.items.length) || 0;
                 let _gold = whData.gold || 0;
                 gameConfirm({
@@ -459,10 +484,10 @@ function importSave(n){
                     okText: '一併還原', cancelText: '不還原', danger: true,
                     onOk: () => {
                         _lzSet(whKey(d.p), JSON.stringify({ items: whData.items || [], gold: whData.gold || 0 }));   // 🎮 依匯入角色的經典/非經典模式寫入對應倉庫（💾 壓縮）
-                        finish(cur, '\n倉庫已一併還原。');
+                        restorePets(cur, '\n倉庫已一併還原。');
                     },
-                    onCancel: () => finish(cur, '\n（倉庫維持原狀，未還原）'),
-                    onDismiss: () => finish(cur, '\n（倉庫維持原狀，未還原）')
+                    onCancel: () => restorePets(cur, '\n（倉庫維持原狀，未還原）'),
+                    onDismiss: () => restorePets(cur, '\n（倉庫維持原狀，未還原）')
                 });
             };
             let finish = function(cur, whMsg){

@@ -917,6 +917,32 @@ function buildItemDescHTML(item) {
         if (_rel.length) desc += `<br><span class="text-rose-300">${_rel.map(t => '・' + t).join('<br>')}</span>`;
     }
 
+    if(d.slot === 'petwpn' || d.slot === 'petarm') {
+        // 🦴 寵物裝備詞綴：以「寵物實際獲得的加成」呈現（之牙=武器→傷害/命中；寵物盔甲=防具→防禦/減傷/魔防/迴避），與 petGearAffix 同源，顯示＝實際效果
+        let _petAffTxt = (dl) => {
+            let ps = [];
+            if(dl.dmg) ps.push('夥伴額外傷害' + formatBonus(dl.dmg));
+            if(dl.hit) ps.push('命中' + formatBonus(dl.hit));
+            if(dl.ac)  ps.push('防禦(AC)' + (dl.ac < 0 ? '-' + (-dl.ac) : '+' + dl.ac));   // AC 越低越強：祝福 -1 顯示「-1」
+            if(dl.dr)  ps.push('傷害減免' + formatBonus(dl.dr));
+            if(dl.mr)  ps.push('魔防(MR)' + formatBonus(dl.mr));
+            if(dl.er)  ps.push('迴避(ER)' + formatBonus(dl.er));
+            return ps.join('，');
+        };
+        if(item.bless) {
+            let _s = _petAffTxt(petGearAffix({ id: item.id, bless: item.bless }));
+            desc += `<br><span class="${item.bless==='cursed'?'c-cursed':'text-yellow-400'}">${item.bless==='cursed'?'詛咒的':'祝福的'}：${_s}</span>`;
+        }
+        if(item.anc) {
+            let _s = _petAffTxt(petGearAffix({ id: item.id, anc: item.anc }));
+            desc += `<br><span class="${ancColorClass(item.anc)}">${ancName(item.anc)}：${_s}</span>`;
+        }
+        let _paf = getAttrAffix(item.attr);
+        if(_paf) {
+            let _s = _petAffTxt(petGearAffix({ id: item.id, attr: item.attr }));
+            desc += `<br><span class="c-attr-${item.attr}">${_paf.n}：${_s}</span>`;
+        }
+    } else {
     if(item.bless) {
         if(item.bless === 'cursed') {
             let _ct;
@@ -949,6 +975,7 @@ function buildItemDescHTML(item) {
         } else {
             desc += `<br><span class="c-attr-${item.attr}">${_aff.n}：${eleName}屬性抗性+${_aff.res}，魔防(MR)+${_aff.mr}。</span>`;
         }
+    }
     }
 
     // 🛡️ 適用職業：以職業 logo 顯示可裝備此裝備的職業（騎士/妖精/法師/黑暗妖精/幻術士；黑暗妖精走 darkEquipOk 真實規則）

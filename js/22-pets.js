@@ -115,6 +115,7 @@ function petDerive(p) {
     let _gAc = _ga ? (_ga.petAc || 0) + _gaEn : 0;
     let _gInt = _ga ? (_ga.petInt || 0) : 0;
     let _gWis = _ga ? (_ga.petWis || 0) : 0;
+    let _aAff = (p.eq && p.eq.arm && typeof petGearAffix === 'function') ? petGearAffix(p.eq.arm) : { ac: 0, dr: 0, mr: 0, er: 0 };   // 🦴 寵物盔甲的祝福/遠古/屬性 → AC/減傷/MR/迴避
     return {
         kind: def.kind, tier: t,
         dice: dice,
@@ -122,10 +123,10 @@ function petDerive(p) {
         damageMult: t === 2 ? 1 : (PET_TIER_DMG_MULT[t] || 1) * survivalDmgMult,
         hit: g.hit0 + Math.floor(lv * g.hitG) + speedHit + t * 3 + elite.hit + PET_HIT_TUNE,
         skillFlat: Math.floor(lv * g.skillG * castMul * skillTier * PET_DMG_TUNE.skill) + _gInt,
-        ac: 10 - Math.floor(lv / g.acDiv) - t * g.acTier + hpAc + elite.ac - _gAc,
-        dr: Math.floor(lv / g.drDiv) + t * g.drTier + hpDr + elite.dr,
-        er: Math.min(g.erCap, Math.floor(lv / g.erDiv)),                // ER
-        mr: Math.min(t === 2 ? 110 : g.mrCap, mr) + (_ga ? (_ga.petMr || 0) : 0),
+        ac: 10 - Math.floor(lv / g.acDiv) - t * g.acTier + hpAc + elite.ac - _gAc + _aAff.ac,
+        dr: Math.floor(lv / g.drDiv) + t * g.drTier + hpDr + elite.dr + _aAff.dr,
+        er: Math.min(g.erCap, Math.floor(lv / g.erDiv)) + _aAff.er,      // ER
+        mr: Math.min(t === 2 ? 110 : g.mrCap, mr) + (_ga ? (_ga.petMr || 0) : 0) + _aAff.mr,
         mmpBonus: _gWis * 5,                                            // 精神：MP 上限 +5/點（regen/施放/顯示用有效上限）
         mpRegBonus: _gWis,                                              // 精神：MP 恢復 +1/點
         atkItv: Math.max(3, Math.round(600 / def.apm)),                 // 攻擊間隔（ticks·600=每分鐘tick數）
@@ -735,7 +736,7 @@ function petAttackOnce(p, d, target, forceCrit, addDmg, skName) {
         let pg = (typeof petGearBonus === 'function') ? petGearBonus(p) : { dmg: 0, hit: 0 };   // 🦴 v3.2.37 讀該寵物自身的武器（p.eq.wpn）
         let cb = petCharmCombatBonus();
         let _ia = (typeof teamIlluAura === 'function') ? teamIlluAura(p) : null;   // 🩹 v3.2.67 幻覺攻擊光環（化身+10傷／歐吉+4傷+4命）全隊生效→注入出戰寵物普攻
-        let rawHit = p.lv + d.hit + cb.hit + pg.hit + (_ia ? _ia.eh : 0) - target.lv + mobEffAC(target) + (typeof _relicPartnerHit === 'function' ? _relicPartnerHit(p.form) : 0);
+        let rawHit = (p.lv - target.lv) * 0.5 + d.hit + cb.hit + pg.hit + (_ia ? _ia.eh : 0) + mobEffAC(target) + (typeof _relicPartnerHit === 'function' ? _relicPartnerHit(p.form) : 0);   // 🐾 命中：等級差只扣一半 -(target.lv-p.lv)*0.5（對齊天堂經典練寵命中公式，改善高等圖命中過低；技能命中 petDebuffChance 早已 *0.5）
         let hv = stretchHitValue(rawHit);
         let r = roll(1, 20);
         let heavy = (r === 20) || !!forceCrit;

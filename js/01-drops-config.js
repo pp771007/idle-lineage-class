@@ -1214,6 +1214,39 @@ function _relicPetSkillMult() {
     return m;
 }
 // 🦴 寵物裝備加成（個別裝備制）：讀「該寵物」p.eq.wpn 的之牙 → 額外傷害/命中（含強化：每 +1 各 +1，上限 +5）；收集冊/遺物的全體加成照舊
+// 🦴 寵物裝備詞綴（祝福/遠古系/屬性）→ 寵物數值加成：之牙(petwpn)視為武器(給傷害/命中)、寵物盔甲(petarm)視為防具(給AC/減傷/MR/迴避)。
+//    寵物普攻不模擬魔法傷害/攻擊屬性/元素抗性，故武器的魔法/屬性折成物理傷害、防具的元素抗性折成MR，其餘忠實比照玩家詞綴(applyBlessStats/applyAncStats)。petGearBonus(武器)、petDerive(防具)、buildItemDescHTML(顯示) 共用此表→顯示與實際一致。
+function petGearAffix(item) {
+    let r = { dmg: 0, hit: 0, ac: 0, dr: 0, mr: 0, er: 0 };
+    if (!item) return r;
+    let d = DB.items[item.id]; if (!d) return r;
+    let isW = (d.slot === 'petwpn');
+    if (item.bless) {   // 祝福的＝正、詛咒的＝負鏡像
+        let sg = (item.bless === 'cursed') ? -1 : 1;
+        if (isW) { r.dmg += sg; r.hit += sg; }
+        else { r.ac -= sg; r.dr += sg; }
+    }
+    if (item.anc) {
+        let v = (item.anc === true) ? 'ancient' : item.anc;
+        if (isW) {
+            if (v === 'ancient') r.dmg += 2;
+            else if (v === 'eternal') r.dmg += 4;
+            else if (v === 'immortal') r.hit += 4;
+            else if (v === 'primordial') r.dmg += 2;   // 原魔法傷害+2 → 寵物普攻無魔傷，折成物理傷害+2
+        } else {
+            if (v === 'ancient') r.dr += 2;
+            else if (v === 'eternal') r.ac -= 2;
+            else if (v === 'immortal') r.er += 2;
+            else if (v === 'primordial') r.mr += 4;
+        }
+    }
+    let aff = (typeof getAttrAffix === 'function') ? getAttrAffix(item.attr) : null;
+    if (aff) {
+        if (isW) r.dmg += (aff.fix || 0);   // 原武器屬性給固定傷害+轉屬性 → 寵物只取固定傷害
+        else r.mr += (aff.mr || 0);          // 原防具屬性給元素抗性+MR → 寵物只取 MR
+    }
+    return r;
+}
 function petGearBonus(p) {
     let _collHit = (player._equipPetHit || 0);   // 🗡️ 裝備收集冊：寵物裝備部位全收集 → 夥伴命中加成（不需裝備之牙也生效）
     // 🏺 遺物「所有寵物額外傷害/命中」：掃玩家＋未倒地傭兵全部裝備欄的 petDmgAll/petHitAll 加總（牧神的放牧棍、食人妖精王的尖刺項圈…；武器/防具/腰帶皆生效）
@@ -1225,7 +1258,8 @@ function petGearBonus(p) {
     let d = inst ? DB.items[inst.id] : null;
     if(!inst || !d) return { dmg:_allDmg, hit:_collHit + _allHit };
     let en = capEn(inst.en || 0, d);   // 上限 +5
-    return { dmg: (d.petDmg || 0) + en + _allDmg, hit: (d.petHit || 0) + en + _collHit + _allHit };
+    let _wAff = petGearAffix(inst);   // 🦴 之牙的祝福/遠古/屬性 → 夥伴傷害/命中
+    return { dmg: (d.petDmg || 0) + en + _allDmg + _wAff.dmg, hit: (d.petHit || 0) + en + _collHit + _allHit + _wAff.hit };
 }
 // 🐾 召喚物裝備加成（喚獸師的訓練鞭 summonDmg/summonHit）：掃 owner(玩家或傭兵) 全部裝備欄加總，餵給 summonAttack 的命中/傷害。
 function summonGearBonus(owner) {

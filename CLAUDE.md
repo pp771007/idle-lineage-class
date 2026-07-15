@@ -101,8 +101,9 @@
 ### Service Worker / PWA 快取(sw.js 雙桶分離)
 
 > `afk-sw.js` 註冊 `sw.js`;`sw.js` 是**雙桶分離快取**:
-> - **程式桶 `CODE_CACHE`**(版本 `CODE_VERSION`):index.html + 全部外掛 js + 遊戲 js/css(含本機 `css/tailwind-built.css`)+ manifest + PWA 圖示 + 外部 CDN(`placehold.co`,怪圖載入失敗的備援圖,離線也要能用)。導覽文件走 network-first,js/css/圖示走 cache-first(帶 `?v=` 換版即換 URL)。
->   `CODE_VERSION` 由 `scripts/stamp-sw-version.mjs` 依「index.html＋manifest＋全部外掛 js＋遊戲 js/css 內容 hash」自動覆寫 → **程式一改 hash 就變 → 瀏覽器偵測到新 sw.js → 觸發 PWA 更新流程**。
+> - **程式桶 `CODE_CACHE`**(`code-v1`,**固定桶名、不隨版本換、不整桶倒掉**・2026-07-15 改):index.html + 全部外掛 js + 遊戲 js/css(含本機 `css/tailwind-built.css`)+ manifest + PWA 圖示 + 外部 CDN(`placehold.co`,怪圖載入失敗的備援圖,離線也要能用)。導覽文件走 network-first,js/css/圖示走 cache-first(帶 `?v=` 換版即換 URL,故不需換桶名;一次更新只重新下載真的有改的檔)。
+>   舊版殘留 entry(?v= 已變的 js/css)由 `reconcileCode` 對帳清掉:afk-pwa 每次載入從 DOM 收集現行引用的 js/css URL 清單送 SW,只清「同源 .js/.css 且不在清單上」的。老玩家的舊制 `code-<hash>` 桶走**懶搬家**:`cacheFirst` 在固定桶 miss 時翻舊桶、命中就搬進固定桶回用,舊桶由 reconcileCode 收尾刪除。**⚠ 搬家/清理不可寫在 activate**:遊戲頁持續發請求,舊 SW 一直有進行中 fetch 事件,skipWaiting 交接被拖到不可控(實測新 SW 卡 waiting 十幾秒以上),activate 裡只留 claim 與清不明桶。
+>   `CODE_VERSION` 仍由 `scripts/stamp-sw-version.mjs` 依「index.html＋manifest＋全部外掛 js＋遊戲 js/css 內容 hash」自動覆寫,但**只負責讓 sw.js 位元組變動 → 瀏覽器偵測到新 sw.js → 觸發 PWA 更新流程**,不再當桶名(舊設計「桶名=CODE_VERSION+activate 整桶刪」害每次發版全部玩家重新下載 ~4MB、首頁/登出卡 10~30 秒,已廢)。
 >   **改任何程式檔後,push 前要跑 `node scripts/stamp-sw-version.mjs` 重算**(`/prepush` 內含)。漏跑的話「已安裝的 app」不會跳更新。
 > - **圖桶 `IMG_VERSION`**(`img-v3`,**固定桶名、不再 bump、不整桶倒掉**):`assets/` 全部圖,on-demand 快取 + 可由 afk-pwa 背景全預抓。
 >   失效走**逐張對帳**:`assets-manifest.json` 每張圖帶一個 git blob sha,SW(`reconcileImages`)記下自己快取的是哪個 sha;afk-pwa 每次載入(線上逛/已安裝都跑)把最新 manifest 送進 SW:① **reconcile**——只清掉 sha 對不上的舊圖(換一張只重抓一張,不重載整包 30MB);② **新增圖的處理**——reconcile 只清不抓,所以「程式更新帶新圖」靠 afk-pwa 比對 **manifest 簽章**(`afk_pwa_manifest_sig`):簽章變了 → 已安裝(standalone)就重跑預抓把新圖抓進圖桶。**沒這個的話新圖離線會 404(踩過)**。沒記過 sha 的舊快取 → SW 用實際 bytes 算 sha 補對帳,相符補記、不符才清。

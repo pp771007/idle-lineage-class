@@ -7,13 +7,13 @@
 (function () {
     'use strict';
 
-    // ---- 時間常數（一場 3 分鐘；全部具名，方便調節奏） ----
-    var CYCLE_MS = 180000;      // 一場總長
-    var BET_MS = 120000;        // 下注 [0,120s)
-    var PARADE_MS = 130000;     // 封盤入閘 [120s,130s)
-    var RACE_MS = 160000;       // 比賽 [130s,160s) → 30 秒
-    // RESULT [160s,180s) → 結算+等待下一場
-    var RACE_DUR = RACE_MS - PARADE_MS;   // 比賽動畫時長 30000ms
+    // ---- 時間常數（一場 10 分鐘；全部具名，方便調節奏） ----
+    var CYCLE_MS = 600000;      // 一場總長（10 分鐘）
+    var BET_MS = 480000;        // 下注/看狀態 [0,8分)
+    var PARADE_MS = 500000;     // 封盤入閘 [8分,8分20秒) → 20 秒
+    var RACE_MS = 540000;       // 比賽 [8分20秒,9分) → 40 秒
+    // RESULT [9分,10分) → 結算+等待下一場 60 秒
+    var RACE_DUR = RACE_MS - PARADE_MS;   // 比賽動畫時長 40000ms
 
     // ---- 經濟常數 ----
     var TICKET_PRICE = 10000;         // 一張票 1 萬金幣

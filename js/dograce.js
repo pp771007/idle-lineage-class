@@ -13,7 +13,7 @@
     var PARADE_MS = 500000;     // 封盤入閘 [8分,8分20秒) → 20 秒
     var RACE_MS = 540000;       // 比賽 [8分20秒,9分) → 40 秒
     // RESULT [9分,10分) → 結算+等待下一場 60 秒
-    var RACE_DUR = RACE_MS - PARADE_MS;   // 比賽動畫時長 40000ms
+    var RACE_DUR = RACE_MS - PARADE_MS;   // 比賽動畫時長
 
     // ---- 經濟常數 ----
     var TICKET_PRICE = 10000;         // 一張票 1 萬金幣
@@ -22,7 +22,6 @@
     var TICKET_KEEP = 40;             // 「已領/未中」票根軟上限（未領中獎票不受限、永不自動清）
 
     // ---- 固定狗群（跨場固定身分；由強到弱＝賽道 1~8 號） ----
-    // baseRating 先天強弱、variance 穩定/爆冷程度（高＝狀態擺盪大、易爆冷）
     var DOGS = [
         { name: '詹丕', form: '杜賓狗', color: '#ef4444', baseRating: 10.0, variance: 0.15 },
         { name: '杰侖', form: '狼', color: '#3b82f6', baseRating: 8.6, variance: 0.22 },
@@ -34,7 +33,6 @@
         { name: '快樂', form: '聖伯納犬', color: '#14b8a6', baseRating: 2.2, variance: 0.78 }
     ];
     var N_DOGS = DOGS.length;
-    // 可見狀態 5 級（極佳→低迷）：顯示標籤 + 對實力的加成基準
     var STATES = [
         { label: '極佳', emoji: '🔥', mod: 2.4 },
         { label: '良好', emoji: '😊', mod: 1.1 },
@@ -42,13 +40,13 @@
         { label: '欠佳', emoji: '😰', mod: -1.2 },
         { label: '低迷', emoji: '🥶', mod: -2.6 }
     ];
-    var STATE_PICK_W = [1, 2, 3, 2, 1];   // 狀態抽取權重（鐘形，普通最常見）
+    var STATE_PICK_W = [1, 2, 3, 2, 1];
 
     // ---- 時鐘（可被 debug 覆寫，供測試強制階段） ----
     var _nowOverride = null;
     function nowMs() { return (_nowOverride != null) ? _nowOverride : Date.now(); }
 
-    // ---- 種子 PRNG（純函式、不用 Math.random） ----
+    // ---- 種子 PRNG ----
     function hash32(n) {
         n = n >>> 0;
         n = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b);
@@ -69,11 +67,13 @@
         for (i = 0; i < weights.length; i++) { r -= weights[i]; if (r < 0) return i; }
         return weights.length - 1;
     }
+    function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+    function smooth(x) { x = clamp01(x); return x * x * (3 - 2 * x); }
 
     // ---- 階段判定 ----
     function phaseOf(now) {
         var raceId = Math.floor(now / CYCLE_MS);
-        var e = now - raceId * CYCLE_MS;   // 本場已過毫秒
+        var e = now - raceId * CYCLE_MS;
         var phase;
         if (e < BET_MS) phase = 'bet';
         else if (e < PARADE_MS) phase = 'parade';
@@ -87,90 +87,71 @@
     function seededRace(raceId) {
         if (_raceCache[raceId]) return _raceCache[raceId];
         var rng = mulberry32(hash32(raceId));
-        var i;
-        var dogs = [];
-        // 1) 每場可見狀態 + 本場實力
+        var i, dogs = [];
         for (i = 0; i < N_DOGS; i++) {
             var base = DOGS[i];
             var st = pickWeighted(rng, STATE_PICK_W);
-            var stateMod = STATES[st].mod * (0.6 + base.variance);   // 高變異狗狀態擺盪更大
+            var stateMod = STATES[st].mod * (0.6 + base.variance);
             var power = base.baseRating + stateMod;
             dogs.push({
-                idx: i, name: base.name, form: base.form, color: base.color,
-                variance: base.variance,
-                stateIdx: st, state: STATES[st].label, stateEmoji: STATES[st].emoji,
-                power: power
+                idx: i, name: base.name, form: base.form, color: base.color, variance: base.variance,
+                stateIdx: st, state: STATES[st].label, stateEmoji: STATES[st].emoji, power: power
             });
         }
-        // 2) 賠率（由實力估勝率；莊家抽成後顯示）
         var TEMP = 3.0, sumW = 0;
         for (i = 0; i < N_DOGS; i++) { dogs[i]._w = Math.exp(dogs[i].power / TEMP); sumW += dogs[i]._w; }
         for (i = 0; i < N_DOGS; i++) {
             dogs[i].prob = dogs[i]._w / sumW;
             dogs[i].odds = Math.max(1.2, Math.round((1 / dogs[i].prob) * (1 - HOUSE_EDGE) * 10) / 10);
         }
-        // 3) 贏家：依實力權重抽（熱門常勝、偶爆冷；實際勝率＝prob，與賠率一致）
         var winner = pickWeighted(rng, dogs.map(function (d) { return d._w; }));
-        // 4) 名次：贏家第一，其餘依 實力+微擾 排序
         var rest = [];
         for (i = 0; i < N_DOGS; i++) if (i !== winner) rest.push({ idx: i, s: dogs[i].power + (rng() - 0.5) * 3 });
         rest.sort(function (a, b) { return b.s - a.s; });
         var order = [winner].concat(rest.map(function (o) { return o.idx; }));
         var rankOf = {}; for (i = 0; i < order.length; i++) rankOf[order[i]] = i;
 
-        // 5) 動畫參數（戲劇性引擎）：每隻一組 pace/wobble；由種子固化
-        //    winner 後段爆發（back-loaded）、指定一隻領跑者前段衝（front-loaded）→ 最後直道逆轉
-        var photo = rng() < 0.28;   // 這場是否貼身封線
-        var pacer = order[1 + Math.floor(rng() * Math.max(1, N_DOGS - 1))];   // 領跑者（非贏家）
+        // 動畫參數（戲劇性引擎）：winner 後段爆發、指定一隻領跑者前段衝 → 最後直道逆轉
+        var photo = rng() < 0.28;
+        var pacer = order[1 + Math.floor(rng() * Math.max(1, N_DOGS - 1))];
         var anim = [];
         for (i = 0; i < N_DOGS; i++) {
             var rank = rankOf[i];
-            // 終點目標進度：第1名=1.0，其後遞減；photo finish 時第2名貼近
             var finish = 1.0 - rank * 0.028;
             if (rank === 1 && photo) finish = 0.994;
             var paceBias;
-            if (i === winner) paceBias = 0.55;            // 後段爆發
-            else if (i === pacer) paceBias = -0.5;        // 前段衝
+            if (i === winner) paceBias = 0.55;
+            else if (i === pacer) paceBias = -0.5;
             else paceBias = (rng() - 0.5) * 0.5;
             anim.push({
                 finish: finish,
-                exp: Math.max(0.55, Math.min(1.9, 1 + paceBias)),   // shape 指數
-                wAmp: 0.045 + dogs[i].variance * 0.075,             // 中段擺盪幅度
+                exp: Math.max(0.55, Math.min(1.9, 1 + paceBias)),
+                wAmp: 0.045 + dogs[i].variance * 0.075,
                 wFreq: 1.4 + rng() * 2.4,
                 wPhase: rng() * Math.PI * 2
             });
         }
-
-        var race = {
-            raceId: raceId, startMs: raceId * CYCLE_MS,
-            dogs: dogs, order: order, rankOf: rankOf, winner: winner, photo: photo, anim: anim
-        };
+        var race = { raceId: raceId, startMs: raceId * CYCLE_MS, dogs: dogs, order: order, rankOf: rankOf, winner: winner, photo: photo, anim: anim };
         _raceCache[raceId] = race;
         return race;
     }
 
-    // 逐格位置：u = 比賽進度 0..1 → 該狗 progress 0..1（純函式，中途進場一致）
+    // 沿賽道進度：u = 比賽進度 0..1 → 該狗 progress 0..1（純函式，中途進場一致）
     function progressAt(race, dogIdx, u) {
-        u = Math.max(0, Math.min(1, u));
+        u = clamp01(u);
         var a = race.anim[dogIdx];
         var shape = Math.pow(u, a.exp) * a.finish;
-        var wob = a.wAmp * Math.sin(Math.PI * 2 * (a.wFreq * u + a.wPhase)) * u * (1 - u);   // 兩端為 0→不動名次
+        var wob = a.wAmp * Math.sin(Math.PI * 2 * (a.wFreq * u + a.wPhase)) * u * (1 - u);
         var p = shape + wob;
         if (p < 0) p = 0;
-        var cap = (dogIdx === race.winner) ? 1.0 : 0.985;   // 只有贏家能到終點
+        var cap = (dogIdx === race.winner) ? 1.0 : 0.985;
         if (p > cap) p = cap;
         return p;
     }
     function winnerOf(raceId) { return seededRace(raceId).winner; }
-
-    // 近況：重算過去 K 場名次，回 {w, l}
     function recentForm(dogIdx, curRaceId, K) {
         var w = 0, total = 0;
-        for (var r = curRaceId - K; r < curRaceId; r++) {
-            if (r < 0) continue;
-            total++;
-            if (seededRace(r).winner === dogIdx) w++;
-        }
+        for (var r = curRaceId - K; r < curRaceId; r++) { if (r < 0) continue; total++; if (seededRace(r).winner === dogIdx) w++; }
         return { w: w, total: total };
     }
 
@@ -200,15 +181,13 @@
         if (already + count > MAX_TICKETS_PER_RACE) { logMsg('超過單場買票上限。', true); return false; }
         var cost = count * TICKET_PRICE;
         if ((player.gold || 0) < cost) { logMsg('金幣不足。', true); return false; }
-        var race = seededRace(ph.raceId);
-        var dog = race.dogs[dogIdx];
+        var dog = seededRace(ph.raceId).dogs[dogIdx];
         player.gold -= cost;
         t.push({ raceId: ph.raceId, dogIdx: dogIdx, dogName: dog.name, count: count, odds: dog.odds, claimed: false });
         afterGoldChange();
         logMsg('下注 ' + dog.name + ' × ' + count + ' 張（' + cost.toLocaleString() + ' 金幣）');
         return true;
     }
-    // 票的開獎結果（純算，不寫檔）：'pending' | 'win' | 'lose'
     function ticketResult(ticket, curRaceId) {
         if (ticket.raceId >= curRaceId) return 'pending';
         return (winnerOf(ticket.raceId) === ticket.dogIdx) ? 'win' : 'lose';
@@ -217,8 +196,7 @@
     function claimTicket(id) {
         var t = ensureTickets(); if (!t) return false;
         var tk = t[id]; if (!tk || tk.claimed) return false;
-        var cur = phaseOf(nowMs()).raceId;
-        if (ticketResult(tk, cur) !== 'win') return false;
+        if (ticketResult(tk, phaseOf(nowMs()).raceId) !== 'win') return false;
         if (!player.cls) { logMsg('尚未載入角色，無法領獎。', true); return false; }
         var pay = ticketPayout(tk);
         player.gold = (player.gold || 0) + pay;
@@ -227,33 +205,24 @@
         logMsg('🎉 ' + tk.dogName + ' 中獎！領取 ' + pay.toLocaleString() + ' 金幣');
         return true;
     }
-    // 清理「已領/未中」票根軟上限；未領中獎票永不動
     function pruneTickets() {
         var t = ensureTickets(); if (!t) return;
-        var cur = phaseOf(nowMs()).raceId;
-        var removable = [];
-        for (var i = 0; i < t.length; i++) {
-            var res = ticketResult(t[i], cur);
-            if (t[i].claimed || res === 'lose') removable.push(i);
-        }
+        var cur = phaseOf(nowMs()).raceId, removable = [];
+        for (var i = 0; i < t.length; i++) { var res = ticketResult(t[i], cur); if (t[i].claimed || res === 'lose') removable.push(i); }
         var over = removable.length - TICKET_KEEP;
         if (over > 0) {
             var kill = {};
-            for (var k = 0; k < over; k++) kill[removable[k]] = true;   // 移除最舊的
+            for (var k = 0; k < over; k++) kill[removable[k]] = true;
             player.raceTickets = t.filter(function (_, idx) { return !kill[idx]; });
         }
     }
     function clearFinishedTickets() {
         var t = ensureTickets(); if (!t) return;
         var cur = phaseOf(nowMs()).raceId;
-        player.raceTickets = t.filter(function (tk) {
-            var res = ticketResult(tk, cur);
-            return !(tk.claimed || res === 'lose');   // 留下：待開獎、未領中獎
-        });
+        player.raceTickets = t.filter(function (tk) { var res = ticketResult(tk, cur); return !(tk.claimed || res === 'lose'); });
         if (typeof saveGame === 'function') saveGame();
         renderTicketPanel();
     }
-
     function afterGoldChange() {
         if (typeof saveGame === 'function') saveGame();
         if (typeof updateUI === 'function') { try { updateUI(); } catch (e) { } }
@@ -262,22 +231,19 @@
         if (typeof logSys === 'function') logSys(warn ? '<span class="text-amber-300">🐕 ' + msg + '</span>' : '🐕 ' + msg);
     }
 
-    // ================= UI：浮動視窗 / 縮球 / U 型賽道 =================
+    // ================= UI：浮動視窗 / 縮球 / 大 U 型賽道 =================
     var WIN_POS = 'dograce_winpos', BALL_POS = 'dograce_ballpos';
-    var _raf = null, _lastSec = -1, _lastPhaseKey = '', _tab = 'race', _betCount = 1;
-    var _seenResult = {};   // raceId → 已提示過中獎
+    var _raf = null, _lastSec = -1, _tab = 'race', _betCount = 1;
+    var _subview = '', _subviewRaceId = -1, _seenResult = {};
 
     function el(id) { return document.getElementById(id); }
     function fmtCountdown(ms) {
-        var s = Math.max(0, Math.ceil(ms / 1000));
-        var m = Math.floor(s / 60); s = s % 60;
+        var s = Math.max(0, Math.ceil(ms / 1000)), m = Math.floor(s / 60); s = s % 60;
         return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
     }
     function fmtRaceLabel(raceId) {
-        var d = new Date(raceId * CYCLE_MS);
-        var p = function (n) { return (n < 10 ? '0' : '') + n; };
-        return p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) +
-            ' 場 #' + (((raceId % 10000) + 10000) % 10000);
+        var d = new Date(raceId * CYCLE_MS), p = function (n) { return (n < 10 ? '0' : '') + n; };
+        return p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ' 場 #' + (((raceId % 10000) + 10000) % 10000);
     }
 
     window.openRaceWindow = function () {
@@ -295,19 +261,16 @@
                 '<button type="button" class="dograce-hb" data-act="close" title="關閉">✖</button>' +
                 '</div></div>' +
                 '<div class="dograce-body" id="dograce-body">' +
-                '<div class="dograce-trackwrap" id="dograce-trackwrap"></div>' +
                 '<div class="dograce-tabs">' +
-                '<button type="button" class="dograce-tab" data-tab="race">🏁 賽道／下注</button>' +
-                '<button type="button" class="dograce-tab" data-tab="tickets">🎫 我的票根</button>' +
+                '<button type="button" class="dograce-tab" data-tab="race">🏁 賽事</button>' +
+                '<button type="button" class="dograce-tab" data-tab="tickets">🎫 票根</button>' +
                 '</div>' +
                 '<div class="dograce-panel" id="dograce-panel"></div>' +
                 '</div>';
             document.body.appendChild(win);
-            buildTrack();
             makeDraggable(win, el('dograce-head'));
-            restorePos(win, WIN_POS, { right: 12, top: 70 });
+            restorePos(win, WIN_POS, { right: 12, top: 64 });
             win.addEventListener('click', onWinClick);
-            // 手機非戰鬥視圖自動隱藏（不擋換裝）
             if (typeof MutationObserver === 'function') {
                 var obs = new MutationObserver(updateVisibility);
                 obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
@@ -315,9 +278,10 @@
         }
         win.style.display = '';
         var ball = el('dograce-ball'); if (ball) ball.style.display = 'none';
-        _tab = 'race';
+        _tab = 'race'; _subview = '';
         pruneTickets();
-        renderAll();
+        syncTabs();
+        applyView(nowMs());
         startLoop();
         updateVisibility();
     };
@@ -338,11 +302,11 @@
             return;
         }
         var tab = e.target.closest('[data-tab]');
-        if (tab) { _tab = tab.getAttribute('data-tab'); renderPanel(); syncTabs(); return; }
+        if (tab) { _tab = tab.getAttribute('data-tab'); _subview = ''; syncTabs(); applyView(nowMs()); return; }
         var dogBet = e.target.closest('[data-bet]');
-        if (dogBet) { if (placeBet(parseInt(dogBet.getAttribute('data-bet'), 10), _betCount)) { renderPanel(); }; return; }
+        if (dogBet) { if (placeBet(parseInt(dogBet.getAttribute('data-bet'), 10), _betCount)) renderBetPanel(phaseOf(nowMs())); return; }
         var chip = e.target.closest('[data-chip]');
-        if (chip) { _betCount = parseInt(chip.getAttribute('data-chip'), 10); renderPanel(); return; }
+        if (chip) { _betCount = parseInt(chip.getAttribute('data-chip'), 10); renderBetPanel(phaseOf(nowMs())); return; }
         var claim = e.target.closest('[data-claim]');
         if (claim) { if (claimTicket(parseInt(claim.getAttribute('data-claim'), 10))) renderTicketPanel(); return; }
         if (e.target.closest('[data-clearticket]')) { clearFinishedTickets(); return; }
@@ -364,17 +328,13 @@
             document.body.appendChild(ball);
             makeDraggable(ball, ball, true);
             restorePos(ball, BALL_POS, { right: 14, bottom: 90 });
-            ball.addEventListener('click', function (ev) {
-                if (ball._dragged) { ball._dragged = false; return; }
-                window.openRaceWindow();
-            });
+            ball.addEventListener('click', function () { if (ball._dragged) { ball._dragged = false; return; } window.openRaceWindow(); });
         }
         ball.style.display = '';
         startLoop();
         updateVisibility();
     }
 
-    // 手機（afk-mobile）非戰鬥視圖時隱藏視窗/球，避免擋換裝；桌機不隱藏
     function isMobileNonBattle() {
         var b = document.body;
         return b.classList.contains('m-mobile') && !b.classList.contains('mview-battle');
@@ -382,11 +342,11 @@
     function updateVisibility() {
         var hide = isMobileNonBattle();
         var win = el('dograce-win'), ball = el('dograce-ball');
-        if (win && win.style.display !== 'none' && !win._userHidden) win.style.visibility = hide ? 'hidden' : '';
+        if (win && win.style.display !== 'none') win.style.visibility = hide ? 'hidden' : '';
         if (ball && ball.style.display !== 'none') ball.style.visibility = hide ? 'hidden' : '';
     }
 
-    // ---- 拖曳（抓 handle；按鈕不觸發）＋位置記憶 ----
+    // ---- 拖曳 + 位置記憶 ----
     function makeDraggable(node, handle, isBall) {
         var drag = null;
         handle.addEventListener('pointerdown', function (e) {
@@ -400,11 +360,9 @@
         });
         handle.addEventListener('pointermove', function (e) {
             if (!drag || drag.id !== e.pointerId) return;
-            var maxX = Math.max(0, innerWidth - node.offsetWidth);
-            var maxY = Math.max(0, innerHeight - node.offsetHeight);
-            var nx = Math.max(0, Math.min(maxX, e.clientX - drag.dx));
-            var ny = Math.max(0, Math.min(maxY, e.clientY - drag.dy));
-            node.style.left = nx + 'px'; node.style.top = ny + 'px';
+            var maxX = Math.max(0, innerWidth - node.offsetWidth), maxY = Math.max(0, innerHeight - node.offsetHeight);
+            node.style.left = Math.max(0, Math.min(maxX, e.clientX - drag.dx)) + 'px';
+            node.style.top = Math.max(0, Math.min(maxY, e.clientY - drag.dy)) + 'px';
             drag.moved = true; if (isBall) node._dragged = true;
         });
         function end(e) {
@@ -434,49 +392,45 @@
         }
     }
 
-    // ---- U 型賽道（SVG） ----
-    var TRACK_W = 320, TRACK_H = 210;   // viewBox
+    // ---- 大 U 型賽道幾何（tall viewBox；狗填滿手機） ----
+    var TW = 200, TH = 300, CX = 100, TOP = 20, CURVE_Y = 196, R0 = 24, LANE_W = 9;
     var _lanePaths = [], _laneLens = [];
-    function buildTrack() {
-        var wrap = el('dograce-trackwrap');
-        var svg = '<svg id="dograce-svg" viewBox="0 0 ' + TRACK_W + ' ' + TRACK_H + '" preserveAspectRatio="xMidYMid meet">';
-        // 8 條同心 ∪ 車道：由外(上)到內。每條 = 左直下→底彎→右直上
-        var top = 24, bot = TRACK_H - 20, laneGap = 15, xL = 40, xR = TRACK_W - 40;
-        _lanePaths = []; _laneLens = [];
-        var i;
-        for (i = 0; i < N_DOGS; i++) {
-            var off = i * laneGap;
-            var lx = xL + off, rx = xR - off, by = bot - off, ty = top;
-            var rad = Math.max(6, (rx - lx) / 2);
-            var cx = (lx + rx) / 2;
-            // path: 從左上往下、底部半圓、右邊往上
-            var d = 'M ' + lx + ' ' + ty + ' L ' + lx + ' ' + (by - rad) +
-                ' A ' + rad + ' ' + rad + ' 0 0 0 ' + rx + ' ' + (by - rad) +
-                ' L ' + rx + ' ' + ty;
-            svg += '<path class="dograce-lane" d="' + d + '" stroke="' + DOGS[i].color + '"/>';
-        }
-        // 起跑/終點線
-        svg += '<line class="dograce-line" x1="' + (xL - 8) + '" y1="' + top + '" x2="' + (xL + N_DOGS * laneGap) + '" y2="' + top + '"/>';
-        svg += '<line class="dograce-line dograce-finish" x1="' + (xR - N_DOGS * laneGap) + '" y1="' + top + '" x2="' + (xR + 8) + '" y2="' + top + '"/>';
+    var STAGGER = 0.02;   // 外圈起點較前（於起跑時，隨比賽淡出）
+    function laneRadius(j) { return R0 + j * LANE_W; }   // j=0 內圈(短)、7 外圈(長)
+    function laneD(j) {
+        var R = laneRadius(j), xl = CX - R, xr = CX + R;
+        return 'M ' + xl + ' ' + TOP + ' L ' + xl + ' ' + CURVE_Y + ' A ' + R + ' ' + R + ' 0 0 0 ' + xr + ' ' + CURVE_Y + ' L ' + xr + ' ' + TOP;
+    }
+    function bandD() {
+        var Ro = laneRadius(N_DOGS - 1) + LANE_W * 0.6, Ri = R0 - LANE_W * 0.6;
+        var oL = CX - Ro, oR = CX + Ro, iL = CX - Ri, iR = CX + Ri;
+        return 'M ' + oL + ' ' + TOP + ' L ' + oL + ' ' + CURVE_Y + ' A ' + Ro + ' ' + Ro + ' 0 0 0 ' + oR + ' ' + CURVE_Y + ' L ' + oR + ' ' + TOP +
+            ' L ' + iR + ' ' + TOP + ' L ' + iR + ' ' + CURVE_Y + ' A ' + Ri + ' ' + Ri + ' 0 0 1 ' + iL + ' ' + CURVE_Y + ' L ' + iL + ' ' + TOP + ' Z';
+    }
+    function renderTrackView(ph) {
+        var panel = el('dograce-panel'); if (!panel) return;
+        var svg = '<svg id="dograce-svg" viewBox="0 0 ' + TW + ' ' + TH + '" preserveAspectRatio="xMidYMid meet">';
+        svg += '<path class="dograce-band" d="' + bandD() + '"/>';
+        for (var j = 0; j < N_DOGS; j++) svg += '<path class="dograce-laneline" id="dgl-' + j + '" d="' + laneD(j) + '"/>';
+        var Ro = laneRadius(N_DOGS - 1), Ri = R0;
+        svg += '<line class="dograce-line" x1="' + (CX - Ro - 5) + '" y1="' + TOP + '" x2="' + (CX - Ri + 5) + '" y2="' + TOP + '"/>';
+        svg += '<line class="dograce-line dograce-finish" x1="' + (CX + Ri - 5) + '" y1="' + TOP + '" x2="' + (CX + Ro + 5) + '" y2="' + TOP + '"/>';
         svg += '</svg>';
-        // 狗 sprite 層（絕對定位、以 % 疊在 svg 上）
-        svg += '<div class="dograce-dogs" id="dograce-dogs"></div>';
-        svg += '<div class="dograce-banner" id="dograce-banner"></div>';
-        wrap.innerHTML = svg;
-        // 量測每條 lane path 幾何（用隱藏的同 viewBox 計算 getPointAtLength）
-        var svgEl = el('dograce-svg');
-        var paths = svgEl.querySelectorAll('path.dograce-lane');
-        for (i = 0; i < paths.length; i++) { _lanePaths.push(paths[i]); _laneLens.push(paths[i].getTotalLength()); }
-        // 建立每隻狗的 sprite 元素
-        var dogsLayer = el('dograce-dogs'), html = '';
-        for (i = 0; i < N_DOGS; i++) {
+        panel.innerHTML =
+            '<div class="dograce-trackview">' +
+            '<div class="dograce-overlay" id="dograce-overlay"></div>' + svg +
+            '<div class="dograce-dogs" id="dograce-dogs"></div>' +
+            '</div>';
+        _lanePaths = []; _laneLens = [];
+        for (var k = 0; k < N_DOGS; k++) { var pth = el('dgl-' + k); _lanePaths.push(pth); _laneLens.push(pth.getTotalLength()); }
+        var html = '';
+        for (var i = 0; i < N_DOGS; i++) {
             html += '<div class="dograce-dog" id="dgd-' + i + '">' +
                 '<div class="dograce-plate" style="border-color:' + DOGS[i].color + '"><b style="background:' + DOGS[i].color + '">' + (i + 1) + '</b>' + DOGS[i].name + '</div>' +
-                '<img alt="' + DOGS[i].name + '" src="assets/anim/' + encodeURIComponent(DOGS[i].form) + '/d6/idle_0.png" ' +
-                'onerror="this.style.opacity=.4">' +
+                '<img alt="' + DOGS[i].name + '" src="assets/anim/' + encodeURIComponent(DOGS[i].form) + '/d6/idle_0.png" onerror="this.style.opacity=.4">' +
                 '</div>';
         }
-        dogsLayer.innerHTML = html;
+        el('dograce-dogs').innerHTML = html;
     }
 
     function _vecDir(dx, dy) {
@@ -485,32 +439,73 @@
         var map = { '0': 3, '1': 4, '2': 5, '3': 6, '4': 7, '-4': 7, '-3': 0, '-2': 1, '-1': 2 };
         var r = map[String(oct)]; return (r == null) ? 6 : r;
     }
-    // 依 progress 放置每隻狗，並用切線方向挑 8 方向 walk 幀
+    // 分數車道上取點（在相鄰兩條 lane 間內插 → 換道/切內線平滑）
+    function posOnLane(frac, along) {
+        var a = Math.max(0, Math.min(N_DOGS - 1, Math.floor(frac)));
+        var b = Math.max(0, Math.min(N_DOGS - 1, Math.ceil(frac)));
+        var t = frac - a;
+        var pa = _lanePaths[a].getPointAtLength(_laneLens[a] * along);
+        var pb = _lanePaths[b].getPointAtLength(_laneLens[b] * along);
+        return { x: pa.x + (pb.x - pa.x) * t, y: pa.y + (pb.y - pa.y) * t };
+    }
+    // 放置每隻狗：外圈起點較前(stagger)、開跑後往內線切(cut-in)
     function placeDogs(race, u, animate) {
-        var wrap = el('dograce-trackwrap'); if (!wrap) return;
-        var svgEl = el('dograce-svg'); if (!svgEl) return;
+        var svgEl = el('dograce-svg'); if (!svgEl || !_lanePaths.length) return;
         var box = svgEl.getBoundingClientRect();
-        var sx = box.width / TRACK_W, sy = box.height / TRACK_H;
+        var scale = Math.min(box.width / TW, box.height / TH);
+        var offX = (box.width - TW * scale) / 2, offY = (box.height - TH * scale) / 2;
         var frame = animate ? (Math.floor(performance.now() / 120) % 4) : 0;
+        var cut = smooth(u / 0.5);   // 前半段切入內線
         for (var i = 0; i < N_DOGS; i++) {
-            var path = _lanePaths[i], len = _laneLens[i]; if (!path) continue;
-            var p = race ? progressAt(race, i, u) : 0;
-            var pt = path.getPointAtLength(len * p);
-            var pt2 = path.getPointAtLength(Math.min(len, len * p + 1.5));
+            var startLane = i, targetLane = i * 0.45;
+            var frac = startLane + (targetLane - startLane) * cut;
+            var along = clamp01(progressAt(race, i, u) + STAGGER * startLane * (1 - u));
+            var pt = posOnLane(frac, along);
+            var pt2 = posOnLane(frac, Math.min(1, along + 0.012));
             var dir = _vecDir(pt2.x - pt.x, pt2.y - pt.y);
             var dog = el('dgd-' + i); if (!dog) continue;
-            dog.style.left = (pt.x * sx) + 'px';
-            dog.style.top = (pt.y * sy) + 'px';
+            dog.style.left = (offX + pt.x * scale) + 'px';
+            dog.style.top = (offY + pt.y * scale) + 'px';
             var img = dog.firstElementChild.nextElementSibling;
-            var act = animate ? 'walk' : 'idle';
-            var fn = animate ? frame : 0;
-            var src = 'assets/anim/' + encodeURIComponent(DOGS[i].form) + '/d' + dir + '/' + act + '_' + fn + '.png';
+            var src = 'assets/anim/' + encodeURIComponent(DOGS[i].form) + '/d' + dir + '/' + (animate ? 'walk' : 'idle') + '_' + frame + '.png';
             if (img._src !== src) { img._src = src; img.src = src; }
-            dog.style.zIndex = String(10 + Math.round(p * 50));
+            dog.style.zIndex = String(10 + Math.round(along * 60));
         }
     }
+    function updateOverlay(ph, race, u) {
+        var ov = el('dograce-overlay'); if (!ov) return;
+        if (ph.phase === 'parade') { ov.innerHTML = '<div class="dograce-ov-mid">🚦 入閘中…</div>'; return; }
+        if (ph.phase === 'race') {
+            var lead = 0, lp = -1;
+            for (var i = 0; i < N_DOGS; i++) { var p = progressAt(race, i, u); if (p > lp) { lp = p; lead = i; } }
+            ov.innerHTML = '<div class="dograce-ov-top">🏃 領先：<b style="color:' + DOGS[lead].color + '">' + DOGS[lead].name + '</b>' + (u > 0.85 ? '　最後直道！' : '') + '</div>';
+            return;
+        }
+        if (ph.phase === 'result') {
+            ov.innerHTML = '<div class="dograce-ov-win">🏆 <b style="color:' + DOGS[race.winner].color + '">' + DOGS[race.winner].name + '</b> 獲勝</div>' +
+                '<div class="dograce-ov-rank">' + race.order.slice(0, 3).map(function (idx, r) { return '<span>' + (r + 1) + '. <b style="color:' + DOGS[idx].color + '">' + DOGS[idx].name + '</b></span>'; }).join('') + '</div>';
+            return;
+        }
+        ov.innerHTML = '';
+    }
 
-    // ---- 迴圈 ----
+    // ---- 迴圈 / 視圖切換 ----
+    function desiredSubview(ph) {
+        if (_tab === 'tickets') return 'tickets';
+        return ph.phase === 'bet' ? 'bet' : 'track';
+    }
+    function applyView(now) {
+        var ph = phaseOf(now);
+        var want = desiredSubview(ph);
+        if (want !== _subview) {
+            _subview = want; _subviewRaceId = ph.raceId;
+            if (want === 'tickets') renderTicketPanel();
+            else if (want === 'bet') renderBetPanel(ph);
+            else renderTrackView(ph);
+        } else if (want === 'bet' && ph.raceId !== _subviewRaceId) {
+            _subviewRaceId = ph.raceId; renderBetPanel(ph);   // 新一場：刷新賠率/狀態
+        }
+    }
     function startLoop() { if (_raf == null) _raf = requestAnimationFrame(loop); }
     function stopLoop() { if (_raf != null) { cancelAnimationFrame(_raf); _raf = null; } }
     function loop() {
@@ -519,153 +514,87 @@
         var winOpen = win && win.style.display !== 'none';
         var ballOpen = ball && ball.style.display !== 'none';
         if (!winOpen && !ballOpen) { stopLoop(); return; }
-        var now = nowMs();
-        var ph = phaseOf(now);
-        var race = seededRace(ph.raceId);
-        // 縮球：依階段變色/換圖示/顯示對的倒數（一眼看出能不能押、開賽倒數）
+        var now = nowMs(), ph = phaseOf(now), race = seededRace(ph.raceId);
         if (ballOpen) {
-            var bi = ballInfo(ph);
-            var cd = el('dograce-ball-cd'), ico = el('dograce-ball-ico');
+            var bi = ballInfo(ph), cd = el('dograce-ball-cd'), ico = el('dograce-ball-ico');
             if (cd) cd.textContent = bi.cd;
             if (ico) ico.textContent = bi.ico;
             if (ball.className.indexOf(bi.cls) < 0) ball.className = 'dograce-ball ' + bi.cls;
         }
         if (winOpen && !win.classList.contains('is-min')) {
-            var phaseKey = ph.phase + ':' + ph.raceId;
-            // 秒級：更新倒數/banner 文字
             var sec = Math.floor(now / 1000);
-            if (sec !== _lastSec) {
-                _lastSec = sec;
-                updatePhaseText(ph, race);
-            }
-            // 階段切換：重繪面板 + 賽道狀態
-            if (phaseKey !== _lastPhaseKey) {
-                _lastPhaseKey = phaseKey;
-                onPhaseChange(ph, race);
-            }
-            // 比賽中逐幀跑；其餘靜態
-            if (ph.phase === 'race') {
-                var u = (ph.e - PARADE_MS) / RACE_DUR;
-                placeDogs(race, u, true);
-                updateBanner(race, u);
-            } else if (ph.phase === 'result') {
-                placeDogs(race, 1, false);
-            } else if (ph.phase === 'parade') {
-                placeDogs(race, 0, true);
-            } else {
-                placeDogs(race, 0, false);
+            if (sec !== _lastSec) { _lastSec = sec; updatePhaseText(ph); }
+            applyView(now);
+            if (_subview === 'track') {
+                var u = (ph.phase === 'race') ? (ph.e - PARADE_MS) / RACE_DUR : (ph.phase === 'result' ? 1 : 0);
+                placeDogs(race, u, ph.phase === 'race' || ph.phase === 'parade');
+                updateOverlay(ph, race, u);
             }
         }
-        // 開獎提示（不自動入帳）
         maybeAnnounceResult(ph);
     }
-    // 縮球狀態：{ico 圖示, cd 倒數文字, cls 階段色 class}
     function ballInfo(ph) {
-        if (ph.phase === 'bet')    return { ico: '🎫', cd: fmtCountdown(BET_MS - ph.e), cls: 'db-bet' };        // 可下注·還能下注剩餘
-        if (ph.phase === 'parade') return { ico: '🚦', cd: Math.ceil((PARADE_MS - ph.e) / 1000) + 's', cls: 'db-parade' }; // 即將開跑
-        if (ph.phase === 'race')   return { ico: '🏁', cd: '開跑', cls: 'db-race' };
-        return { ico: '🏆', cd: fmtCountdown(CYCLE_MS - ph.e), cls: 'db-result' };   // 等下一場·下一場開始倒數
+        if (ph.phase === 'bet') return { ico: '🎫', cd: fmtCountdown(BET_MS - ph.e), cls: 'db-bet' };
+        if (ph.phase === 'parade') return { ico: '🚦', cd: Math.ceil((PARADE_MS - ph.e) / 1000) + 's', cls: 'db-parade' };
+        if (ph.phase === 'race') return { ico: '🏁', cd: '開跑', cls: 'db-race' };
+        return { ico: '🏆', cd: fmtCountdown(CYCLE_MS - ph.e), cls: 'db-result' };
     }
-    function updatePhaseText(ph, race) {
+    function updatePhaseText(ph) {
         var pe = el('dograce-phase'); if (!pe) return;
         if (ph.phase === 'bet') pe.textContent = '　下注中 ' + fmtCountdown(BET_MS - ph.e);
         else if (ph.phase === 'parade') pe.textContent = '　入閘… ' + fmtCountdown(PARADE_MS - ph.e);
         else if (ph.phase === 'race') pe.textContent = '　比賽中';
         else pe.textContent = '　下一場 ' + fmtCountdown(CYCLE_MS - ph.e);
     }
-    function onPhaseChange(ph, race) {
-        if (_tab === 'race') renderPanel();
-        else renderTicketPanel();
-        var banner = el('dograce-banner');
-        if (banner) {
-            if (ph.phase === 'bet') banner.textContent = '';
-            else if (ph.phase === 'parade') banner.textContent = '入閘中…';
-            else if (ph.phase === 'race') banner.textContent = '開跑！';
-            else banner.textContent = '';
-        }
-    }
-    function updateBanner(race, u) {
-        var banner = el('dograce-banner'); if (!banner) return;
-        // 找目前領先
-        var lead = -1, lp = -1;
-        for (var i = 0; i < N_DOGS; i++) { var p = progressAt(race, i, u); if (p > lp) { lp = p; lead = i; } }
-        banner.textContent = '🏃 領先：' + DOGS[lead].name + (u > 0.85 ? '　最後直道！' : '');
-    }
     function maybeAnnounceResult(ph) {
-        if (ph.phase !== 'result') return;
-        if (_seenResult[ph.raceId]) return;
+        if (ph.phase !== 'result' || _seenResult[ph.raceId]) return;
         _seenResult[ph.raceId] = true;
         var race = seededRace(ph.raceId);
-        var bets = betsThisRace(ph.raceId);
-        // 更新票根徽章
-        renderTicketPanel();
-        if (bets.byDog[race.winner]) {
-            logMsg('🎉 ' + DOGS[race.winner].name + ' 第一！你押中了，快到「我的票根」領獎');
-        }
-        // 結果 banner（在 race 分頁時顯示名次）
-        if (_tab === 'race') renderPanel();
+        if (_tab === 'tickets') renderTicketPanel();
+        if (betsThisRace(ph.raceId).byDog[race.winner]) logMsg('🎉 ' + DOGS[race.winner].name + ' 獲勝！你押中了，到「票根」領獎');
     }
 
-    // ---- 面板渲染 ----
-    function renderAll() { syncTabs(); renderPanel(); var now = nowMs(); updatePhaseText(phaseOf(now), seededRace(phaseOf(now).raceId)); placeDogs(seededRace(phaseOf(now).raceId), phaseOf(now).phase === 'result' ? 1 : 0, false); }
+    // ---- 面板 ----
     function syncTabs() {
         var tabs = document.querySelectorAll('#dograce-win .dograce-tab');
         for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('is-active', tabs[i].getAttribute('data-tab') === _tab);
     }
-    function renderPanel() { if (_tab === 'tickets') return renderTicketPanel(); renderBetPanel(); }
-
-    function renderBetPanel() {
+    function renderBetPanel(ph) {
         var panel = el('dograce-panel'); if (!panel) return;
-        var now = nowMs(), ph = phaseOf(now), race = seededRace(ph.raceId);
-        var bets = betsThisRace(ph.raceId);
+        ph = ph || phaseOf(nowMs());
+        var race = seededRace(ph.raceId), bets = betsThisRace(ph.raceId);
         var gold = (typeof player !== 'undefined' && player && player.gold) || 0;
-        var html = '';
-        // 頂部：金幣 + 每次張數籌碼 + 本場已下注
-        html += '<div class="dograce-betbar">';
-        html += '<span>💰 ' + gold.toLocaleString() + '</span>';
-        html += '<span class="dograce-chips">每次';
-        [1, 5, 10, 50].forEach(function (c) {
-            html += '<button type="button" class="dograce-chip' + (_betCount === c ? ' is-on' : '') + '" data-chip="' + c + '">' + c + '</button>';
-        });
-        html += '張</span>';
-        html += '</div>';
-        if (ph.phase === 'result') {
-            html += '<div class="dograce-resultbar">🏁 本場名次：' +
-                race.order.slice(0, 3).map(function (idx, r) { return '<b style="color:' + DOGS[idx].color + '">' + (r + 1) + '. ' + DOGS[idx].name + '</b>'; }).join('　') +
-                (race.photo ? '　<span class="dograce-photo">📸 一個鼻尖之差！</span>' : '') + '</div>';
-        } else if (ph.phase !== 'bet') {
-            html += '<div class="dograce-resultbar">🔒 已封盤，比賽進行中…</div>';
-        }
+        var prev = seededRace(ph.raceId - 1);
+        var html = '<div class="dograce-betwrap">';
+        html += '<div class="dograce-betbar"><span>💰 ' + gold.toLocaleString() + '</span><span class="dograce-chips">每次';
+        [1, 5, 10, 50].forEach(function (c) { html += '<button type="button" class="dograce-chip' + (_betCount === c ? ' is-on' : '') + '" data-chip="' + c + '">' + c + '</button>'; });
+        html += '張</span></div>';
+        html += '<div class="dograce-prev">上一場冠軍：<b style="color:' + DOGS[prev.winner].color + '">' + DOGS[prev.winner].name + '</b>　·　開始下注，賭誰第一</div>';
         html += '<div class="dograce-doglist">';
         for (var i = 0; i < N_DOGS; i++) {
-            var d = race.dogs[i];
-            var rf = recentForm(i, ph.raceId, 8);
-            var mine = bets.byDog[i] || 0;
-            var canBet = (ph.phase === 'bet');
+            var d = race.dogs[i], rf = recentForm(i, ph.raceId, 8), mine = bets.byDog[i] || 0;
             html += '<div class="dograce-dogcard">' +
                 '<span class="dograce-num" style="background:' + d.color + '">' + (i + 1) + '</span>' +
                 '<span class="dograce-name">' + d.name + '<small>' + d.stateEmoji + d.state + '　近' + rf.total + '場' + rf.w + '勝</small></span>' +
                 '<span class="dograce-odds">×' + d.odds.toFixed(1) + '</span>' +
                 (mine ? '<span class="dograce-mine">持' + mine + '</span>' : '') +
-                (canBet ? '<button type="button" class="dograce-betbtn" data-bet="' + i + '">下注</button>' : '<span class="dograce-lock">—</span>') +
+                '<button type="button" class="dograce-betbtn" data-bet="' + i + '">下注</button>' +
                 '</div>';
         }
         html += '</div>';
         html += '<div class="dograce-foot">一張 ' + TICKET_PRICE.toLocaleString() + ' 金幣・莊家抽成 ' + (HOUSE_EDGE * 100) + '%・本場已押 ' + bets.count + ' 張</div>';
+        html += '</div>';
         panel.innerHTML = html;
     }
-
     function renderTicketPanel() {
         if (_tab !== 'tickets') return;
         var panel = el('dograce-panel'); if (!panel) return;
-        var t = ensureTickets() || [];
-        var cur = phaseOf(nowMs()).raceId;
-        var html = '<div class="dograce-tkhead"><span>🎫 我的票根（' + t.length + '）</span><button type="button" class="dograce-clear" data-clearticket="1">🗑 清除未中/已領</button></div>';
-        if (!t.length) { html += '<div class="dograce-empty">還沒有票根。到「賽道／下注」買張票吧！</div>'; panel.innerHTML = html; return; }
+        var t = ensureTickets() || [], cur = phaseOf(nowMs()).raceId;
+        var html = '<div class="dograce-tkwrap"><div class="dograce-tkhead"><span>🎫 我的票根（' + t.length + '）</span><button type="button" class="dograce-clear" data-clearticket="1">🗑 清除未中/已領</button></div>';
+        if (!t.length) { html += '<div class="dograce-empty">還沒有票根。到「賽事」買張票吧！</div></div>'; panel.innerHTML = html; return; }
         html += '<div class="dograce-tklist">';
         for (var i = t.length - 1; i >= 0; i--) {
-            var tk = t[i], res = ticketResult(tk, cur);
-            var badge, cls;
+            var tk = t[i], res = ticketResult(tk, cur), badge, cls;
             if (res === 'pending') { badge = '🕓 待開獎'; cls = 'pend'; }
             else if (res === 'win') { badge = tk.claimed ? '✅ 已領' : '🎉 中獎'; cls = tk.claimed ? 'done' : 'win'; }
             else { badge = '❌ 未中'; cls = 'lose'; }
@@ -677,24 +606,22 @@
                     (res === 'win' ? '<span class="dograce-tk-pay">+' + ticketPayout(tk).toLocaleString() + '</span>' : '')) +
                 '</div></div>';
         }
-        html += '</div>';
+        html += '</div></div>';
         panel.innerHTML = html;
     }
 
-    // ================= debug 入口 =================
+    // ================= debug =================
     window.__race = {
         CYCLE_MS: CYCLE_MS,
-        setNow: function (ms) { _nowOverride = ms; },        // 絕對時間覆寫
+        phases: { CYCLE: CYCLE_MS, BET: BET_MS, PARADE: PARADE_MS, RACE: RACE_MS },
+        setNow: function (ms) { _nowOverride = ms; },
         offset: function (ms) { _nowOverride = Date.now() + ms; },
         clearNow: function () { _nowOverride = null; },
         phase: function () { return phaseOf(nowMs()); },
         race: function (id) { return seededRace(id == null ? phaseOf(nowMs()).raceId : id); },
-        winner: winnerOf,
-        placeBet: placeBet, claim: claimTicket,
-        DOGS: DOGS
+        winner: winnerOf, placeBet: placeBet, claim: claimTicket, DOGS: DOGS
     };
 
-    // 開機
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { console.log('[dograce] ready'); });
     else console.log('[dograce] ready');
 })();

@@ -103,6 +103,12 @@
   display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;touch-action:none;user-select:none}
 .dograce-ball-ico{font-size:20px;line-height:1}
 .dograce-ball-cd{font-size:10px;font-weight:800;line-height:1;margin-top:1px}
+/* 縮球階段色：一眼看出能不能押注 / 開賽倒數 */
+.dograce-ball.db-bet{border-color:#22c55e;box-shadow:0 6px 16px #000b,0 0 10px #22c55e88;color:#bbf7d0}
+.dograce-ball.db-parade{border-color:#f59e0b;box-shadow:0 6px 16px #000b,0 0 12px #f59e0bcc;color:#fde68a;animation:dograce-pulse 1s ease-in-out infinite}
+.dograce-ball.db-race{border-color:#ef4444;box-shadow:0 6px 16px #000b,0 0 14px #ef4444cc;color:#fecaca;animation:dograce-pulse .7s ease-in-out infinite}
+.dograce-ball.db-result{border-color:#d9bd70;box-shadow:0 6px 16px #000b,0 0 10px #d9bd7099;color:#fde68a}
+@keyframes dograce-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
 @media(max-width:760px){
   .dograce-win{width:96vw;max-height:82vh}
   .dograce-dog img{width:26px;height:26px}

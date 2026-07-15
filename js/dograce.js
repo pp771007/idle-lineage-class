@@ -360,7 +360,7 @@
             ball = document.createElement('div');
             ball.id = 'dograce-ball';
             ball.className = 'dograce-ball';
-            ball.innerHTML = '<div class="dograce-ball-ico">🐕</div><div class="dograce-ball-cd" id="dograce-ball-cd">--:--</div>';
+            ball.innerHTML = '<div class="dograce-ball-ico" id="dograce-ball-ico">🐕</div><div class="dograce-ball-cd" id="dograce-ball-cd">--:--</div>';
             document.body.appendChild(ball);
             makeDraggable(ball, ball, true);
             restorePos(ball, BALL_POS, { right: 14, bottom: 90 });
@@ -522,10 +522,13 @@
         var now = nowMs();
         var ph = phaseOf(now);
         var race = seededRace(ph.raceId);
-        // 縮球：只更新倒數
+        // 縮球：依階段變色/換圖示/顯示對的倒數（一眼看出能不能押、開賽倒數）
         if (ballOpen) {
-            var cd = el('dograce-ball-cd');
-            if (cd) cd.textContent = ballText(ph);
+            var bi = ballInfo(ph);
+            var cd = el('dograce-ball-cd'), ico = el('dograce-ball-ico');
+            if (cd) cd.textContent = bi.cd;
+            if (ico) ico.textContent = bi.ico;
+            if (ball.className.indexOf(bi.cls) < 0) ball.className = 'dograce-ball ' + bi.cls;
         }
         if (winOpen && !win.classList.contains('is-min')) {
             var phaseKey = ph.phase + ':' + ph.raceId;
@@ -556,11 +559,12 @@
         // 開獎提示（不自動入帳）
         maybeAnnounceResult(ph);
     }
-    function ballText(ph) {
-        if (ph.phase === 'bet') return fmtCountdown(BET_MS - ph.e);
-        if (ph.phase === 'parade') return '入閘';
-        if (ph.phase === 'race') return '開跑';
-        return '結算';
+    // 縮球狀態：{ico 圖示, cd 倒數文字, cls 階段色 class}
+    function ballInfo(ph) {
+        if (ph.phase === 'bet')    return { ico: '🎫', cd: fmtCountdown(BET_MS - ph.e), cls: 'db-bet' };        // 可下注·還能下注剩餘
+        if (ph.phase === 'parade') return { ico: '🚦', cd: Math.ceil((PARADE_MS - ph.e) / 1000) + 's', cls: 'db-parade' }; // 即將開跑
+        if (ph.phase === 'race')   return { ico: '🏁', cd: '開跑', cls: 'db-race' };
+        return { ico: '🏆', cd: fmtCountdown(CYCLE_MS - ph.e), cls: 'db-result' };   // 等下一場·下一場開始倒數
     }
     function updatePhaseText(ph, race) {
         var pe = el('dograce-phase'); if (!pe) return;

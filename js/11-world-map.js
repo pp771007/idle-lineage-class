@@ -1590,6 +1590,7 @@ function renderTownNPCs(townId) {
         else if(npc.type === 'petstore') typeIcon = "🐾";
         else if(npc.type === 'travel') typeIcon = "⛵";
         else if(npc.type === 'synth') typeIcon = "🎴";
+        else if(npc.type === 'race') typeIcon = "🐕";
 
         el.innerHTML = `
             <div class="flex items-start justify-between mb-2">
@@ -1656,6 +1657,12 @@ function interactNPC(npcId, townId) {
     //    → 關閉倉庫後直接回到村莊頁面，不會再露出「返回村莊」的互動頁（參考用戶 2667 修正版）
     if (npc.type === 'warehouse' && typeof openWarehouseWindow === 'function') {
         openWarehouseWindow();
+        return;
+    }
+
+    // 🐕 賽狗場 NPC（波金）：直接開浮動視窗（可拖曳/縮球/跨畫面常駐），不進舊式村莊互動頁
+    if (npc.type === 'race' && typeof openRaceWindow === 'function') {
+        openRaceWindow();
         return;
     }
 

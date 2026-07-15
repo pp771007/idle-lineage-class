@@ -34,7 +34,7 @@ disable-model-invocation: true
 
 4. **bump 版本 + commit + push**
    - 改 `version.json` 的 `app` 為新版本（`stamp-sw-version.mjs` 會保留此欄位，之後照跑不會弄丟）。
-   - `node scripts/stamp-sw-version.mjs`（version.json 變了，CODE_VERSION 要跟著重算，PWA 才偵測得到）。
+   - `node scripts/stamp-sw-version.mjs`（讓 version.json 以標準格式重寫、欄位一致。注意 stamp 的 hash 來源不含 version.json——光 bump `app` 不會、也不需要讓 CODE_VERSION 變：`version.json` 走網路不進快取，首頁版本號直接生效，玩家端不需要 SW 更新）。
    - commit（`chore(release): vX.Y.Z`）→ push。
    - 照 CLAUDE.md「push 後等 GitHub Pages」規矩：背景輪詢線上 `version.json` 的 `app` 變成新版本才算上線。
 

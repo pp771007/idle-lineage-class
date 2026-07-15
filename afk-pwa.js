@@ -16,6 +16,8 @@
  * 仍保留「圖桶對帳」(reconcileImages)：每次載入把最新 manifest 送進 SW,清掉「作者換過、
  *   內容對不上的舊圖」(下次用到才 on-demand 抓新版)。它不下載圖、幾乎不耗流量,只確保圖桶不餵舊圖;
  *   沒有它,作者換圖後玩家會永遠看到快取的舊版。
+ * 另有「程式桶對帳」(reconcileCode)：程式桶桶名固定、換版不倒桶(改動的檔靠 ?v= 換 URL 自然抓新),
+ *   每次載入把「本頁實際引用的 js/css 清單」送進 SW,清掉舊 ?v= 殘留,桶不會越長越肥。
  *
  * 沒有「程式更新」UI 的原因：
  *   sw.js 已把導覽文件改 network-first——線上開頁一律最新「殼」,JS 帶 ?v= 換版即換 URL,
@@ -163,6 +165,19 @@
       });
     });
   }
+  // 程式桶對帳:程式桶桶名固定不隨版本換(檔案以 ?v= 定址,換版即換 URL、快取續用),代價是
+  //   「舊 ?v= 的 js/css」會殘留在桶裡 → 把「本頁實際引用的 js/css URL 清單」送給 SW,清掉不在清單上的殘留。
+  //   清單從 DOM 收集(script[src] + link[rel=stylesheet]),永遠跟當下載入的 index.html 一致,零手動維護。
+  function reconcileCode() {
+    whenController(function (ctrl) {
+      var keep = [];
+      var scripts = document.querySelectorAll('script[src]');
+      for (var i = 0; i < scripts.length; i++) keep.push(scripts[i].src);
+      var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+      for (var j = 0; j < links.length; j++) keep.push(links[j].href);
+      if (keep.length) ctrl.postMessage({ type: 'reconcile-code', keep: keep });
+    });
+  }
 
   // ----- SW 觀察:nudge 重抓 sw.js 比對 + 圖桶對帳(更新接管交給瀏覽器,本檔不主導)-----------
   function watchUpdates() {
@@ -173,6 +188,7 @@
       reg.update().catch(function () {});
       reconcileImages();   // 每次載入:清掉作者換過的舊圖(下次用到才 on-demand 抓新版)
       reconcileAnim();     // 同上,但針對怪物動畫幀(逐「怪」對帳,見 reconcileAnim)
+      reconcileCode();     // 程式桶:清掉換版後殘留的舊 ?v= js/css(桶名固定不倒桶,見 sw.js reconcileCode)
     }).catch(function () {});
   }
 

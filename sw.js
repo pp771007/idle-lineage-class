@@ -3,8 +3,14 @@
  *
  * 兩個快取桶,刻意分開,這樣「改程式不會害人重載 30MB 圖」：
  *   ● 程式桶 CODE_CACHE：index.html + 所有外掛 js + 遊戲 js/css(含 tailwind-built.css) + manifest + PWA 圖示 + 外部 CDN(placehold)。
- *       版本 CODE_VERSION 由 scripts/stamp-sw-version.mjs 依「index.html＋全部外掛 js 的內容 hash」
- *       自動覆寫 → 程式一變就換新桶 → 瀏覽器偵測到 sw.js 變了 → 觸發更新流程(由頁面 afk-pwa.js 決定何時接管)。
+ *       桶名固定(比照圖桶),「不」隨版本換名:程式檔已用 ?v=(逐檔內容 sha)定址,換版即換 URL,
+ *       cache-first 自然抓新版;沒改到的檔 URL 沒變、快取直接續用 → 一次更新只重新下載真的有改的那幾個檔。
+ *       (舊設計「桶名=CODE_VERSION、activate 整桶倒掉」害每次發版全站 ~4MB 重載,已廢。老玩家升上來
+ *        走「懶搬家」:cacheFirst 在固定桶 miss 時翻舊制 code-<hash> 桶,命中就搬進固定桶直接回用,
+ *        不用重新下載;舊桶等頁面載完由 reconcileCode 收尾刪除。)
+ *       舊版殘留 entry(?v= 已變的 js/css)由頁面(afk-pwa)每次載入送「現行引用清單」來對帳清掉(reconcileCode)。
+ *       CODE_VERSION 仍由 scripts/stamp-sw-version.mjs 依「全部程式檔內容 hash」自動覆寫——它現在只負責
+ *       「讓 sw.js 位元組變動 → 瀏覽器偵測到新版 SW」這件事,不再當桶名。
  *       ▸ 「導覽文件」(index.html / 目錄 '/')走 network-first：線上一律抓最新「殼」,根除 cache-first 把舊版釘死、
  *         又得靠 SW 換版才更新得了的老問題(iOS 換版尤其不穩);離線/網路慢退快取,離線遊玩照常(見 navFirst)。
  *       ▸ js / manifest / 圖示走 cache-first：它們帶 ?v= 版本號,換版即換 URL,撲空就抓新、不會被釘舊版,故維持 cache-first(秒開、省流量)。
@@ -23,10 +29,10 @@
  *
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
-const CODE_VERSION = 'code-8363182a1696';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const CODE_VERSION = 'code-8363182a1696';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改(只用來讓 sw.js 內容變動→觸發更新偵測,不是桶名)
 const BUILD_ID     = '0715-0444'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
-const CODE_CACHE = CODE_VERSION;
+const CODE_CACHE = 'code-v1';     // 固定桶名,不隨版本換(檔案以 ?v= 定址;殘留由 reconcileCode 對帳清掉)
 const IMG_CACHE  = IMG_VERSION;
 
 // 圖桶內一個合成 entry,存「path → 已快取版本的 git blob sha」對照表,供逐張對帳判斷哪張該重抓。
@@ -55,7 +61,14 @@ self.addEventListener('install', () => {
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CODE_CACHE && k !== IMG_CACHE).map((k) => caches.delete(k)));
+    // 舊制「桶名=版本號」的程式桶(code-<hash>)「不」在這裡刪:它是懶搬家的來源(見 cacheFirst 的
+    //   legacy 翻找),等頁面載完、該搬的都搬進固定桶後,由 reconcileCode 收尾刪除。
+    //   (不把搬家寫在 activate 的原因:遊戲頁面持續在發請求,舊 SW 一直有進行中的 fetch 事件,
+    //    skipWaiting 的交接會被拖到不知何時,activate 的執行時機完全不可控——實測過會卡住。)
+    //   其餘不明桶照舊清掉。
+    await Promise.all(keys
+      .filter((k) => k !== CODE_CACHE && k !== IMG_CACHE && !/^code-/.test(k))
+      .map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
@@ -69,7 +82,33 @@ self.addEventListener('message', (e) => {
   if (d.type === 'reconcile-anim' && Array.isArray(d.folders)) {
     e.waitUntil(reconcileAnim(d.folders, e.source));
   }
+  if (d.type === 'reconcile-code' && Array.isArray(d.keep)) {
+    e.waitUntil(reconcileCode(d.keep));
+  }
 });
+
+// 程式桶對帳:桶名固定不隨版本換 → 換版後「舊 ?v= 的 js/css」會殘留在桶裡佔空間。
+//   頁面(afk-pwa)每次載入把「現行 index.html 實際引用的 js/css URL 清單」送進來,
+//   只清「同源、副檔名 .js/.css、且不在清單上」的 entry;殼(index.html)/manifest/PWA 圖示/外部 CDN
+//   一律不動(它們量小、URL 穩定,且不在清單的判斷範圍,誤刪風險為零)。
+async function reconcileCode(keep) {
+  const keepSet = new Set();
+  for (const u of keep) {
+    try { const x = new URL(u, self.location.href); keepSet.add(x.pathname + x.search); } catch (err) { /* 壞 URL 略過 */ }
+  }
+  const cache = await caches.open(CODE_CACHE);
+  for (const req of await cache.keys()) {
+    let u; try { u = new URL(req.url); } catch (err) { continue; }
+    if (u.origin !== self.location.origin) continue;
+    if (!/\.(?:js|css)$/.test(u.pathname)) continue;
+    if (!keepSet.has(u.pathname + u.search)) await cache.delete(req);
+  }
+  // 舊制 code-<hash> 桶收尾:此訊息由頁面「載入完成後」送來,頁面需要的檔早已在載入期間
+  //   經 cacheFirst 的懶搬家進了固定桶,舊桶剩的都是用不到的舊版 → 整桶刪掉。
+  for (const k of await caches.keys()) {
+    if (/^code-/.test(k) && k !== CODE_CACHE) await caches.delete(k);
+  }
+}
 
 // manifest 每筆可能是 [path, sha](新格式)或純 path 字串(舊格式/降級)→ 統一成 {path, sha}。
 function manifestEntries(manifest) {
@@ -189,6 +228,19 @@ async function cacheFirst(req, cacheName) {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(req);
   if (hit) return hit;
+  // 程式桶 miss → 先翻「舊制 code-<hash> 桶」(桶名綁版本的舊設計)懶搬家:同 URL 的檔內容必同
+  //   (?v= 就是內容 sha),搬進固定桶直接回用,免重新下載。舊桶由 reconcileCode 在頁面載完後收尾刪除,
+  //   刪完後這段只多一次 caches.keys()(比對不到 code- 舊桶,零額外 IO)。
+  if (cacheName === CODE_CACHE) {
+    for (const k of await caches.keys()) {
+      if (k === CODE_CACHE || !/^code-/.test(k)) continue;
+      const legacy = await (await caches.open(k)).match(req);
+      if (legacy) {
+        cache.put(req, legacy.clone()).catch(() => {});
+        return legacy;
+      }
+    }
+  }
   try {
     const res = await fetch(req);
     if (res && (res.status === 200 || res.type === 'opaque')) cache.put(req, res.clone()).catch(() => {});

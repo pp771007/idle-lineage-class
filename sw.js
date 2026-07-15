@@ -108,6 +108,19 @@ async function reconcileCode(keep) {
   for (const k of await caches.keys()) {
     if (/^code-/.test(k) && k !== CODE_CACHE) await caches.delete(k);
   }
+  // 無版號 entry(manifest.webmanifest / PWA 圖示,URL 沒帶 ?v=)的刷新:桶名固定後沒有「整桶倒掉」
+  //   兜底了,靠「CODE_VERSION 變了(=有發版)才清掉這幾個、下次用到重抓」,與舊行為等價但只刷這幾 KB。
+  const VER_KEY = '/__afk-code-version__';
+  let prevVer = '';
+  try { const r = await cache.match(VER_KEY); if (r) prevVer = await r.text(); } catch (err) { /* 壞了當沒記過 */ }
+  if (prevVer !== CODE_VERSION) {
+    for (const req of await cache.keys()) {
+      let u; try { u = new URL(req.url); } catch (err) { continue; }
+      if (u.origin !== self.location.origin) continue;
+      if (/\.webmanifest$/.test(u.pathname) || /pwa-icon[^/]*\.png$/.test(u.pathname)) await cache.delete(req);
+    }
+    await cache.put(VER_KEY, new Response(CODE_VERSION)).catch(() => {});
+  }
 }
 
 // manifest 每筆可能是 [path, sha](新格式)或純 path 字串(舊格式/降級)→ 統一成 {path, sha}。

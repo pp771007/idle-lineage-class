@@ -576,7 +576,7 @@
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
-  var IT_SLOT = { helm: '頭盔', armor: '盔甲', shin: '脛甲', tshirt: '內衣', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊', ear: '耳環', ear1: '耳環', ear2: '耳環', pet: '寵物裝備', doll: '娃娃',
+  var IT_SLOT = { helm: '頭盔', armor: '盔甲', shin: '脛甲', tshirt: '內衣', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊', ear: '耳環', ear1: '耳環', ear2: '耳環', pet: '寵物裝備', petwpn: '寵物武器', petarm: '寵物防具', doll: '娃娃',
     rem_claw: '席琳遺骸', rem_eye: '席琳遺骸', rem_blood: '席琳遺骸', rem_flesh: '席琳遺骸', rem_heart: '席琳遺骸', rem_bone: '席琳遺骸', rem_fang: '席琳遺骸', rem_scale: '席琳遺骸' };
   function _baseInst(id) { return { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false }; }
   function itemDetailHTML(id, opts) {

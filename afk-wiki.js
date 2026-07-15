@@ -1769,6 +1769,7 @@
   var EQUIP_REQ_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
   function equipGroupKey(id, d) {
     if (d.remains) return 'remains';   // 🦴 席琳遺骸 8 件的 slot 各自不同,歸成同一組
+    if (d.slot === 'petwpn' || d.slot === 'petarm') return 'pet';   // 🐾 寵物裝備(之牙=acc/petwpn、寵物防具=arm/petarm)兩種 slot 統一歸「寵物裝備」組,否則對不上 EQUIP_GROUPS 的 k:'pet' → 整組看不到
     if (d.type !== 'wpn') return d.slot || 'other';
     // 武器分類走遊戲自己的 equipCatKey(js/16)——不要用 EQUIP_ITEM_CAT 查表:那張表只收「裝備收集冊」的一般裝備,
     // 遺物走獨立收集冊(RELIC_ITEM_CAT)不在其中 → 查表會讓 100+ 件遺物武器全落進「其他武器」,弓/十字弓等分類一件遺物都看不到。

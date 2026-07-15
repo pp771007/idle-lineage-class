@@ -665,7 +665,9 @@ const WEAPON_TAGS = {
     // 🏺 遺物 第五批新增（v3.1.52）：灼熱蜥蜴長舌/殺人蜂尾刺(出血)、上古蜘蛛之爪=單手劍+武士刀(反擊+居合)、鎧甲守衛巨劍=雙手劍(切割靠 eff)；無所畏懼的突擊(chainsword)/幻夢火炎靈魂(qigu)/光束強化魔杖(isWand)/改造便利箭筒(isArrow) 靠旗標自判免 tag
     relic_lizard_tongue:['矛'], relic_killerbee_sting:['匕首'], relic_ancient_spider_claw:['單手劍','武士刀'], relic_guardian_greatsword:['雙手劍'],
     // 🐍 提卡爾：庫庫爾坎之矛/鞭笞藤/倒勾獠牙=矛(雙手矛·出血)、毒牙=匕首(出血)、易碎泥偶=雙手鈍器(重擊靠 eff)、玩具鎚=單手鈍器(鈍擊)；鐵手甲/吹箭(isBow)/枯竭魔杖(名稱含杖)/獻祭亡靈(qigu) 靠旗標/名稱自判免 tag
-    wpn_kukulkan_spear:['矛'], relic_eto_whip:['矛'], relic_serpent_fang:['矛'], relic_kaira_fang:['匕首'], relic_mud_idol:['雙手鈍器'], relic_teo_hammer:['單手鈍器']
+    wpn_kukulkan_spear:['矛'], relic_eto_whip:['矛'], relic_serpent_fang:['矛'], relic_kaira_fang:['匕首'], relic_mud_idol:['雙手鈍器'], relic_teo_hammer:['單手鈍器'],
+    // 🏺 遺物武器 tag：補跟原版（分家後漏跟這批；原版同一套 WEAPON_TAGS 邏輯，值照原版）。漏標會害巨斧精通+30%攻速/雙持/反擊居合等 tag 特效吃不到（風化方尖碑雙持問題主因）
+    relic_executor_axe:['單手鈍器'], relic_healer_wand:['單手鈍器'], relic_minotaur_flail:['單手鈍器'], relic_executor_skewer:['矛'], relic_weathered_obelisk:['雙手鈍器'], relic_shadow_stinger:['匕首'], relic_soulreaper_dual:['雙刀'], relic_ghoul_fang:['單手劍'], relic_sparto_shard:['單手劍'], relic_pirate_dual:['雙刀'], relic_lava_fists:['單手鈍器']
 };
 function getWeaponTags(id){ return WEAPON_TAGS[id] || []; }
 // ⚔️ 雙擊機率 comboRate：未明定者依武器標籤套預設（鋼爪 33% / 雙刀 25%）；個別武器可在 def 寫 comboRate 覆寫（底比斯歐西里斯雙刀30 / 死亡之指20 / 恨之鋼爪50 / 破壞雙刀·破壞鋼爪30）。日後新增 combo 武器自動取得預設機率。

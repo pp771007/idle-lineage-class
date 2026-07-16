@@ -384,6 +384,19 @@ const MOB_SKILL_SFX = {
     MOB_ATTACK_SFX[r[0]] = r[1]; MOB_SKILL_SFX[r[0]] = r[2]; MOB_HURT_SFX[r[0]] = r[3]; MOB_KILL_SFX[r[0]] = r[4];
 });
 MOB_ATTACK_SWING["真‧死亡騎士 冥皇丹特斯"] = 248;
+// 🌑 冥皇兩「玩家變身」攻擊/技能/受擊/死亡音效借「死亡騎士」（用戶指定）。
+//   ⚠️變身名（js/09 _playerMorphName·**無 ‧**：真死亡騎士 冥皇丹特斯／烈焰的死亡騎士）與怪物名（**有 ‧**：真‧死亡騎士 冥皇丹特斯）不同故須各別註冊。
+//   attack：_morphAtkOverride 走 _mobAtkSfxNum 子字串借用本已命中「死亡騎士」→此處顯式化(精確優先·順帶疊揮刀 248)；
+//   hurt/death：_morphHurtOverride/playMorphDeathSfx 走 MOB_HURT_SFX/MOB_KILL_SFX **精確查表無子字串** → 必須顯式（原本查無→退回本職音）；
+//   skill：玩家變身施法原本走 per-法術(playSpellCast)→改由 MORPH_SKILL_SFX opt-in 覆蓋成死亡騎士技能音 91（只此二形態·不動其他變身）。
+const MORPH_SKILL_SFX = {};
+[
+  ["真死亡騎士 冥皇丹特斯", 86, 91, 88, 89],
+  ["烈焰的死亡騎士",       86, 91, 88, 89],
+].forEach(function (r) {
+    MOB_ATTACK_SFX[r[0]] = r[1]; MORPH_SKILL_SFX[r[0]] = r[2]; MOB_HURT_SFX[r[0]] = r[3]; MOB_KILL_SFX[r[0]] = r[4];
+    MOB_ATTACK_SWING[r[0]] = 248;
+});
 var _sfxDynTried = {}, _mobHurtLast = 0, _spellCastLast = 0, _killLast = 0, _mobAtkLast = 0, _mobSkillLast = 0;
 var _mobAtkKeysByLen = null, _mobAtkResolveCache = {};
 function _mobAtkSfxNum(name) {   // 解析怪名→攻擊音編號（精確→別名→最長子字串借用）·查無回 undefined
@@ -421,6 +434,13 @@ function playMobHurt(mob) {
 }
 function playSpellCast(skn) {
     if (!_sfxAudible()) return;
+    var _msk = (typeof _morphSkillOverride === 'function') ? _morphSkillOverride() : null;   // 🌑 冥皇變身施法音覆蓋（死亡騎士技能音 91·取代 per-法術；其他變身→null 維持原音）
+    if (_msk) {
+        var nowM = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (nowM - _spellCastLast < 80) return; _spellCastLast = nowM;
+        _sfxPlayPool(_msk, 0.55);   // 首次載入中→pool 空→_sfxPlayPool 回 false 靜音（下次起出聲）
+        return;
+    }
     var n = (skn != null) ? SPELL_SFX[skn] : undefined;
     if (n === undefined) { playSfx('magic'); return; }   // 無專屬→通用魔法音
     var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -491,6 +511,12 @@ function _morphAtkOverride() {   // 🐲 v3.0.113 變身怪物時攻擊音 pool 
     var n = (typeof _mobAtkSfxNum === 'function') ? _mobAtkSfxNum(mn) : undefined;
     if (n === undefined) return null;
     var k = 'atk_' + n; if (_sfxPool[k] === undefined) _sfxDynLoad(k, '' + n); return k;
+}
+function _morphSkillOverride() {   // 🌑 變身施法音 pool key（opt-in·僅 MORPH_SKILL_SFX 形態·如冥皇兩變身→死亡騎士技能音）；無→null（維持 per-法術）
+    var mn = _morphSfxName(); if (!mn) return null;
+    var n = (typeof MORPH_SKILL_SFX !== 'undefined') ? MORPH_SKILL_SFX[mn] : undefined;
+    if (n === undefined) return null;
+    var k = 'spell_' + n; if (_sfxPool[k] === undefined) _sfxDynLoad(k, '' + n); return k;
 }
 function playMorphDeathSfx() {   // js/09 玩家變身死亡動作首次觸發時呼叫：播該怪物死亡音（無對應→職業語音·再無→靜默）
     if (!_sfxAudible()) return;

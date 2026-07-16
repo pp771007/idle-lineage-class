@@ -411,6 +411,8 @@ d.mr += (baseMr + bonusMr);
     if(setCheck['emperor'] >= 5) { d.ac -= 20; p.mhp += 100; p.mmp += 20; d.hpR += 10; d.atkSpdPct += 30; d.meleeDmg += 5; d.rangedDmg += 5; }   // 🌑 真‧冥皇套裝（披風/鎧甲/面甲/護手/鋼靴 5 件）：防禦-20、HP+100、MP+20、HP自然恢復+10、攻速額外+30%（atkSpdPct 管線·與加速/勇敢藥水乘算堆疊）、額外傷害+5（近/遠皆加）
     // 🌑 受詛咒的真．冥皇執行劍：裝備時變身 死亡騎士（走 _setPoly 管線＝卸下即消失·速度覆蓋沿 POLY_TIERS 死亡騎士；套裝變身優先於本劍故加 !p._setPoly 守衛）
     if(!p._setPoly && p.eq && p.eq.wpn && p.eq.wpn.id === 'wpn_cursed_emperor_blade') { let _ceb = findPolyForm('死亡騎士'); if(_ceb) p._setPoly = makePolyState(_ceb.form, _ceb.color); }
+    // 🌑 解除詛咒的真死亡騎士．冥皇執行劍：裝備時變身 真死亡騎士 冥皇丹特斯（equip-only·per-weapon APM 攻速·套裝變身優先故加 !p._setPoly 守衛）
+    if(!p._setPoly && p.eq && p.eq.wpn && p.eq.wpn.id === 'wpn_uncursed_emperor_blade') { p._setPoly = Object.assign({}, DANTES_POLY_FORM); }
 
     // ===== 🔮 席琳套裝效果：只計「席琳遺骸欄」（8 格，SHERINE_REMAINS；欄位鍵＝遺骸物品 id）=====
     // 🦴 一般裝備上的舊 seteff 詞綴不再計入（保留顯示，玩家可找菈克希絲拆成遺骸）。
@@ -533,7 +535,13 @@ d.mr += (baseMr + bonusMr);
         let pf = _polyForm;
         // 🆕 v3.0.28 速度覆蓋（凡有 atk 者皆套用）：POLY_TIERS 速度型變身、及套裝變身 SET_POLY_FORMS（現在也帶 atk/wlk/cast/stun）。
         //   攻擊間隔＝動畫幀換算秒（APM=1440/幀），之後仍照常 ×spdMult（加速/勇敢/精通疊加）；移動速度 pf.wlk 於出怪排程（js/03）影響重生。
-        if(pf.atk != null) {
+        if(pf.apm != null) {   // 🌑 逐武器種類 APM 攻速（冥皇執行劍/烈焰死騎變身）：依當前武器種類查表→6000/APM/100=秒（同 atkSpdBaseItv）；空手/缺項退單手劍
+            let _fam = (p.eq && p.eq.wpn && typeof atkSpdFamily === 'function') ? atkSpdFamily(p.eq.wpn.id) : null;
+            let _apm = (_fam && pf.apm[_fam]) || pf.apm['單手劍'] || 60;
+            d.aspd = Math.round(6000 / Math.max(1, _apm)) / 100;    // 攻擊間隔（秒）
+            if(pf.cast != null) d.castLock = pf.cast;                // 施法冷卻下限（tick）
+            if(pf.stun != null) d.hitstun  = pf.stun;               // 被擊硬直（tick）
+        } else if(pf.atk != null) {
             d.aspd = Math.round(pf.atk * 6000 / 1440) / 100;         // 攻擊間隔（秒）
             if(pf.cast != null) d.castLock = pf.cast;                // 施法冷卻下限（tick）
             if(pf.stun != null) d.hitstun  = pf.stun;               // 被擊硬直（tick）
@@ -755,6 +763,7 @@ const POLY_TIERS = [
     { min:70, max:9999, color:"text-yellow-400", forms:[
         { n:"死亡", lv:70, atk:18, wlk:24, cast:10, stun:7 },
         { n:"反王肯恩", lv:75, atk:20, wlk:18, cast:11, stun:6 },
+        { n:"烈焰的死亡騎士", lv:80, apm:{ '單手劍':120,'單手鈍器':103,'雙手鈍器':103,'弓':90,'十字弓':90,'單手矛':111,'雙手矛':111,'魔杖':120,'匕首':131,'雙手劍':103,'雙刀':120,'鋼爪':120,'奇古獸':120,'鎖鏈劍':111,'雙斧':120 }, wlk:16, cast:7, stun:2 },   // 🌑 逐武器種類 APM 攻速（用戶「變身速度」CSV·6000/APM/100=秒）
     ]},
 ];
 
@@ -775,6 +784,8 @@ const SET_POLY_FORMS = {
     demon:   { n: "惡魔", ed: 4, eh: 4, mgd: 3, sp: 3, mpr: 3,     atk: 18, wlk: 16, cast: 9, stun: 4, c: "text-red-400" },      // 速度＝惡魔
     darkelf: { n: "高等黑暗精靈", rd: 5, rh: 5,                    atk: 19, wlk: 16, cast: 10, stun: 5, c: "text-violet-300" }     // 速度＝黑暗精靈
 };
+// 🌑 解除詛咒的真死亡騎士．冥皇執行劍 裝備變身（equip-only·不進隨機變形池；per-weapon APM 攻速·來源 CSV）
+const DANTES_POLY_FORM = { n: "真死亡騎士 冥皇丹特斯", lv: 99, apm: { '單手劍':124,'單手鈍器':103,'雙手鈍器':103,'弓':90,'十字弓':90,'單手矛':111,'雙手矛':111,'魔杖':120,'匕首':131,'雙手劍':103,'雙刀':120,'鋼爪':120,'奇古獸':120,'鎖鏈劍':111,'雙斧':120 }, wlk: 16, cast: 7, stun: 2, c: "text-yellow-300" };
 
 // 是否持有「變形控制戒指」(acc_117)
 // 🔧 改為「背包攜帶即可觸發」：裝備中或背包內任一處有戒指都算持有，不需佔用戒指欄位
@@ -850,7 +861,12 @@ function applyPolyForce(stateObj) {
 // 將變身能力整理成可讀文字（給選單顯示）
 function polyFormDesc(f) {
     let p = [];
-    if (f.atk != null) {   // 🆕 v3.0.26 速度型變身：攻擊間隔/施法/硬直/重生（套裝變身另接傷害加成於後）
+    if (f.apm != null) {   // 🌑 逐武器 APM 變身：顯示單手劍代表值（實際依當前武器）
+        p.push(`攻擊間隔 ${(Math.round(6000 / Math.max(1, f.apm['單手劍'] || 60)) / 100).toFixed(2)}秒(依武器)`);
+        if (f.cast != null) p.push(`施法 ${(f.cast/10).toFixed(1)}秒`);
+        if (f.stun != null) p.push(`硬直 ${(f.stun/10).toFixed(1)}秒`);
+        if (f.wlk != null)  p.push(`重生 ${(5 * f.wlk / 16).toFixed(1)}秒`);
+    } else if (f.atk != null) {   // 🆕 v3.0.26 速度型變身：攻擊間隔/施法/硬直/重生（套裝變身另接傷害加成於後）
         p.push(`攻擊間隔 ${(Math.round(f.atk * 6000 / 1440) / 100).toFixed(2)}秒`);
         if (f.cast != null) p.push(`施法 ${(f.cast/10).toFixed(1)}秒`);
         if (f.stun != null) p.push(`硬直 ${(f.stun/10).toFixed(1)}秒`);

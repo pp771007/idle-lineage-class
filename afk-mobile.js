@@ -855,6 +855,11 @@
       'body.m-mobile.mview-battle .m-col-center{overflow-y:auto !important;overflow-x:hidden !important;-webkit-overflow-scrolling:touch;}',
       'body.m-mobile.mview-config .m-col-left{display:flex !important;}',
       'body.m-mobile.mview-bag .m-col-right{display:flex !important;}',
+      /* 背包頂端那 12 顆分頁鈕沿用桌機尺寸(16px 字＋py-2·3欄4列),在手機吃掉 211px≒畫面 32%,
+         底下真正要看的背包清單只剩 233px。改 4 欄 3 列(少一整列)＋縮字級內距 → 省下的高度全還給清單。
+         刻意不把按鈕壓到最扁:4 欄少一列本身就省很多,按鈕高度留住才好按(手指觸控目標別太小)。桌機不動。 */
+      'body.m-mobile .tab-bar{grid-template-columns:repeat(4,minmax(0,1fr)) !important;padding:6px !important;gap:5px !important;}',
+      'body.m-mobile .tab-bar .btn{padding:8px 2px !important;font-size:13px !important;line-height:1.2 !important;white-space:nowrap !important;}',
 
       /* 底部導覽列 */
       'body.m-mobile #m-nav{display:flex !important;flex:0 0 auto !important;height:56px;background:#0f172a;border-top:1px solid #334155;}',

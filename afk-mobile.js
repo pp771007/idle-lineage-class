@@ -848,6 +848,11 @@
       'body.m-mobile .m-col-left,body.m-mobile .m-col-center,body.m-mobile .m-col-right{width:100% !important;max-width:none !important;flex:1 1 auto !important;min-height:0 !important;gap:8px !important;overflow:hidden;}',
       'body.m-mobile .m-col-left,body.m-mobile .m-col-center,body.m-mobile .m-col-right{display:none !important;}',
       'body.m-mobile.mview-battle .m-col-center{display:flex !important;}',
+      /* 戰鬥分頁改成「放不下就能捲」:上面那條共用規則是 overflow:hidden(放不下直接裁掉、玩家根本捲不到)。
+         底下依序是 地圖選單/戰鬥框/喝水食用/技能列/buff 列,技能一多(高等角色)就會被裁在導覽列底下按不到。
+         只動 mview-battle 的中欄:左欄(自動化)/右欄(背包)各自有內層捲動區,不要一起改以免變雙層捲軸。
+         戰鬥框自身是 overflow:hidden(怪物 sprite 不會撐出捲軸),故這裡開 auto 只會在真的放不下時才出現捲軸。 */
+      'body.m-mobile.mview-battle .m-col-center{overflow-y:auto !important;overflow-x:hidden !important;-webkit-overflow-scrolling:touch;}',
       'body.m-mobile.mview-config .m-col-left{display:flex !important;}',
       'body.m-mobile.mview-bag .m-col-right{display:flex !important;}',
 

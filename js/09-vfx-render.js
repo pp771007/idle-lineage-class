@@ -108,6 +108,10 @@ const MOB_ANIM_DEATH_FX = {
     '冰之女王侍女': { n: 25, ew: 158, eh: 115, anchored: { ox: -26, oy: 10, bw: 101, bh: 114 } },
 };   // v3.0.13 冰之女王新版動畫無 death_effect→移除(死亡改由 21 幀 death_ 序列本身表現)
 let _deathFxCache = {};
+// 🎬 死亡序列殘影「專屬節流計數」：同時存在的死亡殘影數。與傷害數字/粒子洪水解耦——
+//   原本用 layer.childElementCount<150 判斷會被跳字/法術粒子洪水誤擋，AoE 連殺時死亡幀「有時不播」。
+//   改看此獨立計數（上限 12≈前後排 5 格 × 2 波重疊 + 餘裕），正常必定播完，只有病態重疊才擋。
+let _deathGhostCount = 0;
 function _preloadDeathFx(name, n) {
     if (_deathFxCache[name]) return _deathFxCache[name];
     let arr = [];
@@ -656,7 +660,7 @@ function _mobImgAnchor(imgEl) {
 function vfxKill(mob) {
     try {
         if (!mob) return;   // 🎚️ v3.0.1 關閉特效時「保留死亡動畫」：不再整個 return，改為只擋「傷害數字/頭目閃光」等純裝飾（見下），死亡序列殘影(death_*.png)＋死亡特效層(death_effect)照播＝怪物死亡畫面不消失
-        if (typeof state !== 'undefined' && state.ff) return;   // 🌙 離線/背景補跑：killMob 每殺都會呼叫，此時格子 DOM 仍在（畫面未重繪）→ 會整套建 DOM＋開 setInterval 逐幀。補跑跳過，回前景由正常渲染重畫
+        if (typeof state !== 'undefined' && state.ff && !state.ffSmall) return;   // 🌙 離線/背景補跑：killMob 每殺都會呼叫，此時格子 DOM 仍在（畫面未重繪）→ 會整套建 DOM＋開 setInterval 逐幀。長補跑跳過、回前景由正常渲染重畫；🩹 小補跑(state.ffSmall·前景微卡頓 GC/存檔造成)放行：死亡殘影仍受 _deathGhostCount<12 節流，避免 AoE 連殺死亡幀瞬消
         let ml = document.getElementById('mob-list');
         let slot = ml && ml.querySelector('.mob-target[data-uid="' + mob.uid + '"]');
         if (!slot) return;
@@ -681,8 +685,8 @@ function vfxKill(mob) {
         // 🎞️ v2.6.93 有死亡序列(death_*.png)→殘影改播死亡動畫，並略過白光殘影/衝擊波環/核心爆閃/爆裂粒子（死亡幀本身已表達「被擊殺」，白光重疊反而髒）。無死亡動畫則維持原白閃表現。
         let _da = (typeof _mobAnimCache !== 'undefined') ? _mobAnimCache[mob.n] : null;
         let _deathSeq = (_da && _da !== 'probing' && _da.death) ? _da.death : null;
-        // ✨ 強化死亡表現（讓「怪物被消滅」更明顯）：白閃殘影 + 衝擊波環 + 核心爆閃。場上特效過多(>150)時略過較重的殘影/環，只留粒子，避免大量 AoE 連殺洗版。
-        if (layer.childElementCount < 150) {
+        // ✨ 強化死亡表現（讓「怪物被消滅」更明顯）。🎬 節流改看「死亡殘影專屬計數」_deathGhostCount<12（原 layer.childElementCount<150 會被跳字/法術粒子洪水誤擋→AoE 連殺時死亡幀有時不播）；上限 12≈前後排 5 格 × 2 波重疊 + 餘裕。
+        if (_deathGhostCount < 12) {
             // 1) 死亡殘影：複製怪物圖像 → 白化＋放大＋淡出（強烈的「被抹除」感）
             try {
                 let _img = box.querySelector('img:not(.mob-anim-shadow):not(.mob-anim-weapon):not(.mob-anim-weapon2)');
@@ -694,6 +698,9 @@ function vfxKill(mob) {
                     gh.style.transformOrigin = (_anc.hc * 100).toFixed(1) + '% ' + (_anc.vc * 100).toFixed(1) + '%';   // 🎯 v2.6.45 放大自「怪物身體中心」擴散(非方框中心)→白閃由怪身發散
                     layer.appendChild(gh);
                     if (_deathSeq) {   // 🎞️ v2.6.86 死亡序列（death_*.png）：殘影原位逐幀播一輪→短淡出（取代白閃；怪卡本體照常移除）
+                        _deathGhostCount++;   // 🎬 專屬節流：生殘影 +1；淡出結束/保險回收擇一 _release() 保證只減一次
+                        let _dghReleased = false;
+                        let _release = () => { if (_dghReleased) return; _dghReleased = true; _deathGhostCount = Math.max(0, _deathGhostCount - 1); };
                         gh.src = _deathSeq[0].src;
                         // ⚔️ v2.7.44 死亡殘影武器層(death_w/death_w2·screen 疊上)：與 body death 同鐘逐幀(--multi 共畫布同幾何)·如爆彈花爆炸(僅 death_w)/龍死亡火焰。嚴格 1:1(本幀無 _w 幀→不換 src)。
                         let _ghW = [];
@@ -713,10 +720,22 @@ function vfxKill(mob) {
                         let _fi = 0, _fint = setInterval(() => {
                             _fi++;
                             if (_fi < _deathSeq.length) { gh.src = _deathSeq[_fi].src; _ghW.forEach(W => { if (W.seq[_fi]) W.el.src = W.seq[_fi].src; }); }
-                            else { clearInterval(_fint); try { gh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-out' }).onfinish = () => gh.remove(); } catch (e) { gh.remove(); } _ghW.forEach(W => { try { W.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-out' }).onfinish = () => W.el.remove(); } catch (e) { W.el.remove(); } }); }
+                            else { clearInterval(_fint); try { gh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-out' }).onfinish = () => { gh.remove(); _release(); }; } catch (e) { gh.remove(); _release(); } _ghW.forEach(W => { try { W.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-out' }).onfinish = () => W.el.remove(); } catch (e) { W.el.remove(); } }); }
                         }, 1000 / MOB_ANIM_FPS);
-                        setTimeout(() => { try { clearInterval(_fint); if (gh.isConnected) gh.remove(); _ghW.forEach(W => { if (W.el.isConnected) W.el.remove(); }); } catch (e) {} }, _deathSeq.length * (1000 / MOB_ANIM_FPS) + 2000);   // 保險回收
+                        setTimeout(() => { try { clearInterval(_fint); if (gh.isConnected) gh.remove(); _ghW.forEach(W => { if (W.el.isConnected) W.el.remove(); }); } catch (e) {} _release(); }, _deathSeq.length * (1000 / MOB_ANIM_FPS) + 2000);   // 保險回收
                     }   // 🚫 v2.7.49 移除無死亡序列時的 CSS 白閃殘影 else 分支
+                } else if (_img && _img.src && _img.naturalWidth !== 0 && typeof MOB_ANIM_NAMES !== 'undefined' && MOB_ANIM_NAMES.has(mob.n)) {
+                    // 🩹 死亡幀「應有而未就緒」的退場保底：動畫怪的 death 快取還在探測中(換圖後首殺)／八方向怪當前面向尚未載入 → 原本無殘影＝瞬消。
+                    //   改用「最後一格可見幀淡出」(~0.4s·無白閃·不違反 v2.7.49 移除靜態白閃的決策——非名單靜態怪照舊)。計入 _deathGhostCount 同一節流。
+                    _deathGhostCount++;
+                    let _fgDone = false; let _fgRelease = () => { if (_fgDone) return; _fgDone = true; _deathGhostCount = Math.max(0, _deathGhostCount - 1); };
+                    let gh2 = document.createElement('img'); gh2.className = 'vfx-ghost'; gh2.src = _img.src;
+                    let _ir2 = _img.getBoundingClientRect();
+                    gh2.style.left = (_ir2.width > 0 ? (_ir2.left + _ir2.width / 2) : bcx) + 'px'; gh2.style.top = (_ir2.width > 0 ? (_ir2.top + _ir2.height / 2) : bcy) + 'px';
+                    gh2.style.width = (_ir2.width > 0 ? _ir2.width : r.width) + 'px'; gh2.style.height = (_ir2.width > 0 ? _ir2.height : r.height) + 'px';
+                    layer.appendChild(gh2);
+                    try { gh2.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, easing: 'ease-out' }).onfinish = () => { gh2.remove(); _fgRelease(); }; } catch (e) { gh2.remove(); _fgRelease(); }
+                    setTimeout(() => { try { if (gh2.isConnected) gh2.remove(); } catch (e) {} _fgRelease(); }, 900);   // 保險回收
                 }
             } catch (e) {}
             // 🧊 v2.7.46 死亡多重特效：death_effect anchored 疊層(獨立時間軸·可比 body death 長·如冰之女王碎裂 body5幀/effect25幀)。錨定同 skill_effect：殘影錨在 box rect·offset×scale·screen 加亮。

@@ -928,10 +928,10 @@
       '#m-dex-modal{display:none;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:1000;background:rgba(2,6,23,0.82);align-items:flex-start;justify-content:center;padding:20px 10px;}',
       '#m-dex-modal.open{display:flex;}',
       '#m-dex-modal[data-standalone]{padding-top:58px;}',
-      '#m-dex-card-wrap{width:min(680px,96vw);max-height:92vh;max-height:calc(100dvh - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',
-      '#m-dex-modal[data-standalone] #m-dex-card-wrap{max-height:calc(100dvh - 78px);}',   /* 獨立頁:頂部 58px 給導覽列+底部 20px,卡片高度要扣掉,否則最底的「全域特殊掉落規則」會被切掉 */
+      '#m-dex-card-wrap{width:min(680px,96vw);max-height:calc((100vh - var(--orig-bar-h,0px)) * .92);max-height:calc(100dvh - var(--orig-bar-h,0px) - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',
+      '#m-dex-modal[data-standalone] #m-dex-card-wrap{max-height:calc(100dvh - var(--orig-bar-h,0px) - 78px);}',   /* 獨立頁:頂部 58px 給導覽列+底部 20px,卡片高度要扣掉,否則最底的「全域特殊掉落規則」會被切掉 */
       '#m-dex-modal[data-standalone] #m-dex-itempop{top:58px;}',   /* 獨立頁:物品詳情彈窗在 modal 的堆疊脈絡內(z 低於頂部導覽列),整個下移 58px 才不會被導覽列蓋住上緣 */
-      '#m-dex-modal[data-standalone] #m-dex-itempop-card{max-height:calc(100dvh - 110px);}',
+      '#m-dex-modal[data-standalone] #m-dex-itempop-card{max-height:calc(100dvh - var(--orig-bar-h,0px) - 110px);}',
       '#m-dex-head{display:flex;gap:8px;padding:12px;border-bottom:1px solid #1e293b;flex:0 0 auto;}',
       '#m-dex-inwrap{position:relative;flex:1 1 auto;min-width:0;display:flex;}',
       '#m-dex-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:10px 40px 10px 12px;font-size:15px;outline:none;font-family:inherit;}',
@@ -969,7 +969,7 @@
       '.m-dex-imatch{font-size:13.5px;line-height:1.9;color:#64748b;}',
       '#m-dex-itempop{display:none;position:absolute;inset:0;z-index:1002;background:rgba(2,6,23,.66);align-items:center;justify-content:center;padding:24px 14px;}',
       '#m-dex-itempop.open{display:flex;}',
-      '#m-dex-itempop-card{position:relative;width:min(420px,94vw);max-height:84vh;overflow-y:auto;background:#0f172a;border:1px solid #475569;border-radius:12px;padding:16px;box-shadow:0 16px 50px rgba(0,0,0,.6);}',
+      '#m-dex-itempop-card{position:relative;width:min(420px,94vw);max-height:calc((100vh - var(--orig-bar-h,0px)) * .84);overflow-y:auto;background:#0f172a;border:1px solid #475569;border-radius:12px;padding:16px;box-shadow:0 16px 50px rgba(0,0,0,.6);}',
       '#m-dex-itempop-close{position:absolute;top:8px;right:8px;width:30px;height:30px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;}',
       '#m-dex-itempop-close:active{background:#334155;}',
       '.m-dex-ihead{display:flex;align-items:center;gap:12px;margin-bottom:10px;padding-right:34px;}',

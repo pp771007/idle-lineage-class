@@ -3282,8 +3282,8 @@
       '#m-wiki-modal{display:none;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:1000;background:rgba(2,6,23,0.82);align-items:flex-start;justify-content:center;padding:20px 10px;}',
       '#m-wiki-modal.open{display:flex;}',
       '#m-wiki-modal[data-standalone]{padding-top:58px;}',
-      '#m-wiki-modal[data-standalone] #m-wiki-wrap{max-height:calc(100dvh - 78px);}',   /* 獨立頁頂部導覽列 58px：扣掉它+底部留白(共78px)才不會把最後一張卡推到畫面外被切掉 */
-      '#m-wiki-wrap{width:min(680px,96vw);max-height:92vh;max-height:calc(100dvh - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',
+      '#m-wiki-modal[data-standalone] #m-wiki-wrap{max-height:calc(100dvh - var(--orig-bar-h,0px) - 78px);}',   /* 獨立頁頂部導覽列 58px：扣掉它+底部留白(共78px)才不會把最後一張卡推到畫面外被切掉 */
+      '#m-wiki-wrap{width:min(680px,96vw);max-height:calc((100vh - var(--orig-bar-h,0px)) * .92);max-height:calc(100dvh - var(--orig-bar-h,0px) - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',
       '#m-wiki-close{flex:0 0 auto;width:42px;height:38px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
       '#m-wiki-close:active{background:#334155;}',
       '#m-wiki-searchrow{display:flex;gap:8px;align-items:center;padding:12px 12px 4px;flex:0 0 auto;}',

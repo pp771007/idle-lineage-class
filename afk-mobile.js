@@ -899,7 +899,7 @@
       'body.m-mobile #game-screen .panel-header{padding-top:6px !important;padding-bottom:6px !important;}',
 
       /* 物品操作 Modal:手機上比較面板+主面板改「上下堆疊」並限寬,避免並排爆出畫面 */
-      'body.m-mobile #item-modal{flex-direction:column !important;align-items:stretch !important;width:94vw !important;max-width:94vw !important;max-height:90dvh !important;max-height:90vh !important;overflow-y:auto !important;gap:8px !important;z-index:70 !important;}',
+      'body.m-mobile #item-modal{flex-direction:column !important;align-items:stretch !important;width:94vw !important;max-width:94vw !important;max-height:calc((100dvh - var(--orig-bar-h,0px)) * .9) !important;max-height:calc((100vh - var(--orig-bar-h,0px)) * .9) !important;overflow-y:auto !important;gap:8px !important;z-index:70 !important;}',
       'body.m-mobile #item-modal > div{min-width:0 !important;max-width:100% !important;width:100% !important;flex:0 0 auto !important;}',
       'body.m-mobile #item-modal #modal-compare{max-width:100% !important;max-height:42vh !important;}',
 
@@ -924,7 +924,7 @@
       /* 角色資訊彈窗:點暱稱叫出桌面版 #status-panel(手機平時隱藏);✕/點背景關閉 */
       '#m-stat-modal{display:none;}',
       'body.m-mobile.m-stat-open #m-stat-modal{display:flex;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:80;align-items:center;justify-content:center;background:rgba(2,6,23,0.72);padding:16px;}',
-      'body.m-mobile #m-stat-card{position:relative;width:min(92vw,420px);max-height:84vh;max-height:calc(var(--app-h,84vh) - 32px);overflow-y:auto;}',
+      'body.m-mobile #m-stat-card{position:relative;width:min(92vw,420px);max-height:calc((100vh - var(--orig-bar-h,0px)) * .84);max-height:calc(var(--app-h,84vh) - var(--orig-bar-h,0px) - 32px);overflow-y:auto;}',
       'body.m-mobile #m-stat-bar{display:flex;justify-content:flex-end;margin-bottom:6px;}',
       'body.m-mobile #m-stat-close{width:36px;height:36px;border:1px solid rgba(51,65,85,0.85);background:rgba(30,41,59,0.92);color:#e2e8f0;border-radius:8px;font-size:17px;cursor:pointer;font-family:inherit;touch-action:manipulation;}',
       'body.m-mobile #m-stat-close:active{background:rgba(71,85,105,0.92);}',
@@ -999,7 +999,7 @@
       /* 手機長按看詳情:資訊卡彈窗(取代桌機 hover tooltip);短按維持原動作,長按那下不誤觸 */
       '#m-tip-modal{display:none;}',
       'body.m-mobile #m-tip-modal.open{display:flex !important;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:85;align-items:flex-start;justify-content:center;padding:60px 12px 16px;background:rgba(2,6,23,0.6);}',
-      'body.m-mobile #m-tip-card{position:relative;width:min(94vw,420px);max-height:72vh;overflow-y:auto;background:rgba(15,23,42,0.98);border:1px solid #64748b;border-radius:10px;padding:14px 14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.7);color:#e2e8f0;}',
+      'body.m-mobile #m-tip-card{position:relative;width:min(94vw,420px);max-height:calc((100vh - var(--orig-bar-h,0px)) * .72);overflow-y:auto;background:rgba(15,23,42,0.98);border:1px solid #64748b;border-radius:10px;padding:14px 14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.7);color:#e2e8f0;}',
       'body.m-mobile #m-tip-card .m-tip-x{position:absolute;top:6px;right:6px;width:32px;height:32px;border:1px solid rgba(100,116,139,.7);background:rgba(30,41,59,.9);color:#e2e8f0;border-radius:7px;font-size:15px;line-height:1;cursor:pointer;font-family:inherit;padding:0;}',
       'body.m-mobile #m-tip-card .m-tip-x:active{background:rgba(71,85,105,.95);}',
       'body.m-mobile #m-tip-card .m-tip-name{font-weight:bold;font-size:16px;margin:0 36px 6px 0;}',

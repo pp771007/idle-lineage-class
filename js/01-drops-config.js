@@ -1185,9 +1185,16 @@ function startGameTimers() {
 // 等真正回到即時（n===1）且累積時間達門檻時，才統一輸出一次，避免每次小補跑都洗版。
 const AWAY_SUMMARY_MIN_MS = 3000;    // 累積補跑時間達 3 秒才輸出「掛機期間獲得」訊息
 let _awayAcc = { ticks: 0, gold: 0, items: {} };
+// 🕶️ 「掛機期間獲得」訊息只在分頁確實切到背景時才輸出。gameLoop 的補跑(state.ff)判定純看「距上次 loop 過了多久」，
+//   前景一次長卡頓(saveGame 的 LZ 壓縮／開大量物品面板／GC)也會累積成補跑→原本會誤印掛機訊息。改用 visibilitychange
+//   記「本次累積窗口是否確實隱藏過」(sticky 旗標)：收益照計入 player.gold/inv、只 gate 這行訊息。
+let _awaySawHidden = false;
+if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', function () { if (document.hidden) _awaySawHidden = true; });
+}
 function flushAwaySummary() {
-    if (_awayAcc.ticks <= 0) return;
-    if (_awayAcc.ticks * TICK_MS >= AWAY_SUMMARY_MIN_MS) {
+    if (_awayAcc.ticks <= 0) { _awaySawHidden = false; return; }   // 無累積：順手清掉「短暫隱藏但沒補跑」留下的旗標，避免下次前景卡頓被誤判為掛機
+    if (_awayAcc.ticks * TICK_MS >= AWAY_SUMMARY_MIN_MS && _awaySawHidden) {   // 🕶️ 加「確實隱藏過」條件：前景卡頓造成的補跑不印訊息（收益仍已入袋）
         let gains = [];
         for (let id in _awayAcc.items) {
             if (_awayAcc.items[id] > 0 && DB.items[id]) gains.push({ id, n: _awayAcc.items[id] });
@@ -1203,6 +1210,7 @@ function flushAwaySummary() {
     }
     // 無論是否達門檻都清空（未達門檻者視為一般即時遊玩的計時抖動，不輸出）
     _awayAcc = { ticks: 0, gold: 0, items: {} };
+    _awaySawHidden = false;
 }
 
 let player = {

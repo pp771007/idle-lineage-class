@@ -669,7 +669,12 @@ const WEAPON_TAGS = {
     // 🐍 提卡爾：庫庫爾坎之矛/鞭笞藤/倒勾獠牙=矛(雙手矛·出血)、毒牙=匕首(出血)、易碎泥偶=雙手鈍器(重擊靠 eff)、玩具鎚=單手鈍器(鈍擊)；鐵手甲/吹箭(isBow)/枯竭魔杖(名稱含杖)/獻祭亡靈(qigu) 靠旗標/名稱自判免 tag
     wpn_kukulkan_spear:['矛'], relic_eto_whip:['矛'], relic_serpent_fang:['矛'], relic_kaira_fang:['匕首'], relic_mud_idol:['雙手鈍器'], relic_teo_hammer:['單手鈍器'],
     // 🏺 遺物武器 tag：補跟原版（分家後漏跟這批；原版同一套 WEAPON_TAGS 邏輯，值照原版）。漏標會害巨斧精通+30%攻速/雙持/反擊居合等 tag 特效吃不到（風化方尖碑雙持問題主因）
-    relic_executor_axe:['單手鈍器'], relic_healer_wand:['單手鈍器'], relic_minotaur_flail:['單手鈍器'], relic_executor_skewer:['矛'], relic_weathered_obelisk:['雙手鈍器'], relic_shadow_stinger:['匕首'], relic_soulreaper_dual:['雙刀'], relic_ghoul_fang:['單手劍'], relic_sparto_shard:['單手劍'], relic_pirate_dual:['雙刀'], relic_lava_fists:['單手鈍器']
+    relic_executor_axe:['單手鈍器'], relic_healer_wand:['單手鈍器'], relic_minotaur_flail:['單手鈍器'], relic_executor_skewer:['矛'], relic_weathered_obelisk:['雙手鈍器'], relic_shadow_stinger:['匕首'], relic_soulreaper_dual:['雙刀'], relic_ghoul_fang:['單手劍'], relic_sparto_shard:['單手劍'], relic_pirate_dual:['雙刀'], relic_lava_fists:['單手鈍器'],
+    // 🗡️ v3.4.33 倫得雙刀＋這批遺物武器:分家後同樣漏跟(玩家回報「倫得雙刀沒有雙刃×2」才抓到)。
+    //    tag 決定 雙刃×2/出血/武器精通/雙擊率預設,沒 tag 等於這些特性全部不會發動。值照原版。
+    wpn_rond_dual:['雙刀'],
+    relic_cerberus_pin:['鋼爪'], relic_dark_metal_club:['單手鈍器'], relic_ash_fist:['單手鈍器'],
+    relic_ant_pincer:['單手劍','武士刀'], relic_reaper_scythe:['雙手劍'], relic_mage_dagger:['匕首'],
 };
 function getWeaponTags(id){ return WEAPON_TAGS[id] || []; }
 // ⚔️ 雙擊機率 comboRate：未明定者依武器標籤套預設（鋼爪 33% / 雙刀 25%）；個別武器可在 def 寫 comboRate 覆寫（底比斯歐西里斯雙刀30 / 死亡之指20 / 恨之鋼爪50 / 破壞雙刀·破壞鋼爪30）。日後新增 combo 武器自動取得預設機率。

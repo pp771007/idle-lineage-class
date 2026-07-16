@@ -65,6 +65,7 @@ function gameLoop() {
     const _goldBefore = player.gold;
 
     state.ff = true;
+    state.ffSmall = n <= 20;   // 🩹「小補跑」旗標(≤2秒)：前景微卡頓(GC/存檔壓縮/開大面板)也觸發 owed>=2 補跑，該批擊殺原本被 vfxKill 的 ff 閘全部瞬消（「死亡動畫有時不播」主因）。小批放行死亡殘影(仍受 _deathGhostCount<12 節流)；長背景補跑維持全靜音免回前景爆量
     state.inTick = true;   // 🔧 架構#2：補跑期間同樣每個 tick 結束才清算死亡
     try {
         for(let k=0; k<n; k++) {
@@ -74,6 +75,7 @@ function gameLoop() {
         }
     } finally {
         state.ff = false;   // 保證即使 tick() 拋例外也會解除補跑旗標，避免畫面/出怪永久凍結
+        state.ffSmall = false;   // 🩹 小補跑旗標一併復位
         state.inTick = false;
         settleDeadMobs();   // 保底：例外中斷時也完成清算
     }
@@ -362,10 +364,10 @@ function tick() {
 
         // --- 異常狀態處理（倒數、中毒 DoT），死亡則跳過 ---
         if (processMobStatusTick(m, i)) continue;
-        // 👑 戰鬥頭目：每 5 秒恢復 HP。近 5 秒內曾被物理命中→只回 1%；完全沒被物理打到→回 5%（攻城建築不適用）
+        // 👑 戰鬥頭目：每 5 秒恢復 HP。近 5 秒內曾被物理命中→只回 0.5%；完全沒被物理打到→回 2.5%（攻城建築不適用）
         if (m.boss && !m.siegeEnemy && m.race !== '建築' && state.ticks % 50 === 0 && m.curHp > 0 && m.curHp < m.hp) {
             let _recentPhys = m._lastPhysicalHitTick != null && state.ticks - m._lastPhysicalHitTick <= 50;
-            m.curHp = Math.min(m.hp, m.curHp + Math.max(1, Math.floor(m.hp * (_recentPhys ? 0.01 : 0.05))));
+            m.curHp = Math.min(m.hp, m.curHp + Math.max(1, Math.floor(m.hp * (_recentPhys ? 0.005 : 0.025))));
             if (!state.ff) renderMobs();
         }
         // 常駐被動：HP 未滿 100% 時回復（依等級 15 / 40），不受異常狀態影響；間隔由 regenEvery 決定(預設10 ticks=每1秒)

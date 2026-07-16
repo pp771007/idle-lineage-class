@@ -216,6 +216,23 @@ function summonTierByLevel(lv) {
     if(lv >= 32) return { n:'召喚：甘地妖魔', dmgDice:[2,8], dmgDiv:5, dmgLvDiv:35, interval:20, kind:'melee', hitLvOff:3 };
     return { n:'召喚：哈柏哥布林', dmgDice:[1,15], dmgDiv:5, dmgLvDiv:40, interval:20, kind:'melee', hitLvOff:0 };
 }
+// 🧱 傭兵召喚物「戰鬥實體」欄位（無 sprite 在場·但有受擊判定與血量）：
+//   給 ally.summon 補 uid/form/lv/hp/mhp → 進 js/04 受害者池(物理+傷害型魔法)·受擊走 js/23 enemyAttackSummon/applyMobMagicToSummon(通用·靠 _sumDeriveAny 算 ac/dr)。
+//   HP 鏡像玩家 v2 資料：召喚術＝該怪 v2 hp×隻數·造屍＝ZOMBIE_TIERS.hp·精靈＝SPIRIT_DEF/_KING hp；舊分階 fallback＝100+等級×5。
+//   ⚠️只作用於傭兵(owner!==player)——玩家迷魅(sk_charm)走同一 buildSummon 但 owner===player→不附加(維持無敵抽象)。欄位全為純值·無循環參照(可入存檔)。
+function _mercSummonAttachEntity(sm, owner) {
+    if (!sm || !owner || (typeof player !== 'undefined' && owner === player)) return sm;
+    try {
+        let hp = 0, lv = sm._v2lv || owner.lv || 1, form = sm._v2form || sm.n;
+        if (sm.skId === 'sk_zombie') { let t = (typeof ZOMBIE_TIERS !== 'undefined') ? ZOMBIE_TIERS.find(x => x.lv === lv) : null; hp = t ? t.hp : 0; form = '人形殭屍'; }
+        else if (sm.skId === 'sk_elf_summon' || sm.skId === 'sk_elf_summon2') { let spec = (typeof _spiritSpec === 'function') ? _spiritSpec(sm.skId, sm.ele, !!sm._king) : null; if (spec) { hp = spec.hp; lv = spec.lv; } form = sm.n; }
+        else if (sm._v2form && typeof _sumTierOf === 'function') { let e = _sumTierOf(sm._v2form); hp = ((e && e.mob && e.mob.hp) || 0) * (sm._v2count || 1); form = sm._v2form; }
+        if (!(hp > 0)) hp = 100 + (owner.lv || 1) * 5;   // 舊分階模型 fallback（低等傭兵）
+        sm.uid = sm.uid || (typeof uid === 'function' ? uid() : String(Date.now()) + Math.random());
+        sm.form = form; sm.lv = lv; sm.mhp = hp; sm.hp = hp; sm._downed = false;
+    } catch (e) {}
+    return sm;
+}
 function buildSummon(skId, def, durSec, owner) {
     owner = owner || player;   // 🩸 v2.6.25 owner 參數化：分階依 owner.lv、屬性精靈依 owner.elfEle（傭兵召喚共用）
     // 🧙 傭兵召喚術改用玩家 v2 傷害模型（抽象輸出·不上場）：依傭兵等級＋召喚控制戒指選怪（SUMMON_TIERS）·每攻擊週期打 count 隻份 v2 傷害。玩家 sk_summon 走 js/23 v2 實體制不經此；此分支只作用於傭兵(owner!==player)。無法召喚(等級/魅力不足)則落回下方舊分階模型。
@@ -223,9 +240,9 @@ function buildSummon(skId, def, durSec, owner) {
         let _plan = mercSummonV2Plan(owner);
         if (_plan) {
             let _d0 = _sumDerive({ form: _plan.form, n: _plan.form }, owner);
-            return { skId: skId, n: _plan.form + ' ×' + _plan.count, _v2form: _plan.form, _v2count: _plan.count, _v2lv: _plan.lv,
+            return _mercSummonAttachEntity({ skId: skId, n: _plan.form + ' ×' + _plan.count, _v2form: _plan.form, _v2count: _plan.count, _v2lv: _plan.lv,
                 interval: _d0.aspd || 20, cd: _d0.aspd || 20, kind: 'v2', ele: 'none', dmgDice: [1, 1], dmgDiv: 5, dmgLvDiv: 0, elemScale: 20, dmgMult: 1, hardSkinPen: 0, mrPenBase: 0, hitLvOff: 0, proc: null,
-                endTick: state.ticks + (durSec || 3600) * 10 };
+                endTick: state.ticks + (durSec || 3600) * 10 }, owner);   // 🧱 附戰鬥實體欄位
         }
     }
     // 🧟 傭兵造屍術改用玩家 v2 傷害模型（抽象輸出·不上場）：殭屍階級依傭兵等級（_zmbTierForPlayer）·單隻·每週期 1 刀 v2 傷害（_zmbDerive）。等級不足回 null 則落回下方舊模型。
@@ -233,9 +250,9 @@ function buildSummon(skId, def, durSec, owner) {
         let _zt = _zmbTierForPlayer(owner);
         if (_zt) {
             let _zd = _zmbDerive({ lv: _zt.lv, skId: 'sk_zombie' }, owner);
-            return { skId: skId, n: '人形殭屍 Lv.' + _zt.lv, _v2form: '人形殭屍', _v2zmb: true, _v2count: 1, _v2lv: _zt.lv,
+            return _mercSummonAttachEntity({ skId: skId, n: '人形殭屍 Lv.' + _zt.lv, _v2form: '人形殭屍', _v2zmb: true, _v2count: 1, _v2lv: _zt.lv,
                 interval: _zd.aspd || 12, cd: _zd.aspd || 12, kind: 'v2', ele: 'none', dmgDice: [1, 1], dmgDiv: 5, dmgLvDiv: 0, elemScale: 20, dmgMult: 1, hardSkinPen: 0, mrPenBase: 0, hitLvOff: 0, proc: null,
-                endTick: state.ticks + (durSec || 3600) * 10 };
+                endTick: state.ticks + (durSec || 3600) * 10 }, owner);   // 🧱 附戰鬥實體欄位
         }
     }
     let base = def.tiered ? summonTierByLevel(owner.lv) : def;
@@ -255,10 +272,11 @@ function buildSummon(skId, def, durSec, owner) {
         cd: base.interval || 20, endTick: state.ticks + (durSec || 3600) * 10
     };
     if (typeof _elfSpiritKingOverride === 'function') _elfSpiritKingOverride(_sm, owner);   // 👑 精靈精通→精靈王（傭兵鏡像·規格讀 js/23 四屬性表）
-    return _sm;
+    return _mercSummonAttachEntity(_sm, owner);   // 🧱 傭兵→附戰鬥實體欄位；玩家(迷魅)→原樣返回
 }
 function refreshSummonBalance(sm, owner) {   // 讀檔重算：既有召喚物同步目前的階級/倍率/穿透/間隔（不重召）
     owner = owner || player;
+    if (sm && owner !== player && !(sm.mhp > 0)) _mercSummonAttachEntity(sm, owner);   // 🧱 舊存檔遷移：讀檔後傭兵召喚物缺血量欄位→補齊（滿血）
     if (sm && sm._v2zmb) {   // 🧟 傭兵造屍術 v2：依當前等級重算殭屍階級與攻速（抽象輸出·無 dmgDice）
         let _zt = (typeof _zmbTierForPlayer === 'function') ? _zmbTierForPlayer(owner) : null;
         if (_zt) { let _zd = _zmbDerive({ lv: _zt.lv, skId: 'sk_zombie' }, owner); sm._v2lv = _zt.lv; sm.interval = _zd.aspd || 12; sm.n = '人形殭屍 Lv.' + _zt.lv; }
@@ -1891,6 +1909,7 @@ function healBeneficiaries() {
     (typeof player !== 'undefined' && player && player.allies || []).forEach(a => { if (a && !a._downed && (a.curHp || 0) > 0) arr.push(a); });
     try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed && (p.hp || 0) > 0) arr.push(p); }); } catch (e) {}
     try { if (typeof summonV2List === 'function') summonV2List().forEach(x => { if (x && !x._downed && (x.hp || 0) > 0) arr.push(x); }); } catch (e) {}   // 🧙 召喚物也能被治癒
+    try { if (typeof mercSummonList === 'function') mercSummonList().forEach(x => { if (x && !x._downed && (x.hp || 0) > 0) arr.push(x); }); } catch (e) {}   // 🩹 傭兵召喚物（有血量）也納入治癒受益池·欄位 hp/mhp 與玩家召喚物一致走 _sup* else 分支
     return arr;
 }
 function _supHp(m) { return (m === player) ? (m.hp || 0) : (m && m.curHp != null ? (m.curHp || 0) : (m ? (m.hp || 0) : 0)); }   // 傭兵＝curHp；玩家/寵物＝hp
@@ -2154,6 +2173,7 @@ function alliesTick() {
         if (ally._healSkillCds) for (let _hk in ally._healSkillCds) { if (ally._healSkillCds[_hk] > 0) ally._healSkillCds[_hk]--; }   // 🩹 團補／生命之泉的逐技能冷卻
         allyTryDispel(ally);   // 🆕 v2.6.15 #6→v2.6.28 團隊淨化：自己非硬控/沉默時幫全隊解可解狀態（自己硬控中則不施放·由其他自由隊員代解）
         // 🩸 v2.6.25 傭兵召喚物 tick（造屍術/召喚術/精靈召喚·owner=ally）＋🩸 v2.6.26 幻術士幻象召喚（歐吉/巫妖/鑽石高崙·i_illusion 精通·學過該技即召·stat aura 由隊長 teamIlluAura 提供避免雙套）：owner=ally·輸出獨立歸 _dps.summon（不計入本傭兵回合 _dpsAllyTurn·硬控中召喚物仍行動·擊殺獎勵歸真隊長·不換身）。倒地傭兵已於上方 return 不驅動。
+        if (ally.summon && ally.summon._downed) ally.summon = null;   // 🧱 召喚物被打死(enemyAttackSummon 設 _downed)→清除停止輸出·allyMaintainBuffs 下秒判 !_live 自動重施(扣傭兵 MP)
         if (ally.summon || (ally.cls === 'illusion' && ally.mastery === 'i_illusion')) { let _svSrc = _combatSrc; _combatSrc = 'summon'; let _sSnap = _dpsSnap(); try { if (ally.summon) summonTick(ally.summon, () => { ally.summon = null; }, ally); if (ally.cls === 'illusion' && ally.mastery === 'i_illusion') illuSummonTick(ally); } finally { _combatSrc = _svSrc; let _sd = _dpsDealt(_sSnap); if (_sd > 0) _dps.summon += _sd; } }
         let _ast = ally.statuses || {};
         let _ccBlock = (_ast.stun > 0 || _ast.freeze > 0 || _ast.stone > 0 || _ast.paralyze > 0 || _ast.sleep > 0);   // 🤝 Phase4：硬控（暈眩/冰凍/石化/麻痺/睡眠）→完全無法行動

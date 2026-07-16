@@ -2101,7 +2101,8 @@ function renderSquadPanel() {
             </div>`;
         }).join('')
             + ((typeof renderPetTeamHTML === 'function') ? renderPetTeamHTML() : '')
-            + ((typeof renderSummonTeamHTML === 'function') ? renderSummonTeamHTML() : '');   // 隊伍排列：傭兵 → 寵物 → 召喚物
+            + ((typeof renderSummonTeamHTML === 'function') ? renderSummonTeamHTML() : '')
+            + ((typeof renderMercSummonTeamHTML === 'function') ? renderMercSummonTeamHTML() : '');   // 隊伍排列：傭兵 → 寵物 → 玩家召喚物 → 🧱 傭兵召喚物(血條比照玩家)
         _squadRebuilt = true;
     }
     if (sigSkill !== _squadSigSkill) {

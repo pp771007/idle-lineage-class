@@ -1027,6 +1027,7 @@ function enemyAttackChooseVictim(mob, idx) {
     let allies = (player.allies || []).filter(a => a && !a._downed && (a.curHp || 0) > 0);
     let pets = (typeof petsOutList === 'function') ? petsOutList().filter(p => p && !p._downed && (p.hp || 0) > 0) : [];   // 🐾 出戰寵物也會被鎖定（權重見 petAggroWeight）
     let sums = (typeof summonV2List === 'function') ? summonV2List().filter(x => x && !x._downed && (x.hp || 0) > 0) : [];   // 🧙 召喚物也會被鎖定
+    if (typeof mercSummonList === 'function') sums = sums.concat(mercSummonList());   // 🧱 傭兵召喚物（無 sprite·有血量）也入受害者池·受擊走同一 enemyAttackSummon
     if (!allies.length && !pets.length && !sums.length && !_hasAggroHide(player)) { enemyPhysicalAttack(mob, idx); return; }// 無傭兵且玩家未裝孵育巢：照舊打玩家（快速路徑）
     let pool = aggroVictimPool(allies);   // 🏺 聖甲蟲的孵育巢：未裝備者優先被指定攻擊
     allies = pool.allies;
@@ -1199,6 +1200,7 @@ function castMobMagic(mob, sk) {
     let allies = (player.allies || []).filter(a => a && !a._downed && (a.curHp || 0) > 0);
     let pets = (typeof petsOutList === 'function') ? petsOutList().filter(p => p && !p._downed && (p.hp || 0) > 0) : [];   // 🐾 出戰寵物也會被指定魔法鎖定
     let sums = (typeof summonV2List === 'function') ? summonV2List().filter(x => x && !x._downed && (x.hp || 0) > 0) : [];   // 🧙 召喚物同樣會被指定魔法鎖定
+    if (typeof mercSummonList === 'function') sums = sums.concat(mercSummonList());   // 🧱 傭兵召喚物也入魔法受害者池（AOE 波及＋傷害型單體加權·applyMobMagicToSummon 通用）
     if ((typeof MOB_PARTY_AOE_SKILLS !== 'undefined') && MOB_PARTY_AOE_SKILLS.has(sk.skn)) {   // 全體：玩家＋全部非倒地傭兵＋出戰寵物
         if (!player.dead) applyMobMagic(mob, sk);
         for (let a of allies) { if (mob.curHp <= 0) break; applyMobMagicToAlly(mob, sk, a); }

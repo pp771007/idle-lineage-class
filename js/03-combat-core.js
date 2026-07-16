@@ -344,6 +344,7 @@ function tick() {
 
     if (!inAbsBarrier()) {   // 🛡️ 絕對屏障：不自然恢復 HP/MP
         let _hpIv = Math.max(30, 160 - 10 * ((player.d && player.d.hpRegenFaster) || 0));   // 🏺 巨魔的再生戒指：HP 自然恢復間隔縮短（每 1 秒=10 tick·下限 3 秒；MP 維持 16 秒節奏）
+        if (player.buffs && (player.buffs.sk_heal_energy_storm || 0) > 0) _hpIv = Math.min(_hpIv, (DB.skills.sk_heal_energy_storm && DB.skills.sk_heal_energy_storm.hpRegenIv) || 30);   // 🌀 治癒能量風暴：維持中 HP 自然恢復間隔固定 3 秒（取更快者·MP 不受影響）
         let _hpDue = (state.ticks % _hpIv === 0), _mpDue = (state.ticks % 160 === 0);
         if (_hpDue) _regenHP();
         if (_mpDue) _regenMP();

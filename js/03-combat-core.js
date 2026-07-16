@@ -340,8 +340,12 @@ function tick() {
     }
     if (inAbsBarrier()) canAct = false;   // 🛡️ 絕對屏障：無法攻擊/施法/自動行動
 
-    if (state.ticks % 160 === 0 && !inAbsBarrier()) {   // 🛡️ 絕對屏障：不自然恢復 HP/MP
-        regenTick();
+    if (!inAbsBarrier()) {   // 🛡️ 絕對屏障：不自然恢復 HP/MP
+        let _hpIv = Math.max(30, 160 - 10 * ((player.d && player.d.hpRegenFaster) || 0));   // 🏺 巨魔的再生戒指：HP 自然恢復間隔縮短（每 1 秒=10 tick·下限 3 秒；MP 維持 16 秒節奏）
+        let _hpDue = (state.ticks % _hpIv === 0), _mpDue = (state.ticks % 160 === 0);
+        if (_hpDue) _regenHP();
+        if (_mpDue) _regenMP();
+        if ((_hpDue || _mpDue) && typeof updateUI === 'function') updateUI();
     }
     if (state.ticks % 10 === 0) siegeTick();   // 攻城戰：每秒檢查時限
     if (state.ticks % 100 === 0) { try { refreshPandoraMarket(false); } catch (e) {} }   // 🔧 潘朵拉黑市：每 10 秒檢查是否到 10 分鐘換商品（含稀有公告）
@@ -623,11 +627,10 @@ function hasLoadFreeRegen() {
     return false;
 }
 
-function regenTick() {
+// 🏺 拆分為 HP／MP 兩段，供 tick() 排程用不同節奏（巨魔的再生戒指只加速 HP·MP 維持 16 秒節奏）；regenTick 保留為合併呼叫供其他來源使用。
+function _regenHP() {
     if(!state.running || player.dead) return;
     let _loadFreeRegen = hasLoadFreeRegen();
-
-    // --- HP 恢復 ---
     if(player.hp < player.mhp && !(player.buffs.sk_berserk > 0) && (_loadFreeRegen || (player.d.loadTier||0) < 1)) {
         let baseHpRegen = player.d.hpRegenMax > 0 ? roll(1, player.d.hpRegenMax) : 0;
         // 使用 Number() 強制轉換為數字，避免 10 + '1' = 101 的字串相加 Bug
@@ -636,8 +639,10 @@ function regenTick() {
             player.hp = Math.min(player.mhp, player.hp + totalHpRegen);
         }
     }
-    
-    // --- MP 恢復 ---
+}
+function _regenMP() {
+    if(!state.running || player.dead) return;
+    let _loadFreeRegen = hasLoadFreeRegen();
     if(player.mp < player.mmp && (_loadFreeRegen || (player.d.loadTier||0) < 1)) {
         // 同樣加上 Number() 保護
         let totalMpRegen = Number(player.d.mpR || 0);
@@ -646,7 +651,11 @@ function regenTick() {
             player.mp = Math.min(player.mmp, player.mp + totalMpRegen);
         }
     }
-
+}
+function regenTick() {
+    if(!state.running || player.dead) return;
+    _regenHP();
+    _regenMP();
     // 🔧 架構統一：buff 倒數已移至 tick() 的每秒區塊（單一遞減點）。regenTick 現在只負責 HP/MP 恢復與 UI 刷新。
     // 👈 這行是血條與魔條實際上會不會動的關鍵！
     updateUI();
@@ -973,6 +982,7 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     if (player.buffs && player.buffs.haste > 0 && wpn && wpn.hasteStrike) { hitBonus += 30; dmgBonus += 30; }   // 🏺 遺物 殺人蜂的尾刺：加速狀態時額外傷害/命中 +30（命中後於 playerAttack 清除加速）
     let critRate = isRanged ? player.d.rangedCrit : player.d.meleeCrit;
     let critDmg  = isRanged ? player.d.rangedCritDmg : player.d.meleeCritDmg;
+    if (!isRanged && player.d.critDmgLowHp && player.hp < player.d.critDmgLowHp.hp) critDmg += (player.d.critDmgLowHp.add || 0);   // 🏺 鬥士的決戰服裝：剩餘 HP 低於門檻時近距離爆擊傷害 +add%
 
     // 命中判定 = 投擲一顆20面骰，骰到1必定未命中，骰到20為重擊，2~19 則 命中值 >= 判定即命中
     let rawHitValue = player.lv + hitBonus - target.lv + mobEffAC(target);
@@ -1057,6 +1067,7 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     _outDmg = Math.max(1, Math.floor(_outDmg * rlFuryMult()));   // 🔮 紅獅5/5(×1.2)＋😡狂怒5/5：最終傷害（普攻及所有走本函式的物理攻擊：反擊/居合/看破/連擊/連射/穿透/魔擊/物理技能）
     { let _ecm = elementCounterMult(_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId]), target.e);
       if (wpn && wpn.counterAllEle && target.e && target.e !== 'none') _ecm = Math.max(_ecm, 1.4);   // 🏺 遺物 不定形的變幻劍：一般攻擊剋制地/水/火/風一切屬性之敵（強制 ≥×1.4）
+      if (wpn && wpn.counterEles && target.e && wpn.counterEles.includes(target.e)) _ecm = Math.max(_ecm, 1.4);   // 🌑 冥皇執行劍：一般攻擊對指定屬性(地/風)敵人 ×1.4（與屬性剋制取大）
       _outDmg = Math.max(1, Math.floor(_outDmg * _ecm)); }   // ⚔️ 屬性剋制：屬性詞綴優先，否則取揮擊武器基底 ele（「一般攻擊轉為X屬性」遺物·與傭兵路徑 js/06 getWpnEle 對齊）剋怪 ×1.4、被剋 ×0.6（無屬性→×1）
     _outDmg = Math.max(1, Math.floor(_outDmg * consumeWetMult(target, _wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId]))));   // 🏺 海洋水晶球：潮濕目標受風屬性物理傷害 ×2 並解除
     if (_natRoll && player.d.eleWpnMult && (_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId])) === player.d.eleWpnMult.ele) _outDmg = Math.max(1, Math.floor(_outDmg * player.d.eleWpnMult.mult));   // 🏺 遺物 四之牙臂甲：裝對應屬性武器時一般攻擊傷害 ×mult
@@ -1279,7 +1290,8 @@ function rapidfireProc(arrowData) {
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     if (!wpn || !wpn.rapidfire) return;
     if (roll(1, 100) > wpn.rapidfire) return;
-    let _rfN = roll(1, hasMastery('e_rapid') ? 5 : 3);   // 🏅 連射精通：額外箭數 1~3 → 隨機 1~5
+    let _rfMax = hasMastery('e_rapid') ? 5 : 3;
+    let _rfN = wpn.rapidMax ? _rfMax : roll(1, _rfMax);   // 🏅 連射精通：額外箭數 1~3 → 隨機 1~5；🏺 復仇者的十字弩弓 rapidMax：必定觸發最大箭數
     for (let _r = 0; _r < _rfN; _r++) {
         let _alive = [];
         mapState.mobs.forEach((m, i) => { if (m && m.curHp > 0) _alive.push(i); });
@@ -1298,6 +1310,7 @@ function rapidfireProc(arrowData) {
         let _rfMult = player._setGale5 ? (hasMastery('e_rapid') ? 1.00 : 0.80) : (hasMastery('e_rapid') ? 0.50 : 0.30);   // 30%；🏅連射精通50%；🔮疾風5/5 80%；兩者兼具100%
         let _rfDmg = Math.max(1, Math.floor(_res.dmg * _rfMult));
         _t.curHp -= _rfDmg;
+        if (wpn.bonespike && _t.curHp > 0) _t._bonespike = Math.min(10, (_t._bonespike || 0) + 1);   // 🏺 骸骨意志之弓：連射額外箭矢命中→累積 1 層骨刺（上限 10·普攻引爆）
         _t.justHit = getWpnEle(player.eq.wpn, wpn);
         mobWake(_t);
         if (_res.heavy) wearHardSkin(_t, null, true, false);   // 🔧 硬皮消磨：連射箭重擊 → 視為一般重擊 -2
@@ -1614,7 +1627,7 @@ function qiguPlayerAttack(target, wpn) {
         player.mp = Math.min(player.mmp, player.mp + mpOnHitAmount(wpn, _en)); updateUI();
     }
     magicStrikeProc(target);            // 魔擊（力量魔法杖）
-    weaponSpellProc(target);            // 附魔施放：spellProc/procSkill/procPoison/procStatusSkill（巴風特魔杖/冰之女王魔杖/死亡之指等）
+    weaponSpellProc(target, true);      // 附魔施放：spellProc/procSkill/procPoison/procStatusSkill（巴風特魔杖/冰之女王魔杖/死亡之指等）。奇古獸普攻必中→attackHit=true（procOnHit 武器照樣觸發）
 }
 // 奇古獸武器特效（隨強化提升機率）：共鳴=幻影衝擊(80~160無屬性固定)、寒冰=心靈破壞(玩家最大MP5%、不耗MP)
 function qiguWeaponProc(target, wpn) {

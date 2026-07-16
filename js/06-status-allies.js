@@ -451,6 +451,7 @@ function allyAttackOnce(ally) {
         if (wpn && wpn.hasteStrike && ally.buffs && ally.buffs.haste > 0) { hitB += 30; dmgB += 30; }   // 🏺 殺人蜂的尾刺（傭兵）：加速狀態時 +30 命中/傷害（命中後於下方清除加速·鏡像玩家 js/03）
         let critR = isRanged ? (d.rangedCrit||0) : (d.meleeCrit||0);
         let critD = isRanged ? (d.rangedCritDmg||0) : (d.meleeCritDmg||0);
+        if (!isRanged && d.critDmgLowHp && (ally.curHp||0) < d.critDmgLowHp.hp) critD += (d.critDmgLowHp.add || 0);   // 🏺 鬥士的決戰服裝（傭兵）：戰鬥HP<門檻時近爆傷+add%
         let _evSure = !!ally._darkEvadeSure, _evCrit = !!ally._darkEvadeCrit;   // 🆕 v2.6.13 #5b 迴避精通：迴避後下一次一般攻擊必中(_evSure)且必爆(_evCrit)
         if (_evSure || _evCrit) { ally._darkEvadeSure = false; ally._darkEvadeCrit = false; }
         // 🌀 怪物迴避率（傭兵·鏡像玩家 js/04:13）：被迴避仍判定普攻特效/連擊/副手（與未命中分支一致）
@@ -506,7 +507,9 @@ function allyAttackOnce(ally) {
         dmg = Math.max(1, Math.floor(dmg * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（傭兵物理普攻·與玩家普攻 getPhysicalDmg 一致）
         { let _ecmA = elementCounterMult(getWpnEle(ally.eq ? ally.eq.wpn : null, wpn), t.e);
           if (wpn && wpn.counterAllEle && t.e && t.e !== 'none') _ecmA = Math.max(_ecmA, 1.4);   // 🏺 遺物 不定形的變幻劍（傭兵）：剋制一切屬性之敵（≥×1.4）
+          if (wpn && wpn.counterEles && t.e && wpn.counterEles.includes(t.e)) _ecmA = Math.max(_ecmA, 1.4);   // 🌑 冥皇執行劍：一般攻擊對指定屬性(地/風)敵人 ×1.4（傭兵鏡像玩家）
           dmg = Math.max(1, Math.floor(dmg * _ecmA)); }   // ⚔️ 武器屬性剋制倍率（物理普攻）
+        dmg = Math.max(1, Math.floor(dmg * consumeWetMult(t, getWpnEle(ally.eq ? ally.eq.wpn : null, wpn))));   // 🏺 海洋水晶球（傭兵受益端）：潮濕目標受風屬性物理傷害 ×2 並解除
         if (ally.d && ally.d.eleWpnMult && getWpnEle(ally.eq ? ally.eq.wpn : null, wpn) === ally.d.eleWpnMult.ele) dmg = Math.max(1, Math.floor(dmg * ally.d.eleWpnMult.mult));   // 🏺 遺物 四之牙臂甲（傭兵）：裝對應屬性武器時一般攻擊 ×mult
         dmg = Math.max(1, Math.floor(dmg * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷（物理普攻·原全無·鏡像玩家 getPhysicalDmg）
         dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
@@ -529,10 +532,12 @@ function allyAttackOnce(ally) {
         if (ally.d && ally.d.instakillFull && t.curHp === t.hp) { let _rif = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (_rif !== -1 && tryInstakill(t, { p: ally.d.instakillFull, tag: null }, `【協力·${ally._allyName}】隱蔽的死亡草葉`, _rif)) return; }   // 🏺 隱蔽的死亡草葉（傭兵）：命中滿血非BOSS怪機率即死（鏡像玩家 js/04）
         markBossPhysicalHit(t);   // 👑 頭目回血判斷：傭兵的物理命中也算（否則玩家在後排放法術、傭兵在前排砍，頭目仍會回 5%）
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
+        if (wpn && wpn.bonespike && (t._bonespike || 0) > 0 && t.curHp > 0) { let _bs = t._bonespike * 20; t._bonespike = 0; t.curHp -= _bs; t._spellHurt = true; mobWake(t); logCombat(`<span class="font-bold" style="color:#e5e7eb;text-shadow:0 0 6px #6b7280;">【協力·${ally._allyName}·骨刺爆裂】</span>引爆目標身上的骨刺，額外造成 ${_bs} 點固定傷害。`, 'player-special'); }   // 🏺 骸骨意志之弓（傭兵）：一般攻擊引爆所有骨刺（每層 20 固定傷害）
         if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, isRanged ? 'ranged' : 'melee', ally);   // 🌑 血壁空間（傭兵）物理普攻主擊
         if (t.curHp > 0) consumeStrawCurse(t);   // 🐍 詛咒稻草人：傭兵主攻擊亦消耗並額外扣 80 水魔傷（鏡像玩家）
         if (wpn && wpn.strawCurse && t.curHp > 0 && Math.random() * 100 < wpn.strawCurse.rate) { if (!t.st) t.st = newMobStatus(); t.st.strawCurse = Math.max(t.st.strawCurse || 0, wpn.strawCurse.stacks || 3); }   // 🐍 傭兵種下詛咒稻草人（鏡像玩家）
         if (wpn && wpn.onHitEleVuln === 'fire' && t.curHp > 0) t._fireVulnUntil = state.ticks + 30;   // 🏺 灼熱蜥蜴長舌（傭兵施加端）：命中使目標獲得火屬性弱點 3 秒（與玩家共用 _fireVulnUntil）
+        if (wpn && wpn.onHitWet && t.curHp > 0) t._wetUntil = state.ticks + 100;   // 🏺 海洋水晶球（傭兵施加端）：命中使目標潮濕 10 秒（鏡像玩家 js/04·共用 _wetUntil 標記）
         if (wpn && wpn.hasteStrike && ally.buffs && ally.buffs.haste > 0) { ally.buffs.haste = 0; try { _allyLevelRecompute(ally); } catch (e) {} }   // 🏺 殺人蜂的尾刺（傭兵）：一般攻擊命中時失去加速狀態（鏡像玩家 js/04）
         if (ally._setDragonblood2 && dmg > 0) ally.curHp = Math.min(ally.mhp || 1, (ally.curHp || 0) + Math.max(1, Math.floor(dmg * ((ally.curHp < (ally.mhp || 1) * 0.5) ? 0.05 : 0.01))));   // 🐉 v2.6.9 #1b 龍血2/5（傭兵）：造成物理傷害吸血1%（自身HP<50%→5%）·回復戰鬥HP(curHp)
         // 🔧 黑暗妖精傭兵：預設攻擊自動維持附加劇毒（學過 sk_dark_poison 即視為常駐增益）；命中 50%／劇毒精通 100% 使目標中毒（與玩家同規則）
@@ -621,6 +626,8 @@ function _allyIllusionMagicDmg(ally, dmg, recoverMp) {
 }
 // 法師協力：依其選定攻擊魔法施放（手動重現 castSkill 魔法傷害公式：單體/全體、魔攻係數、法師倍率、魔暴、MR減免、剋屬性固定加值）
 function allyCastMagic(ally, sk) {
+    // 🏺 遺物 烈焰巫師的正式長袍（傭兵）：裝備者施放「燃燒的火球」時化為「爆裂的火球」（傭兵施放此技即視為已習得·MP 差額由外層 inline cost 承擔·忽略 4 點微差）
+    if (sk === DB.skills.sk_fireball && ally && ally.eq && ally.eq.armor && DB.items[ally.eq.armor.id] && DB.items[ally.eq.armor.id].fireballBurst) sk = DB.skills.sk_fireball_burst;
     if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'skill', sk && sk.n);   // 🤝 v3.0.70 隊員戰場 sprite：施法動作
     let d = ally.d || {};
     let targets = (sk.target === 'all') ? mapState.mobs.filter(m => m && m.curHp > 0) : [getTarget()].filter(m => m && m.curHp > 0);
@@ -647,6 +654,7 @@ function allyCastMagic(ally, sk) {
             dd = Math.max(1, Math.floor(dd * fragileMult(t) * illuLvMult(ally)));   // 🔮 脆弱（白鳥5）；🔮 幻術士(傭兵)等級加成 ×(1+等級/50)
             dd = Math.max(1, Math.floor(dd * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（也影響傭兵施放的傷害魔法；物理技走 allyStrikeRoll 已含）
             dd = Math.max(1, Math.floor(dd * elementCounterMult(sk.ele, t.e)));   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
+            if (idx === 0) dd = Math.max(1, Math.floor(dd * consumeWetMult(t, sk.ele)));   // 🏺 海洋水晶球（傭兵魔法）：潮濕目標受風屬性魔法傷害 ×2 並解除（只首段骰）
             totalDmg += dd;
         });
         totalDmg = Math.max(1, Math.floor(totalDmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
@@ -828,7 +836,8 @@ function allyRapidfire(ally) {
     let rate = (wpn && wpn.isBow && wpn.rapidfire) ? wpn.rapidfire : (ally._rapidfire || 0);   // 直接讀當前弓的連射機率（相容舊協力快照，確保普攻與三重矢都能連射）
     if (!rate || roll(1, 100) > rate) return;
     let _allyRapid = allyHasMastery(ally, 'e_rapid');   // 🔧 傭兵連射精通：箭數隨機 1~5、傷害 50%（疊疾風5/5 → 100%）
-    let n = roll(1, _allyRapid ? 5 : 3);
+    let _allyRfMax = _allyRapid ? 5 : 3;
+    let n = (wpn && wpn.rapidMax) ? _allyRfMax : roll(1, _allyRfMax);   // 🏺 復仇者的十字弩弓 rapidMax：必定最大箭數
     let _rfMult = ally._setGale5 ? (_allyRapid ? 1.00 : 0.80) : (_allyRapid ? 0.50 : 0.30);
     for (let i = 0; i < n; i++) {
         let alive = []; mapState.mobs.forEach((m, idx) => { if (m && m.curHp > 0) alive.push(idx); });
@@ -842,6 +851,7 @@ function allyRapidfire(ally) {
         dmg = Math.max(1, Math.floor(dmg * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷（連射每箭·原全無·鏡像玩家連射 getPhysicalDmg）
         dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
         mt.curHp -= dmg; mt.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(mt);
+        if (wpn && wpn.bonespike && mt.curHp > 0) mt._bonespike = Math.min(10, (mt._bonespike || 0) + 1);   // 🏺 骸骨意志之弓（傭兵）：連射額外箭矢命中→累積 1 層骨刺（上限 10）
         logCombat(`<span class="text-amber-300 font-bold">【協力·${ally._allyName}·連射】</span>箭矢命中 <span class="${getMobColor(mt.lv)}">${mt.n}</span>，造成 ${dmg} 點傷害。`, 'player');
         if (mt.curHp <= 0) killMob(ti);
         if (wpn && wpn.eff === 'moonburst' && Math.random() < 0.08) { let _mb = _allyProcTarget(mt); if (_mb) allyProcMoonburst(ally, _mb); }   // 🔧 熾炎天使弓：每支連射箭也可觸發月光爆裂（與玩家一致）
@@ -906,6 +916,7 @@ function allyStrikeRoll(ally, t, opts) {
     if (wpn && wpn.hasteStrike && ally.buffs && ally.buffs.haste > 0) { hitB += 30; dmgB += 30; }   // 🏺 殺人蜂的尾刺（傭兵·連擊/反擊/居合/副手共用）：加速時 +30/+30（加速清除只在主攻擊命中·鏡像玩家 js/03）
     let critR = isRanged ? (d.rangedCrit||0) : (d.meleeCrit||0);
     let critD = isRanged ? (d.rangedCritDmg||0) : (d.meleeCritDmg||0);
+    if (!isRanged && d.critDmgLowHp && (ally.curHp||0) < d.critDmgLowHp.hp) critD += (d.critDmgLowHp.add || 0);   // 🏺 鬥士的決戰服裝（傭兵·連擊/穿透/副手等）：戰鬥HP<門檻時近爆傷+add%
     let hit = true, heavy = false, graze = false;
     if (opts.forceHeavy) { heavy = true; }
     else if (opts.forceHit) { heavy = !opts.noHeavy && (roll(1, 20) === 20); }
@@ -1081,6 +1092,7 @@ function allyProcFreeMagicSkill(ally, t, skId, en, areaHit, sourceItem, illusion
     });
     total = Math.floor(total * enhanceWpnFinalMult(en, ally.eq && ally.eq.wpn && DB.items[ally.eq.wpn.id]));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
     total = Math.max(1, Math.floor(total * elementCounterMult(sk.ele, t.e)));   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
+    total = Math.max(1, Math.floor(total * consumeWetMult(t, sk.ele)));   // 🏺 海洋水晶球（傭兵免費施法）：潮濕目標受風屬性魔法傷害 ×2 並解除
     total = Math.max(1, Math.floor(total * equipSkillDmgMult(sk, skId, ally)));   // 🏺 遺物 特定技能傷害倍率（傭兵武器免費施法·冰之女王魔杖冰錐×暴走兔胡蘿蔔等·鏡像玩家 js/04）
     total = _allyIllusionMagicDmg(ally, total, illusionRecoverMp !== false);   // 🔮 全體免費施法只在第一個目標回MP
     if (total > 0) {
@@ -1222,8 +1234,8 @@ function allyWeaponProcs(ally, target, hitInfo) {
             });
         }
     }
-    // 🔧 武器附魔施放（spellProc/procSkill，與玩家一致）：死亡騎士的烈炎之劍／克特之劍／冰之女王魔杖；1% + 每強化 +1%，命中與否皆判定
-    if (wpn.spellProc || wpn.procSkill) {
+    // 🔧 武器附魔施放（spellProc/procSkill，與玩家一致）：一般武器命中與否皆判定；procOnHit 武器僅命中時判定
+    if ((wpn.spellProc || wpn.procSkill) && (!wpn.procOnHit || (hitInfo && hitInfo.hit))) {
         let _en = capWpnEn(wpnInst.en);
         if (Math.random() * 100 < ((wpn.procRateBase || 1) + (wpn.procRatePerEn != null ? wpn.procRatePerEn : 1) * _en)) {
             let st = _allyProcTarget(target);
@@ -2133,7 +2145,7 @@ function alliesTick() {
     player.allies.forEach(ally => {
         if (!ally) return;
         if (!ally._mercPermanentPotions) { ally._mercPermanentPotions = true; try { _allyLevelRecompute(ally); } catch (e) {} }   // 🤝 舊存檔既有傭兵：第一次 tick 補上常駐職業藥水效果
-        if (ally._downed) { if ((ally._reviveCd || 0) > 0) ally._reviveCd--; if ((ally._reviveCd || 0) <= 0) tryAutoReviveMercScroll(ally); return; }   // 🤝 Phase 3：倒地傭兵完全停止行動（不立方/不颶風/不回魔/不攻擊），僅倒數復活冷卻（含背景補跑）；🎫 v2.6.6：15 秒冷卻結束→身上有復活卷軸自動使用
+        if (ally._downed) { if ((ally._reviveCd || 0) > 0) ally._reviveCd--; if ((ally._reviveCd || 0) <= 0 || playerHasAutoReviveEarring()) tryAutoReviveMercScroll(ally); return; }   // 🤝 Phase 3：倒地傭兵完全停止行動（不立方/不颶風/不回魔/不攻擊），僅倒數復活冷卻（含背景補跑）；🎫 v2.6.6：15 秒冷卻結束→身上有復活卷軸自動使用；🏺 巨靈的承諾：裝耳環時立即復活
         if (processAllyStatusTick(ally)) return;   // 🤝 Phase4：異常狀態 DoT 結算（中毒/灼燒/燙傷/出血→可致倒地）；倒地則本回合不行動
         if ((ally._potCd || 0) > 0) ally._potCd--;   // 🍶 傭兵自動喝藥水冷卻（每 tick 遞減·~1 秒）
         allyTryPotion(ally);   // 🍶 HP% 低於安全線→消耗隊長設定的藥水回血（獨立於行動·硬控中仍可喝·安全線=0 則略過）
@@ -2329,7 +2341,7 @@ function reviveMercenary(slotN, method) {
 //   ・在 alliesTick 每 tick 對倒地傭兵呼叫；含背景補跑。玩家死亡仍可觸發（卷軸不需玩家存活，與 reviveMercenary 'scroll' 路徑一致）。
 function tryAutoReviveMercScroll(ally) {
     if (!ally || !ally._downed) return false;
-    if ((ally._reviveCd || 0) > 0) return false;                                            // 15 秒冷卻未結束
+    if ((ally._reviveCd || 0) > 0 && !playerHasAutoReviveEarring()) return false;            // 15 秒冷卻未結束（🏺 巨靈的承諾耳環：跳過冷卻立即復活）
     let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive' && (i.cnt || 0) > 0);
     if (!sc) {                                                                                // 身上沒有復活卷軸
         let ab = document.getElementById('set-auto-buy-revive');                              // 開了「復活卷軸不足時自動購買」且金錢足夠 → 補 1 張（線上/離線補跑共用·讀 checkbox 同 autoActions）
@@ -2634,5 +2646,13 @@ function hasSummonCtrlRing(owner) {
     owner = owner || player;   // 🩸 v2.6.25 owner 參數化：讀 owner.eq（傭兵召喚控制戒指亦生效）
     let eq = owner.eq || {};
     let r1 = eq.ring1, r2 = eq.ring2, r3 = eq.ring3, r4 = eq.ring4;
-    return !!((r1 && r1.id === 'acc_summon_ctrl') || (r2 && r2.id === 'acc_summon_ctrl') || (r3 && r3.id === 'acc_summon_ctrl') || (r4 && r4.id === 'acc_summon_ctrl'));
+    if ((r1 && r1.id === 'acc_summon_ctrl') || (r2 && r2.id === 'acc_summon_ctrl') || (r3 && r3.id === 'acc_summon_ctrl') || (r4 && r4.id === 'acc_summon_ctrl')) return true;
+    if (eq.shin && DB.items[eq.shin.id] && DB.items[eq.shin.id].summonCtrl) return true;   // 🏺 遺物 召喚儀式的魔術布（脛甲）：等同召喚控制戒指
+    return false;
+}
+// 🏺 遺物 巨靈的承諾（耳環）：裝備於耳飾欄時，傭兵/寵物死亡立即自動使用復活卷軸（跳過復活冷卻·仍消耗卷軸）。純看玩家裝備。
+function playerHasAutoReviveEarring() {
+    let eq = (player && player.eq) || {};
+    let e1 = eq.ear1, e2 = eq.ear2;
+    return !!((e1 && DB.items[e1.id] && DB.items[e1.id].autoReviveScroll) || (e2 && DB.items[e2.id] && DB.items[e2.id].autoReviveScroll));
 }

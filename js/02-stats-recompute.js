@@ -20,6 +20,8 @@ function recomputeStats() {
     d.ac = 10; d.er = 0; d.dr = 0;
     d.meleeDmg = 0; d.meleeHit = 0; d.meleeCrit = 0;
     d.crushDr = 0; d.meleeHaste = 0; d.atkSpdPct = 0;   // 🏺 遺物 第二批：受重擊減傷% / 裝近戰武器攻速% / 通用攻速%
+    d.hpRegenFaster = 0; d.noEvade = false;   // 🏺 遺物 巨魔的再生戒指（HP恢復間隔縮短秒數）／笨重的鋼鐵石盾（無法迴避）
+    d.critDmgLowHp = null;   // 🏺 遺物 鬥士的決戰服裝（HP<N 時近爆傷+add）
     d.thornsDmg = 0; d.instakillFull = 0; d.onDmgHeal = null; d.onDmgHealCd = 0; d.onDmgHealName = '';   // 🏺 遺物 第三批：受擊反傷固定值 / 命中滿血怪即死率 / 受擊自癒技能id（onDmgHealCd=冷卻秒數、onDmgHealName=來源名稱）
     d.hurtExplode = 0;   // 🏺 遺物 第四批 爆彈花蕊：受擊時對自己與全體敵人的火魔傷固定值
     d.fireNullify = false;   // 🏺 遺物 火熱愛意：免疫受到的火屬性傷害（每10秒最多1次·js/04 火魔傷攔截·player._fireNullCd 節流）
@@ -311,6 +313,8 @@ d.mr += (baseMr + bonusMr);
         if(ed.er)        d.er         += ed.er;                // 🪆 裝備固定 ER（魔法娃娃：飛龍/吸血鬼/林德拜爾）
         if(ed.extraMp)   d.extraMp    += ed.extraMp;          // 🪆 裝備固定額外魔法點數（魔法娃娃：思克巴女皇）
         if(ed.extraAtk)  d.equipExtraAtk += ed.extraAtk;      // 🐉 裝備額外一般攻擊次數（龍鱗臂甲 +1）
+        if(ed.mcrit)     d.meleeCrit    += ed.mcrit;          // 🏺 防具/飾品的近距離爆擊率加成（遺物 鬥士的決戰服裝 +3%）：上游只在武器迴圈讀 mcrit，防具宣告了卻無人讀＝死欄位，此處補讀
+        if(ed.mcritDmg)  d.meleeCritDmg += ed.mcritDmg;       // 🏺 防具/飾品的近距離爆擊傷害% 加成（同上，補齊非武器來源）
         if(ed.immStone) d.immStone = true;                    // 紅騎士盾牌：免疫石化
         if(ed.immPoison) d.immPoison = true;                  // 潔尼斯戒指：免疫中毒/猛毒/麻痺
         if(ed.magicDrNonEle) d.magicDrNonEle += ed.magicDrNonEle; // 紅騎士盾牌：無屬性魔法減傷
@@ -331,6 +335,9 @@ d.mr += (baseMr + bonusMr);
         if(ed.dotCrit) d.dotCrit = true;                       // 🏺 遺物 永不終止的夢魘：持續傷害可爆擊（js/06 processMobStatusTick）
         if(ed.dmgReflect) d.dmgReflect = Math.max(d.dmgReflect, ed.dmgReflect);   // 🏺 遺物 魅魔女皇的誘惑：受一般攻擊 N% 反射＋免疫（取最高·不疊加）
         if(ed.eleWpnMult) d.eleWpnMult = ed.eleWpnMult;        // 🏺 遺物 四之牙臂甲：裝對應屬性武器時一般攻擊 ×mult（僅副手單槽·無疊加疑慮）
+        if(ed.hpRegenFaster) d.hpRegenFaster += ed.hpRegenFaster;   // 🏺 遺物 巨魔的再生戒指：HP 自然恢復間隔縮短 N 秒（js/03 tick regen 排程）
+        if(ed.noEvade) d.noEvade = true;                       // 🏺 遺物 笨重的鋼鐵石盾：無法迴避攻擊（js/04 受擊迴避閘）
+        if(ed.critDmgLowHp) d.critDmgLowHp = ed.critDmgLowHp;   // 🏺 遺物 鬥士的決戰服裝：HP<N 時近爆傷+add（js/03 getPhysicalDmg／js/06 allyAttackOnce）
         if(ed.allLures) p._allLures = true;                    // 🐾 遺物 馴獸師的飼料袋：裝備即視為持有誘捕狀態（不必吃肉），且捕獲後不消耗（js/05 誘捕判定）
         if(ed.poisonHealMult) d.poisonHealMult = Math.max(d.poisonHealMult, ed.poisonHealMult);   // 🏺 遺物 毒液化身：毒性 DoT 轉治癒倍率（取最高·不疊加）
         // 🛡️ 臂甲（副手）：每強化+1 → HP+10；門檻特效（達 +5/+7/+9 套用對應階、取最高階、非累加）

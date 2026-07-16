@@ -293,6 +293,7 @@ function manualCast(skId) {
 function rollDice(count, sides) { let s = 0; for(let i = 0; i < count; i++) s += roll(1, sides); return s; }
 // 🔮 castSkill 包裝：魔力精通時，依本次施法實際消耗的 MP，回饋傭兵 10%（以 MP 差額判定，涵蓋所有施法分支；轉換類增MP不觸發）
 let _reqWpnWarnAt = -9999;   // 🛡️ v2.6.69 審計#15：reqWpn 不符提示節流（每 60 秒最多一次）
+let _costItemWarnAt = -9999;   // 🌀 costItem 施法材料不足提示節流（每 60 秒最多一次）
 function castSkill(skId) {
     let r;
     if (!(player && player.mastery === 'i_mana')) { r = castSkillInner(skId); }
@@ -321,7 +322,15 @@ function royalMagicFreeCast() {
 }
 let _silenceLogAt = 0;   // ⏱️ 沉默／魔法封印提示節流：自動施法每 tick 會重試→原本每 tick 洗一次頻。共用時間戳，最多每 1 秒顯示 1 次。
 function _logSilenceOnce(msg){ let now = (typeof Date !== 'undefined') ? Date.now() : 0; if(now - _silenceLogAt < 1000) return; _silenceLogAt = now; logSys(msg); }
+// 🏺 遺物 烈焰巫師的正式長袍：裝備者已學會「燃燒的火球」時，其化為「爆裂的火球」。回傳實際要施放的 skId。
+function _fireballMorphId(skId) {
+    if (skId !== 'sk_fireball') return skId;
+    let a = player.eq && player.eq.armor;
+    if (a && DB.items[a.id] && DB.items[a.id].fireballBurst && player.skills && player.skills.includes('sk_fireball')) return 'sk_fireball_burst';
+    return skId;
+}
 function castSkillInner(skId) {
+    skId = _fireballMorphId(skId);   // 🏺 烈焰巫師的正式長袍：燃燒的火球→爆裂的火球
     let sk = DB.skills[skId];
     if(!sk) return false;
     if(inAbsBarrier()) return false;   // 🛡️ 絕對屏障：無法施法（自動/手動皆擋）
@@ -378,6 +387,13 @@ function castSkillInner(skId) {
     if(sk.hpCost && player.hp <= sk.hpCost + 5) return false;  // HP 不足，拒絕施放
     if(sk.hpCost && sk.type !== 'convert') { let _hpSkEl = document.getElementById('set-hp-skill'); let _hpSkThr = _hpSkEl ? (parseFloat(_hpSkEl.value) || 0) : 0; if(_hpSkThr > 0 && (player.mhp || 0) > 0 && (player.hp / player.mhp * 100) < _hpSkThr) return false; }   // 🐉 消耗HP技能：HP 低於自訂門檻(%)時暫停自動施放（自動路徑專用；轉換魔法另有 set-hp-convert 門檻，故排除避免重複）
     if(sk.hpCost && sk.mp && sk.type !== 'convert') { let _mpSkEl = document.getElementById('set-mp-atk'); let _mpSkThr = _mpSkEl ? (parseFloat(_mpSkEl.value) || 0) : 0; if(_mpSkThr > 0 && (player.mmp || 0) > 0 && (player.mp / player.mmp * 100) < _mpSkThr) return false; }   // 🔧 同時消耗HP與MP的技能：MP 低於「攻擊技能MP門檻(set-mp-atk)」時亦暫停自動施放→與HP門檻(set-hp-skill)取「任一不符即停」（攻擊型本就在 autoCastSpells 先擋過此門檻，這裡再涵蓋增益型如覺醒/冥想/隱身/堅固防護）
+    if(sk.costItem) {   // 🌀 施法材料：背包＋倉庫合併計量（比照製作系統），不足則不施放（提示 60 秒節流）
+        let _ciQ = sk.costItem.qty || 1;
+        if(typeof invCountId !== 'function' || invCountId(sk.costItem.id) < _ciQ) {
+            if(state.ticks - _costItemWarnAt > 600) { _costItemWarnAt = state.ticks; logSys(`${(DB.items[sk.costItem.id] || {}).n || '施法材料'}不足，無法施放 ${sk.n}。`); }
+            return false;
+        }
+    }
 
     if(sk.type === 'convert') {
         // 🔧 魔力奪取（drain）：消耗 HP，必須對怪物施展；以異常魔法命中（abnormalMagicHit，與迷魅術一致，
@@ -696,6 +712,7 @@ function castSkillInner(skId) {
                     let d = Math.floor((core + extraMagicDmg) * mrFactor);   // 🔮 魔法不再扣物理 DR
                     d = Math.max(1, d) + fixed;
                     d = Math.max(1, Math.floor(d * elementCounterMult(sk.ele, t.e)));   // ⚔️ 屬性剋制：魔法剋怪 ×1.4、被剋 ×0.6（無屬性→×1）
+                    if (idx === 0) d = Math.max(1, Math.floor(d * consumeWetMult(t, sk.ele)));   // 🏺 海洋水晶球：潮濕目標受風屬性魔法傷害 ×2 並解除（只在首段骰結算·避免多段各×2）
                     d = Math.floor(d * mageDmgMult);   // 保留流程相容性；目前不再追加舊法師專屬倍率
                     d = Math.max(1, Math.floor(d * rlFuryMult()));   // 🔮 紅獅5/5(×1.2)＋😡狂怒5/5：攻擊技能最終傷害
                     // 🔧 魔導精通同屬性傷害×2 已移除(2026-07 用戶要求)
@@ -812,6 +829,7 @@ function castSkillInner(skId) {
         if(sk.haste) player.buffs.haste = Math.max(player.buffs.haste || 0, sk.dur); // 加速術 → 套用 haste 效果
         player.mp -= cost;
         if(sk.hpCost) player.hp = Math.max(1, player.hp - effHpCost(sk));  // 消耗 HP（冥想術/堅固防護/隱身術；🐉 龍血精通減半）
+        if(sk.costItem && typeof consumeMaterialById === 'function') consumeMaterialById(sk.costItem.id, sk.costItem.qty || 1);   // 🌀 施法材料扣除（背包優先、不足取倉庫；上方已驗存量。目前僅增益型技能使用 costItem，其他類型若要用需自行在該分支扣除）
         logCombat(`施放 ${sk.n}。${sk.msg || ''}`, 'magic');
         calcStats();
         return true;
@@ -948,6 +966,7 @@ function autoActions() {
             if(sk.awaken && player.mastery !== 'k_awaken' && ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].some(a => (player.buffs[a]||0) > 0)) return;   // 🐉 覺醒互斥：已有一種覺醒生效時不自動施放其他覺醒（避免互相清除而反覆耗HP/MP）；覺醒精通可同時三種
             if(sk.cube && mapState.current.startsWith('town_')) return;   // 🔮 立方：安全區(村莊)不自動施放，進入狩獵區(非 town_)才展開
             if(sk.stormInterval && mapState.current.startsWith('town_')) return;   // 🌨️🔥 火牢/冰雪颶風等持續傷害增益(STORM_BUFF_SKILLS)：安全區(村莊)無敵人→不自動施放(免空耗 MP/洗版)，與立方/轉換魔法一致
+            if(sk.costItem && mapState.current.startsWith('town_')) return;   // 🌀 消耗道具型增益：安全區無戰鬥損耗，不自動施放以免白耗材料（手動施放不受限）
             // 👑 力盔/敏盔版同效果已生效：跳過自動施放對應的法師/王族魔法版（recomputeStats@4037 會把同名 buff 歸零；若仍自動施放會每 tick 被歸零後反覆重施＝無限洗版）
             if((sid === 'sk_ench_wpn' && (player.buffs.sk_helm_str1||0) > 0) || (sid === 'sk_dex_up' && (player.buffs.sk_helm_dex1||0) > 0) || (sid === 'sk_reveal' && (player.buffs.sk_helm_str2||0) > 0)) return;
             let chk = document.getElementById(`auto-sk-${sid}`);

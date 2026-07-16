@@ -648,6 +648,7 @@ function castSkillInner(skId) {
             return true;
         } else {
             let targets = sk.target === 'all' ? mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead) : [getTarget()].filter(m => m && m.curHp > 0);   // 🛡️ v2.6.69 審計#7：排除同 tick 已死屍體（killMob 只標記·settleDeadMobs 才移除）——原本對屍體結算的傷害會灌進 _burstDmg 使魔爆總量膨脹；與傭兵 allyCastMagic 過濾一致
+            if(sk.bossOnly) targets = targets.filter(m => m && m.boss);   // 🌊 頭目限定技（污濁之水）：非頭目不施放、不扣 MP／冷卻
             if(targets.length === 0) return false;
 
             // 防止對「已具有該異常狀態」的目標重複施放異常：

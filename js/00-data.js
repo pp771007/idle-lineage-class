@@ -1480,6 +1480,7 @@ const DB = {
         "bk_elf_flamesoul": { type: "skillbk", n: "精靈水晶(烈焰之魂)", p: 16000, sk: "sk_elf_flamesoul", gachaWeight: 1, d: "習得「烈焰之魂」（五階精靈魔法・火屬性）。持續 128 秒內，近距離一般攻擊的武器擲骰必定為最大值；效果結束後才能再次施放。" },
         "bk_elf_physboost": { type: "skillbk", n: "精靈水晶(體能激發)", p: 16000, sk: "sk_elf_physboost", gachaWeight: 20, d: "習得「體能激發」（五階精靈魔法・地屬性・增益）。持續 960 秒內，負重狀態下仍可自然恢復 HP、MP；效果結束後才能再次施放。" },
         "bk_elf_energyboost": { type: "skillbk", n: "精靈水晶(能量激發)", p: 16000, sk: "sk_elf_energyboost", gachaWeight: 20, d: "習得「能量激發」（五階精靈魔法・火屬性・增益）。持續 960 秒內，負重狀態下仍可自然恢復 HP、MP；效果結束後才能再次施放。" },
+        "bk_elf_muddywater": { type: "skillbk", n: "精靈水晶(污濁之水)", p: 16000, sk: "sk_elf_muddywater", gachaWeight: 1, d: "封存著「污濁之水」精靈之力的水晶，與之共鳴便能領悟其中奧祕。" },
         "bk_elf_attrfire": { type: "skillbk", n: "精靈水晶(屬性之火)", p: 16000, sk: "sk_elf_attrfire", gachaWeight: 1, d: "習得「屬性之火」（五階精靈魔法・火屬性・增益）。持續 320 秒內，一般攻擊有 30% 機率造成 1.5 倍傷害；效果結束後才能再次施放。" },
         "bk_elf_preciseshot": { type: "skillbk", n: "精靈水晶(精準射擊)", p: 16000, sk: "sk_elf_preciseshot", gachaWeight: 1, d: "習得「精準射擊」（五階精靈魔法・風屬性・輔助・增益）。持續 64 秒內，一般攻擊的最高命中率可提升至 100%；效果結束後才能再次施放。消耗 MP 15。" },
         "bk_elf_stormshot": { type: "skillbk", n: "精靈水晶(暴風神射)", p: 60000, sk: "sk_elf_stormshot", gachaWeight: 1 },
@@ -2567,6 +2568,7 @@ const DB = {
         "sk_elf_attrfire": { n: "屬性之火", type: "buff", tier: 5, reqE: 50, mp: 20, dur: 320, reqEle: "fire", noRefresh: true, attrFireBuff: true, msg: "屬性之火在你的攻擊中燃燒。" },   // 🔧 一般攻擊30%機率傷害×1.5（見 playerAttack，與燃燒鬥志同效）；noRefresh：效果結束才可再施放
         "sk_elf_physboost": { n: "體能激發", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 960, reqEle: "earth", noRefresh: true, loadFreeRegen: true, msg: "體能激發，負重之下仍能調息。" },   // 🔧 負重狀態仍可自然恢復HP/MP（見 regenTick / hasLoadFreeRegen）；noRefresh：效果結束才可再施放
         "sk_elf_energyboost": { n: "能量激發", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 960, reqEle: "fire", noRefresh: true, loadFreeRegen: true, msg: "能量激發，負重之下仍能調息。" },   // 🔧 同體能激發，火屬性版本
+        "sk_elf_muddywater": { n: "污濁之水", type: "atk", tier: 5, reqE: 50, mp: 20, dmgType: "magic", ele: "water", reqEle: "water", bossOnly: true, status: { kind: "muddywater", force: true, dur: 32 }, desc: "只能對頭目施放；必定命中，使其HP自然恢復量減半", msg: "污濁的水流纏繞著目標，阻滯其生命力的匯聚。" },   // 🌊 五階水靈異常：bossOnly=只對頭目·force=必中·dur秒·效果=js/03 頭目每5秒%回血減半·純異常技(無傷害骰)
         "sk_elf_mirror": { n: "鏡反射", type: "buff", tier: 5, reqE: 50, mp: 10, dur: 16, mirror: true, msg: "你的周身浮現一面鏡子。" },   // 🪞 受魔法傷害時 精神%機率（每1點精神+1%），對施法者造成等量必中固定傷害（見 applyMobMagic）；type:buff → 自動施放且效果結束才再施放
         // ================= 【黑暗妖精魔法】 =================
         // 一階（黑暗妖精 Lv15）

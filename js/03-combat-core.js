@@ -478,7 +478,9 @@ function tick() {
         // 👑 戰鬥頭目：每 5 秒恢復 HP。近 5 秒內曾被物理命中→只回 0.5%；完全沒被物理打到→回 2.5%（攻城建築不適用）
         if (m.boss && !m.siegeEnemy && m.race !== '建築' && state.ticks % 50 === 0 && m.curHp > 0 && m.curHp < m.hp) {
             let _recentPhys = m._lastPhysicalHitTick != null && state.ticks - m._lastPhysicalHitTick <= 50;
-            m.curHp = Math.min(m.hp, m.curHp + Math.max(1, Math.floor(m.hp * (_recentPhys ? 0.005 : 0.025))));
+            let _regenPct = _recentPhys ? 0.005 : 0.025;
+            if (m.st && (m.st.muddywater || 0) > 0) _regenPct *= 0.5;   // 🌊 污濁之水：狀態維持中頭目 HP 自然恢復量再減半
+            m.curHp = Math.min(m.hp, m.curHp + Math.max(1, Math.floor(m.hp * _regenPct)));
             if (!state.ff) renderMobs();
         }
         // 常駐被動：HP 未滿 100% 時回復（依等級 15 / 40），不受異常狀態影響；間隔由 regenEvery 決定(預設10 ticks=每1秒)

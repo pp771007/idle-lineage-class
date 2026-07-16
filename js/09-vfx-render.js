@@ -44,6 +44,7 @@ const SPELL_FX = {
     '冰箭': { dir:'冰箭', dirPrefix:'1797-', dirs:8, n:4, fps:12, blend:'screen', proj:true, nw:15, nh:21, ax:0.50, ay:0.50 },
     '冰錐': { dir:'冰錐', dirPrefix:'1809-', dirs:8, n:3, fps:12, blend:'screen', proj:true, nw:35, nh:59, ax:0.50, ay:0.50 },
     '冰雪暴': { dir:'冰雪暴', prefix:'757-0', n:23, fps:16, blend:'screen', h:1.35, ax:0.50, ay:0.55 },
+    '污濁之水': { dir:'污濁之水', prefix:'mw', n:10, fps:12, h:1.1, ax:0.50, ay:0.55 },
     '吸血鬼之吻': { dir:'吸血鬼之吻', dirPrefix:'236-', dirs:8, n:6, fps:12, blend:'screen', proj:true, nw:63, nh:96, ax:0.50, ay:0.50 },
     '呼喚盟友': { dir:'呼喚盟友', prefix:'2281-0', n:7, fps:14, blend:'screen', h:1, ax:0.50, ay:0.55 },
     '地獄之牙': { dir:'地獄之牙', prefix:'1801-0', n:9, fps:14, blend:'screen', h:0.7, ax:0.50, ay:0.55 },
@@ -1264,7 +1265,7 @@ function _renderMobsImpl() {
 
             let _badgeTags = '';
             if(_showMobStatus && m.st) {   // 🩹 狀態開關關閉時不顯示異常狀態徽章
-                let order = ['freeze','stun','stone','sleep','blind','weaken','disease','vacuum','broken','slow','mrhalf','magicseal','fragile','armorbreak','confuse','panic','guardbreak','terror','doom'];   // 🔮 含脆弱、🔧 破甲(黑妖破壞盔甲)、🔮 混亂/恐慌、🐉 護衛毀滅/恐懼/死神；中毒不顯示、出血改用 🩸 emoji（見下方圖片下方列）
+                let order = ['freeze','stun','stone','sleep','blind','weaken','disease','vacuum','broken','slow','mrhalf','magicseal','fragile','armorbreak','confuse','panic','guardbreak','terror','doom','muddywater'];   // 🔮 含脆弱、🔧 破甲(黑妖破壞盔甲)、🔮 混亂/恐慌、🐉 護衛毀滅/恐懼/死神、🌊 污濁；中毒不顯示、出血改用 🩸 emoji（見下方圖片下方列）
                 _badgeTags = order.filter(k => m.st[k] > 0).map(k =>
                     `<span class="px-1 rounded bg-purple-900/70 text-purple-200 text-[10px]">${STATUS_NAME[k]}</span>`).join(' ');
             }

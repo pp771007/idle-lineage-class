@@ -642,8 +642,9 @@ button.classic-skill-cell { cursor:pointer; }
 #login-meta-layer { position:absolute; z-index:3; left:5.8%; top:41.5%; width:25.4%; color:#d8c8a2; text-shadow:0 1px 3px #000; }   /* 🔧 v3.0.41 用戶：版權文字縮小+寬度縮短不超框（width 28.7%→25.4%·left 內縮置中於左框） */
 #login-version { margin-bottom:3%; font-size:clamp(12px,1.05vw,18px) !important; font-weight:700; color:#f2d77f; }
 #login-disclaimer { max-width:none !important; padding:0 !important; margin:0 !important; font-size:clamp(8px,.6vw,11px) !important; line-height:1.45; color:#eee2c7; }
-#slot-select-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,92vw); max-height:92vh; overflow:auto; margin:0 !important; padding:22px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
-#creation-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(1000px,96vw); max-height:96vh; overflow:auto; padding:20px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
+/* max-height 的 vh 要扣掉官方版指引橫幅（見 js/00-data.js `_origBarSyncH`），否則面板可能比可用高度還高、上下被切掉；無橫幅→退回 0，與原本等價 */
+#slot-select-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,92vw); max-height:calc((100vh - var(--orig-bar-h, 0px)) * .92); overflow:auto; margin:0 !important; padding:22px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
+#creation-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(1000px,96vw); max-height:calc((100vh - var(--orig-bar-h, 0px)) * .96); overflow:auto; padding:20px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
 
 /* 🔍 倉庫搜尋框釘在捲動區頂端：物品清單很長（倉庫 5000 格上限；手機還把兩份清單的內捲取消、整個面板一起捲），
    捲到一半想換關鍵字時搜尋框不能跟著捲走。背景要不透明才蓋得住捲到它下面的物品列——村莊 NPC 面板與浮動倉庫視窗底色不同，各給一個。 */

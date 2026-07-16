@@ -1018,7 +1018,9 @@
          會壓過 .hidden、讓載入/創角後「登入畫面關不掉、蓋在遊戲上」→ 玩家卡在選角畫面(踩過 2026-07-06)。
          加 :not(.hidden) 後有 .hidden 時本規則不命中,交還作者的隱藏。 */
       'body.m-mobile #creation-screen:not(.hidden){position:fixed !important;inset:0 !important;top:var(--orig-bar-h,0px) !important;display:block !important;overflow-y:auto !important;padding:0 !important;}',
-      'body.m-mobile #login-art-stage{position:relative !important;width:100vw !important;max-width:100vw !important;aspect-ratio:auto !important;min-height:var(--app-h,100dvh) !important;display:flex !important;flex-direction:column !important;justify-content:center !important;overflow:visible !important;padding:32px 22px 40px !important;box-shadow:none !important;}',
+      /* min-height 要扣掉官方版指引橫幅:舞台是選存檔/創角面板(absolute·top:50%)的定位基準,
+         高度多算一個橫幅 → 面板的中心點跟著往下偏、下緣溢出視窗;--orig-bar-h 無橫幅時為 0,與原本等價。 */
+      'body.m-mobile #login-art-stage{position:relative !important;width:100vw !important;max-width:100vw !important;aspect-ratio:auto !important;min-height:calc(var(--app-h,100dvh) - var(--orig-bar-h,0px)) !important;display:flex !important;flex-direction:column !important;justify-content:center !important;overflow:visible !important;padding:32px 22px 40px !important;box-shadow:none !important;}',
       'body.m-mobile #login-bg-image{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;object-fit:cover !important;opacity:.35 !important;}',
       'body.m-mobile #login-anim-image{display:none !important;}',
       'body.m-mobile #login-title-layer{position:relative !important;left:auto !important;top:auto !important;width:100% !important;text-align:center !important;margin:0 0 6vh !important;z-index:3 !important;}',

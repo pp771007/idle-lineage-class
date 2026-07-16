@@ -380,6 +380,8 @@
         var b = document.createElement('button');
         b.type = 'button';
         b.setAttribute('data-nav', it[0]);
+        b.title = it[2];                        // 只顯示圖案(CSS 隱藏文字標籤)→ 名稱改掛這裡,長按看得到
+        b.setAttribute('aria-label', it[2]);    // 同上:讀螢幕軟體仍讀得出這顆是什麼
         b.innerHTML = '<span style="font-size:20px;line-height:1">' + it[1] + '</span><span style="font-size:11px;line-height:1.2">' + it[2] + '</span>';
         if (it[3] === 'view') { b.setAttribute('data-v', it[0]); b.addEventListener('click', function () { setView(it[0]); }); }
         else if (it[3] === 'logout') { b.addEventListener('click', doLogout); }
@@ -862,7 +864,13 @@
       'body.m-mobile .tab-bar .btn{padding:8px 2px !important;font-size:13px !important;line-height:1.2 !important;white-space:nowrap !important;}',
 
       /* 底部導覽列 */
-      'body.m-mobile #m-nav{display:flex !important;flex:0 0 auto !important;height:56px;background:#0f172a;border-top:1px solid #334155;}',
+      /* 導覽列高度抽成變數:#m-log-sheet 的 bottom 要跟它對齊,寫死兩份遲早改一邊忘一邊。 */
+      'body.m-mobile{--m-nav-h:44px;}',
+      /* 只留圖案(使用者要求):文字標籤隱藏、圖案放大、列高 56→44 把空間還給遊戲。
+         標籤改掛在 title/aria-label(見 buildNav),長按仍看得到、也不影響無障礙。 */
+      'body.m-mobile #m-nav{display:flex !important;flex:0 0 auto !important;height:var(--m-nav-h);background:#0f172a;border-top:1px solid #334155;}',
+      'body.m-mobile #m-nav button > span:last-child{display:none !important;}',
+      'body.m-mobile #m-nav button > span:first-child{font-size:24px !important;}',
       'body.m-mobile #m-nav button{flex:1;background:transparent;border:none;color:#94a3b8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;font-family:inherit;touch-action:manipulation;}',   /* touch-action:manipulation:取消 iOS 雙擊縮放的 300ms 等待 → click 在 touchend 當下就發,不會被 mirror/戰鬥重排插隊取消(iPhone 要按多下才有反應的根因) */
       'body.m-mobile #m-nav button.m-active{color:#fcd34d;background:#1e293b;}',
       'body.m-mobile #m-nav button:active{background:#334155;}',
@@ -870,7 +878,7 @@
       /* 戰鬥/系統日誌:底部浮動面板。切換/關閉做成 ⇆/✕ 兩顆小鈕注入原本標題列,不再另開一排。
          原標題列半透明(讓血條透出),日誌內文(.log-bg 自帶深色底)維持不透明保持可讀。 */
       '#m-log-sheet{display:none;}',
-      'body.m-mobile #m-log-sheet{display:none;position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));height:45dvh;height:45vh;z-index:50;flex-direction:column;background:transparent;border-top:2px solid #475569;box-shadow:0 -12px 34px rgba(0,0,0,.6);}',
+      'body.m-mobile #m-log-sheet{display:none;position:fixed;left:0;right:0;bottom:calc(var(--m-nav-h) + env(safe-area-inset-bottom,0px));height:45dvh;height:45vh;z-index:50;flex-direction:column;background:transparent;border-top:2px solid #475569;box-shadow:0 -12px 34px rgba(0,0,0,.6);}',
       'body.m-mobile.mlog-open #m-log-sheet{display:flex !important;}',
       'body.m-mobile #m-log-body{flex:1 1 auto;min-height:0;display:flex;overflow:hidden;background:transparent;}',
       'body.m-mobile #m-log-body #combat-log-panel,body.m-mobile #m-log-body .m-syslog{flex:1 1 auto !important;width:100%;height:auto !important;min-height:0 !important;margin:0 !important;border-radius:0 !important;background:transparent !important;border:none !important;box-shadow:none !important;}',

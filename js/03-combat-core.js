@@ -568,7 +568,7 @@ const SANCT_RESPAWN_COST = { cursed_dark_elf_sanctuary: 'item_dk_book', collapse
 function sanctBossRespawnCharge() {
     let cost = SANCT_RESPAWN_COST[mapState.current];
     if(!cost) return true;
-    if(state.ff) return true;   // 🌑 離線/補跑期間不收費（兩間 BOSS 房已由 js/offline.js maybeCatchup 排除，不會走到；此為雙保險，避免任何補跑路徑燒書）
+    // 🌑 離線/補跑（state.ff）期間照常扣費：「離線＝線上照跑」，人在 BOSS 房掛機本來就每次復活扣 1 入場道具；扣光→踢回村→補跑自然停。
     let d0 = DB.items[cost];
     let bossName = (mapState.current === 'collapsed_elder_council_hall') ? '冥皇丹特斯' : '吉爾塔斯';
     let ci = player.inv.findIndex(x => x && x.id === cost && (x.cnt || 1) >= 1);
@@ -581,7 +581,7 @@ function sanctBossRespawnCharge() {
     let it = player.inv[ci];
     if((it.cnt || 1) > 1) it.cnt -= 1; else player.inv.splice(ci, 1);
     logSys(`<span class="text-cyan-300">你獻祭了 1 個 ${d0 ? d0.n : cost}，${bossName} 再度降臨……</span>`);
-    try { renderTabs(true); saveGame(); } catch(e){}
+    if(!state.ff) { try { renderTabs(true); saveGame(); } catch(e){} }   // 🌑 補跑期間不逐次存檔（離線每 5 秒檢查點統一落地·避免數十次序列化拖慢結算）
     return true;
 }
 const BOSS_BIG_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair'];   // 👑 方案B放大版面只套用這3個龍窟(不含底比斯祭壇等其餘純BOSS房)

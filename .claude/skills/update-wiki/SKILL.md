@@ -1,6 +1,6 @@
 ---
 name: update-wiki
-description: 放置天堂小百科/掉落查詢的更新 SOP — diff 驅動、逐檔逐頁機械式對照原作者改動，補進 afk-wiki.js / afk-dex.js / afk-extradata.js，測過再更新 checkpoint。當使用者說「更新小百科」「同步小百科」「補小百科內容」或 /update-wiki 時使用。
+description: 放置天堂小百科/掉落查詢的更新 SOP — diff 驅動、逐檔逐頁機械式對照「我方 js 改動」(選擇性移植/手動合併/自行修改皆算·錨點是我方 reconciledIndexCommit，不比上游、不做整檔同步)，補進 afk-wiki.js / afk-dex.js / afk-extradata.js，測過再更新 checkpoint。當使用者說「更新小百科」「同步小百科」「補小百科內容」或 /update-wiki 時使用。
 disable-model-invocation: true
 ---
 

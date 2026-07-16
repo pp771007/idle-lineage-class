@@ -529,6 +529,10 @@
 /* 同上：這幾個全屏疊層用 tailwind 的 `fixed inset-0`（class 沒有自己的規則可加），故在此統一讓開。
    id 選擇器(1,0,0) 蓋得過 tailwind 的 .inset-0(0,1,0)，與 css 引入順序無關。 */
 #card-book, #equip-book, #misc-book, #relic-book, #collection-panel { top: var(--orig-bar-h, 0px); }
+/* 內層面板寫死 `max-h-[92vh]`（tailwind 建置檔裡的固定值，改不動）＝以「完整視窗高」算。外框讓開橫幅後只剩
+   「視窗−橫幅」高 → 收集紀錄一多、面板長到 92vh 就比外框還高；外框又是 items-center → 溢出往上下兩端各漫一半
+   → 上緣被橫幅吃掉（玩家：一開圖鑑就被遮）。改成以「可用高度」的 92% 為上限；無橫幅時退回 92vh，與原本等價。 */
+#card-book > div, #equip-book > div, #misc-book > div, #relic-book > div { max-height: calc((100vh - var(--orig-bar-h, 0px)) * .92); }
 #game-screen { position: absolute; inset: 0; padding: 16px; }   /* 吃滿整個舞台（取代舊 max-w-[1600px] 置中→改用滿版 1920） */
 /* 🔧 三欄寬度鎖定：中央欄 min-width:0 → 內容(動畫怪原生尺寸圖 max-width:none,寬幅怪可超出格寬)不得把中央欄「最小內容寬」撐大;
    側欄 flex-shrink:0 → 任何情況不被中央內容擠壓。否則寬怪一出場側欄被擠窄→中央變寬→戰鬥區(等比定高)跟著脹縮,怪換場整塊畫面反覆縮放(2026-07-07 玩家回報「好晃」)。 */

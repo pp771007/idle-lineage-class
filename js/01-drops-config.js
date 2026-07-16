@@ -800,7 +800,7 @@ const SHERINE_SET_TEXT = {
     '學徒': ['2件：MP自然恢復+5、額外魔法點數+6', '3件：魔法爆擊率+3%', '5件：MP 低於最大值30%時，所有技能 MP 消耗減半（MP回升超過30%即恢復）'],
     '魔女': ['2件：魔法傷害+3', '3件：水屬性抗性+10、額外魔法點數+5', '5件：每觸發 5 次共鳴，免費發動一次冰雪暴（無需學會）'],
     '暗影': ['2件：額外傷害+7', '3件：觸發迴避時恢復 2% HP', '5件：雙擊觸發的額外一般攻擊傷害加倍'],
-    '幻覺': ['2件：魔法傷害命中時，恢復「等級/10」的MP', '3件：輔助技能消耗MP減少50%', '5件：敵人受到非自動攻擊技能的魔法傷害時，再次受到額外相同傷害（此額外傷害不再觸發套裝效果）'],
+    '幻覺': ['2件：立方、冰雪颶風／火牢持續傷害、魔爆及武器內建／免費觸發魔法每次發動並造成傷害時，恢復一次「等級/10」的MP（不因命中多名敵人重複恢復）', '3件：輔助技能消耗MP減少50%', '5件：上述魔法造成傷害時，再次造成額外相同傷害（不包含一般傷害法術、共鳴與反射；額外傷害不再觸發套裝效果）'],
     '龍血': ['2件：造成物理傷害時恢復1%該傷害的HP（自身HP低於50%時改為5%）', '3件：施放消耗HP的技能可獲得「龍裔」10秒，受到傷害減少15%', '5件：消耗HP技能造成傷害提高20%'],
     '狂怒': ['2件：負重上限+500', '3件：最大HP+20%', '5件：HP每少10%，造成傷害+4%、受到傷害-4%（最多±20%，即HP低於50%時達上限）']
 };
@@ -1094,8 +1094,12 @@ function hasMastery(id) { return !!(player && player.mastery === id); }
 function allyHasMastery(ally, id) { return !!(ally && ally.mastery === id); }   // 🔧 傭兵吃「自身存檔」的精通（不吃主玩家精通）
 // 🌟 v3.0.99 隊長團隊光環：任一隊員(玩家或未倒地傭兵)維持該 buff 即全隊生效。清單供「傭兵可維持/隊伍面板可開關/避免重複施放」使用。
 //   ⚠️不含完全免疫類(絕對屏障/大地屏障/魔法屏障·刻意不給傭兵)。golem/ogre/lich 為幻術幻象召喚(illuSummon)·此處僅列其「光環」由玩家提供·傭兵暫不維持(見 _isMercSelfBuff)。
-const TEAM_AURA_SKILLS = ['sk_elf_earthbless', 'sk_elf_steelguard', 'sk_elf_watervital', 'sk_illu_avatar'];   // 傭兵可維持的團隊光環（大地祝福AC-7·鋼鐵防護受傷-5%·水之元氣治癒×2·化身受傷-3%+攻擊+10）
-// 團隊光環是否有「任一隊員(排除 exclude)」維持中：exclude 傳「受益者本身」→其自身光環已由 recomputeStats 套進自身 d，避免與此 helper 雙算（僅對 recompute 有套進 d 的光環需排除·如 AC/攻擊；受傷減免/水之元氣未套 d 故傳 undefined 不排除）。
+const TEAM_AURA_SKILLS = ['sk_elf_earthbless', 'sk_elf_watervital', 'sk_illu_avatar'];   // 傭兵可維持的團隊光環（大地祝福AC-7·水之元氣治癒×2·化身受傷-3%+攻擊+10）。任一來源施放一次即惠及玩家、傭兵、寵物與召喚物，同技能不重複疊加。鋼鐵防護已改為施法者自身 AC-10（d.ac），移出團隊光環。（王族灼熱武器/閃亮之盾雖有 teamAura 欄，其全隊效果尚未接線，暫不列入。）
+// 🤝 v3.4.45 單體輔助共享清單：施法者(玩家/傭兵)自己有清單內 buff、隊友沒有 → 由 shareTeamBuffs(js/06) 一次補滿所有缺者(逐一扣施法者 MP)。與「自動維持勾選」解耦(只看清單＋是否持有)。
+//   ⚠️其中原為全隊光環者(幻覺歐吉/巫妖/鑽石高崙/化身·水之元氣)已於本版改單體：移出 TEAM_AURA_SKILLS＋teamIlluAura/teamAcBonus/teamDmgReduceMult 只對寵物/召喚保留(forMinion)；玩家/傭兵改各自持有(recompute d)＋此共享逐人補。
+const TEAM_SHARE_BUFFS = new Set(['sk_holy_wpn', 'sk_dex_up', 'sk_haste_spell', 'sk_bless_wpn', 'sk_str_up', 'sk_holy_barrier', 'sk_illu_focus', 'sk_elf_windshot', 'sk_elf_earthshield', 'sk_elf_preciseshot', 'sk_elf_stormeye', 'sk_heal_energy_storm']);   // 🌀 單體輔助全隊共享（施法者有→幫缺的傭兵/玩家補）。⚠️只收「純自身 buff」；歐吉/巫妖/高崙/化身/大地祝福/水之元氣走 teamIlluAura/teamAcBonus/teamDmgReduceMult 光環投射（我方既有），不可再進此 Set 否則雙算。
+// ⚠️ v3.4.45 暴風之眼(sk_elf_stormeye·+2遠傷/+2遠命)＝用戶要「一次施放全隊生效」：以自動共享達成（一位維持者→鋪給全隊玩家/傭兵·各自 recompute d 生效）。寵物/召喚未涵蓋（真．全隊 ranged 光環需改 8 個傷害熱點·邊際效益低·暫以共享代之）。
+// 團隊光環是否有「任一隊員(排除 exclude)」維持中：exclude 傳「受益者本身」→其自身光環已由 recomputeStats 套進自身 d，避免與此 helper 雙算（僅對 recompute 有套進 d 的光環需排除·如 AC/攻擊）。
 function _teamAuraHas(sid, exclude) {
     if (typeof player !== 'undefined' && player && player !== exclude && player.buffs && (player.buffs[sid] || 0) > 0) return true;
     let al = (typeof player !== 'undefined' && player && player.allies) || [];

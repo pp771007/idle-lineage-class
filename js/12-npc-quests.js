@@ -394,7 +394,15 @@ function renderWarehouseNPC(div){
     if (!div) return;
     _activePanel = null;   // 倉庫不需自動刷新
     let w = loadWarehouse();
-    let mkBtn = (it, act) => `<button onclick="${act}('${it.uid}')" data-tip-uid="${it.uid}" data-tip-src="${act === 'whWithdraw' ? 'wh' : 'inv'}" class="tip-host btn w-full text-left py-1.5 px-2 text-sm bg-slate-800 hover:bg-slate-700 border-slate-600">${getItemFullName(it)}</button>`;
+    // 本職業穿不了的裝備標暗紅底＋[無法裝備]：比照背包分頁的判定與配色（checkCanEquip 為唯一真實閘門，
+    // 含性別頭像/遺物/各職業專屬規則），避免從倉庫領出一堆自己不能用的裝備。存入側同樣標，兩邊一致。
+    let _cantEquip = (it) => { let d = DB.items[it.id]; return !!(d && (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') && !checkCanEquip(it)); };
+    let mkBtn = (it, act) => {
+        let bad = _cantEquip(it);
+        let skin = bad ? 'bg-red-950/40 hover:bg-red-900 border-red-900' : 'bg-slate-800 hover:bg-slate-700 border-slate-600';
+        let tag = bad ? ' <span class="text-red-500 text-[10px] font-bold">[無法裝備]</span>' : '';
+        return `<button onclick="${act}('${it.uid}')" data-tip-uid="${it.uid}" data-tip-src="${act === 'whWithdraw' ? 'wh' : 'inv'}" class="tip-host btn w-full text-left py-1.5 px-2 text-sm ${skin}">${getItemFullName(it)}${tag}</button>`;
+    };
     let _invItems = player.inv.filter(it => whMatchFilter(it.id, it) && !it.lock);   // 🔒 鎖定物品不顯示於倉庫存放清單（用戶要求：鎖定物品存放時不顯示）
     let _whItems  = w.items.filter(it => whMatchFilter(it.id, it));
     let invHtml = _invItems.length ? _invItems.map(it => WH_NO_STORE.includes(it.id)

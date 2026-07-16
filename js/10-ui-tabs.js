@@ -751,6 +751,20 @@ function relicEffectLabels(d, item) {
     if (d.aggroWeight)          e.push(`被敵人鎖定的權重 ${d.aggroWeight > 0 ? '+' + d.aggroWeight : d.aggroWeight}`);
     if (d.aggroHide)            e.push('敵人會優先攻擊隊上沒有裝備此物品的人');
     if (d.allLures)             e.push('視為持有全部的誘捕道具');
+    if (d.counterEles)          e.push(`一般攻擊剋制${(Array.isArray(d.counterEles) ? d.counterEles : [d.counterEles]).map(_ele).join('、')}屬性敵人（傷害 ×1.4）`);
+    if (d.onHitWet)             e.push('一般攻擊命中使敵人潮濕（潮濕的敵人下次受到的風屬性傷害 ×2）');
+    if (d.noEvade)             e.push('無法迴避敵人的攻擊（暗隱術不受影響）');
+    if (d.rapidMax)             e.push('連射必定射出最大箭數');
+    if (d.bonespike)            e.push('連射每命中一箭累積 1 層骨刺；一般攻擊引爆全部層數，每層造成 20 點固定傷害');
+    if (d.critDmgLowHp)         e.push(`HP 低於 ${d.critDmgLowHp.hp} 時，近距離爆擊傷害 +${d.critDmgLowHp.add}%`);
+    if (d.castOnHurt)           e.push(`受到傷害時 ${d.castOnHurt.rate}% 機率免費施放你設定的自動攻擊法術`);
+    if (d.fireballBurst)        e.push('施放「燃燒的火球」時改為施放威力更強的「爆裂的火球」');
+    if (d.hpRegenFaster)        e.push(`HP 自然恢復的間隔縮短（每級 -1 秒，最短 3 秒；目前 ${Math.max(3, Math.round((160 - 10 * d.hpRegenFaster) / 10))} 秒一次）`);
+    if (d.autoReviveScroll)     e.push('傭兵／寵物倒下時自動消耗復活卷軸立即復活（跳過復活冷卻）');
+    if (d.summonCtrl)           e.push('視為持有召喚控制戒指（可指定召喚的怪物種類）');
+    if (d.petDmgReduce)         e.push(`出戰寵物受到的傷害 -${Math.round(d.petDmgReduce * 100)}%`);
+    if (d.petBleed)             e.push(`出戰寵物的一般攻擊附加出血${d.petBleed.rate ? `（${d.petBleed.rate}% 機率）` : ''}`);
+    if (d.procOnHit)            e.push('附魔法術僅在一般攻擊命中時才會觸發');
     return e;
 }
 function buildItemDescHTML(item) {

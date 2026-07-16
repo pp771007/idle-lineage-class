@@ -1176,17 +1176,8 @@ function _pet8Probe(form, dir) {
     let acts = ['walk', 'idle', 'attack', 'skill', 'hurt', 'death'];
     let pending = acts.length * 2;
     let finish = () => { if (--pending > 0) return; _pet8Cache[key] = out.idle ? out : null; };
-    let probeSeq = (target, k, pfx, minF) => {
-        let frames = [], _min = minF || 2;
-        let done = () => { target[k] = frames.length >= _min ? frames : null; finish(); };
-        let tryLoad = (i) => {
-            if (i >= PET_ANIM_MAXF) { done(); return; }
-            let im = new Image();
-            im.onload = () => { frames.push(im); tryLoad(i + 1); };
-            im.onerror = () => done();
-            im.src = folder + pfx + i + '.png';
-        };
-        tryLoad(0);
+    let probeSeq = (target, k, pfx, minF) => {   // 🚀 平行探測（滑動窗口·共用 js/09 _probeFramesWin）
+        _probeFramesWin(i => folder + pfx + i + '.png', PET_ANIM_MAXF, minF || 2, frames => { target[k] = frames; finish(); });
     };
     acts.forEach(a => { probeSeq(out, a, a + '_', a === 'hurt' ? 1 : 2); probeSeq(out.shadow, a, a + '_s_', 1); });
 }

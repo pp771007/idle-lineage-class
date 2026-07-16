@@ -1587,6 +1587,70 @@ function _mobImgErr(img) {
 //   ⚠️ 目標怪須已部署且在 MOB_ANIM_NAMES；共用怪自身也要加進 MOB_ANIM_NAMES(+SPRITE_SHADOW 若目標有 _s)。目標更新→共用怪自動跟著(真共用非複製)。
 const MOB_ANIM_ALIAS = { '老虎': '虎男' };   // 🔗 動畫資料夾共用 alias(名→目標名)·目前無條目(強化白螞蟻群 v3.0.10 已重匯 0xFF 自身幀→移除 alias·改讀自己的資料夾)
 function _animDir(name) { return (typeof MOB_ANIM_ALIAS !== 'undefined' && MOB_ANIM_ALIAS[name]) ? MOB_ANIM_ALIAS[name] : name; }
+// 🚀 幀探測平行化（滑動窗口）：取代「載完第 N 張才載第 N+1 張」的串行鏈——一次最多 6 張在途，
+//   高延遲環境（GitHub Pages RTT ~100ms）首次動畫就緒時間大幅縮短。語意不變：幀必須從 0 連續、
+//   遇缺號即止；缺號當下已在途的最多多載 5 個 404（無害·不進結果）。
+//   urlFor(i)→第 i 幀 URL；done(frames|null, n)=連續幀陣列（<minF 給 null）＋連續幀數。
+//   共用於 _mobAnimProbe/_mob8Probe/_battleSpriteProbe/js22 寵物八方向。
+// 📇 幀數 manifest 查表（js/anim-manifest.js·工具 tools/gen-anim-manifest.js）：由 urlFor(0) 反解「資料夾＋前綴」→ 已知幀數。
+//   回傳 number＝確定幀數（0＝確定沒有此序列·連一個請求都不用發）；null＝manifest 未涵蓋 → 呼叫端退回原本的 404 探測（安全網）。
+//   ⚠️ 三棵資產樹的 URL 編碼不一致（_mobAnimProbe 用裸中文名·_mob8Probe/js22/classanim 用 encodeURIComponent）→ 一律 decodeURIComponent 正規化後再查。
+function _manifestCount(url0) {
+    if (typeof ANIM_MANIFEST === 'undefined' || !ANIM_MANIFEST) return null;
+    let p; try { p = decodeURIComponent(url0); } catch (e) { return null; }   // 壞的 % 序列→退探測
+    if (p.slice(-5) !== '0.png') return null;
+    let parts = p.slice(0, -5).split('/');                                    // 去掉結尾的 "0.png"（urlFor(0) 的索引恆為單字元 0）
+    if (parts.length < 4) return null;
+    let ent = ANIM_MANIFEST[parts.slice(0, 3).join('/')];                     // assets/<tree>/<資料夾>
+    if (!ent) return null;                                                    // 整個資料夾不在表內→退探測（不敢斷言 0）
+    let n = ent[parts.slice(3).join('/')];                                    // 前綴（八方向含 "d6/" 前置）
+    return (typeof n === 'number') ? n : 0;                                   // 資料夾在表內但無此前綴＝確定 0 幀
+}
+function _probeFramesWin(urlFor, maxF, minF, done) {
+    // 🚀 快路徑：幀數已知→直接平行載精確張數（零 404·零探測往返·離線同樣受益）。
+    //    仍逐幀檢查載入結果並只取「從 0 起的連續段」→ manifest 過期(少載/多載)也不會壞，語意與探測完全一致。
+    let known = _manifestCount(urlFor(0));
+    if (known !== null) {
+        if (known === 0) { done(null, 0); return; }                           // 確定沒有此序列→零請求
+        let got = [], left = known;
+        let step = () => {
+            if (--left > 0) return;
+            let n = 0;
+            while (n < known && got[n]) n++;                                  // 連續段（與探測同語意）
+            done(n >= (minF || 2) ? got.slice(0, n) : null, n);
+        };
+        for (let i = 0; i < known; i++) {
+            let im = new Image();
+            im.onload = () => { got[i] = im; step(); };
+            im.onerror = () => { got[i] = false; step(); };                   // manifest 過期→該幀當缺號·截斷至連續段
+            im.src = urlFor(i);
+        }
+        return;
+    }
+    const WIN = 6;
+    let results = [], next = 0, inFlight = 0, stopAt = maxF, finished = false;
+    function settle() {
+        if (finished) return;
+        let n = 0;
+        while (n < stopAt && results[n]) n++;                      // 從 0 起算的連續已載幀數
+        if (n >= stopAt || results[n] === false) {                 // 連續段已確定（其後在途的載完也不影響結果）
+            finished = true;
+            done(n >= minF ? results.slice(0, n) : null, n);
+            return;
+        }
+        pump();
+    }
+    function pump() {
+        while (!finished && inFlight < WIN && next < stopAt) {
+            let i = next++; inFlight++;
+            let im = new Image();
+            im.onload = () => { inFlight--; results[i] = im; settle(); };
+            im.onerror = () => { inFlight--; results[i] = false; if (i < stopAt) stopAt = i; settle(); };
+            im.src = urlFor(i);
+        }
+    }
+    pump();
+}
 function _mobAnimProbe(name) {
     if (_mobAnimCache[name] !== undefined) return;
     _mobAnimCache[name] = 'probing';
@@ -1609,17 +1673,13 @@ function _mobAnimProbe(name) {
         _mobAnimCache[name] = ok ? out : null;
         if (ok) _mobAnimEvict();   // 🧠 記帳後立即檢查額度（成長只發生在探測完成這一刻）
     };
-    let probeSeq = (target, key, prefixes, minF) => {   // 依前綴逐號載入到缺號為止；idle 先試 idle_ 再退裸編號。minF=最少幀數(受擊 hurt 允許 1 幀)
-        let frames = [], pi = 0, _min = minF || 2;
-        let done = () => { target[key] = frames.length >= _min ? frames : null; finish(); };
-        let tryLoad = (i) => {
-            if (i >= MOB_ANIM_MAX_FRAMES) { done(); return; }
-            let im = new Image();
-            im.onload = () => { frames.push(im); tryLoad(i + 1); };
-            im.onerror = () => { if (i === 0 && pi + 1 < prefixes.length) { pi++; tryLoad(0); } else done(); };
-            im.src = `assets/anim/${animName}/${prefixes[pi]}${i}.png`;
-        };
-        tryLoad(0);
+    let probeSeq = (target, key, prefixes, minF) => {   // 依前綴平行探測(滑動窗口)到缺號為止；idle 先試 idle_ 再退裸編號。minF=最少幀數(受擊 hurt 允許 1 幀)
+        let pi = 0;
+        let attempt = () => _probeFramesWin(i => `assets/anim/${animName}/${prefixes[pi]}${i}.png`, MOB_ANIM_MAX_FRAMES, minF || 2, (frames, n) => {
+            if (!frames && n === 0 && pi + 1 < prefixes.length) { pi++; attempt(); return; }   // 第 0 幀即缺→換下一個前綴重試（同舊制：僅首幀缺才換前綴）
+            target[key] = frames; finish();
+        });
+        attempt();
     };
     probeSeq(out, 'idle', ['idle_', '']);
     probeSeq(out, 'spawn', ['spawn_']);
@@ -1691,17 +1751,8 @@ function _mob8Probe(name, dir) {
     let acts = ['idle', 'attack', 'hurt', 'death'];
     let pending = acts.length * 2;
     let finish = () => { if (--pending > 0) return; _mob8Cache[key] = out.idle ? out : null; };
-    let probeSeq = (target, k, pfx, minF) => {
-        let frames = [], _min = minF || 2;
-        let done = () => { target[k] = frames.length >= _min ? frames : null; finish(); };
-        let tryLoad = (i) => {
-            if (i >= MOB_ANIM_MAX_FRAMES) { done(); return; }
-            let im = new Image();
-            im.onload = () => { frames.push(im); tryLoad(i + 1); };
-            im.onerror = () => done();
-            im.src = folder + pfx + i + '.png';
-        };
-        tryLoad(0);
+    let probeSeq = (target, k, pfx, minF) => {   // 🚀 平行探測（滑動窗口·見 _probeFramesWin）
+        _probeFramesWin(i => folder + pfx + i + '.png', MOB_ANIM_MAX_FRAMES, minF || 2, frames => { target[k] = frames; finish(); });
     };
     acts.forEach(a => { probeSeq(out, a, a + '_', a === 'hurt' ? 1 : 2); probeSeq(out.shadow, a, a + '_s_', 1); });
 }
@@ -1929,16 +1980,8 @@ function _battleSpriteProbe(form) {
         // 🏹 弓/十字弓沒有 bow_skill_ 幀:施放技能借用攻擊姿勢,持弓者施法不再退回空手 skill_(玩家+傭兵共用此快取)
         if (form.wpn === 'bow' && !out.wskill && out.attack) { out.wskill = out.attack; if (out.shadow && !out.shadow.wskill && out.shadow.attack) out.shadow.wskill = out.shadow.attack; }
         _morphBattleCache[form.key] = out; _battleSpriteEvict(); } };
-    let probeSeq = (target, key, pfx, minF) => {
-        let frames = [], _min = minF || 2;
-        let tryLoad = (i) => {
-            if (i >= MOB_ANIM_MAX_FRAMES) { target[key] = frames.length >= _min ? frames : null; finish(); return; }
-            let im = new Image();
-            im.onload = () => { frames.push(im); tryLoad(i + 1); };
-            im.onerror = () => { target[key] = frames.length >= _min ? frames : null; finish(); };
-            im.src = form.base + pfx + i + '.png';
-        };
-        tryLoad(0);
+    let probeSeq = (target, key, pfx, minF) => {   // 🚀 平行探測（滑動窗口·見 _probeFramesWin）
+        _probeFramesWin(i => form.base + pfx + i + '.png', MOB_ANIM_MAX_FRAMES, minF || 2, frames => { target[key] = frames; finish(); });
     };
     let pfxOf = (a) => (form.wpn && a !== 'skill' && a !== 'death') ? form.wpn + '_' + a + '_' : a + '_';   // 職業形態：idle/attack/hurt 帶武器前綴·skill/death 共用
     ['idle', 'attack', 'skill', 'hurt', 'death'].forEach(a => {

@@ -52,6 +52,7 @@
 
     trackAppHeight();      // 量真實可視高度寫進 --app-h,蓋掉不可靠的 100vh
     tagCreationPanel();    // 標記創角面板子層,給 CSS 改成手機直向堆疊
+    tagTabBarOrder();      // 標記分頁鈕,給 CSS 在手機重排成「相關的放一起」
     injectCSS();
     var strip = buildStatusStrip();
     gs.insertBefore(strip, gs.firstChild);
@@ -597,6 +598,24 @@
   }
 
   // --- 創角面板手機化:原作是 flex-row + 一堆固定寬高,手機會爆寬。標記關鍵子層讓 CSS 改直向堆疊 ---
+  // 手機分頁鈕的排列順序(使用者要求「相關的放一起」):角色資訊 / 背包分類 / 系統功能 各一列。
+  // 桌機維持作者原本的 3 欄 4 列,不受影響(order 規則只在 body.m-mobile 下生效)。
+  // 有 id 的用 id 認(id 比顯示文字穩:作者改字不會失效——「自動販賣」就差點被我照字面寫成「自動賣出」而漏掉);
+  // 沒 id 的才用按鈕上的字。一律不用 nth-child:作者日後加鈕/重排時,認不得的落到最後(99),不會把整組順序弄亂。
+  var M_TAB_ORDER = ['能力', '裝備', '技能', '統計',
+                     '武器', '防具', '道具', 'btn-collection',
+                     '匯出', '存檔', 'btn-autosell', 'btn-automation'];
+  function tagTabBarOrder() {
+    var bar = document.querySelector('.tab-bar');
+    if (!bar) return;
+    var btns = bar.querySelectorAll('button');
+    for (var i = 0; i < btns.length; i++) {
+      var key = btns[i].id || (btns[i].textContent || '').trim();
+      var idx = M_TAB_ORDER.indexOf(key);
+      btns[i].classList.add('m-tab-ord-' + (idx >= 0 ? idx + 1 : 99));
+    }
+  }
+
   function tagCreationPanel() {
     var cp = document.getElementById('creation-panel');
     if (!cp) return;
@@ -1094,7 +1113,15 @@
       'body.m-mobile .ancient-glow-strong{animation:none !important;filter:drop-shadow(0 0 10px rgba(184,104,250,1)) drop-shadow(0 0 22px rgba(150,60,235,.7)) brightness(1.4) saturate(1.8);}',
       'body.m-mobile .bless-glow-strong{animation:none !important;filter:drop-shadow(0 0 10px rgba(253,224,71,1)) drop-shadow(0 0 22px rgba(234,180,20,.7)) brightness(1.4) saturate(1.8);}',
       'body.m-mobile .tri-glow{animation:none !important;filter:drop-shadow(0 0 10px rgba(245,158,11,1)) drop-shadow(0 0 24px rgba(239,68,68,.6)) brightness(1.5) saturate(1.9);}'
-    ].join('\n');
+    ]
+      /* 分頁鈕重排的 order 規則(對照 M_TAB_ORDER;由 tagTabBarOrder 掛 class)。
+         用 CSS + body.m-mobile scope 而非 inline style:本外掛會隨視窗寬度在桌機/手機間動態切換,
+         inline style 切回桌機不會自動消失,會把桌機排版一起弄亂。 */
+      .concat(M_TAB_ORDER.map(function (_, i) {
+        return 'body.m-mobile .tab-bar .m-tab-ord-' + (i + 1) + '{order:' + (i + 1) + ' !important;}';
+      }))
+      .concat(['body.m-mobile .tab-bar .m-tab-ord-99{order:99 !important;}'])
+      .join('\n');
     var s = document.createElement('style');
     s.id = 'm-style';
     s.textContent = css;

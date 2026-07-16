@@ -2277,7 +2277,10 @@ function toggleAutomationCollapse() {
         tip.style.opacity = '1';   // 先顯示才量得到尺寸
         let r = ic.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
         tip.style.left = Math.min(window.innerWidth - tw - 6, Math.max(6, r.left + r.width / 2 - tw / 2)) + 'px';
-        tip.style.top = (r.top - th - 6 < 6 ? r.bottom + 6 : r.top - th - 6) + 'px';
+        // 上方擺不下就翻到下方。「擺不下」的界線是可用區域上緣（官方版指引橫幅底下），不是視窗頂端 0，
+        // 否則 tip 會被塞進橫幅底下看不到（無橫幅時 _origBarH()=0，行為與原本相同）。
+        let _tipTop = (typeof _origBarH === 'function') ? _origBarH() : 0;
+        tip.style.top = (r.top - th - 6 < _tipTop + 6 ? r.bottom + 6 : r.top - th - 6) + 'px';
         if (hideT) clearTimeout(hideT);
         hideT = setTimeout(() => { tip.style.opacity = '0'; }, 1600);
     }, true);

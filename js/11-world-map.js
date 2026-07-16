@@ -428,7 +428,8 @@ function _cddKey(e) { if (e.key === 'Escape') _cddClose(); }
 function _cddPositionPop(pop, r) {
     pop.style.left = r.left + 'px'; pop.style.top = (r.bottom + 2) + 'px'; pop.style.minWidth = r.width + 'px';
     var pr = pop.getBoundingClientRect();
-    if (pr.bottom > window.innerHeight - 4) pop.style.top = Math.max(4, r.top - pr.height - 2) + 'px';   // 下方不足→往上開
+    // 下方不足→往上開；上緣夾在可用區域(官方版指引橫幅底下)，不是視窗頂端，否則會被橫幅蓋住（無橫幅時為 0，同原本）
+    if (pr.bottom > window.innerHeight - 4) pop.style.top = Math.max(((typeof _origBarH === 'function') ? _origBarH() : 0) + 4, r.top - pr.height - 2) + 'px';
     if (pr.right > window.innerWidth - 4) pop.style.left = Math.max(4, window.innerWidth - pr.width - 4) + 'px';   // 右側超出→靠右
 }
 function _cddScroll() {

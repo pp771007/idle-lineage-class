@@ -701,7 +701,9 @@
          避免它比 body 矮時被垂直置中(→ 上方空白、底部 nav 被工具列遮住)。
          只動 game-screen,不動 body 對齊 → 開始選單/創角畫面照樣置中。
          不下 z-index(fixed 配 z-index:auto 不建立 stacking context,內部 modal 行為不變)。 */
-      'body.m-mobile #game-screen{position:fixed !important;top:0 !important;left:0 !important;flex-direction:column !important;gap:0 !important;max-width:none !important;width:100vw !important;height:100vh !important;height:100dvh !important;height:var(--app-h,100dvh) !important;margin:0 !important;padding:0 !important;}',
+      /* top/height 讓開官方版指引橫幅(--orig-bar-h,由核心 js/00-data.js 量測寫入;官方網域無橫幅→0)。
+         高度要一起扣,否則版面被推下去、底部 nav 溢出視窗外。 */
+      'body.m-mobile #game-screen{position:fixed !important;top:var(--orig-bar-h,0px) !important;left:0 !important;flex-direction:column !important;gap:0 !important;max-width:none !important;width:100vw !important;height:100vh !important;height:100dvh !important;height:calc(var(--app-h,100dvh) - var(--orig-bar-h,0px)) !important;margin:0 !important;padding:0 !important;}',
 
       /* 精簡一行式狀態列(取代原本佔 1/3 高的大面板;原面板在手機隱藏) */
       /* 🔮 席琳的世界:整條頂部狀態列染紅,當「席琳世界開啟中」的辨識標。
@@ -1015,7 +1017,7 @@
          `#creation-screen.hidden{display:none!important}`(1,1,0),若無條件 `display:block !important`
          會壓過 .hidden、讓載入/創角後「登入畫面關不掉、蓋在遊戲上」→ 玩家卡在選角畫面(踩過 2026-07-06)。
          加 :not(.hidden) 後有 .hidden 時本規則不命中,交還作者的隱藏。 */
-      'body.m-mobile #creation-screen:not(.hidden){position:fixed !important;inset:0 !important;display:block !important;overflow-y:auto !important;padding:0 !important;}',
+      'body.m-mobile #creation-screen:not(.hidden){position:fixed !important;inset:0 !important;top:var(--orig-bar-h,0px) !important;display:block !important;overflow-y:auto !important;padding:0 !important;}',
       'body.m-mobile #login-art-stage{position:relative !important;width:100vw !important;max-width:100vw !important;aspect-ratio:auto !important;min-height:var(--app-h,100dvh) !important;display:flex !important;flex-direction:column !important;justify-content:center !important;overflow:visible !important;padding:32px 22px 40px !important;box-shadow:none !important;}',
       'body.m-mobile #login-bg-image{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;object-fit:cover !important;opacity:.35 !important;}',
       'body.m-mobile #login-anim-image{display:none !important;}',

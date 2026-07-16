@@ -524,7 +524,8 @@
 /* 🖥️ v2.5.8 改：流動式版面（填滿整個視窗、元素自然撐開）——移除固定 1920×1080 舞台與 transform 縮放。
    舞台直接 position:fixed;inset:0 填滿視窗；內層 #game-screen(absolute inset:0) 與三欄 flex(左 340 / 中 flex-1 / 右 380)隨視窗大小自然伸縮，無 letterbox、無縮放。
    VFX/提示/游標光點掛在 body（舞台外）→ getBoundingClientRect 取真實視窗座標，定位天生相容、不需改 VFX。fitStage() 已改為清空殘留 transform 的 no-op。 */
-#app-stage { position: fixed; inset: 0; }
+/* top 讓開官方版指引橫幅（fixed 蓋在最上層，見 js/00-data.js `_origBarSyncH`）；官方網域無橫幅→退回 0 */
+#app-stage { position: fixed; inset: 0; top: var(--orig-bar-h, 0px); }
 #game-screen { position: absolute; inset: 0; padding: 16px; }   /* 吃滿整個舞台（取代舊 max-w-[1600px] 置中→改用滿版 1920） */
 /* 🔧 三欄寬度鎖定：中央欄 min-width:0 → 內容(動畫怪原生尺寸圖 max-width:none,寬幅怪可超出格寬)不得把中央欄「最小內容寬」撐大;
    側欄 flex-shrink:0 → 任何情況不被中央內容擠壓。否則寬怪一出場側欄被擠窄→中央變寬→戰鬥區(等比定高)跟著脹縮,怪換場整塊畫面反覆縮放(2026-07-07 玩家回報「好晃」)。 */
@@ -621,9 +622,10 @@ button.classic-skill-cell { cursor:pointer; }
 .classic-skill-scroll-down { bottom:5.8%; }
 
 /* ===== 🎨 v3.0.40 登入首頁：310 固定底圖＋273～300 左下逐幀動畫（移植自參考版） ===== */
-#creation-screen { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; overflow:auto; padding:0; background:#050505; }
+#creation-screen { position:fixed; inset:0; top:var(--orig-bar-h, 0px); z-index:50; display:flex; align-items:center; justify-content:center; overflow:auto; padding:0; background:#050505; }
 #creation-screen.hidden { display:none !important; }
-#login-art-stage { position:relative; width:min(100vw,calc(100vh * 4 / 3)); aspect-ratio:4 / 3; flex:0 0 auto; overflow:hidden; background:#050505; box-shadow:0 0 45px #000; }
+/* 4:3 舞台以「可用高度」推寬度：橫幅佔掉的高度要一起扣，否則舞台比 #creation-screen 高 → 出捲軸、底部被裁 */
+#login-art-stage { position:relative; width:min(100vw,calc((100vh - var(--orig-bar-h, 0px)) * 4 / 3)); aspect-ratio:4 / 3; flex:0 0 auto; overflow:hidden; background:#050505; box-shadow:0 0 45px #000; }
 #login-bg-image { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; user-select:none; }
 #login-anim-image { position:absolute; left:0; top:63.75%; width:78.28125%; height:36.25%; object-fit:fill; pointer-events:none; user-select:none; }
 #login-title-layer { position:absolute; z-index:3; left:3.1%; top:14%; width:30.8%; color:#f7df91; text-shadow:0 2px 4px #000,0 0 6px #000; }

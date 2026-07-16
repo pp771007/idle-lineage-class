@@ -3080,6 +3080,18 @@ function _origAuthorizedHost() {
   return _origAuthCache;
 }
 
+// 橫幅是 position:fixed，會蓋住底下的版面容器（#app-stage / #creation-screen 都是 fixed inset:0）。
+// 把實測高度寫進 --orig-bar-h，由 CSS 用 top/height 把版面讓開；橫幅文字會隨視窗寬度折行（手機 3 行
+// ≈92px、桌機 1 行 ≈47px），故用 ResizeObserver 持續同步，不寫死數字。
+// 官方網域不掛橫幅 → 變數不存在 → 各處 var(--orig-bar-h, 0px) 自動退回 0，版面與原版一致。
+function _origBarSyncH() {
+  try {
+    var bar = document.getElementById('_orig_pbar');
+    var h = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--orig-bar-h', h + 'px');
+  } catch (_) {}
+}
+
 // 官方版指引橫幅（中性·無指控）：僅在非官方網域顯示；若被移除可安全重掛（見 gameLoop）
 function _origEnforce() {
   try {
@@ -3099,6 +3111,9 @@ function _origEnforce() {
       + '<a href="' + url + '" style="color:#ffcf5a;font-weight:bold;text-decoration:underline">'
       + 'shines871.github.io/idle-lineage-class</a>';
     document.body.appendChild(bar);
+    _origBarSyncH();
+    if (window.ResizeObserver) new ResizeObserver(_origBarSyncH).observe(bar);
+    else window.addEventListener('resize', _origBarSyncH);
   } catch (_) {}
 }
 

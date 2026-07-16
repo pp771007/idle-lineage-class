@@ -324,9 +324,10 @@
         const side = frame.classList.contains('side-open') ? el('equipment-side-panel') : null;
         const sideWidth = side && !side.classList.contains('hidden') ? side.getBoundingClientRect().width + 8 : 0;
         const totalWidth = rect.width + sideWidth;
+        const barH = _origBarH();   // 上緣不可越過官方版指引橫幅
         let left = rect.left, top = rect.top;
         left = Math.max(4, Math.min(left, innerWidth - totalWidth - 4));
-        top = Math.max(4, Math.min(top, innerHeight - rect.height - 4));
+        top = Math.max(barH + 4, Math.min(top, innerHeight - rect.height - 4));
         frame.style.left = left + 'px';
         frame.style.top = top + 'px';
         frame.style.transform = 'none';
@@ -384,10 +385,11 @@
             if (!drag || drag.id !== event.pointerId) return;
             const side = frame.classList.contains('side-open') ? el('equipment-side-panel') : null;
             const sideWidth = side && !side.classList.contains('hidden') ? side.getBoundingClientRect().width + 8 : 0;
+            const barH = _origBarH();   // 拖曳時上緣不可越過官方版指引橫幅
             const maxX = Math.max(0, innerWidth - frame.offsetWidth - sideWidth);
-            const maxY = Math.max(0, innerHeight - frame.offsetHeight);
+            const maxY = Math.max(barH, innerHeight - frame.offsetHeight);
             frame.style.left = Math.max(0, Math.min(maxX, event.clientX - drag.dx)) + 'px';
-            frame.style.top = Math.max(0, Math.min(maxY, event.clientY - drag.dy)) + 'px';
+            frame.style.top = Math.max(barH, Math.min(maxY, event.clientY - drag.dy)) + 'px';
             frame.style.transform = 'none';
         });
         function stopDrag(event) {

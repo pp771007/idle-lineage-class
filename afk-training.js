@@ -645,7 +645,7 @@
       '.m-train-btn:hover{background:#475569;}',
       '.m-train-btn-amber{background:#b45309;border-color:#d97706;}.m-train-btn-amber:hover{background:#d97706;}',
       '.m-train-btn-red{background:#991b1b;border-color:#dc2626;}.m-train-btn-red:hover{background:#dc2626;}',
-      '#m-train-modal{position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:14px;}',
+      '#m-train-modal{position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:9100;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:14px;}',
       '.m-train-modal-box{width:100%;max-width:460px;max-height:88vh;overflow-y:auto;background:#0f172a;border:1px solid #475569;border-radius:12px;color:#e2e8f0;}',
       '.m-train-modal-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;font-size:16px;font-weight:bold;color:#fbbf24;border-bottom:1px solid #334155;}',
       '.m-train-modal-head button{background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;}',

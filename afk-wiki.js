@@ -3275,11 +3275,11 @@
       '#main-menu .m-wiki-entry-row > button{width:auto !important;max-width:none !important;}',
       '#main-menu .m-wiki-entry-main{flex:1 1 auto;}',
       '#main-menu .m-wiki-entry-newtab{flex:0 0 auto;font-size:1.4rem;line-height:1;padding-left:16px;padding-right:16px;}',
-      '#m-standalone-nav{position:fixed;top:0;left:0;right:0;height:46px;z-index:1001;display:flex;align-items:center;gap:6px;padding:0 10px;background:#0b1220;border-bottom:1px solid #334155;font-family:system-ui,"Segoe UI",sans-serif;}',
+      '#m-standalone-nav{position:fixed;top:var(--orig-bar-h,0px);left:0;right:0;height:46px;z-index:1001;display:flex;align-items:center;gap:6px;padding:0 10px;background:#0b1220;border-bottom:1px solid #334155;font-family:system-ui,"Segoe UI",sans-serif;}',
       '#m-standalone-nav a{color:#cbd5e1;text-decoration:none;font-size:14px;font-weight:bold;padding:7px 12px;border-radius:8px;border:1px solid transparent;white-space:nowrap;}',
       '#m-standalone-nav a:hover{background:#1e293b;}',
       '#m-standalone-nav a.on{background:#1e293b;color:#fcd34d;border-color:#475569;}',
-      '#m-wiki-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(2,6,23,0.82);align-items:flex-start;justify-content:center;padding:20px 10px;}',
+      '#m-wiki-modal{display:none;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:1000;background:rgba(2,6,23,0.82);align-items:flex-start;justify-content:center;padding:20px 10px;}',
       '#m-wiki-modal.open{display:flex;}',
       '#m-wiki-modal[data-standalone]{padding-top:58px;}',
       '#m-wiki-modal[data-standalone] #m-wiki-wrap{max-height:calc(100dvh - 78px);}',   /* 獨立頁頂部導覽列 58px：扣掉它+底部留白(共78px)才不會把最後一張卡推到畫面外被切掉 */

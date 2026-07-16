@@ -60,7 +60,7 @@
     var s = document.createElement('style');
     s.id = 'afk-ui-css';
     s.textContent = [
-      '#afk-alert-modal{display:none;position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
+      '#afk-alert-modal{display:none;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:10000;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
       '#afk-alert-modal.open{display:flex;}',
       '#afk-alert-card{width:min(360px,92vw);background:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}',
       '#afk-alert-msg{color:#e2e8f0;font-size:15px;line-height:1.7;text-align:center;margin-bottom:18px;word-break:break-word;}',
@@ -145,7 +145,7 @@
     var s = document.createElement('style');
     s.id = 'afk-confirm-css';
     s.textContent = [
-      '#afk-confirm-modal{display:none;position:fixed;inset:0;z-index:10001;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
+      '#afk-confirm-modal{display:none;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:10001;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
       '#afk-confirm-modal.open{display:flex;}',
       '#afk-confirm-card{width:min(380px,92vw);background:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}',
       '#afk-confirm-title{color:#f8fafc;font-size:16px;font-weight:bold;text-align:center;margin-bottom:10px;}',

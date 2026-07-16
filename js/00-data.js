@@ -3092,6 +3092,14 @@ function _origBarSyncH() {
   } catch (_) {}
 }
 
+// 給 js 端算「畫面可用區域上緣」用（浮動視窗夾邊界）。官方網域無橫幅 → 0。
+function _origBarH() {
+  try {
+    var v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--orig-bar-h'));
+    return v > 0 ? v : 0;
+  } catch (_) { return 0; }
+}
+
 // 官方版指引橫幅（中性·無指控）：僅在非官方網域顯示；若被移除可安全重掛（見 gameLoop）
 function _origEnforce() {
   try {

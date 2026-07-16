@@ -123,3 +123,15 @@
   .dograce-dog img{width:50px;height:50px}
   .dograce-plate{font-size:11px}
 }
+
+/* 🔝 讓開官方版指引橫幅（fixed 貼在視窗頂端；高度由核心 js/00-data.js 量測寫進 --orig-bar-h，
+   官方網域不掛橫幅 → 變數不存在 → 退回 0 → 以下全部等價於原本的 100vh/50%，版面不變）。
+   ⚠️ 容器（.equipment-window/.warehouse-window）刻意維持 inset:0 不偏移：拖曳程式把 clientY（視窗座標）
+   直接寫進 frame.style.top（容器座標），容器一偏移兩套座標就對不上、frame 會每次往下跳一個橫幅高。
+   故改由 frame 自己在「可用區域」置中、並以可用高度算尺寸；上緣夾住則在 js 端用 _origBarH() 處理。 */
+:root{--fu-avail-h:calc(100vh - var(--orig-bar-h,0px));}
+.equipment-window-frame,.warehouse-window-frame{top:calc(var(--orig-bar-h,0px) + var(--fu-avail-h) / 2);}
+.equipment-window-frame{width:min(650px,92vw,calc(var(--fu-avail-h) * .94 * 1084 / 1447));}
+.equipment-window-frame.side-open{width:min(650px,calc(var(--fu-avail-h) * .94 * 1084 / 1447),calc((96vw - 8px) / 1.6));}
+.warehouse-window-frame{height:min(calc(var(--fu-avail-h) * .92),868px);}
+.warehouse-window-content #wh-inv-list,.warehouse-window-content #wh-store-list{max-height:calc(min(calc(var(--fu-avail-h) * .92),868px) - 315px)!important;}

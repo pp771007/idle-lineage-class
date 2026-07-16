@@ -904,7 +904,7 @@
       'body.m-mobile #item-modal #modal-compare{max-width:100% !important;max-height:42vh !important;}',
 
       /* 登出確認視窗(自製,取代原生 confirm:iOS 會抑制原生彈窗) */
-      '#m-logout-modal{display:none;position:fixed;inset:0;z-index:90;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
+      '#m-logout-modal{display:none;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:90;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
       '#m-logout-modal.open{display:flex;}',
       '#m-logout-card{width:min(360px,92vw);background:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}',
       '#m-logout-msg{color:#e2e8f0;font-size:15px;line-height:1.7;text-align:center;margin-bottom:18px;}',
@@ -916,14 +916,14 @@
       '#m-logout-ok:active{background:#92400e;}',
 
       /* 登出遮罩:按確定後立刻蓋住,撐過 reload 重開機的幾秒(否則舊頁戰鬥畫面還在跑) */
-      '#m-logout-overlay{position:fixed;inset:0;z-index:100000;background:#020617;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}',
+      '#m-logout-overlay{position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:100000;background:#020617;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}',
       '#m-logout-overlay-spin{width:38px;height:38px;border:3px solid #334155;border-top-color:#f59e0b;border-radius:50%;animation:m-logout-spin 0.8s linear infinite;}',
       '#m-logout-overlay-txt{color:#e2e8f0;font-size:15px;letter-spacing:0.5px;}',
       '@keyframes m-logout-spin{to{transform:rotate(360deg);}}',
 
       /* 角色資訊彈窗:點暱稱叫出桌面版 #status-panel(手機平時隱藏);✕/點背景關閉 */
       '#m-stat-modal{display:none;}',
-      'body.m-mobile.m-stat-open #m-stat-modal{display:flex;position:fixed;inset:0;z-index:80;align-items:center;justify-content:center;background:rgba(2,6,23,0.72);padding:16px;}',
+      'body.m-mobile.m-stat-open #m-stat-modal{display:flex;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:80;align-items:center;justify-content:center;background:rgba(2,6,23,0.72);padding:16px;}',
       'body.m-mobile #m-stat-card{position:relative;width:min(92vw,420px);max-height:84vh;max-height:calc(var(--app-h,84vh) - 32px);overflow-y:auto;}',
       'body.m-mobile #m-stat-bar{display:flex;justify-content:flex-end;margin-bottom:6px;}',
       'body.m-mobile #m-stat-close{width:36px;height:36px;border:1px solid rgba(51,65,85,0.85);background:rgba(30,41,59,0.92);color:#e2e8f0;border-radius:8px;font-size:17px;cursor:pointer;font-family:inherit;touch-action:manipulation;}',
@@ -998,7 +998,7 @@
 
       /* 手機長按看詳情:資訊卡彈窗(取代桌機 hover tooltip);短按維持原動作,長按那下不誤觸 */
       '#m-tip-modal{display:none;}',
-      'body.m-mobile #m-tip-modal.open{display:flex !important;position:fixed;inset:0;z-index:85;align-items:flex-start;justify-content:center;padding:60px 12px 16px;background:rgba(2,6,23,0.6);}',
+      'body.m-mobile #m-tip-modal.open{display:flex !important;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:85;align-items:flex-start;justify-content:center;padding:60px 12px 16px;background:rgba(2,6,23,0.6);}',
       'body.m-mobile #m-tip-card{position:relative;width:min(94vw,420px);max-height:72vh;overflow-y:auto;background:rgba(15,23,42,0.98);border:1px solid #64748b;border-radius:10px;padding:14px 14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.7);color:#e2e8f0;}',
       'body.m-mobile #m-tip-card .m-tip-x{position:absolute;top:6px;right:6px;width:32px;height:32px;border:1px solid rgba(100,116,139,.7);background:rgba(30,41,59,.9);color:#e2e8f0;border-radius:7px;font-size:15px;line-height:1;cursor:pointer;font-family:inherit;padding:0;}',
       'body.m-mobile #m-tip-card .m-tip-x:active{background:rgba(71,85,105,.95);}',

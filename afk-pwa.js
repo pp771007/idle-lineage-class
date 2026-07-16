@@ -77,7 +77,7 @@
   }
   function installNoticeBox(onOk) {
     var m = document.createElement('div');
-    m.setAttribute('style', 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:24px;');
+    m.setAttribute('style', 'position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:24px;');
     m.innerHTML =
       '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;max-width:380px;width:100%;padding:20px;color:#e2e8f0;text-align:left;">' +
       '<div style="font-weight:bold;font-size:15px;margin-bottom:12px;text-align:center;">📥 安裝成 APP</div>' +

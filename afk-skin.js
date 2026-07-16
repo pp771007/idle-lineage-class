@@ -76,7 +76,7 @@
     /* 🔌 桌機外掛 Modal:一顆按鈕點開、攤開全部入口。z-index 900 < 掉落查詢/小百科/存檔 Modal(1000)
        → 在 Modal 內點入口,對方 Modal 會疊在上面正常顯示。Modal 掛在 #main-menu 內,故 `#main-menu …`
        scoped 樣式(入口列寬/皮)照樣命中;桌機祖先無 transform,position:fixed 對齊 viewport。 */
-    '#afk-plugin-modal{display:none;position:fixed;inset:0;z-index:900;background:rgba(2,6,23,.72);align-items:center;justify-content:center;padding:24px;}',
+    '#afk-plugin-modal{display:none;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:900;background:rgba(2,6,23,.72);align-items:center;justify-content:center;padding:24px;}',
     '#afk-plugin-modal.is-open{display:flex;}',
     '#afk-plugin-modal .afk-pm-panel{position:relative;width:100%;max-width:22rem;max-height:86vh;overflow-y:auto;',
       'padding:28px 18px 20px;border:1px solid rgba(182,138,57,.5);border-radius:16px;',

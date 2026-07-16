@@ -126,6 +126,7 @@ function playerAttack() {
         if (wpn && wpn.eleBonusDmg && target.e === wpn.eleBonusDmg.ele) result.dmg += (wpn.eleBonusDmg.add || 0);   // 🏺 遺物 兇殘惡鬼的毒牙：對特定屬性敵人額外固定傷害 +N
         if (wpn && wpn.immParalyzeBonusDmg && (target.boss || target.immParalyze || target.immStun)) result.dmg += wpn.immParalyzeBonusDmg;   // 🏺 遺物 屍毒之針：對免疫麻痺（頭目/免疫）目標額外固定傷害 +N
         target.curHp -= result.dmg;
+        reflectWallOnDamage(target, result.dmg, (wpn && wpn.ranged) ? 'ranged' : 'melee', null);   // 🌑 血壁空間（吉爾塔斯）：反彈同等傷害給攻擊方
         if (target.curHp > 0) consumeStrawCurse(target);   // 🐍 詛咒稻草人：受到攻擊時額外扣 80 水魔傷（每次消耗 1 層·最多 3 層）
         if (result.dmg > 0) { try { playMobHurt(target); } catch(e){} }   // 🔊 音效：怪物受傷（依怪名對應；全域節流）
         if (player._setDragonblood2 && result.dmg > 0) player.hp = Math.min(player.mhp, player.hp + Math.max(1, Math.floor(result.dmg * (player.hp < player.mhp * 0.5 ? 0.05 : 0.01))));   // 🐉 龍血2/5：造成物理傷害吸血1%（自身HP<50%→5%）
@@ -155,7 +156,7 @@ function playerAttack() {
 
 		// 穿透（貝卡合金）：場上有兩名以上敵人時，普攻額外攻擊「主目標以外隨機一名敵人」，
 		// 每個波及目標各自獨立判定是否命中，命中則造成與主目標相同的傷害與屬性；僅一名敵人時與一般近戰相同（不額外攻擊）。
-        if (wpn && wpn.eff === 'pierce' && (!player.classicMode || wpn.classicOk)) {   // 🎮 經典模式：停用穿透（classicOk 的武器＝經典亦可觸發）
+        if (wpn && (wpn.eff === 'pierce' || wpn.alsoPierce) && (!player.classicMode || wpn.classicOk)) {   // 🎮 經典模式：停用穿透（classicOk 的武器＝經典亦可觸發）
             let _pc = (wpn.pierceChance !== undefined) ? wpn.pierceChance : 100;   // 穿透發動機率(%)，未設定視為100%
             let otherIdx = [];
             mapState.mobs.forEach((m, i) => { if (m && m.curHp > 0 && !m._dead && m !== target) otherIdx.push(i); });
@@ -885,6 +886,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
         totalDmg = castleGuardAbsorb(totalDmg, 'phys');   // 🏰 肯特城護衛：承擔 10% 一般攻擊
         totalDmg = Math.floor(totalDmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +20% 怪物攻擊力
         totalDmg = dollDamageReduced(totalDmg);   // 🪆 魔法娃娃：受傷機率傷害減免（史巴托/巫妖）
+        totalDmg = shieldDmgReduceProc(player, totalDmg);   // 🌑 反叛者的盾牌：受傷 proc（物理）
         // 🏺 遺物 魅魔女皇的誘惑：受到一般攻擊時 dmgReflect% 機率使攻擊者受到相同傷害，自身免疫此次傷害
         if (player.d.dmgReflect > 0 && totalDmg > 0 && mob && mob.curHp > 0 && Math.random() * 100 < player.d.dmgReflect) {
             let _rf = Math.max(1, Math.floor(totalDmg * fragileMult(mob)));
@@ -1087,6 +1089,7 @@ function enemyAttackAlly(mob, ally) {
     totalDmg = Math.floor(totalDmg * mobRageDmgMult(mob));   // 🔥 頭目狂暴：攻擊傭兵也套用狂暴傷害
     totalDmg = Math.max(1, Math.floor(Math.max(1, totalDmg) * riftDamageMult()));   // 🌀 裂痕加成（與玩家一致）
     totalDmg = allyDollDamageReduced(ally, totalDmg);   // 🆕 v2.6.10 #3：魔法娃娃機率減免（受物理傷害）
+    totalDmg = shieldDmgReduceProc(ally, totalDmg);   // 🌑 反叛者的盾牌（傭兵鏡像·物理）
     // 🏺 遺物 魅魔女皇的誘惑（傭兵）：受一般攻擊 dmgReflect% 機率反射相同傷害＋免疫（鏡像玩家 enemyPhysicalAttack）
     if ((d.dmgReflect || 0) > 0 && totalDmg > 0 && mob.curHp > 0 && Math.random() * 100 < d.dmgReflect) {
         let _rf = Math.max(1, Math.floor(totalDmg * fragileMult(mob)));
@@ -1235,6 +1238,7 @@ function applyMobMagicToAlly(mob, sk, ally) {
         dmg = Math.floor(dmg * mobRageDmgMult(mob));   // 🔥 頭目狂暴：技能傷害倍率
         dmg = Math.max(1, Math.floor(Math.max(1, dmg) * riftDamageMult()));
         dmg = allyDollDamageReduced(ally, dmg);   // 🆕 v2.6.10 #3：魔法娃娃機率減免（受魔法傷害）
+        dmg = shieldDmgReduceProc(ally, dmg);   // 🌑 反叛者的盾牌（傭兵鏡像·魔法）
         ally.curHp -= dmg;
         if (dmg > 0 && !ally._stunCycle) { ally._atkCd = (ally._atkCd || 0) + ((ally.d && ally.d.hitstun) || 0); ally._stunCycle = true; }   // ⚔️ 天堂職業硬直（傭兵·魔法）：延遲下次攻擊·每週期一次
         logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，對 ${nm} 造成 ${dmg} 點魔法傷害。`, 'enemy');
@@ -1256,8 +1260,45 @@ function applyMobMagicToAlly(mob, sk, ally) {
         return;
     }
 }
+// 🌑 血壁空間（吉爾塔斯）：mob._reflectWall={kind,until} 期間內，受到該類型（近距離/遠距離/魔法）傷害→反彈同等傷害給攻擊方（玩家或該傭兵）。
+//    反射＝普攻主擊＋主動技能直擊（物理依武器近/遠、魔法=magic）；不反射＝武器特效 proc/雙擊/副手/連射/魔擊/魔爆/龍擊/穿透波及/反擊/居合/受擊荊棘/DoT/寵物/召喚。
+function reflectWallOnDamage(mob, dmg, kind, ally) {
+    if (!mob || !mob._reflectWall || !(dmg > 0)) return;
+    let rw = mob._reflectWall;
+    if (state.ticks > rw.until || mob.curHp <= 0) { if (state.ticks > rw.until) mob._reflectWall = null; return; }
+    if (rw.kind !== kind) return;
+    let _k = { melee: '近距離', ranged: '遠距離', magic: '魔法' }[rw.kind] || rw.kind;
+    if (ally) {
+        ally.curHp -= dmg;
+        logCombat(`<span class="font-bold" style="color:#f87171;text-shadow:0 0 6px #dc2626;">【血壁空間】</span><span class="${getMobColor(mob.lv)}">${mob.n}</span> 反彈了${_k}傷害，協力·${ally._allyName} 受到 ${dmg} 點傷害！`, 'enemy');
+        if (ally.curHp <= 0) { ally.curHp = 0; ally._downed = true; ally._reviveCd = 150; logCombat(`<span class="text-amber-400 font-bold">協力傭兵 ${ally._allyName} 倒下了！（可用返生術立即復活，或 15 秒後自動使用復活卷軸，或回村免費復活）</span>`, 'enemy'); try { renderSquadPanel(); } catch (e) {} }
+    } else {
+        player.hp -= dmg;
+        logCombat(`<span class="font-bold" style="color:#f87171;text-shadow:0 0 6px #dc2626;">【血壁空間】</span><span class="${getMobColor(mob.lv)}">${mob.n}</span> 反彈了${_k}傷害，你受到 ${dmg} 點傷害！`, 'enemy');
+        if (player.hp <= 0 && typeof killPlayer === 'function') killPlayer();
+    }
+}
+// 🛡️ 反叛者的盾牌（黑暗妖精聖地）：受到傷害時 rate(+per×強化)% 機率該次傷害 -amt（玩家＋傭兵、物理＋魔法四路徑共用）
+function shieldDmgReduceProc(who, dmg) {
+    if (!(dmg > 0) || !who || !who.eq || !who.eq.shield) return dmg;
+    let it = who.eq.shield, d0 = DB.items[it.id];
+    if (!d0 || !d0.dmgReduceProc) return dmg;
+    let p = d0.dmgReduceProc, rate = (p.rate || 0) + (p.per || 0) * (it.en || 0);
+    if (Math.random() * 100 >= rate) return dmg;
+    logCombat(`<span class="font-bold" style="color:#93c5fd;">【${d0.n}】</span>盾牌吸收了部分衝擊（傷害 -${p.amt || 50}）。`, 'player');
+    return Math.max(0, dmg - (p.amt || 50));
+}
 function applyMobMagic(mob, sk) {
     if(!sk) return;
+    // 🌑 血壁空間（吉爾塔斯）：自我增益·隨機獲得 近距離/遠距離/魔法 反射之一（持續 dur 秒·不受絕對屏障影響·置於屏障檢查前）
+    if(sk.type === 'reflectwall') {
+        if(!mob || mob.curHp <= 0) return;
+        let _kinds = ['melee', 'ranged', 'magic'];
+        let _k = _kinds[Math.floor(Math.random() * _kinds.length)];
+        mob._reflectWall = { kind: _k, until: state.ticks + (sk.dur || 10) * 10 };
+        logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放 ${sk.skn || '血壁空間'}，獲得了<span class="font-bold" style="color:#f87171;">${{ melee: '近距離', ranged: '遠距離', magic: '魔法' }[_k]}反射</span>（10 秒）！`, 'enemy');
+        return;
+    }
     if(inAbsBarrier()) return;   // 🛡️ 絕對屏障：與世界隔絕，敵方魔法（傷害與異常狀態）一律無效
     if(!mob || mob.curHp <= 0) return;   // 🔧 施法者已死亡（如 mag1 追加攻擊期間被反殺）：mag2/mag3 不得以死怪身分施放
     if(mob.st && mob.st.confuse > 0 && !mob.boss) { logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 思緒混亂，無法施放技能。`, 'magic'); return; }   // 🔮 混亂：非BOSS敵人無法施放技能
@@ -1544,6 +1585,7 @@ function applyMobMagic(mob, sk) {
         dmg = Math.floor(dmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +20% 怪物技能傷害
 
         dmg = dollDamageReduced(dmg);   // 🪆 魔法娃娃：受傷機率傷害減免（史巴托/巫妖）
+        dmg = shieldDmgReduceProc(player, dmg);   // 🌑 反叛者的盾牌：受傷 proc（魔法亦適用）
         player.hp -= dmg;
         if (dmg > 0) _relicOnDamageHeal();   // 🏺 遺物 白螞蟻蛋殼：受魔法傷害時亦觸發受擊自癒（5 秒節流·physical/magic 共用冷卻）
         if (dmg > 0 && typeof applyPlayerHitstun === 'function') applyPlayerHitstun();   // ⚔️ 天堂職業硬直：被魔法直接命中→延遲下次攻擊

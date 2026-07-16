@@ -27,6 +27,7 @@
         if (id === 'oblivion_island') return '遺忘之島';
         if (id === 'oblivion_travel') return '遺忘之島途中';
         if (id === 'rift_battle') return '時空裂痕';
+        if (typeof SANCTUARY_MAP_NAMES !== 'undefined' && SANCTUARY_MAP_NAMES[id]) return SANCTUARY_MAP_NAMES[id];   // 🌑 黑暗妖精聖地 3 隱藏圖（js/11 定義）
         if (typeof HIDDEN_AREA_NAMES !== 'undefined' && HIDDEN_AREA_NAMES[id]) return HIDDEN_AREA_NAMES[id];   // 🏛️ 隱藏狩獵區域
         var pf = /^pride_f(\d+)$/.exec(id); if (pf) return '傲慢之塔 ' + pf[1] + ' 樓';
         var pr = /^pride_(\d+)_(\d+)$/.exec(id); if (pr) return '傲慢之塔 ' + pr[1] + '~' + pr[2] + ' 樓（直接挑戰）';

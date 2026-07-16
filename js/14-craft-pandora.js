@@ -397,7 +397,22 @@ const CRAFT_RECIPES = {
         { result: 'amr_old_plate', req: [{ id: 'item_forgotten_plate', cnt: 1 }, { id: 'item_ancient_scroll', cnt: 1 }] }
     ],
     // 🔷🔶 象牙塔・神秘的魔法師（魔杖改造）：僅有客製配方（見 MYSTICWAND_RECIPES），空陣列讓 renderUniversalCraft 通過並附加客製區塊
-    'npc_mystic_mage': []
+    'npc_mystic_mage': [],
+    // 🌑 長老會議廳・亞提利歐：召喚球合成＋真．冥皇系列防具鍛造
+    npc_atelier: [
+        { result: 'item_summonorb_full', req: [{ id: 'mat_summonorb_core', cnt: 1 }, { id: 'mat_summonorb_shard', cnt: 4 }] },
+        { result: 'mat_emperor_manual',  req: [{ id: 'mat_summonorb_core', cnt: 1 }, { id: 'mat_summonorb_shard', cnt: 4 }] },
+        { result: 'clk_emperor', req: [{ id: 'mat_emperor_manual', cnt: 1 }, { id: 'mat_ascetic_classic', cnt: 5 },  { id: 'mat_de_soul_crystal', cnt: 50 },  { id: 'mat_black_powder', cnt: 15 }, { id: 'arm_official_cloak', cnt: 1 }, { id: 'mat_blackmithril_plate', cnt: 5 },  { id: 'new_item_159', cnt: 10 }] },
+        { result: 'amr_emperor', req: [{ id: 'mat_emperor_manual', cnt: 1 }, { id: 'mat_ascetic_classic', cnt: 10 }, { id: 'mat_de_soul_crystal', cnt: 100 }, { id: 'mat_black_powder', cnt: 30 }, { id: 'amr_official', cnt: 1 },        { id: 'mat_blackmithril_plate', cnt: 10 }, { id: 'new_item_153', cnt: 20 }] },
+        { result: 'hlm_emperor', req: [{ id: 'mat_emperor_manual', cnt: 1 }, { id: 'mat_ascetic_classic', cnt: 5 },  { id: 'mat_de_soul_crystal', cnt: 50 },  { id: 'mat_black_powder', cnt: 15 }, { id: 'hlm_official', cnt: 1 },        { id: 'mat_blackmithril_plate', cnt: 5 },  { id: 'new_item_162', cnt: 10 }] },
+        { result: 'glv_emperor', req: [{ id: 'mat_emperor_manual', cnt: 1 }, { id: 'mat_ascetic_classic', cnt: 5 },  { id: 'mat_de_soul_crystal', cnt: 50 },  { id: 'mat_black_powder', cnt: 15 }, { id: 'glv_official', cnt: 1 },        { id: 'mat_blackmithril_plate', cnt: 5 },  { id: 'new_item_156', cnt: 10 }] },
+        { result: 'bot_emperor', req: [{ id: 'mat_emperor_manual', cnt: 1 }, { id: 'mat_ascetic_classic', cnt: 5 },  { id: 'mat_de_soul_crystal', cnt: 50 },  { id: 'mat_black_powder', cnt: 15 }, { id: 'bot_official', cnt: 1 },        { id: 'mat_blackmithril_plate', cnt: 5 },  { id: 'new_item_153', cnt: 10 }] },
+        // 🌑 靈魂耳環系列（淨化藥水＝四大氣息×10＋品質綠寶石；受詛咒黑色耳環＋淨化藥水→對應職業靈魂耳環）
+        { result: 'mat_purify_potion', req: [{ id: 'mat_earth_breath', cnt: 10 }, { id: 'mat_wind_breath', cnt: 10 }, { id: 'mat_water_breath', cnt: 10 }, { id: 'mat_fire_breath', cnt: 10 }, { id: 'new_item_155', cnt: 1 }] },
+        { result: 'ear_soul_mage',    req: [{ id: 'ear_cursed_black', cnt: 1 }, { id: 'mat_purify_potion', cnt: 1 }] },
+        { result: 'ear_soul_fighter', req: [{ id: 'ear_cursed_black', cnt: 1 }, { id: 'mat_purify_potion', cnt: 1 }] },
+        { result: 'ear_soul_knight',  req: [{ id: 'ear_cursed_black', cnt: 1 }, { id: 'mat_purify_potion', cnt: 1 }] }
+    ]
 };
 
 // 製作數量選擇器 + 製作按鈕（預設數量 1）

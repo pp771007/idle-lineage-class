@@ -396,6 +396,7 @@ function allyQiguAttack(ally, t, wpn) {
     t.curHp -= dmg; t.justHit = (ele !== 'none') ? ele : 'magic';
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     mobWake(t);
+    if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, 'magic', ally);   // 🌑 血壁空間（傭兵）奇古獸主擊
     if (ally._setWhiteBird5 && t.curHp > 0 && !t._dead) { if (!t.st) t.st = newMobStatus(); t.st.fragile = 30; }   // 🔮 白鳥 5/5（傭兵奇古獸）：命中附加脆弱（魔法路徑不經 allyOnHitEffects，故此處補上）
     logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>奇古獸對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點魔法傷害。`, 'magic');
     // 奇古獸特效（幻影衝擊/心靈破壞，用傭兵最大MP）
@@ -436,6 +437,7 @@ function allyAttackOnce(ally) {
         dmg = Math.max(1, Math.floor(dmg * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷（法師光箭普攻·原全無·鏡像玩家 procLightArrow）
         dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
         t.curHp -= dmg; t.justHit = 'magic'; mobWake(t);
+        if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, 'magic', ally);   // 🌑 血壁空間（傭兵）法師光箭主擊
         logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>魔法攻擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 <span class="${isCrit?'text-yellow-500 font-bold':'text-emerald-200'}">${dmg}</span> 點傷害。`, 'magic');
         allyWeaponProcs(ally, t, { hit: true, dmg: dmg });   // 🔧 法師普攻（光箭）也觸發武器特效：共鳴/魔擊/瑪那回魔
         if (ally._setWhiteBird5 && t.curHp > 0 && !t._dead) { if (!t.st) t.st = newMobStatus(); t.st.fragile = 30; }   // 🔮 白鳥 5/5（傭兵法師光箭）：一般攻擊命中附加脆弱（物理分支於 allyOnHitEffects 套用、魔法分支不經該函式，故此處補上）
@@ -482,6 +484,7 @@ function allyAttackOnce(ally) {
         let _hsSub = (wpn && wpn.ignHardSkin) ? 0 : _hsT;   // 🗡️ 貫穿（暗黑十字弓）：傭兵攻擊無視硬皮額外減傷（_hsT 仍保留供穿透精通加回）
         let dmg = Math.max(1, Math.floor((wpnRoll + dmgB) * critMult) + (d.extraDmg||0) - (t.dr||0) - _hsSub);   // 🔧 硬皮：額外物理減傷（貫穿時不扣）
         { let _unb = allyUnbonusBonus(ally, t); if (_unb) dmg += _unb; }   // 🔧 對不死/狼人加成 +1D20（與玩家一致；在看破/殺戮倍率前加入）
+        if (ally._giltasFuryUntil > state.ticks && ally.eq && ally.eq.wpn && ally.eq.wpn.id === 'wpn_giltas_sword') dmg += 10;   // 🗡️ 吉爾塔斯之劍（傭兵）：擊殺後 10 秒內額外傷害 +10
         // 騎士被動（依協力者等級，僅近戰）：看破 Lv1起5%/每10等+1%上限15%→×2；殺戮 Lv20起1%/每20等+1%上限5%→×3；兩者同時=屠殺→×6
         let kp = '';
         let _meleePassive = (ally.cls === 'knight') || allyHasMastery(ally, 'e_sword');   // 🔧 劍術精通：妖精傭兵近戰也可看破
@@ -525,6 +528,7 @@ function allyAttackOnce(ally) {
         if (ally.d && ally.d.instakillFull && t.curHp === t.hp) { let _rif = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (_rif !== -1 && tryInstakill(t, { p: ally.d.instakillFull, tag: null }, `【協力·${ally._allyName}】隱蔽的死亡草葉`, _rif)) return; }   // 🏺 隱蔽的死亡草葉（傭兵）：命中滿血非BOSS怪機率即死（鏡像玩家 js/04）
         markBossPhysicalHit(t);   // 👑 頭目回血判斷：傭兵的物理命中也算（否則玩家在後排放法術、傭兵在前排砍，頭目仍會回 5%）
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
+        if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, isRanged ? 'ranged' : 'melee', ally);   // 🌑 血壁空間（傭兵）物理普攻主擊
         if (t.curHp > 0) consumeStrawCurse(t);   // 🐍 詛咒稻草人：傭兵主攻擊亦消耗並額外扣 80 水魔傷（鏡像玩家）
         if (wpn && wpn.strawCurse && t.curHp > 0 && Math.random() * 100 < wpn.strawCurse.rate) { if (!t.st) t.st = newMobStatus(); t.st.strawCurse = Math.max(t.st.strawCurse || 0, wpn.strawCurse.stacks || 3); }   // 🐍 傭兵種下詛咒稻草人（鏡像玩家）
         if (wpn && wpn.onHitEleVuln === 'fire' && t.curHp > 0) t._fireVulnUntil = state.ticks + 30;   // 🏺 灼熱蜥蜴長舌（傭兵施加端）：命中使目標獲得火屬性弱點 3 秒（與玩家共用 _fireVulnUntil）
@@ -658,6 +662,7 @@ function allyCastMagic(ally, sk) {
         t._spellHurt = true;   // 🎬 v3.0.14 傭兵法術傷害→hurt(含頭目)
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
         mobWake(t);
+        if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, totalDmg, 'magic', ally);   // 🌑 血壁空間（傭兵）傷害魔法技能
         if (sk.lifesteal && totalDmg > 0) { let h = Math.min(totalDmg, (ally.mhp || 0) - (ally.curHp || 0)); if (h > 0) { ally.curHp = Math.min(ally.mhp || 1, (ally.curHp || 0) + h); logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>吸取了 ${h} 點生命。`, 'heal', 'mercenary'); } }   // 🩸 v2.6.18 #中：吸血魔法（寒冷戰慄/吸血鬼之吻 lifesteal）回復戰鬥HP(curHp)，比照玩家 castSkill 624；上限本次傷害或缺血較小者
         // 🔮 白鳥 5/5：傭兵「施放傷害魔法技能」不觸發脆弱（2026-06 用戶要求：只有一般攻擊/基礎普攻才觸發）；基礎普攻(法師光箭/幻術士奇古獸/物理 on-hit)仍於各自路徑套用脆弱
         texts.push(`<span class="${getMobColor(t.lv)}">${t.n}</span> ${totalDmg}${isCrit?'(爆)':''}`);
@@ -779,6 +784,7 @@ function allyCastPhysicalSkill(ally, sk) {
             res.dmg = Math.max(1, Math.floor(res.dmg * _royalMult));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)（換身前已快照）
             if (sk.skillAddDmg) res.dmg = Math.max(1, res.dmg + sk.skillAddDmg);   // ⚔️ v2.6.69 審計#12：衝擊之暈 +10 固定加值（鏡像玩家 js/07:512·不吃倍率）
             t.curHp -= res.dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
+            if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, res.dmg, (wpn && (wpn.isBow || wpn.ranged)) ? 'ranged' : 'melee', ally);   // 🌑 血壁空間（傭兵）物理技能每擊
             totalDmg += res.dmg;
             let mark = (res.heavy && res.crit) ? '會心' : (res.crit ? '爆' : (res.heavy ? '重' : ''));
             logHits.push(res.dmg + (mark ? '(' + mark + ')' : ''));
@@ -1489,7 +1495,7 @@ function allyWarriorAct(ally) {
             if ((ally.mp || 0) >= cost) {
                 ally.mp -= cost; allyManaMasteryRefund(ally, cost);
                 let base = 50 + Math.max(0, (ally.lv || 1) - 30);
-                targets.forEach(m => { if (!m || m.curHp <= 0 || m._dead) return; let dmg = Math.max(1, Math.floor(base * fragileMult(m))); dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   /* 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100) */ m.curHp -= dmg; m.justHit = 'magic'; mobWake(m); });
+                targets.forEach(m => { if (!m || m.curHp <= 0 || m._dead) return; let dmg = Math.max(1, Math.floor(base * fragileMult(m))); dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   /* 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100) */ m.curHp -= dmg; m.justHit = 'magic'; mobWake(m); if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(m, dmg, 'magic', ally); });
                 logCombat(`<span class="font-bold" style="color:#fca5a5;text-shadow:0 0 6px #dc2626;">【協力·${ally._allyName}·咆哮】</span>咆哮震懾全場，對所有敵人造成約 ${base} 點固定傷害。`, 'player-special');   // _combatSrc='mercenary' 期間→自動歸傭兵來源
                 targets.forEach(m => { if (m && m.curHp <= 0 && !m._dead) { let i = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (i !== -1) killMob(i); } });
                 renderMobs();
@@ -1715,6 +1721,7 @@ function allyCastCrush(ally, sk) {
     dmg = Math.max(1, Math.floor(dmg * elementCounterMult(getWpnEle(ally.eq ? ally.eq.wpn : null, wpn), t.e)));   // ⚔️ 武器屬性剋制倍率（粉碎能量）
     dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
     t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
+    if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, _rng ? 'ranged' : 'melee', ally);   // 🌑 血壁空間（傭兵）粉碎能量/骷髏毀壞
     logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n}，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。`, 'magic');
     let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid);
     if (t.curHp <= 0) { if (ri !== -1) killMob(ri); } else renderMobs();
@@ -1765,6 +1772,7 @@ function allyCastSlaughter(ally, sk) {
         dmg = Math.max(1, Math.floor(dmg * elementCounterMult(getWpnEle(ally.eq ? ally.eq.wpn : null, wpn), t.e)));   // ⚔️ 武器屬性剋制倍率（屠宰者每擊）
         dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); total += dmg; mobWake(t);
+        if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, 'melee', ally);   // 🌑 血壁空間（傭兵）屠宰者每擊
         log.push(dmg + (res.heavy ? '(重)' : ''));
         if (t.curHp > 0) wearHardSkin(t, ally.eq && ally.eq.wpn ? ally.eq.wpn.id : null, res.heavy, false, true, ally.classicMode);
     }
@@ -1788,6 +1796,7 @@ function allyCastMpDmg(ally, sk) {
     dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(ally) * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔮 幻術士(傭兵)等級加成 ×(1+等級/50)；🔧 武器強化 +11~+20 最終倍率
     dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
     t.curHp -= dmg; t.justHit = 'magic'; mobWake(t);
+    if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, 'magic', ally);   // 🌑 血壁空間（傭兵）心靈破壞
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n}，撕裂 <span class="${getMobColor(t.lv)}">${t.n}</span> 的心靈，造成 ${dmg} 點傷害。`, 'magic');
     let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid);
@@ -1808,6 +1817,7 @@ function allyDarkCrit(ally, t) {
     ally.mp = 0;   // 只消耗 MP（全部），不扣 HP
     dmg = Math.max(1, Math.floor(dmg * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
     t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
+    if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, (wpn && (wpn.isBow || wpn.ranged)) ? 'ranged' : 'melee', ally);   // 🌑 血壁空間（傭兵）會心一擊
     logCombat(`<span class="font-bold" style="color:#f0abfc;text-shadow:0 0 8px #d946ef;">【協力·${ally._allyName}·會心一擊】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點致命傷害！`, 'player-crit');
     let i = mapState.mobs.findIndex(m => m && m.uid === t.uid);
     if (t.curHp <= 0) { if (i !== -1) killMob(i); } else renderMobs();

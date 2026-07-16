@@ -243,6 +243,7 @@ function recomputeStats() {
         if(w.mhp) p.mhp += w.mhp;   // 🏛️ 武器 HP 上限加成（古代黑暗妖精之劍 HP+50；同步修正深紅長矛既有 HP+50 失效）
         if(w.mmp) p.mmp += w.mmp;   // 🏛️ 武器 MP 上限加成（聖晶魔杖 MP+50；防具/飾品 mmp 走另一迴圈·武器需此處）
         if(w.extraMp) d.extraMp += w.extraMp;   // 🏺 武器固定額外魔法點數（遺物 殭屍的小腿骨 +7；防具/飾品 extraMp 走另一迴圈·武器需此處）
+        if(p.eq.wpn.id === 'wpn_giltas_wand' && p._giltasWandFuryUntil > state.ticks) d.extraMp += 10;   // 🪄 吉爾塔斯魔杖：任意擊殺後 10 秒內額外魔法點數 +10（玩家／傭兵共用重算管線）
         if(w.dr) d.dr += w.dr;   // 🏺 武器固定傷害減免（遺物 有彈性的肋骨 +2；防具/飾品 dr 走另一迴圈·武器需此處）
         if(w.extraDmg) d.extraDmg += w.extraDmg;   // 🏺 武器固定傷害（遺物 鼠人的烤肉叉/水靈的琴弦 固定傷害+N；防具/飾品 extraDmg 走另一迴圈·武器需此處）
         if(w.mcrit) d.meleeCrit += w.mcrit;   // 🏺 武器近距離爆擊率加成（遺物 蟹人的巨鉗 +5%）
@@ -407,6 +408,9 @@ d.mr += (baseMr + bonusMr);
     if(setCheck['icequeen_charm'] >= 3) { d.ac -= 5; p.mhp += 100; d.mpR += 4; d.resWater += 20; }   // ❄️👸 冰之女王魅力套裝（公主限定）：AC-5、HP+100、MP自然恢復+4、水屬性抗性+20（力量+2/魅力+2 已於 Phase 1 前提前套用）
     if(setCheck['frost'] >= 3) { d.ac -= 5; p.mhp += 100; d.hpR += 8; d.mpR += 4; d.mr += 15; d.resWater += 20; }   // ❄️ 寒冰套裝（王族／龍騎士）：AC-5、HP+100、HP自然恢復+8、MP自然恢復+4、MR+15、水屬性抗性+20（體質+3 已於 Phase 1 前提前套用）
     if(setCheck['bluepirate'] >= 4) { d.ac -= 1; p.mhp += 10; }   // 🏴‍☠️ 藍海賊套裝（頭巾＋皮盔甲＋手套＋長靴）：AC-1、HP+10（智力+1 已於 Phase 1 前提前套用）
+    if(setCheck['emperor'] >= 5) { d.ac -= 20; p.mhp += 100; p.mmp += 20; d.hpR += 10; d.atkSpdPct += 30; d.meleeDmg += 5; d.rangedDmg += 5; }   // 🌑 真‧冥皇套裝（披風/鎧甲/面甲/護手/鋼靴 5 件）：防禦-20、HP+100、MP+20、HP自然恢復+10、攻速額外+30%（atkSpdPct 管線·與加速/勇敢藥水乘算堆疊）、額外傷害+5（近/遠皆加）
+    // 🌑 受詛咒的真．冥皇執行劍：裝備時變身 死亡騎士（走 _setPoly 管線＝卸下即消失·速度覆蓋沿 POLY_TIERS 死亡騎士；套裝變身優先於本劍故加 !p._setPoly 守衛）
+    if(!p._setPoly && p.eq && p.eq.wpn && p.eq.wpn.id === 'wpn_cursed_emperor_blade') { let _ceb = findPolyForm('死亡騎士'); if(_ceb) p._setPoly = makePolyState(_ceb.form, _ceb.color); }
 
     // ===== 🔮 席琳套裝效果：只計「席琳遺骸欄」（8 格，SHERINE_REMAINS；欄位鍵＝遺骸物品 id）=====
     // 🦴 一般裝備上的舊 seteff 詞綴不再計入（保留顯示，玩家可找菈克希絲拆成遺骸）。
@@ -781,6 +785,7 @@ function hasTeleportRing() {
 }
 // 傳送：清空當前怪物並重置生怪排程；forceBoss=true 時讓下一次生怪必定為 BOSS
 function doTeleport(forceBoss) {
+    if (typeof giltasKeepOnLeave === 'function') giltasKeepOnLeave();   // 🌑 受詛咒聖地內瞬移＝清空重生怪物（吉爾塔斯消失重生）→ 視同離開戰鬥·先做 HP 保留判定（消耗完整的召喚球＋提示·helper 自帶地圖 gate）
     if (typeof playTeleportFx === 'function') { try { playTeleportFx(); } catch (e) {} }   // 🌀 v3.0.102 傳送術特效＋玩家 sprite 暫隱（傳送術技能/手動+自動瞬移卷軸皆經此）
     saveSiegeBossHp();   // 傳送前保存攻城塔/門血量
     mapState.mobs = [null, null, null, null, null];

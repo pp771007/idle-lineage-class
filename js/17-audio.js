@@ -376,6 +376,14 @@ const MOB_SKILL_SFX = {
     MOB_HURT_SFX[r[0]] = r[3];
     MOB_KILL_SFX[r[0]] = r[4];
 });
+// 🌑 黑暗妖精聖地雙 BOSS 戰鬥音（[名, 攻擊, 技能, 受傷, 死亡]）：吉爾塔斯＝1992/1993/1995/1994；真‧死亡騎士 冥皇丹特斯＝借「死亡騎士」同套（攻86/技91/受88/死89）＋攻擊疊揮刀聲 248。
+[
+  ["吉爾塔斯", 1992, 1993, 1995, 1994],
+  ["真‧死亡騎士 冥皇丹特斯", 86, 91, 88, 89],
+].forEach(function (r) {
+    MOB_ATTACK_SFX[r[0]] = r[1]; MOB_SKILL_SFX[r[0]] = r[2]; MOB_HURT_SFX[r[0]] = r[3]; MOB_KILL_SFX[r[0]] = r[4];
+});
+MOB_ATTACK_SWING["真‧死亡騎士 冥皇丹特斯"] = 248;
 var _sfxDynTried = {}, _mobHurtLast = 0, _spellCastLast = 0, _killLast = 0, _mobAtkLast = 0, _mobSkillLast = 0;
 var _mobAtkKeysByLen = null, _mobAtkResolveCache = {};
 function _mobAtkSfxNum(name) {   // 解析怪名→攻擊音編號（精確→別名→最長子字串借用）·查無回 undefined
@@ -518,7 +526,8 @@ var BGM_TRACKS = { title: 'title', create: 'create', town: 'town', battle: 'batt
 TOWN_BGM_LIST.forEach(function (id) { BGM_TRACKS[id] = id; });   // 各專屬城鎮：scene=id、檔=assets/bgm/<id>.<ext>
 var _TOWN_BGM = {}; TOWN_BGM_LIST.forEach(function (id) { _TOWN_BGM[id] = 1; });
 // 🐍 狩獵區專屬 BGM（地圖 id → 曲目檔名·assets/bgm/<檔>.<ext>）：提卡爾蛇神降世 3 圖。優先於通用 battle/boss，故祭壇(純頭目房)也放自己的曲。
-var HUNT_BGM = { 'tikal_area': 'music122', 'tikal_deep': 'music123', 'tikal_altar': 'music125' };
+var HUNT_BGM = { 'tikal_area': 'music122', 'tikal_deep': 'music123', 'tikal_altar': 'music125',
+    'cursed_dark_elf_sanctuary': 'music153', 'collapsed_elder_council_hall': 'music162' };   // 🌑 黑暗妖精聖地雙 BOSS 房專屬 BGM（一般聖地未指定→維持通用 battle）
 Object.keys(HUNT_BGM).forEach(function (id) { BGM_TRACKS[HUNT_BGM[id]] = HUNT_BGM[id]; });   // 註冊曲目 scene=檔名，_bgmInit 會預解析 URL
 var _bgmUrl = {}, _bgmEls = [null, null], _bgmActive = -1, _bgmScene = null, _bgmFadeTimer = null, _bgmInited = false;
 

@@ -189,7 +189,14 @@ function maybeSpawnMobs() {
                 delay = Math.max(1, delay);
             }
             if(mapState.spawnAt[i] == null) mapState.spawnAt[i] = nowT + delay; // 空格剛出現：排程 delay 後（一般／純BOSS房／軍王之室皆 5 秒）
-            if(nowT >= mapState.spawnAt[i]) { spawnMob(i); mapState.spawnAt[i] = null; }
+            if(nowT >= mapState.spawnAt[i]) {
+                // 🌑 聖地/崩壞廳 BOSS 復活收費：首次生成免費（入場費已付），之後每次復活扣 1 入場道具；沒道具→傳送出去、停止本輪出怪
+                if(isPureBossMap && i === 1 && typeof SANCT_RESPAWN_COST !== 'undefined' && SANCT_RESPAWN_COST[mapState.current]) {
+                    if(mapState._sanctBossSpawned) { if(!sanctBossRespawnCharge()) { mapState.spawnAt[i] = null; break; } }   // 復活：扣道具/無道具傳送出去
+                    else mapState._sanctBossSpawned = true;                                                                   // 首次生成免費
+                }
+                spawnMob(i); mapState.spawnAt[i] = null;
+            }
         }
     }
 }
@@ -197,6 +204,14 @@ function maybeSpawnMobs() {
 function tick() {
     if(!state.running || player.dead) return;
     state.ticks++;
+    // 🪄 吉爾塔斯魔杖：擊殺增益到期即重算，避免額外魔法點數停留在衍生能力中。
+    let _giltasWandExpired = [];
+    if (player._giltasWandFuryUntil && state.ticks >= player._giltasWandFuryUntil) { player._giltasWandFuryUntil = 0; _giltasWandExpired.push(player); }
+    if (player.allies && player.allies.length) player.allies.forEach(a => { if (a && a._giltasWandFuryUntil && state.ticks >= a._giltasWandFuryUntil) { a._giltasWandFuryUntil = 0; _giltasWandExpired.push(a); } });
+    if (_giltasWandExpired.length) {
+        if (_giltasWandExpired.includes(player)) calcStats();
+        _giltasWandExpired.forEach(a => { if (a !== player && typeof _allyLevelRecompute === 'function') _allyLevelRecompute(a); });
+    }
     _combatSrc = null;   // ⚔️ 戰鬥日誌來源：每 tick 起始重置（玩家攻擊/施法/DoT 等預設依顏色type推定；友方派發點會各自設定）
     _dpsAllyTurn = false; let _dpsPlayerSnap = _dpsSnap();   // 🎯 DPS：玩家階段起點快照（至怪物行動前的所有掉血＝玩家輸出·含自動施法/持續增益）
     castleGuardTick();   // 🏰 城堡護衛：回血/力竭恢復/城堡擁有結束自動解散
@@ -410,7 +425,7 @@ function tick() {
         if(m.curHp <= 0) continue;   // 反擊使該怪在自己回合內死亡 → 跳過後續魔法施放
         if(m.st && (m.st.vacuum > 0 || m.st.magicseal > 0)) continue; // 真空 / 魔法封印：無法施放技能
         if(!m._magCd) m._magCd = {};
-        ['mag','mag2','mag3'].forEach(mk => {
+        ['mag','mag2','mag3','mag4'].forEach(mk => {   // 🌑 mag4：吉爾塔斯第四技（血壁空間）
             if(!m[mk]) return;
             // 檢查發動機率
             if(m[mk].chance !== undefined) {
@@ -546,7 +561,29 @@ function kingRoomKeyName(mapId) {   // 進場鑰匙名：4 間軍王之室共用
     var keyId = (kr && kr.key) || 'item_king_key';
     return (typeof DB !== 'undefined' && DB.items && DB.items[keyId]) ? DB.items[keyId].n : '軍王的鑰匙';
 }
-const PURE_BOSS_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room', 'thebes_temple', 'tikal_altar'];
+const PURE_BOSS_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room', 'thebes_temple', 'tikal_altar', 'cursed_dark_elf_sanctuary', 'collapsed_elder_council_hall'];   // 🌑 受詛咒的黑暗妖精聖地(吉爾塔斯)／崩壞的長老會議廳(冥皇丹特斯)＝龍窟式單BOSS房（只生中央·死後5秒重生·由長老會議廳NPC進入）
+// 🌑 聖地/崩壞廳 BOSS「復活收費」：擊敗頭目後每次復活扣 1 入場道具（首次生成免費·入場費已付於 sanctuaryEnter）；沒道具→傳送出去。map→入場道具 id。
+const SANCT_RESPAWN_COST = { cursed_dark_elf_sanctuary: 'item_dk_book', collapsed_elder_council_hall: 'item_giltas_seal' };
+//   回傳 true=已扣道具可生成、false=沒道具已強制傳送出去(呼叫端勿再 spawn)。首次生成免費由呼叫端 mapState._sanctBossSpawned 旗標把關(sanctuaryEnter 進場時重置為 false·此旗標隨 mapState 入存檔→save/load 不可刷)。
+function sanctBossRespawnCharge() {
+    let cost = SANCT_RESPAWN_COST[mapState.current];
+    if(!cost) return true;
+    if(state.ff) return true;   // 🌑 離線/補跑期間不收費（兩間 BOSS 房已由 js/offline.js maybeCatchup 排除，不會走到；此為雙保險，避免任何補跑路徑燒書）
+    let d0 = DB.items[cost];
+    let bossName = (mapState.current === 'collapsed_elder_council_hall') ? '冥皇丹特斯' : '吉爾塔斯';
+    let ci = player.inv.findIndex(x => x && x.id === cost && (x.cnt || 1) >= 1);
+    if(ci < 0) {   // 沒道具→強制傳送出去（回上一個安全區＝長老會議廳入口·force 繞過受控限制）
+        logSys(`<span class="text-amber-300">你身上已沒有 ${d0 ? d0.n : cost} 可再獻祭——${bossName} 的封印之力將你逐出了此地。</span>`);
+        if(typeof setMapSelectors === 'function' && typeof getLastTown === 'function') setMapSelectors(getLastTown());
+        if(typeof changeMap === 'function') changeMap(true);
+        return false;
+    }
+    let it = player.inv[ci];
+    if((it.cnt || 1) > 1) it.cnt -= 1; else player.inv.splice(ci, 1);
+    logSys(`<span class="text-cyan-300">你獻祭了 1 個 ${d0 ? d0.n : cost}，${bossName} 再度降臨……</span>`);
+    try { renderTabs(true); saveGame(); } catch(e){}
+    return true;
+}
 const BOSS_BIG_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair'];   // 👑 方案B放大版面只套用這3個龍窟(不含底比斯祭壇等其餘純BOSS房)
 
 // 🆕 後排雙格：一般狩獵地圖在原本三格(前排)之外，再追加兩格「後排」小怪→場上最多同時 5 隻。
@@ -746,6 +783,13 @@ function spawnMob(idx) {
         if(base.n === _sc.tower && player.siege.towerHp > 0) mapState.mobs[idx].curHp = Math.min(mapState.mobs[idx].hp, player.siege.towerHp);
     }
 
+    // 🌑 吉爾塔斯 HP 保留：戰敗時持完整的召喚球→js/05 giltasKeepOnLeave 消耗 1 顆並記錄 player.giltasKeep；下次進入受詛咒聖地首次生成時還原 HP（一次性·還原即清除→之後離開再進＝全新吉爾塔斯）
+    if(mobId === 'sanct_giltas' && player.giltasKeep && player.giltasKeep.hp > 0) {
+        mapState.mobs[idx].curHp = Math.min(mapState.mobs[idx].hp, player.giltasKeep.hp);
+        player.giltasKeep = null;
+        logSys('<span class="text-red-300">完整的召喚球之力仍束縛著吉爾塔斯——牠的傷勢沒有癒合！</span>');
+    }
+
     applySherineGrace(idx);   // 🔮 席琳的恩賜：1% 機率場上一隻一般怪變恩賜怪（與時空裂痕共用 applySherineGrace）
     if (base.boss && typeof vfxBossEntrance === 'function') { try { vfxBossEntrance(mapState.mobs[idx]); } catch (e) {} }   // 🐉 四大龍出場：降臨特效＋螢幕震動（cosmetic·函式內部只認名單內的頭目·吃省電/補跑）
     renderMobs();
@@ -886,6 +930,8 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     }
     // 🏺 遺物 傑克的彈弓：對「巨人」種族加成 +1D20（與 unBonus 同模型·獨立於不死/狼人加成）
     if (wpn && wpn.giantBonus && target.race === '巨人') fixed += roll(1, 20);
+    // 🗡️ 吉爾塔斯之劍：擊殺敵人後 10 秒內額外傷害 +10（killMob 寫 _giltasFuryUntil·刷新制）
+    if (player._giltasFuryUntil > state.ticks && _swingId === 'wpn_giltas_sword') fixed += 10;
 
     let _outDmg = inner + fixed;
     if (graze) _outDmg = Math.max(1, Math.floor(_outDmg * 0.5));   // 擦傷：最終傷害剩 50%
@@ -1442,6 +1488,7 @@ function qiguPlayerAttack(target, wpn) {
     target.justHit = (ele !== 'none') ? ele : 'magic';
     if (target.st && target.st.mrhalf > 0) target.st.mrhalf = 0;
     mobWake(target);
+    if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(target, dmg, 'magic', null);   // 🌑 血壁空間：奇古獸普攻主擊＝魔法反射（玩家傭兵一致）
     logCombat(`<span class="font-bold" style="color:#c4b5fd;text-shadow:0 0 6px #8b5cf6;">【幻術士】</span>奇古獸對 <span class="${getMobColor(target.lv)}">${target.n}</span> 造成 ${dmg} 點魔法傷害。`, 'magic');
     if (target.curHp <= 0) killMob(mapState.targetIdx); else renderMobs();   // 主擊先結算（避免與下方特效各自 killMob 重複擊殺）
     qiguWeaponProc(target, wpn);        // 奇古獸特效（幻影衝擊/心靈破壞；主擊已擊殺則內部 guard 跳過、自行處理擊殺）

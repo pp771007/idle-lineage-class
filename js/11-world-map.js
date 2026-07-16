@@ -4,7 +4,7 @@ const MAP_CATEGORIES = {
         {v:'town_silver_knight',t:'銀騎士村'}, {v:'town_elf',t:'妖精森林'}, {v:'town_talking',t:'說話之島'},
         {v:'town_gludio',t:'燃柳村'}, {v:'town_giran',t:'奇岩'}, {v:'town_heine',t:'海音'},
         {v:'town_oren',t:'歐瑞村莊'}, {v:'town_aden',t:'亞丁',c:'#facc15'}, {v:'town_ivory_tower',t:'象牙塔'}, {v:'town_witon',t:'威頓村'},
-        {v:'town_sherine',t:'席琳神殿',c:'#4ade80',classicHide:true}, {v:'town_silent',t:'沉默洞穴',c:'#a78bfa'}, {v:'town_hyperia',t:'希培利亞村莊',c:'#c084fc'}, {v:'town_behemoth',t:'貝希摩斯',c:'#f59e0b'}, {v:'town_flame_audience',t:'炎魔謁見所',c:'#ff6b35',questReq:'demonTemple',affinityReq:1000}
+        {v:'town_sherine',t:'席琳神殿',c:'#4ade80',classicHide:true}, {v:'town_silent',t:'沉默洞穴',c:'#a78bfa'}, {v:'town_hyperia',t:'希培利亞村莊',c:'#c084fc'}, {v:'town_behemoth',t:'貝希摩斯',c:'#f59e0b'}, {v:'town_flame_audience',t:'炎魔謁見所',c:'#ff6b35',questReq:'demonTemple',affinityReq:1000}, {v:'town_elder_council',t:'長老會議廳',c:'#a5b4fc'}
     ],
     wild: [
         {v:'silver_knight',t:'銀騎士地區'}, {v:'talking_island',t:'說話之島周邊'}, {v:'zone_01',t:'妖精森林周邊'},
@@ -143,6 +143,7 @@ const MAP_REGIONS = [
         {v:'rastabad_gate', t:'拉斯塔巴德正門'}, {v:'giant_tomb', t:'古代巨人之墓'},
         {v:'demon_temple', t:'魔族神殿'}, {v:'town_flame_audience', t:'炎魔謁見所'},
         {v:'rastabad_beast', t:'魔獸訓練場'}, {v:'dark_magic_lab', t:'黑魔法研究室'}, {v:'necro_training', t:'冥法軍訓練場'}, {v:'elder_room', t:'格蘭肯神殿．長老之室'},
+        {v:'town_elder_council', t:'長老會議廳'},   // 🌑 三張聖地狩獵/BOSS圖不入選單（NPC 傳送進入）
         {v:'king_baranka_room', t:'魔獸君王之室'}, {v:'law_king_room', t:'法令君王之室'}, {v:'necro_king_room', t:'冥法君王之室'}, {v:'assassin_king_room', t:'暗殺君王之室'}
     ]},
     { key: 'rift', label: '時空裂痕', maps: [
@@ -481,6 +482,8 @@ function _cddWinClose() { if (_cddFresh()) return; _cddClose(); }   // 🔧 blur
 window.addEventListener('resize', _cddWinClose);
 window.addEventListener('blur', _cddWinClose);
 // 🗼 攀登/排名模式：右上角原本空白的地圖選單改顯示「傲慢之塔 X 樓」（與系統日誌的樓層資訊同色 text-rose-200）
+// 🌑 黑暗妖精聖地 3 隱藏圖（NPC 進入·不在任何下拉）→右上角改顯示地名（比照傲慢之塔/遺忘之島）
+const SANCTUARY_MAP_NAMES = { dark_elf_sanctuary: '黑暗妖精聖地', cursed_dark_elf_sanctuary: '受詛咒的黑暗妖精聖地', collapsed_elder_council_hall: '崩壞的長老會議廳' };
 function updatePrideFloorIndicator() {
     let ind = document.getElementById('pride-floor-indicator');
     let sel = document.getElementById('map-select');
@@ -504,6 +507,11 @@ function updatePrideFloorIndicator() {
         ind.classList.remove('hidden');
         if (sel) sel.classList.add('hidden');
         if (cat) cat.classList.add('hidden');   // 🌀 裂痕內鎖定左右選單，只能用「回村」離開
+    } else if (SANCTUARY_MAP_NAMES[cur]) {
+        ind.textContent = SANCTUARY_MAP_NAMES[cur];   // 🌑 黑暗妖精聖地3隱藏圖：隱藏左右下拉、只顯示地名（只能用「回村」離開）
+        ind.classList.remove('hidden');
+        if (sel) sel.classList.add('hidden');
+        if (cat) cat.classList.add('hidden');
     } else if (isHiddenArea(cur)) {
         ind.textContent = '🏛️ ' + HIDDEN_AREA_NAMES[cur];   // 🏛️ 隱藏狩獵區域：右地圖選單消失、改顯示對應名稱（只能用「回村」離開、或在區內傳送重置怪物）
         ind.classList.remove('hidden');
@@ -1273,6 +1281,7 @@ function changeMap(force) {
             }
         }
     }
+    if (typeof giltasKeepOnLeave === 'function' && document.getElementById('map-select').value !== mapState.current) giltasKeepOnLeave();   // 🌑 離開受詛咒聖地（回村/戰敗復活/切圖統一經此·helper 自帶地圖 gate）→ 吉爾塔斯 HP 保留判定＋提示
     mapState.current = document.getElementById('map-select').value;
     if (!mapState.current.startsWith('town_')) player.lastBattleMap = mapState.current;   // 🔧 記住最後所在的戰鬥地圖，供村莊「出發」按鈕一鍵返回
     { let _c = mapRegionOf(mapState.current); if(_c) { if(!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat[_c] = mapState.current; } }   // 記住各「地區」分類最後到過的地圖（與下拉同鍵）
@@ -1646,6 +1655,59 @@ function renderPrideEntrance(container) {
     container.appendChild(box);
 }
 
+// ===== 🌑 v3.3.33 真‧冥皇丹特斯（長老會議廳·黑暗妖精聖地.md）：三選項入口 =====
+//   進入 黑暗妖精聖地／受詛咒的黑暗妖精聖地＝各消耗 1 本 死亡騎士之書；交出 吉爾塔斯的封印＝消耗 1 個→傳送 崩壞的長老會議廳。
+//   三張圖皆不在地圖選單（隱藏圖）→ 直接設定 mapState 進圖（仿 js/05 enterOblivionMap 的直接進圖流程）。
+function _sanctItemCount(id) { let c = 0; player.inv.forEach(i => { if (i.id === id) c += (i.cnt || 1); }); return c; }
+function _sanctConsume(id) {
+    let i = player.inv.findIndex(x => x.id === id && (x.cnt || 1) >= 1);
+    if (i < 0) return false;
+    let it = player.inv[i];
+    if ((it.cnt || 1) > 1) it.cnt -= 1; else player.inv.splice(i, 1);
+    return true;
+}
+function sanctuaryEnter(mapKey, costId) {
+    let d0 = DB.items[costId];
+    if (!_sanctConsume(costId)) { logSys(`<span class="text-red-400">沒有 ${d0 ? d0.n : costId}，無法進入。</span>`); return; }
+    logSys(`<span class="text-amber-300">你交出了 1 個 ${d0 ? d0.n : costId}，${mapKey === 'collapsed_elder_council_hall' ? '被傳送到了 崩壞的長老會議廳' : '踏入了 ' + (mapKey === 'dark_elf_sanctuary' ? '黑暗妖精聖地' : '受詛咒的黑暗妖精聖地')}……</span>`);
+    closeNpcInteraction();
+    saveSiegeBossHp();
+    mapState.current = mapKey;
+    player.lastBattleMap = mapKey;
+    mapState.mobs = [null, null, null, null, null];
+    mapState.spawnAt = [null, null, null, null, null];
+    mapState._sanctBossSpawned = false;   // 🌑 v3.4.18 重置「首次生成免費」旗標：入場費已付→首隻頭目免費，之後每次復活扣 1 入場道具(js/03 sanctBossRespawnCharge)
+    mapState.targetIdx = -1;
+    mapState.forceBoss = false;
+    state._kbRespawnAt = null; state._kbVictory = false;
+    if (typeof _vfxClearAll === 'function') _vfxClearAll();
+    if (typeof auditReset === 'function') auditReset();
+    let mapPanel = document.getElementById('town-view').parentElement;
+    document.getElementById('battle-view').classList.remove('hidden');
+    document.getElementById('combat-log-panel').classList.remove('hidden');
+    document.getElementById('town-view').classList.add('hidden');
+    document.getElementById('town-view').classList.remove('flex');
+    mapPanel.classList.remove('flex-1', 'overflow-hidden');
+    if (typeof applyAreaBackground === 'function') applyAreaBackground();
+    renderMobs();
+    syncMapSelectors();
+    updateUI();
+    renderTabs(true); saveGame();
+}
+function renderDantesGate(div) {
+    let books = _sanctItemCount('item_dk_book'), seals = _sanctItemCount('item_giltas_seal'), orbs = _sanctItemCount('item_summonorb_full');
+    div.innerHTML = `
+        <div class="text-sm text-slate-300 space-y-2">
+            <p>「嗚！嗚！嗚！……你也為了嘲笑我的愚蠢而來的嗎？<br><br>快離開吧，已經太遲了。」</p>
+            <p class="text-xs text-slate-400">持有：死亡騎士之書 ×${books}．吉爾塔斯的封印 ×${seals}．完整的召喚球 ×${orbs}</p>
+            <div class="space-y-2 pt-2">
+                <button class="w-full text-left px-3 py-2 rounded bg-indigo-900/60 hover:bg-indigo-800 border border-indigo-500/40 ${books < 1 ? 'opacity-50' : ''}" onclick="sanctuaryEnter('dark_elf_sanctuary','item_dk_book')">⚔️ 進入 黑暗妖精聖地</button>
+                <button class="w-full text-left px-3 py-2 rounded bg-rose-900/60 hover:bg-rose-800 border border-rose-500/40 ${books < 1 ? 'opacity-50' : ''}" onclick="sanctuaryEnter('cursed_dark_elf_sanctuary','item_dk_book')">💀 進入 受詛咒的黑暗妖精聖地</button>
+                <button class="w-full text-left px-3 py-2 rounded bg-purple-900/60 hover:bg-purple-800 border border-purple-500/40 ${seals < 1 ? 'opacity-50' : ''}" onclick="sanctuaryEnter('collapsed_elder_council_hall','item_giltas_seal')">👑 交出 吉爾塔斯的封印</button>
+            </div>
+            <p class="text-xs text-slate-500 pt-1">挑戰吉爾塔斯時若身上持有 完整的召喚球：戰敗回村將消耗 1 顆，吉爾塔斯的 HP 會保持不變（暫停回血）直到你再次進入；沒有完整的召喚球則重新進入將是全新的吉爾塔斯。</p>
+        </div>`;
+}
 function interactNPC(npcId, townId) {
     let npc = DB.towns[townId].npcs.find(n => n.id === npcId);
     if(!npc) return;
@@ -1695,8 +1757,10 @@ function interactNPC(npcId, townId) {
         renderJoelCraft(contentDiv, npc.id);
     } else if (npc.id === 'npc_runde' || npc.id === 'npc_kang' || npc.id === 'npc_brudica') {   // 🔧 黑暗妖精限定試煉（仿瑞奇/甘特，而非製作）
         renderDarkTrial(contentDiv, npc.id);
-    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide', 'npc_kororanz', 'npc_sebas', 'npc_mystic_mage'].includes(npc.id)) {
+    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide', 'npc_kororanz', 'npc_sebas', 'npc_mystic_mage', 'npc_atelier'].includes(npc.id)) {
         renderUniversalCraft(contentDiv, npc.id);
+    } else if (npc.id === 'npc_dantes_lord') {   // 🌑 真‧冥皇丹特斯：聖地入口三選項
+        renderDantesGate(contentDiv);
     } else if (npc.id === 'npc_digallatin') {
         renderDigallatin(contentDiv);
     } else if (npc.id === 'npc_os') {

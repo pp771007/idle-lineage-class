@@ -49,6 +49,9 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     necro_king_room: 'assets/area/軍王之室.jpg',    // 👑 冥法軍王之室
     assassin_king_room: 'assets/area/軍王之室.jpg', // 👑 暗殺軍王之室
     elder_room: 'assets/area/軍王之室.jpg',         // 🏛️ 格蘭肯神殿．長老之室（無專屬背景圖·借用軍王之室背景）
+    dark_elf_sanctuary: 'assets/area/黑暗妖精聖地.jpg',                    // 🌑 黑暗妖精聖地（狩獵）
+    cursed_dark_elf_sanctuary: 'assets/area/受詛咒的黑暗妖精聖地.jpg',      // 🌑 受詛咒的黑暗妖精聖地（吉爾塔斯 BOSS 房）
+    collapsed_elder_council_hall: 'assets/area/崩壞的長老會議廳.jpg',       // 🌑 崩壞的長老會議廳（冥皇丹特斯 BOSS 房）
     thebes_desert: 'assets/area/底比斯沙漠.jpg',   // 🏛️ 底比斯 沙漠（專屬背景）
     thebes_pyramid: 'assets/area/底比斯.jpg',      // 🏛️ 底比斯 金字塔內部（與祭壇共用底比斯背景）
     thebes_temple: 'assets/area/底比斯.jpg',        // 🏛️ 底比斯 歐西里斯祭壇（純BOSS房）
@@ -61,7 +64,7 @@ const AREA_BG_FIT = new Set(['assets/area/沙漠.jpg', 'assets/area/水晶洞穴
 //   原本用白名單 AREA_BG_FIT＋圖比例 1920/580 判定→換成 16:9 背景圖時判不到→怪物退回 96px 變很小(打包版顯著)。
 //   現在：除了攻城(castle.png)/裂痕(Rift.png) 維持 16:9 置中，其餘所有狩獵區背景一律 area-fit→更換背景圖(任何比例)免再維護白名單。
 const AREA_BG_NOFIT = new Set(['castle.png', 'Rift.png']);
-const SPECIAL_TOWN_BG = { town_silent: 'silentcave.png' };                                        // 🔧 安全區逐張對應背景（沉默洞穴）
+const SPECIAL_TOWN_BG = { town_silent: 'silentcave.png', town_elder_council: '長老會議廳.jpg' };    // 🔧 安全區逐張對應背景（沉默洞穴；🌑 長老會議廳）
 const TOWN_AREA_BG = { village: 'village.png', castle: 'castle.png', tower: 'TowerofInsolence.png', rift: 'Rift.png' };   // 村莊畫面依分類（🗼 傲慢之塔入口；🌀 時空裂痕入口 Rift.png）
 // 🆕 同名背景圖：地圖顯示名稱(MAP_CATEGORIES 的 t) → 嘗試 assets/area/[名稱].jpg；探測結果快取(undefined=未探測、null=探測中、{found,fit}=結果)
 let _areaNameBgCache = {};

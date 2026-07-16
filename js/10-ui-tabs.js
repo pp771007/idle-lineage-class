@@ -605,6 +605,7 @@ function formatBonus(val) {
 // 武器種類標籤（單手劍 / 武士刀 / 匕首）；武士刀與瑟魯基之劍同時具單手劍與武士刀
 const WEAPON_TAGS = {
     wpn_katana: ['單手劍','武士刀'], wpn_siruge: ['單手劍','武士刀'], wpn_golden_scepter: ['單手劍','武士刀'],   // 👑 黃金權杖：反擊＋居合（雙標籤·裝真盾→反擊、無盾→居合）
+    wpn_cursed_emperor_blade:['單手劍','武士刀'],   // 🌑 受詛咒的真．冥皇執行劍：反擊(單手劍)＋居合(武士刀)·貫穿=ignHardSkin·裝備變身死亡騎士(js/02)
     wpn_dagger2: ['匕首'], wpn_dagger1: ['匕首'], wpn_11: ['匕首'], wpn_33: ['匕首'],
     wpn_longsword: ['單手劍'], wpn_9: ['單手劍'], wpn_scimitar: ['單手劍'], wpn_26: ['單手劍'],
     wpn_elfsword: ['單手劍'], wpn_27: ['單手劍'], wpn_shortsword: ['單手劍'], wpn_redknight: ['單手劍'],

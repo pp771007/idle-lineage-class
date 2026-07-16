@@ -1141,6 +1141,14 @@
       skipNote('上次在木人場（測 DPS）：木人無獎勵，離線期間無收益。');
       return;
     }
+    if (savedMap === 'cursed_dark_elf_sanctuary' || savedMap === 'collapsed_elder_council_hall') {
+      // 🌑 黑暗妖精聖地兩間純 BOSS 房（吉爾塔斯／冥皇丹特斯）：BOSS 每次復活需獻祭 1 個入場道具（死亡騎士之書／吉爾塔斯的封印）。
+      //   若離線自動續戰，掛一整晚會把玩家的書/封印全部燒光（js/03 sanctBossRespawnCharge 已加 state.ff 雙保險不扣，但仍不自動續以免空跑）。
+      //   比照排名/裂痕：不續、不結算。一般狩獵圖「黑暗妖精聖地」(dark_elf_sanctuary) 不在此列，照常離線續掛。
+      console.info('[AFK] 上次在聖地 BOSS 房：離線不自動續戰（避免耗盡入場道具）。');
+      skipNote('上次在聖地 BOSS 房（吉爾塔斯／冥皇丹特斯）：BOSS 復活需獻祭入場道具，離線不自動續戰，以免耗盡你的 死亡騎士之書／吉爾塔斯的封印。');
+      return;
+    }
     if (!last) {
       // 沒有舊時間戳(外掛剛裝 / 全新角色)→ 不結算離線收益;但若上次在攀登/遺忘之島,仍要把人帶回原地(零補跑)
       if (isClimb || isObl) runCatchup(0, false, savedMap, prePride, preObl);

@@ -350,6 +350,12 @@
     // 可用區域上緣：官方版指引橫幅是 fixed 貼在視窗頂端，賽狗視窗/小圈圈都是 fixed 定位，
     // 不夾住上緣就會被壓在橫幅底下。官方網域沒有橫幅 → 0 → 行為與原本完全一樣。
     function barTop() { return (typeof _origBarH === 'function') ? _origBarH() : 0; }
+    // 可用區域下緣:手機底部有導覽列,視窗不可壓到它底下(桌機沒導覽列 → 回視窗底,行為不變)
+    function usableBottom() {
+        try { var n = document.getElementById('m-nav');
+              if (n && getComputedStyle(n).display !== 'none') return n.getBoundingClientRect().top; } catch (_) {}
+        return innerHeight;
+    }
 
     function makeDraggable(node, handle, isBall) {
         var drag = null;
@@ -365,7 +371,7 @@
         handle.addEventListener('pointermove', function (e) {
             if (!drag || drag.id !== e.pointerId) return;
             var bt = barTop();
-            var maxX = Math.max(0, innerWidth - node.offsetWidth), maxY = Math.max(bt, innerHeight - node.offsetHeight);
+            var maxX = Math.max(0, innerWidth - node.offsetWidth), maxY = Math.max(bt, usableBottom() - node.offsetHeight);
             node.style.left = Math.max(0, Math.min(maxX, e.clientX - drag.dx)) + 'px';
             node.style.top = Math.max(bt, Math.min(maxY, e.clientY - drag.dy)) + 'px';
             drag.moved = true; if (isBall) node._dragged = true;
@@ -388,7 +394,7 @@
         var bt = barTop();
         if (p && typeof p.left === 'number') {
             node.style.left = Math.max(0, Math.min(innerWidth - 60, p.left)) + 'px';
-            node.style.top = Math.max(bt, Math.min(innerHeight - 40, p.top)) + 'px';   // 舊存的位置可能記在橫幅底下 → 一併夾回來
+            node.style.top = Math.max(bt, Math.min(usableBottom() - 40, p.top)) + 'px';   // 舊存的位置可能記在橫幅底下 → 一併夾回來
             node.style.right = 'auto'; node.style.bottom = 'auto';
         } else {
             if (def.right != null) node.style.right = def.right + 'px';
@@ -397,7 +403,7 @@
             if (def.top != null) {
                 var t = def.top + bt;
                 var h = node.offsetHeight;
-                if (h) t = Math.max(bt, Math.min(t, innerHeight - h));
+                if (h) t = Math.max(bt, Math.min(t, usableBottom() - h));
                 node.style.top = t + 'px';
             }
             if (def.bottom != null) node.style.bottom = def.bottom + 'px';

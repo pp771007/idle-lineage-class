@@ -885,6 +885,9 @@
       /* 底部導覽列 */
       /* 導覽列高度抽成變數:#m-log-sheet 的 bottom 要跟它對齊,寫死兩份遲早改一邊忘一邊。 */
       'body.m-mobile{--m-nav-h:44px;}',
+      /* 浮動視窗(倉庫/裝備/賽狗)的可用高度:手機還要再扣底部導覽列,否則視窗下緣會壓在導覽列底下。
+         floating-ui.css 的 --fu-avail-h 只扣了頂部橫幅(桌機沒有導覽列,那樣是對的);這裡只在手機覆寫。 */
+      'body.m-mobile{--fu-avail-h:calc(100vh - var(--orig-bar-h,0px) - var(--m-nav-h));}',
       /* 只留圖案(使用者要求):文字標籤隱藏、圖案放大、列高 56→44 把空間還給遊戲。
          標籤改掛在 title/aria-label(見 buildNav),長按仍看得到、也不影響無障礙。 */
       'body.m-mobile #m-nav{display:flex !important;flex:0 0 auto !important;height:var(--m-nav-h);background:#0f172a;border-top:1px solid #334155;}',

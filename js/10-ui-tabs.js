@@ -707,6 +707,39 @@ function relicEffectLabels(d, item) {
     if (!d) return [];
     let e = [], _skn = id => (DB.skills[id] && DB.skills[id].n) || id;
     let _ele = k => _RELIC_ELE_ZH[k] || k;
+    // 🏺 補跟上游 relicPurposeLabels:以下機制我方原本完全沒有寫在物品卡上(玩家回報「遺物有的有寫有的沒寫」)。
+    //    已排除:我方數值列(buildItemDescHTML)已顯示的(免疫石化/中毒、armguard、resNone…)與非效果項(relicRole/reqAvatar),避免同一件事寫兩次。
+    if (d.mcrit) e.push(`近距離爆擊率+${d.mcrit}%`);
+    if (d.mcritDmg) e.push(`近距離爆擊傷害+${d.mcritDmg}%`);
+    if (d.rcrit) e.push(`遠距離爆擊率+${d.rcrit}%`);
+    if (d.abnormalResist) e.push(`異常狀態抵抗+${d.abnormalResist}%`);
+    if (d.moveSpeedPct) e.push(`移動速度${d.moveSpeedPct > 0 ? '+' : ''}${d.moveSpeedPct}%`);
+    if (d.hitstunReduce) e.push(`受擊硬直縮短${(d.hitstunReduce / 10).toFixed(1)}秒`);
+    if (d.auraDmg) e.push(`傷害光環（每${((d.auraDmg.interval || 10) / 10).toFixed(1)}秒對全體敵人造成${d.auraDmg.dmg}點傷害）`);
+    if (d.thorns) e.push(`受擊反傷（反彈${d.thorns}點傷害）`);
+    if (d.dmgReflect) e.push(`傷害反射 ${d.dmgReflect}%（免疫該次一般攻擊並反射傷害）`);
+    if (d.hurtExplode) e.push(`受擊爆裂（自己與全體敵人受到${d.hurtExplode}點火焰魔法傷害）`);
+    if (d.crushDr) e.push(`重擊防護（受到重擊傷害-${d.crushDr}%）`);
+    if (d.physDrGated) e.push(`物理防護（一般攻擊傷害-${d.physDrGated}%，每3秒一次）`);
+    if (d.fireNullify) e.push('火焰化解（每10秒可免疫一次火屬性傷害）');
+    if (d.wearerEle) e.push(`${_ele(d.wearerEle)}之化身（自身轉為${_ele(d.wearerEle)}屬性，承受傷害套用屬性剋制）`);
+    if (d.stealth) e.push('常駐隱身（不主動吸引一般怪物）');
+    if (d.lowMpRegenBonus) e.push(`魔力枯竭回復（MP低於15%時，MP自然恢復+${d.lowMpRegenBonus}）`);
+    if (d.groupHealMult) e.push(`團體治癒強化（體力回復術、生命的祝福恢復量×${d.groupHealMult}）`);
+    if (d.onDmgHeal) e.push(`受擊自癒（每${d.onDmgHealCd || 5}秒自動施放${_skn(d.onDmgHeal)}）`);
+    if (d.poisonHealMult) e.push(`毒素轉生（受到毒性持續傷害時，改為恢復其${Math.round(d.poisonHealMult * 100)}%的HP）`);
+    if (d.hardWear) e.push(`碎甲（命中時額外削減${d.hardWear}點硬皮）`);
+    if (d.lvDmgDiv || d.lvHitDiv) e.push(`等級成長（每${d.lvDmgDiv || d.lvHitDiv}級，傷害與命中提高）`);
+    if (d.highestAttrPlus) e.push('主屬性強化（目前最高的六維屬性+1；並列皆增加）');
+    if (d.weakHitBonus) e.push(`弱點洞察（屬性剋制時額外傷害+${d.weakHitBonus}）`);
+    if (d.petDmgAll) e.push(`寵物傷害+${d.petDmgAll}`);
+    if (d.petHitAll) e.push(`寵物命中+${d.petHitAll}`);
+    if (d.petSkillDmgMult) e.push(`寵物技能傷害×${d.petSkillDmgMult}`);
+    if (d.summonDmg) e.push(`召喚物傷害+${d.summonDmg}`);
+    if (d.summonHit) e.push(`召喚物命中+${d.summonHit}`);
+    if (d.trackBoost) e.push('追蹤強化（指定怪物出現率由50%提高至70%）');
+    if (d.showMobEle) e.push('元素洞察（顯示敵人的屬性）');
+    if (d.relicDropX2) e.push('遺物尋寶（遺物掉落判定次數×2）');
     // 🏺 遺物第 15 批(四大精靈王武器等)的效果說明。文字照上游 relicPurposeLabels;我方函式用 e.push 與 _ele() 對照表
     if (d.mrPerWis)            e.push(`精神屏障（每 1 點最終精神，MR+${d.mrPerWis}）`);
     if (d.swordStr)            e.push(`握劍強化（主手裝備單手劍或雙手劍時，力量+${d.swordStr}）`);
@@ -903,6 +936,9 @@ function buildItemDescHTML(item) {
         if (d.block)                _eff.push('格檔：' + d.block + '%');
         if (d.immStone)             _eff.push('免疫石化');
         if (d.immPoison)            _eff.push('免疫中毒');
+        if (d.immParalyze)          _eff.push('免疫麻痺');   // 🏺 補跟上游:免疫這一族原本只寫了石化/中毒,其餘三種漏列
+        if (d.immBurn)              _eff.push('免疫灼燒');
+        if (d.immFreeze)            _eff.push('免疫冰凍');
         if (d.unique)               _eff.push('唯一（最多裝備1個）');
         if (d.eff === 'magicstrike') _eff.push('魔擊');
         if (d.eff === 'magicburst') _eff.push('魔爆');   // 🔧 神官魔杖

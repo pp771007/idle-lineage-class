@@ -1253,6 +1253,7 @@ function _updateUIImpl() {
     document.getElementById('dt-dr').innerText = player.d.dr;
     document.getElementById('dt-spd').innerText = `${player.d.aspd.toFixed(2)}s`;
     if(document.getElementById('dt-resfire')) {
+        document.getElementById('dt-resnone').innerText  = `${effResistPct(player.d.resNone  || 0)}%`;
         document.getElementById('dt-resfire').innerText  = `${effResistPct(player.d.resFire  || 0)}%`;   // 🔧 顯示有效減傷%（>50 每+5才+1%）
         document.getElementById('dt-reswater').innerText = `${effResistPct(player.d.resWater || 0)}%`;
         document.getElementById('dt-reswind').innerText  = `${effResistPct(player.d.resWind  || 0)}%`;

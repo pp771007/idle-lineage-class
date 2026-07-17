@@ -836,6 +836,7 @@ function buildItemDescHTML(item) {
         if(d.hit !== undefined)        desc += ` / ${hitLabel}: ${formatBonus(d.hit)}`;
         if(d.dmgBonus !== undefined)   desc += ` / ${dmgLabel}: ${formatBonus(d.dmgBonus)}`;
         if(d.mr || d.mrPerEn) { let _en = capEn(item.en, d); desc += ` / 魔防(MR): ${formatBonus((d.mr||0) + (d.mrPerEn||0)*_en)}` + (d.mrPerEn ? `（每強化 +${d.mrPerEn}）` : ''); }
+        if(d.resNone)  desc += ` / 無屬性抗性: ${formatBonus(d.resNone)}（只對魔法）`;   // 🛡️ 改制:取代舊 magicDrNonEle 的直接減傷 %
         if(d.resFire)  desc += ` / 火屬性抗性: ${formatBonus(d.resFire)}`;
         if(d.resWater) desc += ` / 水屬性抗性: ${formatBonus(d.resWater)}`;
         if(d.resWind)  desc += ` / 風屬性抗性: ${formatBonus(d.resWind)}`;

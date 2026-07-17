@@ -42,7 +42,7 @@ function recomputeStats() {
     d.resFire = 0; d.resWater = 0; d.resEarth = 0; d.resWind = 0;
     d.immStone = false;      // 免疫石化（紅騎士盾牌）
     d.immPoison = false;     // 免疫中毒/猛毒/麻痺（潔尼斯戒指）
-    d.magicDrNonEle = 0;     // 無屬性魔法傷害減免 %（紅騎士盾牌）
+    d.resNone = 0;           // 🛡️ 無屬性抗性（走與火/水/地/風同一條 effResistPct 遞減曲線；原 magicDrNonEle 直接減傷 % 已改制）
 
     // ===== Phase 1：先把所有「屬性(STR/DEX/INT/CON/WIS)」來源加總完畢 =====
     // 【修正】裝備與增益提供的屬性，必須在換算戰鬥數值「之前」全部計入，
@@ -317,7 +317,7 @@ d.mr += (baseMr + bonusMr);
         if(ed.mcritDmg)  d.meleeCritDmg += ed.mcritDmg;       // 🏺 防具/飾品的近距離爆擊傷害% 加成（同上，補齊非武器來源）
         if(ed.immStone) d.immStone = true;                    // 紅騎士盾牌：免疫石化
         if(ed.immPoison) d.immPoison = true;                  // 潔尼斯戒指：免疫中毒/猛毒/麻痺
-        if(ed.magicDrNonEle) d.magicDrNonEle += ed.magicDrNonEle; // 紅騎士盾牌：無屬性魔法減傷
+        if(ed.resNone) d.resNone += ed.resNone;                   // 🛡️ 無屬性抗性（紅騎士盾牌/反射之盾/阿茲特的反光石）
         if(ed.dr) d.dr += ed.dr;   // 🛡️ 防具/飾品固定傷害減免（信念之盾 +2、巴風特盔甲 +2）
         if(ed.hitstunReduce) d.hitstunReduce += ed.hitstunReduce;   // 🏺 不動的鋼鐵堅壁：受傷硬直 -0.5 秒（-5 tick）→先累加·於變身速度覆蓋後統一扣（原本直接扣會被 POLY_TIERS 的 d.hitstun=pf.stun 蓋掉）
         if(ed.crushDr) d.crushDr += ed.crushDr;        // 🏺 遺物 妖魔的兜襠布：受到重擊時傷害減少 crushDr%（於 js/04 受擊路徑套用）

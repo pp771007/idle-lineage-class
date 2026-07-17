@@ -1263,6 +1263,7 @@ function applyMobMagicToAlly(mob, sk, ally) {
         if (sk.ele === 'water' && d.resWater) resF -= effResistPct(d.resWater) / 100;
         if (sk.ele === 'earth' && d.resEarth) resF -= effResistPct(d.resEarth) / 100;
         if (sk.ele === 'wind' && d.resWind) resF -= effResistPct(d.resWind) / 100;
+        if ((!sk.ele || sk.ele === 'none') && d.resNone) resF -= effResistPct(d.resNone) / 100;   // 🛡️ 無屬性抗性(傭兵鏡像)
         resF = Math.max(0, Math.min(1, resF));
         let dmg = sk.fixedDmg ? (baseM + extra) : (Math.floor(Math.floor((baseM + extra) * resF) * mrMult(mr)) - (d.dr || 0));
         if (st.freeze > 0 && sk.ext_freeze) { dmg += sk.ext_freeze; if (sk.extUnfreeze) st.freeze = 0; }
@@ -1584,6 +1585,7 @@ function applyMobMagic(mob, sk) {
         if(sk.ele === 'water' && player.d.resWater) resFactor -= effResistPct(player.d.resWater)/100;
         if(sk.ele === 'earth' && player.d.resEarth) resFactor -= effResistPct(player.d.resEarth)/100;
         if(sk.ele === 'wind' && player.d.resWind) resFactor -= effResistPct(player.d.resWind)/100;
+        if((!sk.ele || sk.ele === 'none') && player.d.resNone) resFactor -= effResistPct(player.d.resNone)/100;   // 🛡️ 無屬性抗性(改制:原 magicDrNonEle 的直接減傷 % 移到這條曲線)
         resFactor = Math.max(0, Math.min(1, resFactor));
         // 🏺 遺物 火熱愛意：免疫受到的火屬性傷害（每 10 秒最多觸發 1 次·player._fireNullCd 節流）
         if (sk.ele === 'fire' && player.d.fireNullify && state.ticks >= (player._fireNullCd || 0)) {
@@ -1608,7 +1610,6 @@ function applyMobMagic(mob, sk) {
         // 🔧 百分比受傷「減免」統一乘算（多層疊加採乘算：例 鐵衛20%×聖結界30%＝1−0.8×0.7＝44%，非相加 50%）
         { let _drMult = 1.0;
           if (player.buffs.sk_holy_barrier > 0) _drMult *= 0.7;                                                  // 聖結界：-30%
-          if (player.d.magicDrNonEle > 0 && !['fire','water','earth','wind'].includes(sk.ele)) _drMult *= (1 - player.d.magicDrNonEle / 100);   // 紅騎士盾牌：無屬性魔法
           if (player._setIron3) _drMult *= 0.8;                                                                  // 🔮 鐵衛 3/5：-20%
           if (player.buffs.sk_set_dragonscion > 0) _drMult *= 0.85;                                              // 🐉 龍血·龍裔：-15%
           if (player._setFury5) _drMult *= (1 - furyRageRatio());                                                // 😡 狂怒 5/5：依失血最多 -20%

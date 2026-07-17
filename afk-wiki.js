@@ -1893,6 +1893,10 @@
   // 詳情與整頁 HTML 都建一次就快取(_equipDetail/_equipHtml)→ 搜尋每次重渲染 441 件也不卡。
   var EQUIP_FILTERS = [['all', '全部'], ['royal', '王族'], ['knight', '騎士'], ['mage', '法師'], ['elf', '妖精'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士'], ['warrior', '戰士']];   // 順序＝全部＋創角職業序(同 CLASSES)
   // 武器部位依「裝備圖鑑」細分(作者 EQUIP_CATEGORIES,分類用 equipCatKey/EQUIP_ITEM_CAT);防具/飾品維持原本粗分。
+  var RELIC_SLOT = '__relic';   // 「遺物」虛擬部位的 key:刻意用 __ 開頭,不可能撞到真實 slot
+  // 判斷遺物一律走遊戲的 isRelic()(單一事實來源;讀不到才退回自己看旗標,不讓小百科整頁壞掉)
+  function isRelicItem(d) { try { return (typeof isRelic === 'function') ? isRelic(d) : !!(d && d.relic); } catch (e) { return !!(d && d.relic); } }
+
   var EQUIP_GROUPS = (typeof EQUIP_CATEGORIES !== 'undefined' ? EQUIP_CATEGORIES.filter(function (c) { return c.group === '武器'; }).map(function (c) { return { k: c.key, n: '⚔️ ' + c.name }; }) : [{ k: 'wpn', n: '⚔️ 武器' }]).concat([
     { k: 'helm', n: '🪖 頭部' }, { k: 'armor', n: '🛡 身體' }, { k: 'shin', n: '🦵 脛甲' },
     { k: 'shield', n: '🔰 盾牌／副手' }, { k: 'cloak', n: '🧥 斗篷' }, { k: 'gloves', n: '🧤 手套' },
@@ -1957,7 +1961,11 @@
     var ckey = cls + '|' + slot;
     if (_equipHtml[ckey] !== undefined) return _equipHtml[ckey];
     // 部位 tag 列(全部＋各部位):一次只看一個部位,避免整頁太長
+    //   「🏺 遺物」是虛擬部位(不是真的 slot):跨所有部位只留遺物,但仍照部位分組 → 一頁看完、又不會亂成一坨。
+    //   玩家找遺物組合時,原本得逐部位翻、名稱又看不出是不是遺物;走這裡可直接沿用裝備頁的折疊式效果顯示
+    //   (「收藏-遺物」那本要多點一次才看得到效果)。
     var slotRow = '<div class="m-wiki-mfilter"><button type="button" class="m-wiki-mfbtn' + (slot === 'all' ? ' on' : '') + '" data-equipslot="all">全部</button>' +
+      '<button type="button" class="m-wiki-mfbtn' + (slot === RELIC_SLOT ? ' on' : '') + '" data-equipslot="' + RELIC_SLOT + '">🏺 遺物</button>' +
       EQUIP_GROUPS.map(function (g) { return '<button type="button" class="m-wiki-mfbtn' + (g.k === slot ? ' on' : '') + '" data-equipslot="' + g.k + '">' + g.n + '</button>'; }).join('') + '</div>';
     // 職業 tag 列
     var clsRow = '<div class="m-wiki-mfilter">' + EQUIP_FILTERS.map(function (f) {
@@ -1980,7 +1988,8 @@
       if (d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc') return;
       if (!classCanEquip(d, id, cls)) return;
       var gk = equipGroupKey(id, d);
-      if (slot !== 'all' && gk !== slot) return;   // 只看選定部位
+      if (slot === RELIC_SLOT) { if (!isRelicItem(d)) return; }   // 🏺 虛擬部位:跨部位只留遺物(仍照部位分組)
+      else if (slot !== 'all' && gk !== slot) return;             // 只看選定部位
       (buckets[gk] = buckets[gk] || []).push({ id: id, d: d });
     });
     function card(e) {

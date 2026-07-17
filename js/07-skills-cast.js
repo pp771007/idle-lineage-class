@@ -330,6 +330,7 @@ function _fireballMorphId(skId) {
     return skId;
 }
 function castSkillInner(skId) {
+    const _preMorphId = skId;        // 🏺 變身前的技能：資格檢查要看它（見下方 __granted / needLv）
     skId = _fireballMorphId(skId);   // 🏺 烈焰巫師的正式長袍：燃燒的火球→爆裂的火球
     let sk = DB.skills[skId];
     if(!sk) return false;
@@ -346,8 +347,14 @@ function castSkillInner(skId) {
         return false;
     }
     
-    let __granted = player.grantedSkills && player.grantedSkills.includes(skId);
-    let needLv = skillReqLv(sk, skId);   // 🏅 集中化：含魔導精通特例
+    // 🏺 由遺物變身而來的技能（爆裂的火球）沒有自己的 reqM/reqE… → skillReqLv 回 undefined 會把整個技能擋掉，
+    //    玩家表現＝「穿上烈焰巫師的正式長袍後火球完全放不出來」（原版同樣壞）。資格一律看「變身前」那支：
+    //    能不能放，取決於玩家有沒有資格放原本的火球（_fireballMorphId 已確認他學過），與變身後的招式無關。
+    //    MP/傷害等其餘一切仍照變身後的技能算（爆裂火球本來就該多耗 4 點 MP）。
+    const _reqId = (skId !== _preMorphId) ? _preMorphId : skId;
+    const _reqSk = DB.skills[_reqId] || sk;
+    let __granted = player.grantedSkills && player.grantedSkills.includes(_reqId);
+    let needLv = skillReqLv(_reqSk, _reqId);   // 🏅 集中化：含魔導精通特例
     if(!__granted && (needLv === undefined || player.lv < needLv)) return false;
     if(!__granted && sk.reqEle && player.elfEle !== sk.reqEle) return false;      // 屬性不符
     if(!__granted && sk.reqEleAny && !player.elfEle) return false;                 // 尚未選擇屬性

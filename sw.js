@@ -189,8 +189,13 @@ async function readAnimHashes(cache) {
   } catch (err) { /* 壞了當空表重建 */ }
   return {};
 }
+// 回傳「有沒有寫進去」而不是往外拋:失敗往外拋會把整支 reconcileAnim 帶走(其餘 4 個 cache.put 一律掛 catch,
+//   這支原本漏了)。呼叫端要靠這個布林決定「敢不敢清圖」——記不住就不能清,見 reconcileAnim。
 async function writeAnimHashes(cache, map) {
-  await cache.put(ANIM_HASH_KEY, new Response(JSON.stringify(map), { headers: { 'content-type': 'application/json' } }));
+  try {
+    await cache.put(ANIM_HASH_KEY, new Response(JSON.stringify(map), { headers: { 'content-type': 'application/json' } }));
+    return true;
+  } catch (err) { return false; }
 }
 
 // 怪物動畫幀逐「怪」對帳:anim/ 幀太多不進逐張 manifest(見檔頭),改用 anim-manifest.json——
@@ -206,8 +211,17 @@ async function reconcileAnim(folders, client) {
   const recorded = await readAnimHashes(cache);
 
   // 走訪一次圖桶,把已快取的動畫幀依「資料夾」分組,避免每個資料夾各掃一次全桶。anim=怪物幀、classanim=職業戰鬥幀(v3.0.67),同走一資料夾一雜湊。
+  // ⚠️ cache.keys() 在「筆數夠多」的桶上會拋 Operation too large(玩家實機:圖桶塞滿動畫幀後必炸,
+  //    而同一 SW 的 reconcileImages 不用 keys() 故安然無恙——「圖片有記錄、怪物無記錄」就是這支死掉的鐵證)。
+  //    列舉不到 = 不知道哪些幀在快取裡,此時「清掉」與「採信」都是瞎猜 → 什麼都不做,維持現狀。
+  let entries;
+  try { entries = await cache.keys(); }
+  catch (err) {
+    if (client) client.postMessage({ type: 'reconcile-anim-done', evicted: 0, skipped: 'keys: ' + (err && err.message || err) });
+    return;
+  }
   const byFolder = new Map();
-  for (const req of await cache.keys()) {
+  for (const req of entries) {
     let path; try { path = decodeURIComponent(new URL(req.url).pathname); } catch (err) { continue; }  // 中文資料夾名在 URL 是 %XX,要 decode 才對得上 manifest 的原始名
     const m = path.match(/\/(assets\/(?:anim|classanim)\/[^/]+)\//);
     if (!m) continue;
@@ -219,6 +233,14 @@ async function reconcileAnim(folders, client) {
     if (!reqs) return 0;
     for (const r of reqs) await cache.delete(r);
     return reqs.length;
+  }
+
+  // 動手清之前,先確認這台機器「記得住」:拿現有記錄試寫一次,寫不進去就一張都別清。
+  //   原本是「先清光 → 再寫記錄」,寫入一失敗記錄就永遠是空的 → 下次載入每隻怪又全部對不上 → 再清一次
+  //   → 無限重抓(玩家回報「每次更新怪物圖都要重載」的成因之一)。清得掉卻記不住,比不清還糟。
+  if (!(await writeAnimHashes(cache, recorded))) {
+    if (client) client.postMessage({ type: 'reconcile-anim-done', evicted: 0, skipped: '記錄寫不進去,不敢清' });
+    return;
   }
 
   let evicted = 0;

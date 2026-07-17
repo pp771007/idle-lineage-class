@@ -11,6 +11,18 @@
 (function () {
   'use strict';
 
+  // 這支自己的版本:從自己的 <script src="afk-diag.js?v=…"> 取。
+  //   為什麼要:玩家回傳截圖時,得認得出「這是哪一版診斷產生的」——否則修好了也分不出他手上是新是舊
+  //   (踩過:改完推上去,玩家看到一樣的錯,雙方都無從判斷是沒生效還是沒重載)。
+  //   放標題是刻意的:內容整個失敗時,只有標題還會留在畫面上。
+  var DIAG_VER = (function () {
+    try {
+      var s = document.querySelector('script[src*="afk-diag.js"]');
+      var m = s && s.getAttribute('src').match(/[?&]v=([^&]+)/);
+      return m ? m[1] : '?';
+    } catch (e) { return '?'; }
+  })();
+
   var IMG_CACHE = 'img-v3';           // ← 與 sw.js 同名(那邊是固定桶名,不隨版本換)
   var CODE_CACHE = 'code-v1';
   var ANIM_HASH_KEY = '/__afk-anim-hashes__';   // sw.js 存「一怪一雜湊」對帳記錄的合成 entry
@@ -162,6 +174,7 @@
 
     function put(k, fn) { try { out[k] = fn(); } catch (e) { out[k] = '⚠️ 讀取失敗: ' + String(e.message || e).slice(0, 80); } }
 
+    put('診斷版本', function () { return DIAG_VER; });   // 複製成文字回報時也要認得出是哪一版產生的
     put('時間', function () { return new Date().toLocaleString('zh-TW'); });
     put('開啟方式', function () {
       return ((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone)
@@ -287,7 +300,7 @@
     m.innerHTML =
       '<div id="m-diag-card">' +
         '<div id="m-diag-head">' +
-          '<span id="m-diag-title">🩺 快取診斷</span>' +
+          '<span id="m-diag-title">🩺 快取診斷 <span id="m-diag-ver">' + DIAG_VER + '</span></span>' +
           '<button id="m-diag-close" title="關閉">✕</button>' +
         '</div>' +
         '<pre id="m-diag-body"></pre>' +
@@ -311,6 +324,7 @@
       '#m-diag-card{background:#111827;border:1px solid #374151;border-radius:12px;max-width:640px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.6)}' +
       '#m-diag-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #374151}' +
       '#m-diag-title{color:#fbbf24;font-weight:700}' +
+      '#m-diag-ver{color:#6b7280;font-weight:400;font-size:11px;font-family:monospace}' +
       '#m-diag-close{color:#9ca3af;background:none;border:0;font-size:18px;cursor:pointer;padding:2px 6px}' +
       '#m-diag-body{margin:0;padding:12px 14px;overflow:auto;color:#e5e7eb;font-size:12px;line-height:1.65;white-space:pre-wrap;word-break:break-all;flex:1}' +
       '#m-diag-foot{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #374151}' +

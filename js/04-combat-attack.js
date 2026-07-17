@@ -478,9 +478,21 @@ function equipSkillDmgMult(sk, skId, owner) {
     return m;
 }
 // 🔧 免費施放傷害魔法（不耗MP/不需學習）：武器觸發取武器權重階級，其餘來源取技能本身階級。sourceItem＝觸發來源（武器/娃娃）；illusionRecoverMp＝false 時不回幻覺MP（AOE 由呼叫端只在第一目標傳 true）。
-function procFreeMagicSkill(t, skId, en, sourceItem, illusionRecoverMp) {
+function procFreeMagicSkill(t, skId, en, sourceItem, illusionRecoverMp, areaHit) {
     let sk = DB.skills[skId];
     if (!sk || !t || t.curHp <= 0) return;
+    // 🌪️ 全體技(如龍捲風 target:'all')被武器 procSkill 觸發時,要打全場、不是只打單一目標 t
+    //    (旋風十字弓的龍捲風原本只打單體即此故;上游已修,此處移植其分發邏輯——只搬這段,不連帶搬
+    //     上游同函式夾帶的其他新功能如 terrorVisage,那些依賴我方尚未移植的東西)。
+    //    areaHit 防止遞迴時再度展開;i===0 讓幻覺套裝的回MP只在第一隻結算一次(與上游一致)。
+    if (sk.target === 'all' && !areaHit) {
+        let uids = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead).map(m => m.uid);
+        uids.forEach((uid, i) => {
+            let mob = mapState.mobs.find(m => m && m.uid === uid && m.curHp > 0 && !m._dead);
+            if (mob) procFreeMagicSkill(mob, skId, en, sourceItem, i === 0, true);
+        });
+        return;
+    }
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
     let isCrit = Math.random() * 100 < player.d.magicCrit;

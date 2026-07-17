@@ -249,13 +249,13 @@
    - 新增外掛時,**務必同時**加上對應的 `<script>` 行;**有 DOM 掛點的**再加進 `scripts/smoke-hooks.mjs` 的 `need`(像 `afk-sw.js` 這種純註冊、無 DOM 掛點的就不必),否則功能不會生效、或掛點壞了沒人擋。
    - **⚠️ 判準:掛點「只在某條件下才建立」的外掛(只在手機尺寸/裝置才 init 之類),smoke 必須在該條件下驗它,否則是假性失效**(桌機那輪永遠印不出它的 hooks OK)。smoke 已有第二輪手機 context(`devices['iPhone 13']` + `needMobileOnly`)專驗這類,新增同性質外掛就掛進去。
 2. **smoke 沒有任何自動排程在跑(自動同步已停),一律 push 前本機跑**:`node scripts/smoke-hooks.mjs` → exit 0 才推(`/prepush` 內含)。紅了代表某外掛 hook 失效,回報是哪支。
-3. **改了任何外掛 JS → 一定要 bump `?v=` 版本號**(GitHub Pages / 瀏覽器會死命快取 JS;只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS)。版本號規則:日期 + 當天流水字母(如 `20260613a` → `20260613b`)。**沒 bump 的話使用者載到的還是舊外掛,debug 會鬼打牆**(踩過一整輪才發現)。
+3. **改了任何外掛 JS / 遊戲 JS / CSS → `?v=` 一律靠 `node scripts/stamp-code-versions.mjs` 自動對齊,不要手動 bump**(GitHub Pages / 瀏覽器會死命快取 JS;URL 一樣就給舊快取)。**2026-07-18 起 afk-*.js 也納入這支自動化**(改用內容 sha1 前 10 碼,與 js/css 同機制)——在此之前 afk-*.js 是手動 date 版本(`20260717a`),反覆漏 bump:今天 afk-wiki 改了內容卻沒換號,已載入舊版的玩家吃快取、看不到新功能(整個 session 被 `/prepush` 抓到兩次、還漏一次才根治)。**現在動任何 afk-*.js 都不必也不要手動改 `?v=`,交給腳本。**
 
-   ### 🚨🚨 `js/*.js` / `css/*.css` 的 `?v=` 一律用 `node scripts/stamp-code-versions.mjs` 對齊,不要靠人記得
+   ### 🚨🚨 `js/*.js` / `css/*.css` / `afk-*.js` 的 `?v=` 一律用 `node scripts/stamp-code-versions.mjs` 對齊,不要靠人記得
 
    **漏 bump 的真正後果不是「載到舊檔」,而是「新舊混搭」**:A 檔加了新函式、B 檔呼叫它,只有 B 的 `?v=` 變 → 玩家載到「新 B + 快取裡的舊 A」→ `ReferenceError`。**取決於各玩家的快取時序 ⇒ 低機率、無法重現、log 看不到**(踩過:例外炸在離線結算迴圈被 catch 吞掉,玩家整晚收益歸零,查很久)。
 
-   - **判準:凡動過 `js/*.js` / `css/*.css`,push 前一律跑 `node scripts/stamp-code-versions.mjs`**(把 `?v=` 對齊內容 sha1 前 10 碼),再 `--check` 確認 exit 0。`/prepush` 已內含。
+   - **判準:凡動過 `js/*.js` / `css/*.css` / `afk-*.js`,push 前一律跑 `node scripts/stamp-code-versions.mjs`**(把 `?v=` 對齊內容 sha1 前 10 碼),再 `--check` 確認 exit 0。`/prepush` 已內含。
    - **絕不可只 bump「自己有印象改到」的那幾支**——大型移植一次動十幾個檔,人一定漏。腳本掃全部,沒有例外。
    - **改完任何程式檔,push 前再跑一次 `node scripts/stamp-sw-version.mjs`**——重算 `sw.js` 的 `CODE_VERSION`,PWA 才偵測得到更新。漏跑的話「已安裝的 app」不會跳更新。
    - **新增/更換/刪除 `assets/`、`public/assets/` 的圖 → 跑 `node scripts/gen-manifests.mjs`** 重產對帳清單並一起 commit(否則 PWA 玩家卡舊圖/離線 404)。

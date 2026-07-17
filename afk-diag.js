@@ -16,6 +16,20 @@
   var ANIM_HASH_KEY = '/__afk-anim-hashes__';   // sw.js 存「一怪一雜湊」對帳記錄的合成 entry
   var IMG_HASH_KEY = '/__afk-img-hashes__';
 
+  // 最近的 JS 錯誤:手機沒有 console,玩家回報「怪怪的」時這是唯一拿得到錯誤的管道。
+  //   本檔在 </body> 前才載入,更早的錯誤抓不到;被 try/catch 吞掉的也抓不到(如離線結算迴圈內)——
+  //   有東西就是線索,空的不代表沒問題。
+  var ERRS = [];
+  function pushErr(kind, msg, src) {
+    if (ERRS.length >= 12) ERRS.shift();
+    ERRS.push({ t: new Date().toLocaleTimeString('zh-TW'), kind: kind, msg: String(msg || '').slice(0, 200), src: String(src || '').split('/').pop().slice(0, 40) });
+  }
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'IMG') return pushErr('圖載入失敗', e.target.src || '', '');   // 怪物圖抓不到=快取/網路問題的直接證據
+    pushErr('錯誤', e.message, e.filename);
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) { pushErr('未處理的拒絕', e.reason && (e.reason.message || e.reason), ''); });
+
   function mb(n) { return (n / 1048576).toFixed(1) + ' MB'; }
   function kb(n) { return n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : mb(n); }   // 存檔多在幾百 KB~數 MB,用 MB 顯示會變 0.0
 
@@ -69,6 +83,74 @@
     return { total: total, saves: saves, top: items.slice(0, 5) };
   }
 
+  // UA 原始字串太長沒人讀得下去,解析成人看得懂的;原始字串仍保留在最後一行(型號細節只有它有)
+  function uaSummary() {
+    var ua = navigator.userAgent, m;
+    var browser = (m = ua.match(/(Edg|OPR|SamsungBrowser|Firefox|Chrome)\/([\d.]+)/)) ?
+      ({ Edg: 'Edge', OPR: 'Opera', SamsungBrowser: 'Samsung 瀏覽器' }[m[1]] || m[1]) + ' ' + m[2].split('.')[0] :
+      (/Safari/.test(ua) ? 'Safari' : '未知瀏覽器');
+    var os = (m = ua.match(/Android ([\d.]+)/)) ? 'Android ' + m[1] :
+      (m = ua.match(/(?:iPhone )?OS ([\d_]+)/)) ? 'iOS ' + m[1].replace(/_/g, '.') :
+      /Windows NT 10/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS' : '未知系統';
+    var dev = (m = ua.match(/Android [\d.]+; ([^;)]+)/)) ? ' / ' + m[1].trim() : '';
+    return browser + ' / ' + os + dev;
+  }
+
+  // 卡頓類問題:背包/倉庫件數是已知的 O(n) 成本來源,先看這兩個數字比什麼都快。
+  //   ⚠️ 一律「讀存檔」而不是讀全域 player——診斷入口在主選單,那裡根本沒載入角色(實測過,
+  //      讀 player 只會得到「未載入」的廢資訊)。讀存檔則八格都看得到,且純唯讀。
+  //   名稱/職業/等級重用遊戲自己的 slotSummary()(職業已翻中文、也處理得了舊明文存檔),
+  //   只有它沒提供的「背包/傭兵件數」才自己讀。格數走 SAVE_SLOT_MAX,別自己寫死。
+  function slotMax() { return (typeof SAVE_SLOT_MAX !== 'undefined') ? SAVE_SLOT_MAX : 16; }
+  function charSummary() {
+    var out = [];
+    for (var s = 1; s <= slotMax(); s++) {
+      try {
+        var sum = (typeof slotSummary === 'function') ? slotSummary(s) : null;
+        if (!sum) continue;
+        var inv = '?', allies = '?';
+        try {
+          var d = JSON.parse(_saveUnwrap(_lzGet('lineage_idle_save_' + s)).payload).p;   // 存檔結構 {v,p,ms,ticks},玩家在 p
+          inv = (d.inv || []).length; allies = (d.allies || []).length;
+        } catch (e) {}
+        out.push('第' + s + '格: ' + (sum.name || '(未命名)') + ' / ' + sum.cls + ' Lv' + sum.lv +
+          ' / 背包 ' + inv + ' 件 / 傭兵 ' + allies +
+          (sum.classic ? ' / 經典' : '') + (sum.traditional ? ' / 傳統' : ''));
+      } catch (e) { out.push('第' + s + '格: ⚠️ 讀取失敗(' + String(e.message).slice(0, 40) + ')'); }
+    }
+    return out.length ? '\n          ' + out.join('\n          ') : '(沒有任何存檔)';
+  }
+
+  // 倉庫是「依模式共用桶」、不綁存檔位,故獨立列。
+  //   後綴對照 js/12 的 modeSuffix():''=一般 / _classic=經典 / _tradonly=傳統 / _trad=經典+傳統
+  var WH_BUCKETS = [['', '一般'], ['_classic', '經典'], ['_tradonly', '傳統'], ['_trad', '經典+傳統']];
+  function warehouseSummary() {
+    var out = [];
+    WH_BUCKETS.forEach(function (b) {
+      try {
+        var raw = _lzGet('lineage_idle_warehouse' + b[0]);
+        if (!raw) return;
+        out.push(b[1] + ': ' + (JSON.parse(raw).items || []).length + ' 件');
+      } catch (e) { out.push(b[1] + ': 讀取失敗'); }
+    });
+    return out.length ? out.join(' / ') : '(無)';
+  }
+
+  // 離線收益類問題:先看關掉時停在哪張圖、隔多久,比對玩家說法
+  function offlineAnchors() {
+    var out = [];
+    for (var s = 1; s <= slotMax(); s++) {
+      var ts = localStorage.getItem('afk_ts_' + s);
+      if (!ts) continue;
+      var mapId = localStorage.getItem('afk_map_' + s) || '?';
+      var mins = Math.round((Date.now() - (+ts)) / 60000);
+      var name = mapId;
+      try { if (window.AFK_EXTRA && AFK_EXTRA.mapName) name = AFK_EXTRA.mapName(mapId) || mapId; } catch (e) {}
+      out.push('第' + s + '格: ' + name + '(' + (mins >= 60 ? Math.floor(mins / 60) + ' 小時前' : mins + ' 分鐘前') + ')');
+    }
+    return out.length ? out.join('\n          ') : '(無)';
+  }
+
   function collect() {
     var out = {};
     var jobs = [];
@@ -77,7 +159,17 @@
     out.開啟方式 = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) ||
       navigator.standalone ? 'PWA(已安裝的 App)' : '瀏覽器分頁';
     out.網址 = location.origin + location.pathname;
-    out.UA = navigator.userAgent;
+    out.瀏覽器 = uaSummary();
+    out.螢幕 = innerWidth + '×' + innerHeight + ' / 像素密度 ' + (devicePixelRatio || 1) +
+      (document.body.classList.contains('m-mobile') ? ' / 手機版面' : ' / 桌機版面') +
+      ' / 上方橫幅 ' + (getComputedStyle(document.documentElement).getPropertyValue('--orig-bar-h').trim() || '0');
+    if (navigator.connection) {
+      out.網路 = (navigator.connection.effectiveType || '?') +
+        (navigator.connection.saveData ? ' / ⚠️ 省流量模式(圖可能抓不下來)' : '');
+    }
+    out.角色 = charSummary();
+    out.倉庫 = warehouseSummary();
+    out.離線錨點 = offlineAnchors();
 
     var ls = localStorageStats();
     if (!ls) out.localStorage = '❌ 讀取失敗(可能被瀏覽器擋掉)';
@@ -132,7 +224,13 @@
         ' / 圖片 ' + (h.img === null ? '❌ 無記錄' : h.img + ' 張');
     }));
 
-    return Promise.all(jobs).then(function () { return out; });
+    return Promise.all(jobs).then(function () {
+      out.最近錯誤 = ERRS.length ?
+        '\n          ' + ERRS.map(function (e) { return '· [' + e.t + '] ' + e.kind + ': ' + e.msg + (e.src ? '  (' + e.src + ')' : ''); }).join('\n          ') :
+        '(這次開啟後沒抓到;更早的或被 try/catch 吞掉的抓不到)';
+      out.UA原始 = navigator.userAgent;
+      return out;
+    });
   }
 
   function fmt(o) {

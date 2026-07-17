@@ -16,6 +16,7 @@
 1. **掛點**:新模組「對外要被別人呼叫」的函式逐支 `grep -rn '<函式名>' js/ afk-*.js` ——**只找到定義那一行 = 漏掛**。反向也要:上游是在哪呼叫的(`grep` 上游 clone),那個呼叫點在我們這邊是不是被舊版程式碼覆蓋掉了(我們的 `js/05` 停在舊經驗模型,整段沒有那行)。
 2. **素材**:用**遊戲自己組路徑的那支函式**去驗檔案存在,不要憑欄位。物品圖示走 `getIconUrl(d)`(多數道具沒有 `icon`/`img` 欄位、是拿**中文名**去組 `assets/icons/{items,armors,weapons,accessories}/<名>.png`——查 `d.icon` 會得到「全部都在」的假綠燈,踩過);戰場 sprite 分兩種路徑:怪物走 `assets/anim/<名>/idle_0.png`(平面),**寵物/召喚物/精靈走 `assets/anim/<名>/d0..d7/`(8 方向),缺 8 方向就完全不顯示、無錯誤訊息**。
 3. **跟上游對素材清單**:`git -C <上游> -c core.quotepath=false ls-files assets | sort` 與我方 `comm -23` 比一次(**兩邊都要 `core.quotepath=false`,否則中文檔名一邊是 `\3xx` 跳脫、diff 全錯**)。差集要逐一判斷「屬於沒移植的功能(可略)」還是「該搬卻漏搬」。
+4. **取得途徑**:移植任何「玩家要拿到手的東西」(裝備/遺物/材料/書板),**驗完效果還要驗『拿不拿得到』**——定義、數值、效果、物品卡說明全對,只要漏搬掉落表就是**完全拿不到**,而且不會拋錯、smoke 也抓不到,玩家表現是「小百科查無取得途徑」(那不是小百科壞掉,是真的沒有途徑)。**判準:用遊戲自己的掉落表反查「誰會掉這件」**(掃 `MOB_DROPS` 等五張表找該 id),而不是看它有沒有定義;查無來源就去上游 `js/01-drops-config.js` 找對應那筆。**搬掉落行不要手抄**(一行動輒 20 筆):先確認「我方與上游那行的差異只有那筆新物品」,再整行採用上游。
 
 ## 🔁 修完 bug 後:先判斷「這條值不值得留」,要留先問過使用者才寫(2026-07-12 改訂,取代舊的「一律寫回」)
 
@@ -87,6 +88,7 @@
 | `afk-autobuy.js` | 外掛自動購買(設定面板「自動買銀箭」下方注入:肉耗盡自動買、魔法屏障卷軸自動補貨;包 `tick()` 低於門檻照商店價補;設定依存檔位存 `afk_autobuy_*_<slot>`;離線結算共用同一套 tick 邏輯,並暴露 `window.__afkAutobuyCheck` 供離線快速結算呼叫) |
 | `afk-pwa.js` | PWA 安裝 UI + 圖桶/程式桶對帳(設定選單「📥 安裝成 APP」,iOS 跳文字引導;`<head>` 的 manifest/圖示/theme-color 用 JS 注入。每次載入:`reg.update()` nudge 更新偵測 + 送三種 reconcile 給 SW(assets-manifest 逐張、anim-manifest 逐怪、現行 js/css 引用清單)。**無更新 UI、無預抓**——導覽 network-first 線上永遠最新,圖片用到才抓。SW 註冊沿用 afk-sw.js) |
 | `afk-storage.js` | 首頁「⚙ 設定」鈕 → 展開選單(`MENU_ITEMS` 可擴充,afk-history 也註冊進來)→ 檢查存檔大小(唯讀列出 localStorage 各 key 用量與 ~5MB 上限比例) |
+| `afk-diag.js` | 首頁設定選單「🩺 快取診斷」:玩家回報問題時的取證工具(手機沒有 console,這是唯一拿得到現場數字的管道)。**全程唯讀**——列出開啟方式/瀏覽器/螢幕、SW 是否在控制、儲存用量與配額、localStorage 佔比與吃空間排行、各快取桶筆數、逐張/逐怪對帳記錄、`逐怪對帳`(SW 回報:清了幾張/為何跳過)、各存檔位角色與背包件數、離線錨點、最近錯誤;可一鍵複製。**角色一律讀存檔而非全域 `player`**(入口在主選單、那裡沒載入角色),名稱職業重用遊戲的 `slotSummary()`、格數走 `SAVE_SLOT_MAX` |
 | `afk-history.js` | 首頁設定選單「📜 離線掛機紀錄」:每存檔位最近 5 筆離線結算卡片(時間/地點/經驗金錢/道具/擊殺;可篩選存檔位、多選欄位);讀核心離線模組寫的 `afk_hist_<slot>`,**對玩家存檔唯讀**;顯示偏好存 `afk_hist_prefs` |
 | `afk-mobname.js` | 怪物名稱顯示模式三選一(全部常駐/鎖定中常駐/原版 hover 才顯示;純 CSS + body data 屬性驅動,零 per-tick 成本;設定存 `afk_mobname_mode`) |
 | `afk-training.js` | 木人場(「⚙️ 自動化」面板入口;選 1~5 隻怪打不死量真實 DPS,HUD 顯示每隻/總 DPS;怪血設天文數字、每 tick 量血量變化=總傷害再補回,涵蓋所有傷害來源;包 `killMob` 攔即死;可套席琳/瘋狂席琳模式,重用原作 `applySherineBuff`) |
@@ -108,6 +110,8 @@
 > - **圖桶 `IMG_VERSION`**(`img-v3`,**固定桶名、不再 bump、不整桶倒掉**):`assets/` 全部圖,**純 on-demand 快取**(用到才抓;背景全預抓已於 2026-06-26 移除,流量太兇)。
 >   失效走**逐張對帳**:`assets-manifest.json` 每張圖帶一個 git blob sha,SW(`reconcileImages`)記下自己快取的是哪個 sha;afk-pwa 每次載入把最新 manifest 送進 SW,只清掉 sha 對不上的舊圖(換一張只重抓一張,不重載整包 30MB),下次用到才 on-demand 抓新版。沒記過 sha 的舊快取 → SW 用實際 bytes 算 sha 補對帳,相符補記、不符才清。(沒預抓後「沒看過的新圖」離線本來就沒有,屬設計取捨。)
 >   怪物動畫幀(`assets/anim/`,~3 萬檔)不進逐張清單,走 `anim-manifest.json`「一怪一雜湊」逐怪對帳(`reconcileAnim`)。
+> - **🚨 SW 不可以用 `cache.keys()` 列舉圖桶——筆數一多就拋 `Operation too large`,整支對帳靜默掛掉**:圖桶是 on-demand 累積的(玩越久、去過越多地圖越肥,動畫幀可上萬筆),`cache.keys()` 要把整份 Request 清單序列化回來,超過瀏覽器上限就直接拋錯。**症狀是「悄無聲息地不運作」**,不是報錯——判準:同一支 SW 裡「`reconcileImages` 活著(它不用 keys())、`reconcileAnim` 死了(它用了)」這種同門異命,靠 `afk-diag` 的「對帳記錄:圖片 N 張 / 怪物無記錄」一眼看穿。程式桶(數十筆)用 `keys()` 沒事,**只有圖桶不行**。
+>   連帶三條(這三個要一起想,少一個就會變成「無限重抓」):**① 列舉不到時什麼都別做**——不知道快取裡有什麼,「清掉」與「採信」都是瞎猜(採信會讓玩家永遠看到舊圖,更糟);**② 記錄空 ≠ 全部過期**,那是「我不知道」;**③ 清之前先確認記錄寫得進去**(拿現有記錄試寫一次),清得掉卻記不住 → 下次再清一次 → 每次更新都重抓整包。`cache.put` 一律掛 catch(見下方 206 那條)——`writeAnimHashes` 就是漏了 catch 才讓失敗往外炸。
 > - **兩份 manifest 由 `scripts/gen-manifests.mjs` 重產**——**新增/更換/刪除任何 `assets/`、`public/assets/` 的圖後,跑一次並連 manifest 一起 commit**,否則玩家端(尤其 PWA 離線)對不到新圖。**判準:凡是「URL 路徑含 `/assets/`、會被 SW 圖桶快取」的圖,都必須在某份對帳清單裡**(assets-manifest 逐張,或 anim-manifest 逐怪),否則就是「快取卻不對帳→換圖卡舊」(踩過 2026-07-06:`public/assets/login/` 登入圖被快取卻不在 manifest)。新圖片資料夾進來時用 `grep -rlE 'src="[^"]*/assets/' index.html js` 對照 manifest 涵蓋範圍檢查。
 > - **更新接管:新 SW 安裝後停 waiting,等所有分頁/App 關閉後自然接手——install 刻意不 `skipWaiting`(2026-07-15 改)**。skipWaiting 會死鎖:頁面有常駐請求(主選單 BGM `<audio>` Range 串流、登入立繪逐幀輪播),舊 SW 永遠有進行中 fetch → 交接一直 pending;此時按重整/登出 → 導覽等交接、交接等頁面安靜、頁面等導覽完成才卸載 → 三方互等,headless 實測 3 次中 2 次卡 45 秒以上(=「每次更新後首頁/登出等很久」的另一半成因)。導覽 network-first＋js/css `?v=` 定址,舊 SW 服務新內容零差異,晚接手無代價。`skip-waiting` 訊息已移除,舊頁面殘留送來也一律忽略。**音檔(`assets/bgm|sfx`)fetch 不攔截**(Range/206 本來就進不了 Cache、離線行為不變,攔了只會讓 SW 掛著長壽 fetch 事件無法閒置)。
 > - afk-sw 無 DOM 掛點不列入 smoke;**afk-pwa 有 UI 掛點,已列入 smoke 的 `[AFK-pwa]` 檢查**。
@@ -145,6 +149,14 @@
 > - **⚠️ 手機 CSS 覆寫「版面容器」時,若寫死 `display:… !important`,小心 specificity 蓋過遊戲用來『隱藏』該容器的 `.hidden{display:none!important}` → 畫面關不掉(踩過 2026-07-06)**:遊戲用 `#creation-screen.hidden{display:none!important}`(specificity 1,1,0)隱藏登入/創角畫面;外掛的 `body.m-mobile #creation-screen{display:block!important}` 是 (1,1,1) 更高 → 即使加了 `.hidden` 也被外掛的 `display:block` 壓著不隱藏,載入存檔/建角進遊戲後登入畫面仍蓋在遊戲上,玩家表現=「卡在選角畫面進不去」(且 DOM 上 `.hidden` 有加、`classList.contains('hidden')` 為 true,只有 computed `display` 是 block,極易誤判)。**判準/解法:任何「會被 `.hidden`(或其他隱藏 class)切換顯示」的容器,外掛覆寫它的 `display`/`visibility` 一律加 `:not(.hidden)` 條件**(`body.m-mobile #creation-screen:not(.hidden){…}`)。自我檢查:改到 `#creation-screen`/`#game-screen` 這種「整屏切換」容器的手機 CSS,有沒有無條件 `display:…!important`?有就補 `:not(.hidden)`,並實測「載入存檔→有真的進到遊戲、登入畫面消失」。
 > - **⚠️ 外掛「自建遊戲物件」(如木人場自 spawn 怪)缺欄位會讓整個系統安靜失效**:核心 `getTarget` 改成鎖 `_born`(最早出生)後,木人場自建怪沒這欄位 → 全場鎖不到目標 → 全體不攻擊、DPS 恆 0,**無錯誤無警告**。**判準:改核心「怪物生成」欄位(`spawnMob` 的 `{...}` 內容)時,grep 外掛有沒有自建同型物件(`mapState.mobs[` in afk-*.js),欄位要對齊或核心要容錯。**
 > - **⚠️ 外掛插 DOM 的錨點要錨「穩定的容器 id」(如 `#main-menu`),不要錨標題/包裝層的父子關係**:錨不到時外掛只會安靜 return——**頁面照常、console 無警告、smoke 也驗不到**(首頁跑馬燈就這樣消失過,玩家回報才發現)。改過首頁版面後要人工掃一輪首頁(跑馬燈/加掛版徽章/外掛框都在、樣式沒退化),這些不在 smoke 範圍。
+
+## 🩺 玩家回報類的取證工具(afk-diag):自己一定要帶版本編號,而且要「壞掉時還讀得到」
+
+- **產物一定要自帶版本編號,且放在「內容全炸也看得到」的地方(標題)**:沒編號的話,玩家回傳截圖時**雙方都認不出這是哪一版產生的**——修好推上去、玩家看到一模一樣的畫面,無從判斷是「修的沒生效」還是「他沒重載」,只能猜。編號取自自己 `<script src>` 的 `?v=`,跟著既有 bump 流程走、不必另外維護。
+- **⚠️ `CODE_VERSION` 的雜湊不含 `sw.js` 自己**(不能自己雜湊自己)→ **改了 `sw.js`,`version.json` 的版本號完全不變**,診斷的「版本」那行認不出 SW 換了沒。要分辨 SW 新舊,靠「SW 有沒有回報只有新版才送的欄位」(現行:`reconcile-anim-done` 的 `skipped`),或看 `reg.waiting`(有新版在等待接手 = 現在跑的是舊的)。
+- **任一欄位拋錯不可以把整份帶走**:最需要診斷的那台機器,往往就是「某個 API 會拋錯」的那台(如上面的 `cache.keys()`)——一炸就只剩一行「診斷失敗」,其他全沒了,等於白做。每個欄位各自包錯誤處理,**失敗本身就是線索,要如實印出來**。
+- **抓「資源載入失敗」(img/script/link/audio)要抓元素與網址,不能只印 `e.message`**——資源類的 error 事件**沒有 message**,只印它會得到一行空白的「錯誤:」,看得到有事卻不知道是誰。
+- **唯讀是硬性要求**:診斷只能 read(`localStorage` / `caches` / `storage.estimate`),**絕不 put/delete/setItem**——它常在「懷疑儲存出問題」時被打開,自己再去佔空間或寫壞東西最蠢。改完 grep 一次確認零寫入。
 
 ## 📚 小百科(afk-wiki.js)維護準則
 

@@ -17,6 +17,7 @@
   var IMG_HASH_KEY = '/__afk-img-hashes__';
 
   function mb(n) { return (n / 1048576).toFixed(1) + ' MB'; }
+  function kb(n) { return n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : mb(n); }   // 存檔多在幾百 KB~數 MB,用 MB 顯示會變 0.0
 
   // 逐桶統計:總筆數、怪物動畫幀數、圖片數
   function bucketStats() {
@@ -50,17 +51,22 @@
     }).catch(function () { return { anim: null, img: null }; });
   }
 
-  function localStorageBytes() {
-    var total = 0, saves = 0;
+  // localStorage 有 ~5MB 的硬上限(與 Cache 配額是兩回事)。逼近上限時 saveGame 會寫不進去,
+  //   所以這裡要看得到「用了幾 %」與「誰在吃空間」,不能只給一個總數。
+  var LS_LIMIT = 5 * 1024 * 1024;
+  function localStorageStats() {
+    var total = 0, saves = 0, items = [];
     try {
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        var v = localStorage.getItem(k) || '';
-        total += k.length + v.length;
+        var b = (k.length + (localStorage.getItem(k) || '').length) * 2;   // UTF-16 約 ×2 bytes
+        total += b;
+        items.push([k, b]);
         if (/^lineage_idle_save_/.test(k)) saves++;
       }
-    } catch (e) { return { total: -1, saves: -1 }; }
-    return { total: total * 2, saves: saves };   // UTF-16,約 ×2 bytes
+    } catch (e) { return null; }
+    items.sort(function (a, b) { return b[1] - a[1]; });
+    return { total: total, saves: saves, top: items.slice(0, 5) };
   }
 
   function collect() {
@@ -73,8 +79,15 @@
     out.網址 = location.origin + location.pathname;
     out.UA = navigator.userAgent;
 
-    var ls = localStorageBytes();
-    out.存檔 = ls.saves + ' 格 / localStorage 共 ' + mb(ls.total);
+    var ls = localStorageStats();
+    if (!ls) out.localStorage = '❌ 讀取失敗(可能被瀏覽器擋掉)';
+    else {
+      var pct = (ls.total / LS_LIMIT * 100).toFixed(1);
+      out.localStorage = kb(ls.total) + ' / 上限約 ' + mb(LS_LIMIT) + '(用了 ' + pct + '%)' +
+        (ls.total > LS_LIMIT * 0.9 ? '  ⚠️ 快滿了,存檔可能寫不進去!' : '') +
+        '\n          存檔 ' + ls.saves + ' 格。吃最多的:\n          ' +
+        ls.top.map(function (t) { return '· ' + t[0] + '  ' + kb(t[1]); }).join('\n          ');
+    }
 
     // Service Worker 狀態:沒被控制 = 圖不會走快取,全部走網路
     if (navigator.serviceWorker) {

@@ -33,7 +33,9 @@
   function mb(n) { return (n / 1048576).toFixed(1) + ' MB'; }
   function kb(n) { return n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : mb(n); }   // 存檔多在幾百 KB~數 MB,用 MB 顯示會變 0.0
 
-  // 逐桶統計:總筆數、怪物動畫幀數、圖片數
+  // 逐桶統計:總筆數、怪物動畫幀數、圖片數。
+  //   ⚠️ cache.keys() 在「筆數過多」的桶上會直接拋 Operation too large(玩家實機遇到,圖桶塞太多幀)。
+  //      這正是我們最想知道的狀態,所以不能讓它把整份診斷帶走——單桶失敗就記下失敗,其餘照常。
   function bucketStats() {
     if (!window.caches) return Promise.resolve(null);
     return caches.keys().then(function (names) {
@@ -45,9 +47,9 @@
             else if (/\/assets\/.*\.(png|jpg|jpeg|webp|gif)$/i.test(k.url)) img++;
           });
           return { name: n, total: ks.length, anim: anim, img: img };
-        });
+        }).catch(function (e) { return { name: n, err: String(e.message || e) }; });
       }));
-    });
+    }).catch(function (e) { return [{ name: '(列舉快取桶失敗)', err: String(e.message || e) }]; });
   }
 
   // 對帳記錄:記了幾筆。0 筆 = SW 下次載入會把「所有怪」判定成沒對過而整包清掉重抓
@@ -153,23 +155,32 @@
 
   function collect() {
     var out = {};
-    var jobs = [];
+    var _jobs = [];
+    // 診斷的意義就是「出事時還讀得到」——任一欄位拋錯都不可以把整份帶走(實機踩過:
+    //   cache.keys() 拋 Operation too large,整個診斷只印一行「診斷失敗」,其他全沒了)。
+    var jobs = { push: function (p) { _jobs.push(Promise.resolve(p).catch(function () {})); } };
 
-    out.時間 = new Date().toLocaleString('zh-TW');
-    out.開啟方式 = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) ||
-      navigator.standalone ? 'PWA(已安裝的 App)' : '瀏覽器分頁';
-    out.網址 = location.origin + location.pathname;
-    out.瀏覽器 = uaSummary();
-    out.螢幕 = innerWidth + '×' + innerHeight + ' / 像素密度 ' + (devicePixelRatio || 1) +
-      (document.body.classList.contains('m-mobile') ? ' / 手機版面' : ' / 桌機版面') +
-      ' / 上方橫幅 ' + (getComputedStyle(document.documentElement).getPropertyValue('--orig-bar-h').trim() || '0');
-    if (navigator.connection) {
-      out.網路 = (navigator.connection.effectiveType || '?') +
+    function put(k, fn) { try { out[k] = fn(); } catch (e) { out[k] = '⚠️ 讀取失敗: ' + String(e.message || e).slice(0, 80); } }
+
+    put('時間', function () { return new Date().toLocaleString('zh-TW'); });
+    put('開啟方式', function () {
+      return ((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone)
+        ? 'PWA(已安裝的 App)' : '瀏覽器分頁';
+    });
+    put('網址', function () { return location.origin + location.pathname; });
+    put('瀏覽器', uaSummary);
+    put('螢幕', function () {
+      return innerWidth + '×' + innerHeight + ' / 像素密度 ' + (devicePixelRatio || 1) +
+        (document.body.classList.contains('m-mobile') ? ' / 手機版面' : ' / 桌機版面') +
+        ' / 上方橫幅 ' + (getComputedStyle(document.documentElement).getPropertyValue('--orig-bar-h').trim() || '0');
+    });
+    if (navigator.connection) put('網路', function () {
+      return (navigator.connection.effectiveType || '?') +
         (navigator.connection.saveData ? ' / ⚠️ 省流量模式(圖可能抓不下來)' : '');
-    }
-    out.角色 = charSummary();
-    out.倉庫 = warehouseSummary();
-    out.離線錨點 = offlineAnchors();
+    });
+    put('角色', charSummary);
+    put('倉庫', warehouseSummary);
+    put('離線錨點', offlineAnchors);
 
     var ls = localStorageStats();
     if (!ls) out.localStorage = '❌ 讀取失敗(可能被瀏覽器擋掉)';
@@ -211,7 +222,9 @@
     jobs.push(bucketStats().then(function (bs) {
       if (!bs) { out.快取桶 = '瀏覽器不支援 Cache'; return; }
       if (!bs.length) { out.快取桶 = '❌ 一個都沒有(完全沒快取)'; return; }
-      out.快取桶 = bs.map(function (b) {
+      out.快取桶 = '\n          ' + bs.map(function (b) {
+        if (b.err) return b.name + ': ⚠️ 數不出來 —— ' + b.err +
+          (/too large/i.test(b.err) ? '\n            ↑ 這桶大到瀏覽器列舉不動。sw.js 的逐怪對帳用的是同一個呼叫,代表它在這台機器上每次載入都會拋錯掛掉。' : '');
         var extra = [];
         if (b.anim) extra.push('怪物幀 ' + b.anim);
         if (b.img) extra.push('圖 ' + b.img);
@@ -224,7 +237,7 @@
         ' / 圖片 ' + (h.img === null ? '❌ 無記錄' : h.img + ' 張');
     }));
 
-    return Promise.all(jobs).then(function () {
+    return Promise.all(_jobs).then(function () {
       out.最近錯誤 = ERRS.length ?
         '\n          ' + ERRS.map(function (e) { return '· [' + e.t + '] ' + e.kind + ': ' + e.msg + (e.src ? '  (' + e.src + ')' : ''); }).join('\n          ') :
         '(這次開啟後沒抓到;更早的或被 try/catch 吞掉的抓不到)';

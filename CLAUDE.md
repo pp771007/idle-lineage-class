@@ -258,6 +258,13 @@
 
 ## 暫存檔 / 測試
 
+### 🎯 `.testdata/` 有使用者提供的「真實存檔」——測玩家回報時先用它,不要用新角色
+
+- **為什麼**:新角色 = 空背包、空倉庫、Lv1 技能、沒有傭兵 → **玩家回報的問題有一大半在新角色上「重現不出來」**,而「重現不出來」很容易被誤讀成「沒問題/已修好」。踩過很多次(卡頓、大背包、離線結算、倉庫版面全都是)。
+- **判準:玩家回報的問題只要跟「資料量、等級、裝備、倉庫、離線」有關,一律先載入 `.testdata/` 的存檔測**;真的要驗「全新玩家路徑」時才開新角色。
+- 用法:讀檔內容 → `_saveUnwrap` 取 payload → `_lzSet('lineage_idle_save_1', _saveWrap(...))` 灌進某格 → `loadGame()`。倉庫是獨立桶(`whKey(...)`),存檔 blob 內的 `wh`/`pets` 要另外拆出來寫(見 `js/13` 的匯入流程)。
+- **`.testdata/` 已在 `.gitignore`(裡面是使用者的角色資料,絕不可進版控)。與 `.scratch/` 的差別:`.scratch` 用完即丟、session 結束清掉;`.testdata/` 是長期測試素材,不要清。**
+
 - 一次性測試腳本、Playwright、截圖等一律放 `.scratch/`,且已被 `.gitignore` 擋掉,不進 git。
 - 驗證手段:用 Playwright(`playwright-core` 指向本機快取 Chromium)無頭跑 `index.html`,截圖或讀 DOM 驗證。
 - **Playwright 一律 headless(無頭),不可彈出可見瀏覽器視窗干擾使用者螢幕。** 不管用 `playwright-core` 腳本還是 MCP 瀏覽器工具都一樣:腳本用 `chromium.launch({ headless: true })`;MCP 瀏覽器若預設會開可見視窗,就改回腳本式無頭驗證,不要在使用者畫面上彈窗。截圖一律走無頭截圖。

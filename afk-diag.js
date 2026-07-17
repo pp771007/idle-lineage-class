@@ -37,9 +37,27 @@
     ERRS.push({ t: new Date().toLocaleTimeString('zh-TW'), kind: kind, msg: String(msg || '').slice(0, 200), src: String(src || '').split('/').pop().slice(0, 40) });
   }
   window.addEventListener('error', function (e) {
-    if (e.target && e.target.tagName === 'IMG') return pushErr('圖載入失敗', e.target.src || '', '');   // 怪物圖抓不到=快取/網路問題的直接證據
-    pushErr('錯誤', e.message, e.filename);
+    // 資源(img/script/link/audio…)載入失敗時,錯誤物件「沒有 message」——只印 e.message 會得到一行空白的
+    //   「錯誤:」,等於白抓(玩家實機回傳的就是這樣,看得到有事、卻不知道是誰)。這種要改抓元素與網址。
+    var el = e.target;
+    if (el && el !== window && el.tagName) {
+      var url = el.src || el.href || '';
+      var kind = el.tagName === 'IMG' ? '圖載入失敗' : el.tagName.toLowerCase() + ' 載入失敗';
+      return pushErr(kind, url || '(沒有網址)', '');
+    }
+    pushErr('錯誤', e.message || '(沒有訊息)', e.filename);
   }, true);
+
+  // 逐怪對帳的實際結果:SW 做完會回報。⚠️ 這也是唯一能認出「修正版 SW 有沒有在跑」的方法——
+  //   CODE_VERSION 的雜湊不含 sw.js 自己,所以改了 sw.js 版本號不會變,「版本」那行看不出來。
+  //   只有修正版會回報 skipped 欄位,舊版沒有。
+  var ANIM_RECON = null;
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      var d = e.data || {};
+      if (d.type === 'reconcile-anim-done') ANIM_RECON = d;
+    });
+  }
   window.addEventListener('unhandledrejection', function (e) { pushErr('未處理的拒絕', e.reason && (e.reason.message || e.reason), ''); });
 
   function mb(n) { return (n / 1048576).toFixed(1) + ' MB'; }
@@ -251,6 +269,11 @@
     }));
 
     return Promise.all(_jobs).then(function () {
+      put('逐怪對帳', function () {
+        if (!ANIM_RECON) return '(這次載入沒收到回報)';
+        if (ANIM_RECON.skipped) return '⏭️ 跳過 —— ' + ANIM_RECON.skipped + '(✅ 修正版 SW 生效中:沒清任何圖)';
+        return '清掉 ' + ANIM_RECON.evicted + ' 張';
+      });
       out.最近錯誤 = ERRS.length ?
         '\n          ' + ERRS.map(function (e) { return '· [' + e.t + '] ' + e.kind + ': ' + e.msg + (e.src ? '  (' + e.src + ')' : ''); }).join('\n          ') :
         '(這次開啟後沒抓到;更早的或被 try/catch 吞掉的抓不到)';

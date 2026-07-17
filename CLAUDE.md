@@ -90,6 +90,7 @@
 | `afk-storage.js` | 首頁「⚙ 設定」鈕 → 展開選單(`MENU_ITEMS` 可擴充,afk-history 也註冊進來)→ 檢查存檔大小(唯讀列出 localStorage 各 key 用量與 ~5MB 上限比例) |
 | `afk-diag.js` | 首頁設定選單「🩺 快取診斷」:玩家回報問題時的取證工具(手機沒有 console,這是唯一拿得到現場數字的管道)。**全程唯讀**——列出開啟方式/瀏覽器/螢幕、SW 是否在控制、儲存用量與配額、localStorage 佔比與吃空間排行、各快取桶筆數、逐張/逐怪對帳記錄、`逐怪對帳`(SW 回報:清了幾張/為何跳過)、各存檔位角色與背包件數、離線錨點、最近錯誤;可一鍵複製。**角色一律讀存檔而非全域 `player`**(入口在主選單、那裡沒載入角色),名稱職業重用遊戲的 `slotSummary()`、格數走 `SAVE_SLOT_MAX` |
 | `afk-history.js` | 首頁設定選單「📜 離線掛機紀錄」:每存檔位最近 5 筆離線結算卡片(時間/地點/經驗金錢/道具/擊殺;可篩選存檔位、多選欄位);讀核心離線模組寫的 `afk_hist_<slot>`,**對玩家存檔唯讀**;顯示偏好存 `afk_hist_prefs` |
+| `afk-itemsearch.js` | 背包(武器/防具/道具分頁)的名稱搜尋:包住 `renderTabs`,每次重繪後把搜尋框重新注入清單頂端;查詢字串存在外掛自己的狀態(不存 DOM)故重繪不會弄丟,重注入時還原字串與焦點(打字不中斷)。比對用列的 `textContent`(含名稱/詞綴/強化值),**純顯示層過濾、不動遊戲資料**。※ 倉庫的搜尋在核心 `js/12`(與背包側共用單一關鍵字,見 `whSetSearch`);`renderTabs` 不存在就安靜停用 |
 | `afk-mobname.js` | 怪物名稱顯示模式三選一(全部常駐/鎖定中常駐/原版 hover 才顯示;純 CSS + body data 屬性驅動,零 per-tick 成本;設定存 `afk_mobname_mode`) |
 | `afk-training.js` | 木人場(「⚙️ 自動化」面板入口;選 1~5 隻怪打不死量真實 DPS,HUD 顯示每隻/總 DPS;怪血設天文數字、每 tick 量血量變化=總傷害再補回,涵蓋所有傷害來源;包 `killMob` 攔即死;可套席琳/瘋狂席琳模式,重用原作 `applySherineBuff`) |
 | `afk-analytics.js` | 注入 Cloudflare Web Analytics beacon 統計人數/開啟次數(免費、不用 cookie;**只在正式站台注入**——非 https、localhost/127.0.0.1/`*.local` 一律略過,免本機測試污染統計;token 未填(`__` 開頭)時自動略過。不掛 DOM、不列入 smoke) |

@@ -1012,7 +1012,7 @@
     { k: 'mode', n: '遊戲模式' },
     { k: 'npc', n: 'NPC總覽' }
   ];
-  var state = { tab: 'equipbook', cls: 'knight', q: '', magicCls: 'all', magicChar: '', collMode: null, equipCls: 'all', equipSlot: 'all' };   // 預設分頁=分頁列第一個(收藏-裝備)。equipSlot 必須是 EQUIP_GROUPS 的 key 或 'all'(舊值 'wpn' 已無此分組→整頁空白)
+  var state = { tab: 'equipbook', cls: 'knight', q: '', magicCls: 'all', magicChar: '', collMode: null, equipCls: 'all', equipSlot: 'all', equipRegion: 'all' };   // 預設分頁=分頁列第一個(收藏-裝備)。equipSlot 必須是 EQUIP_GROUPS 的 key 或 'all'(舊值 'wpn' 已無此分組→整頁空白)
   // 搜尋打字防抖:每次按鍵只重設計時器,停手這麼久才真的過濾+重渲染(降低逐字輸入的 INP)。
   var SEARCH_DEBOUNCE_MS = 150;
   var _searchTimer = null;
@@ -1097,6 +1097,9 @@
       // 裝備分頁的「職業篩選」
       var eqcls = e.target.closest ? e.target.closest('[data-equipcls]') : null;
       if (eqcls) { state.equipCls = eqcls.getAttribute('data-equipcls'); render(); return; }
+      // 🗺️ 遺物檢視的「掉落區域篩選」
+      var eqrg = e.target.closest ? e.target.closest('[data-equipregion]') : null;
+      if (eqrg) { state.equipRegion = eqrg.getAttribute('data-equipregion'); render(); return; }
       // 收藏三分頁的「模式」切換(再點同一顆=收合)
       var cm = e.target.closest ? e.target.closest('[data-collmode]') : null;
       if (cm) { var cmv = cm.getAttribute('data-collmode'); state.collMode = (state.collMode === cmv) ? null : cmv; render(); return; }
@@ -1436,7 +1439,7 @@
     clsRow.style.display = showCls ? 'flex' : 'none';
     var _allBtn = clsRow.querySelector('.m-wiki-clsbtn-all'); if (_allBtn) _allBtn.style.display = (state.tab === 'quest') ? '' : 'none';   // 全職業鈕只在任務分頁
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
-    body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : (state.tab === 'equip') ? renderEquip(state.equipCls, state.equipSlot) : tabHTML(state.tab, state.cls), state.tab);
+    body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : (state.tab === 'equip') ? renderEquip(state.equipCls, state.equipSlot, state.equipRegion) : tabHTML(state.tab, state.cls), state.tab);
   }
 
   // 📐 各專精「實際數據」——逐條從 js/ 原始碼查證(2026-07-05,含未精通基準值對照與描述沒講的細節);
@@ -1897,6 +1900,42 @@
   // 判斷遺物一律走遊戲的 isRelic()(單一事實來源;讀不到才退回自己看旗標,不讓小百科整頁壞掉)
   function isRelicItem(d) { try { return (typeof isRelic === 'function') ? isRelic(d) : !!(d && d.relic); } catch (e) { return !!(d && d.relic); } }
 
+  // 🗺️ 遺物 → 掉落來源(怪+區域)索引:供「裝備→遺物」檢視按掉落區域篩選(玩家提議·A 方案)。
+  //   運行時算一次;讀「與掉落查詢同一組」5 張掉落表(漏讀會少算怪→少算區域)。三段鏈全自動、零手動維護:
+  //   遺物→掉它的怪(掉落表反查) → 怪→出沒地圖(DB.maps 反查) → 地圖→區域(AFK_EXTRA.mapRegion)。
+  //   ⚠ 遺物多掉自遍布多區域的雜魚(妖魔等)→ 一件常對應多個區域,這是刻意保留(那些區域你都刷得到)。
+  //   任何依賴的全域缺 → 回 null,遺物檢視退回純部位分類(不顯示區域列、不過濾),優雅降級。
+  var _relicDropCache;
+  function relicDropIndex() {
+    if (_relicDropCache !== undefined) return _relicDropCache;
+    _relicDropCache = null;
+    try {
+      if (typeof DB === 'undefined' || !DB.items || !DB.mobs || !DB.maps || typeof MOB_DROPS === 'undefined') return null;
+      var tables = [MOB_DROPS];
+      ['DARK_WEAPON_DROPS', 'DARK_CRYSTAL_DROPS', 'DRAGON_DROPS', 'WARRIOR_DROPS'].forEach(function (nm) {
+        if (typeof window[nm] !== 'undefined') tables.push(window[nm]);
+      });
+      var nameToId = {}; for (var mid in DB.mobs) nameToId[DB.mobs[mid].n] = mid;   // 掉落表用怪「名」、DB.maps 用怪「id」→ 要橋接
+      var mobToMaps = {}; for (var mapId in DB.maps) (DB.maps[mapId] || []).forEach(function (mi) { (mobToMaps[mi] = mobToMaps[mi] || []).push(mapId); });
+      var regionOf = function (mapId) { try { return (window.AFK_EXTRA && AFK_EXTRA.mapRegion) ? (AFK_EXTRA.mapRegion(mapId) || '') : ''; } catch (e) { return ''; } };
+      var byItem = {};
+      tables.forEach(function (tb) {
+        for (var mob in tb) tb[mob].forEach(function (dp) {
+          var id = dp[0]; if (!DB.items[id] || !isRelicItem(DB.items[id])) return;
+          var rec = byItem[id] || (byItem[id] = { mobs: {}, regions: {} });
+          rec.mobs[mob] = 1;
+          (mobToMaps[nameToId[mob]] || []).forEach(function (mp) { var rg = regionOf(mp); if (rg) rec.regions[rg] = 1; });
+        });
+      });
+      var order = [], seen = {};   // 區域按鈕順序照 MAP_REGIONS(與遊戲地圖選單一致)
+      if (typeof MAP_REGIONS !== 'undefined') MAP_REGIONS.forEach(function (r) { if (r.label && !seen[r.label]) { seen[r.label] = 1; order.push(r.label); } });
+      var used = {}; for (var iid in byItem) for (var rg in byItem[iid].regions) used[rg] = 1;
+      for (var k in byItem) byItem[k] = { mobs: Object.keys(byItem[k].mobs), regions: order.filter(function (r) { return byItem[k].regions[r]; }) };
+      _relicDropCache = { byItem: byItem, regions: order.filter(function (r) { return used[r]; }) };
+    } catch (e) { _relicDropCache = null; }
+    return _relicDropCache;
+  }
+
   var EQUIP_GROUPS = (typeof EQUIP_CATEGORIES !== 'undefined' ? EQUIP_CATEGORIES.filter(function (c) { return c.group === '武器'; }).map(function (c) { return { k: c.key, n: '⚔️ ' + c.name }; }) : [{ k: 'wpn', n: '⚔️ 武器' }]).concat([
     { k: 'helm', n: '🪖 頭部' }, { k: 'armor', n: '🛡 身體' }, { k: 'shin', n: '🦵 脛甲' },
     { k: 'shield', n: '🔰 盾牌／副手' }, { k: 'cloak', n: '🧥 斗篷' }, { k: 'gloves', n: '🧤 手套' },
@@ -1956,10 +1995,12 @@
     return bits.join('　');
   }
   var _equipHtml = {};
-  function renderEquip(cls, slot) {
-    cls = cls || 'all'; slot = slot || 'all';
-    var ckey = cls + '|' + slot;
+  function renderEquip(cls, slot, region) {
+    cls = cls || 'all'; slot = slot || 'all'; region = region || 'all';
+    if (slot !== RELIC_SLOT) region = 'all';   // 區域篩選只在遺物檢視有意義;其餘部位固定 all,避免生出一堆同內容的快取
+    var ckey = cls + '|' + slot + '|' + region;
     if (_equipHtml[ckey] !== undefined) return _equipHtml[ckey];
+    var _ridx = (slot === RELIC_SLOT) ? relicDropIndex() : null;   // 遺物→掉落區域索引(見 relicDropIndex);null=降級成純部位分類
     // 部位 tag 列(全部＋各部位):一次只看一個部位,避免整頁太長
     //   「🏺 遺物」是虛擬部位(不是真的 slot):跨所有部位只留遺物,但仍照部位分組 → 一頁看完、又不會亂成一坨。
     //   玩家找遺物組合時,原本得逐部位翻、名稱又看不出是不是遺物;走這裡可直接沿用裝備頁的折疊式效果顯示
@@ -1971,6 +2012,12 @@
     var clsRow = '<div class="m-wiki-mfilter">' + EQUIP_FILTERS.map(function (f) {
       return '<button type="button" class="m-wiki-mfbtn' + (f[0] === cls ? ' on' : '') + '" data-equipcls="' + f[0] + '">' + f[1] + '</button>';
     }).join('') + '</div>';
+    // 🗺️ 掉落區域列:只在遺物檢視、且索引可用時出現。選某區域 → 只留「掉落怪會出沒該區域」的遺物(仍照部位分組)。
+    var regionRow = '';
+    if (slot === RELIC_SLOT && _ridx && _ridx.regions.length) {
+      regionRow = '<div class="m-wiki-mfilter"><button type="button" class="m-wiki-mfbtn' + (region === 'all' ? ' on' : '') + '" data-equipregion="all">全部區域</button>' +
+        _ridx.regions.map(function (rg) { return '<button type="button" class="m-wiki-mfbtn' + (rg === region ? ' on' : '') + '" data-equipregion="' + esc(rg) + '">' + esc(rg) + '</button>'; }).join('') + '</div>';
+    }
     var note = '<div class="m-wiki-note">選<b>部位</b>與<b>職業</b>篩選;<b>點任一件展開完整數值與取得方式</b>(數值與遊戲內一致)。搜尋會跨全部裝備、連展開內容一起命中。</div>';
     // 🏺 遺物總說明(手動維護;規則對應 js/01 掉落表、js/08 裝備/強化守衛、js/14 gachaWeight=0、js/21 收集冊)
     var relicCard = '<div class="m-wiki-card"><div class="m-wiki-name">🏺 遺物（各怪專屬的極稀有裝備）</div>' + [
@@ -1988,7 +2035,10 @@
       if (d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc') return;
       if (!classCanEquip(d, id, cls)) return;
       var gk = equipGroupKey(id, d);
-      if (slot === RELIC_SLOT) { if (!isRelicItem(d)) return; }   // 🏺 虛擬部位:跨部位只留遺物(仍照部位分組)
+      if (slot === RELIC_SLOT) {
+        if (!isRelicItem(d)) return;   // 🏺 虛擬部位:跨部位只留遺物(仍照部位分組)
+        if (region !== 'all' && _ridx) { var _rr = _ridx.byItem[id]; if (!_rr || _rr.regions.indexOf(region) < 0) return; }   // 🗺️ 選了區域:只留掉落怪出沒該區域的
+      }
       else if (slot !== 'all' && gk !== slot) return;             // 只看選定部位
       (buckets[gk] = buckets[gk] || []).push({ id: id, d: d });
     });
@@ -1997,15 +2047,22 @@
       var nameCls = d.legend ? 'c-legend' : 'text-slate-100';
       var ic = ''; try { ic = (typeof getIconUrl === 'function') ? getIconUrl(d) : ''; } catch (eIc) {}
       var icImg = ic ? '<img src="' + esc(ic) + '" alt="" style="width:26px;height:26px;object-fit:contain;flex:none;border-radius:4px;" onerror="this.style.display=\'none\'">' : '';
+      // 遺物檢視:右側摘要改顯示「掉落區域」(篩選維度,一眼看到掉哪);多區域截前 2 個 +「等 N 區」。展開詳情仍有完整取得方式(哪隻怪)。
+      var compact;
+      if (slot === RELIC_SLOT && _ridx && _ridx.byItem[id]) {
+        var _rgs = _ridx.byItem[id].regions.slice();
+        if (region !== 'all') { var _ri2 = _rgs.indexOf(region); if (_ri2 > 0) { _rgs.splice(_ri2, 1); _rgs.unshift(region); } }   // 選了區域 → 排最前,讓截斷後也一眼對得上目前篩的區域
+        compact = '🗺️ ' + (!_rgs.length ? '—' : (_rgs.length <= 2 ? _rgs.join('／') : _rgs.slice(0, 2).join('／') + ' 等' + _rgs.length + '區'));
+      } else compact = equipCompact(d);
       return '<div class="m-wiki-card m-eq-card">' +
         '<div class="m-eq-head" data-eq="' + esc(id) + '" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">' +
           '<span style="display:flex;align-items:center;gap:7px;flex-shrink:0;">' + icImg + '<span class="' + nameCls + ' font-bold" style="white-space:nowrap;">' + esc(d.n) + (d.legend ? ' ✦' : '') + '</span></span>' +
-          '<span class="m-eq-compact" style="color:#94a3b8;font-size:12px;text-align:right;flex-shrink:1;min-width:0;">' + esc(equipCompact(d)) + '</span>' +
+          '<span class="m-eq-compact" style="color:#94a3b8;font-size:12px;text-align:right;flex-shrink:1;min-width:0;">' + esc(compact) + '</span>' +
         '</div>' +
         '<div class="m-eq-detail" style="display:none;border-top:1px solid #1e293b;margin-top:6px;padding-top:6px;">' + equipDetailHTML(id) + '</div>' +
       '</div>';
     }
-    var html = slotRow + clsRow + note + relicCard;
+    var html = slotRow + clsRow + regionRow + note + relicCard;
     var total = 0;
     EQUIP_GROUPS.forEach(function (g) {
       var list = buckets[g.k]; if (!list || !list.length) return;

@@ -492,6 +492,7 @@ function allyAttackOnce(ally) {
         if (_isCrushA && r !== 20 && r >= 19 - Math.round(((_cwA && _cwA.heavyRatePct) || 0) / 5)) { _crushA = true; _normA = true; }
         if (!_normA) {   // 🥊 v2.6.20 骰19：擦傷(50%·不爆)；其餘未命中（鏡像玩家 getPhysicalDmg 782/785）
             if (r === 19) _grazeA = true;
+            else if (wpn && wpn.missGrazeRate && Math.random() * 100 < wpn.missGrazeRate) _grazeA = true;   // 🏺 水精靈王的撫摸(傭兵鏡像):未命中 N% 改判擦傷
             else { if (ally._setBeauty5) ally._beautyMissStack = (ally._beautyMissStack || 0) + 10;   /* 🔮 v2.6.21 麗人5/5：未命中→命中堆疊+10（鏡像玩家 786） */ logCombat(`<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>的攻擊未命中。`, 'miss'); allyWeaponProcs(ally, t, { hit: false, dmg: 0 }); if (wpn && wpn.eff === 'combo' && Math.random() * 100 < (wpn.comboRate || 0)) allyComboAttack(ally, t, true); if (ally.eq && ally.eq.offwpn) allyDualWieldOffhandAttack(ally, t); return; }   // 🔧 未命中也判定共鳴/魔擊/月光爆裂/連擊/迅猛雙斧（與玩家一致）
         }
         if (ally._setBeauty5 && ally._beautyMissStack) ally._beautyMissStack = 0;   // 🔮 v2.6.21 麗人5/5：命中（含擦傷/粉碎）→堆疊歸零（鏡像玩家 787）
@@ -552,6 +553,7 @@ function allyAttackOnce(ally) {
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
         if (wpn && wpn.bonespike && (t._bonespike || 0) > 0 && t.curHp > 0) { let _bs = t._bonespike * 20; t._bonespike = 0; t.curHp -= _bs; t._spellHurt = true; mobWake(t); logCombat(`<span class="font-bold" style="color:#e5e7eb;text-shadow:0 0 6px #6b7280;">【協力·${ally._allyName}·骨刺爆裂】</span>引爆目標身上的骨刺，額外造成 ${_bs} 點固定傷害。`, 'player-special'); }   // 🏺 骸骨意志之弓（傭兵）：一般攻擊引爆所有骨刺（每層 20 固定傷害）
         if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, isRanged ? 'ranged' : 'melee', ally);   // 🌑 血壁空間（傭兵）物理普攻主擊
+        if (t.curHp > 0 && wpn && wpn.hitEchoMagic && Math.random() * 100 < (wpn.hitEchoMagic.rate || 0)) { t.curHp -= dmg; t.justHit = wpn.hitEchoMagic.ele || 'magic'; t._spellHurt = true; mobWake(t); logCombat(`<span class="font-bold" style="color:#fb923c;text-shadow:0 0 6px #dc2626;">【協力·${ally._allyName}·爆破】</span>烈焰爆開，額外造成 ${dmg} 點火屬性魔法傷害。`, 'player-special'); }   // 🏺 火精靈王的爆焰(傭兵鏡像)
         if (t.curHp > 0) consumeStrawCurse(t);   // 🐍 詛咒稻草人：傭兵主攻擊亦消耗並額外扣 80 水魔傷（鏡像玩家）
         if (wpn && wpn.strawCurse && t.curHp > 0 && Math.random() * 100 < wpn.strawCurse.rate) { if (!t.st) t.st = newMobStatus(); t.st.strawCurse = Math.max(t.st.strawCurse || 0, wpn.strawCurse.stacks || 3); }   // 🐍 傭兵種下詛咒稻草人（鏡像玩家）
         if (wpn && wpn.onHitEleVuln === 'fire' && t.curHp > 0) t._fireVulnUntil = state.ticks + 30;   // 🏺 灼熱蜥蜴長舌（傭兵施加端）：命中使目標獲得火屬性弱點 3 秒（與玩家共用 _fireVulnUntil）
@@ -694,6 +696,9 @@ function allyCastMagic(ally, sk) {
     if (sk.status || sk.freeze) { let _svS = player; player = ally; try { targets.forEach(t => { if (t && t.curHp > 0) { if (sk.status) applyMobStatus(t, sk.status, sk.n); if (sk.freeze) applyMobStatus(t, { kind: 'freeze', pbase: sk.freeze, dur: 6 }, sk.n); } }); } finally { player = _svS; } }   // 🔧 傷害魔法附帶異常狀態（🐉 奪命之雷暈 / 🔮 混亂 / 幻想沉睡）＋🧊 v2.6.18 #中 冰凍（冰矛圍籬 freeze:200）：換身以傭兵自身魔法命中判定（與玩家魔法分支 625 一致）
     logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n} → ${texts.join('、')}`, 'magic');
     targets.forEach(t => { if (t.curHp <= 0) { let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (ri !== -1) killMob(ri); } });
+    // 🏺 風精靈王的狂嘯(傭兵鏡像):施展風屬性傷害魔法時 N% 免費追加龍捲風。
+    { let _ww = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
+      if (_ww && _ww.windSpellProcRate && sk.ele === 'wind' && _burstDmg > 0 && Math.random() * 100 < _ww.windSpellProcRate) { let _wt = _allyProcTarget(null); if (_wt) { logCombat(`<span class="font-bold" style="color:#86efac;text-shadow:0 0 6px #16a34a;">【協力·${ally._allyName}·${_ww.n}】</span>狂風共振，額外觸發龍捲風！`, 'player-special'); allyProcFreeMagicSkill(ally, _wt, 'sk_tornado', capWpnEn((ally.eq.wpn && ally.eq.wpn.en) || 0), false, _ww); } } }
     // 🔧 神官魔杖·魔爆（傭兵版）：施放傷害魔法時依機率(單體 智力/100、全體 智力/60)引爆本次傷害30%的無屬性傷害，均分給場上所有敵人
     {
         let _bw = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;

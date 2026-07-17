@@ -978,7 +978,7 @@ function stretchHitValue(raw) {
     let hvInt = lo + ((Math.random() < (hv - lo)) ? 1 : 0);
     return Math.max(1, Math.min(20, hvInt));
 }
-function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, forceLand, forceCrit, wpnInst) {
+function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, forceLand, forceCrit, wpnInst, forceGraze) {
     let isRanged = !!(wpn && wpn.ranged);
     let hitBonus = (isRanged ? player.d.rangedHit : player.d.meleeHit) + player.d.extraHit + (player._skillHitBonus || 0) + (player._setBeauty5 ? (player._beautyMissStack || 0) : 0);   // 🗼 范德之劍：施展衝擊之暈時本次技能近距離命中+1；🔮 麗人5/5：未命中堆疊命中
     let dmgBonus = (isRanged ? player.d.rangedDmg : player.d.meleeDmg);
@@ -998,7 +998,8 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     let isCrush = !!(_cw && _cw.eff === 'crush');
     let rollHit = roll(1, 20);
     let hit = false, heavy = false, graze = false, crush = false;
-    if (forceHeavy) { hit = true; heavy = true; }   // 魔擊：必定命中且必定重擊
+    if (forceGraze) { hit = true; graze = true; }   // 🏺 水精靈王的撫摸:原本未命中時依機率改判為擦傷
+    else if (forceHeavy) { hit = true; heavy = true; }   // 魔擊：必定命中且必定重擊
     else if (forceHit) { hit = true; }   // 反擊：必定命中、必定非重擊
     else if (forceLand) { hit = true; if (rollHit === 20) heavy = true; }   // 居合：必定命中，rollHit20 仍自然重擊；不擦傷
     else if (rollHit === 20) { hit = true; heavy = true; }
@@ -1288,11 +1289,21 @@ function magicStrikeProc(target) {
     procMagicStrike(t);
 }
 // ===== 連射：發動攻擊時依機率追加 1~3 箭；每箭各自接受命中判定(可未命中/重擊/爆擊)，傷害為該箭結算的 30%；每箭也各判定月光爆裂 =====
-function rapidfireProc(arrowData) {
-    if (player.classicMode) return;   // 🎮 經典模式：停用連射
+// 🏺 地精靈王的抗拒:裝備者受到傷害時必定額外發動一次連射;這個受擊觸發在經典模式仍有效。
+function hurtRapidfireProc() {
+    if (!player || player.dead || player.hp <= 0 || !player.eq || !player.eq.wpn) return;
+    let wpn = DB.items[player.eq.wpn.id];
+    if (!wpn || !wpn.hurtRapidfire || !wpn.isBow) return;
+    let arrowData = consumeArrow();
+    if (!arrowData) return;
+    logCombat(`<span class="font-bold" style="color:#fcd34d;text-shadow:0 0 6px #a16207;">【${wpn.n}】</span>承受衝擊後立刻反射連射！`, 'player-special');
+    rapidfireProc(arrowData, true, true);
+}
+function rapidfireProc(arrowData, forceProc, classicOk) {
+    if (player.classicMode && !classicOk) return;   // 🎮 經典模式：一般連射停用;地精靈王的抗拒(受擊連射)為指定例外
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     if (!wpn || !wpn.rapidfire) return;
-    if (roll(1, 100) > wpn.rapidfire) return;
+    if (!forceProc && roll(1, 100) > wpn.rapidfire) return;
     let _rfMax = hasMastery('e_rapid') ? 5 : 3;
     let _rfN = wpn.rapidMax ? _rfMax : roll(1, _rfMax);   // 🏅 連射精通：額外箭數 1~3 → 隨機 1~5；🏺 復仇者的十字弩弓 rapidMax：必定觸發最大箭數
     for (let _r = 0; _r < _rfN; _r++) {

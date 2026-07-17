@@ -756,6 +756,14 @@ function castSkillInner(skId) {
                     if(realIdx !== -1) killMob(realIdx);
                 }
             });
+            // 🏺 風精靈王的狂嘯:主動施放風屬性魔法時 N% 免費追加一發龍捲風
+            {
+                let _ww = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
+                if (_ww && _ww.windSpellProcRate && sk.ele === 'wind' && _burstDmg > 0 && Math.random() * 100 < _ww.windSpellProcRate) {
+                    let _wt = mapState.mobs.find(m => m && m.curHp > 0 && !m._dead);
+                    if (_wt) { logCombat(`<span class="font-bold" style="color:#86efac;text-shadow:0 0 6px #16a34a;">【${_ww.n}】</span>狂風共振，額外觸發龍捲風！`, 'player-special'); procFreeMagicSkill(_wt, 'sk_tornado', capWpnEn((player.eq.wpn && player.eq.wpn.en) || 0), false, _ww); }
+                }
+            }
             // 🔧 神官魔杖·魔爆：施放傷害魔法時依機率(單體 智力/100、全體 智力/60)引爆本次傷害30%的無屬性傷害，均分給場上所有敵人
             {
                 let _bw = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;

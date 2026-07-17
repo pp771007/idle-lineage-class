@@ -633,7 +633,7 @@ function royalEquipOk(d, id) {
 }
 function checkCanEquip(item) {
     let d = DB.items[item.id];
-    if (d && d.reqAvatar && player && player.avatar && player.avatar !== d.reqAvatar) return false;   // 👸 性別頭像限定（公主/王子…）：單一真實裝備閘，套用於所有職業；缺 avatar(舊檔)不硬擋。職業適用顯示走 *EquipOk（純粹·不讀玩家狀態）
+    if (d && d.reqAvatar && player && ((d.strictAvatar && player.avatar !== d.reqAvatar) || (!d.strictAvatar && player.avatar && player.avatar !== d.reqAvatar))) return false;   // 👸 性別頭像限定（公主/王子…）：單一真實裝備閘，套用於所有職業；缺 avatar(舊檔)不硬擋。職業適用顯示走 *EquipOk（純粹·不讀玩家狀態）
     if (isRelic(d)) return reqAllowsClass(d, player.cls);   // 🏺 遺物：職業限制純以 req 白名單為準（略過各職業專屬 *EquipOk 武器/防具清單，否則戰士等會被拒）
     if (player.cls === 'dark') return darkEquipOk(d, item.id);   // 🔧 黑暗妖精專屬裝備規則
     if (player.cls === 'illusion') return illusionEquipOk(d, item.id);   // 🔮 幻術士專屬裝備規則（除匕首外的全職業裝備＋開放清單）

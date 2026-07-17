@@ -53,6 +53,7 @@ function recomputeStats() {
         if (!e || k === 'wpn') continue;
         let ed = DB.items[e.id];
         if (ed.str) d.str += ed.str;
+        if (ed.swordStr && p.eq.wpn) { let _st = getWeaponTags(p.eq.wpn.id); if (_st.includes('單手劍') || _st.includes('雙手劍')) d.str += ed.swordStr; }   // 🏺 將軍愛用的握劍護腕:持單手劍/雙手劍時力量 +N(提前計入→衍生能力吃得到)
         if (ed.dex) d.dex += ed.dex;
         if (ed.int) d.int += ed.int;
         if (ed.con) d.con += ed.con;
@@ -192,6 +193,7 @@ function recomputeStats() {
     d.mpReduce  += getIntMpReduce(d.int);
     // 精神（MR / MP恢復）
     d.mr  += getWisMR(d.wis);
+    if (p.eq) { for (let _k in p.eq) { let _e = p.eq[_k], _ed = _e && DB.items[_e.id]; if (_ed && _ed.mrPerWis) d.mr += d.wis * _ed.mrPerWis; } }   // 🏺 魔力阻抗襯衫:每 1 點最終精神增加 MR(放這裡才吃得到定案後的 wis)
     if (p.skills && p.skills.includes('sk_royal_kingguard')) d.mr += 10;   // 👑 王者加護（被動）：MR+10
     d.mpR  = getWisMpRegen(d.wis);
     d.hpR  = 0;   // HP自然恢復量(裝備/精靈斗篷加成)：每次重算先歸零，避免持續疊加且卸下不還原

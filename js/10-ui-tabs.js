@@ -707,6 +707,13 @@ function relicEffectLabels(d, item) {
     if (!d) return [];
     let e = [], _skn = id => (DB.skills[id] && DB.skills[id].n) || id;
     let _ele = k => _RELIC_ELE_ZH[k] || k;
+    // 🏺 遺物第 15 批(四大精靈王武器等)的效果說明。文字照上游 relicPurposeLabels;我方函式用 e.push 與 _ele() 對照表
+    if (d.mrPerWis)            e.push(`精神屏障（每 1 點最終精神，MR+${d.mrPerWis}）`);
+    if (d.swordStr)            e.push(`握劍強化（主手裝備單手劍或雙手劍時，力量+${d.swordStr}）`);
+    if (d.missGrazeRate)       e.push(`擦傷補正（未命中時 ${d.missGrazeRate}% 改判為擦傷，造成 50% 傷害且不會爆擊）`);
+    if (d.hitEchoMagic)        e.push(`元素爆破 ${d.hitEchoMagic.rate}%（命中後追加等同本次一般攻擊傷害的${_ele(d.hitEchoMagic.ele)}屬性魔法傷害）`);
+    if (d.windSpellProcRate)   e.push(`風魔法共振 ${d.windSpellProcRate}%（主動施放風屬性傷害魔法時追加龍捲風）`);
+    if (d.hurtRapidfire)       e.push('受擊反制（受到傷害時立即觸發一次連射；經典模式亦生效）');
     if (d.counterAllEle)        e.push('一般攻擊剋制所有屬性敵人（傷害 ×1.4）');
     if (d.procBurn)             e.push(`命中附加灼燒：每秒 ${d.procBurn.dmg || 10} 點火傷，持續 ${d.procBurn.dur || 6} 秒${d.procBurn.rate ? `（${d.procBurn.rate}% 機率）` : ''}`);
     if (d.onHitEleDmg)          e.push(`命中額外造成 ${d.onHitEleDmg.dmg} 點${_ele(d.onHitEleDmg.ele)}屬性傷害${d.onHitEleDmg.rate ? `（${d.onHitEleDmg.rate}% 機率）` : ''}`);

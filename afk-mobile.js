@@ -92,6 +92,9 @@
             //   ⑥ 內層捲動區的 iOS 觸控三件套：溢出量小時沒有這組會「滑不動」(觸控被外層吃掉·afk-invlist 踩過同一雷)；
             //      overscroll-behavior:contain 同時擋「捲到底把後面的遊戲畫面一起帶著捲」的連鎖(雙層捲軸打架)。
             + 'body.m-mobile :is(.classic-skill-grid-scroll, #warehouse-window-content, #interaction-content, .as-box, #combat-log, #sys-log, #card-book-body, #equip-book-body, #misc-book-body, #relic-book-body, #modal-compare, #item-modal > div:not(#modal-compare)){ -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }\n'
+            //   ⑦ 嵌入式裝備視窗:body 層級 fixed 圖層,原生捲動鏈走 DOM 祖先碰不到 #game-screen(手指拖 12 格區=划不動)。
+            //      touch-action:none 關掉原生捲動(免 iOS 對 body 橡皮筋),垂直拖曳由 bindEquipTouchScroll 轉發給 #game-screen。
+            + 'body.m-mobile #equipment-window.equipment-window-embedded:not(.hidden){ touch-action: none; }\n'
             // 登入頁：上游用「絕對定位藝術舞台」——#main-menu(top:31%) 與 #login-meta-layer(版權·pin bottom:4%) 各自絕對定位。
             //   我方往 #main-menu 注入了掉落查詢/小百科/外掛框後它變很高 → 蓋到底部版權層(文字重疊·使用者回報)。
             //   手機改成「流式堆疊」(DOM 序 title→menu→meta 自然由上而下排)，不再重疊；藝術背景圖 absolute inset:0 照樣鋪滿。
@@ -312,9 +315,17 @@
                 nav.appendChild(btn);
             });
             document.body.appendChild(nav);
+            var justEntered = true;   // nav 剛建立=剛進遊戲(navTick 每 1.5 秒重呼叫 buildNav,只有這輪為真)
         }
         if (!currentView()) setView('center');   // 預設戰鬥
         else updateNavActive();
+        if (justEntered) autoOpenSysLog();   // 必須在 setView 之後:setView 會 closeLog,先開會被關掉
+    }
+    // 登入即開日誌並停在「系統與物品」頁:離線掛機結算摘要印在系統日誌,一進遊戲就看得到(使用者要求)。
+    // 只在「這次進入遊戲」做一次(nav 重建=重新登入才再做),之後玩家自己開關/切頁不受干擾。
+    function autoOpenSysLog() {
+        openLog();
+        if (!document.body.classList.contains('mlog-sys')) switchLog();
     }
     function navTick() {
         var gs = document.getElementById('game-screen');
@@ -327,6 +338,31 @@
         }
         applyNavH();
     }
+    // 嵌入式裝備視窗(js/19)的觸控捲動轉發:視窗是 body 層級 fixed、蓋滿分頁區,原生觸控捲不到 #game-screen。
+    // 垂直拖曳改手動推 #game-screen.scrollTop(js/19 有掛 scroll→fitEquipmentWindowToViewport,視窗會跟著對齊);
+    // 拖出位移就吞掉後續 click(capture),免得滑完誤點裝備格。
+    function bindEquipTouchScroll() {
+        var win = document.getElementById('equipment-window');
+        if (!win || win.__afkTouchScroll) return; win.__afkTouchScroll = true;
+        var y0 = 0, st0 = 0, moved = false;
+        win.addEventListener('touchstart', function (e) {
+            if (!document.body.classList.contains('m-mobile')) return;
+            var gs = document.getElementById('game-screen'); if (!gs) return;
+            y0 = e.touches[0].clientY; st0 = gs.scrollTop; moved = false;
+        }, { passive: true });
+        win.addEventListener('touchmove', function (e) {
+            if (!document.body.classList.contains('m-mobile')) return;
+            var gs = document.getElementById('game-screen'); if (!gs) return;
+            var dy = e.touches[0].clientY - y0;
+            if (Math.abs(dy) > 8) moved = true;
+            gs.scrollTop = st0 - dy;
+        }, { passive: true });
+        win.addEventListener('click', function (e) {
+            if (moved) { moved = false; e.stopPropagation(); e.preventDefault(); }
+        }, true);
+    }
+    bindEquipTouchScroll();
+
     setInterval(navTick, 1500);
     navTick();
 

@@ -89,7 +89,10 @@
         ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:14px 12px 12px;';
         applyBannerPad(ov);   // 開啟當下實測橫幅高度直接設 padding-top（不靠 afk-mobile 的非同步 --orig-bar-h，避免量測未就緒時被橫幅蓋住）
         var card = document.createElement('div');
-        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:560px;width:100%;max-height:calc(100vh - var(--orig-bar-h,0px) - 30px);overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.6);';
+        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:560px;width:100%;max-height:calc(100vh - var(--orig-bar-h,0px) - 30px);overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.6);-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;';
+        // iOS Safari 的 vh 含工具列高度,卡片底(重新整理鈕)會被切出可視範圍 → 覆寫成 dvh+safe-area(舊瀏覽器不認 dvh 就留上面 vh 版)。
+        // 頂端扣「開啟當下實測」的橫幅 pad(與 applyBannerPad 同源),不用 --orig-bar-h(非同步、可能還是 0)。
+        card.style.maxHeight = 'calc(100dvh - ' + (bannerPadPx() + 16) + 'px - env(safe-area-inset-bottom, 0px))';
 
         var groups = {};
         registry.forEach(function (r) { (groups[r.group] = groups[r.group] || []).push(r); });
@@ -152,7 +155,12 @@
         btn.textContent = '🎚️';
         btn.title = '外掛開關';
         btn.style.cssText = 'position:fixed;left:6px;top:calc(var(--orig-bar-h,0px) + 6px);z-index:100001;background:rgba(15,23,42,.82);border:1px solid #334155;color:#cbd5e1;border-radius:8px;padding:4px 8px;font-size:17px;line-height:1;cursor:pointer;';
-        btn.addEventListener('click', openPanel);
+        // 再點一次=關閉(toggle):面板開著就收掉,沒開才開。
+        btn.addEventListener('click', function () {
+            var ov = document.getElementById('afk-toggles-overlay');
+            if (ov) { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+            else openPanel();
+        });
         document.body.appendChild(btn);
         return true;
     }

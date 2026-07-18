@@ -298,7 +298,7 @@ function batchUseItem(u) {
     renderTabs(); updateUI(); saveGame();
     if (!document.getElementById('item-modal').classList.contains('hidden')) closeModal();
 }
-function useItem(u, silent = false) {
+function useItem(u, silent = false, keepModal = false) {   // keepModal:自動觸發(如外掛自動瞬移)非 silent 使用時,不關玩家開著的物品視窗
     let item = player.inv.find(i => i.uid === u);
     if (!item) return;
     if (player.dead) { if (!silent) logSys(`死亡狀態無法使用道具，請先復活。`); return; }   // 死亡(未復活前)鎖住手動使用
@@ -519,7 +519,7 @@ function useItem(u, silent = false) {
         } else logSys(`你已經學過這個技能了。`);
     }
     updateUI();
-    if(!silent && document.getElementById('item-modal').classList.contains('hidden') === false && (d.type !== 'scroll' || d.eff === 'poly' || d.eff === 'magicbarrier' || d.eff === 'teleport_scroll')) {
+    if(!silent && !keepModal && document.getElementById('item-modal').classList.contains('hidden') === false && (d.type !== 'scroll' || d.eff === 'poly' || d.eff === 'magicbarrier' || d.eff === 'teleport_scroll')) {
         closeModal();
     }
 }

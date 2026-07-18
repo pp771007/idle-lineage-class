@@ -77,9 +77,9 @@
         if (document.getElementById('afk-toggles-overlay')) return;
         var ov = document.createElement('div');
         ov.id = 'afk-toggles-overlay';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:16px;';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:calc(var(--orig-bar-h,0px) + 14px) 12px 12px;';
         var card = document.createElement('div');
-        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:560px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.6);';
+        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:560px;width:100%;max-height:calc(100vh - var(--orig-bar-h,0px) - 30px);overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.6);';
 
         var groups = {};
         registry.forEach(function (r) { (groups[r.group] = groups[r.group] || []).push(r); });

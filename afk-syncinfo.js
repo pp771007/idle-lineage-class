@@ -50,7 +50,7 @@
     var foot = document.createElement('div');
     foot.id = 'afk-syncinfo';
     foot.innerHTML =
-      '<div class="afk-si-row"><span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span> <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(正版連結)</a></span></div>' +
+      '<div class="afk-si-row"><span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span></span></div>' +
       '<div class="afk-si-row afk-si-verrow"><span class="afk-si-ver"></span></div>' +
       '<div class="afk-si-row afk-si-updrow"><span class="afk-si-upd"></span></div>';
     menu.appendChild(foot);
@@ -66,11 +66,9 @@
     var verRow = foot.querySelector('.afk-si-verrow'), verEl = foot.querySelector('.afk-si-ver');
     var updRow = foot.querySelector('.afk-si-updrow'), updEl = foot.querySelector('.afk-si-upd');
     verRow.style.display = 'none'; updRow.style.display = 'none';   // 讀到才顯示,讀不到整列不佔位
-    // 🔄 2026-07 外掛化架構:核心永遠跟進原版 → 首頁不再顯示「加掛版版本號」,改顯示「已跟進的原版版本 + 最後同步時間」。
-    //   原版版本讀核心全域 GAME_VERSION(永遠可讀);最後同步時間讀 version.json 的 buildAt(=最近一次同步/建置)。
-    var upVer = (typeof GAME_VERSION !== 'undefined' && GAME_VERSION) ? GAME_VERSION : '';
-    if (upVer) { verEl.innerHTML = '已跟進原版 ' + upVer; verRow.style.display = ''; }
-    // file:// 無法 fetch(CORS,origin null)→ 只顯示版本、不顯示同步時間;http(s) 才去抓 buildAt
+    // 🔄 2026-07 外掛化架構:核心永遠跟進原版 → 首頁只顯示「最後同步原版時間」,不寫「已跟進原版 vX」那行(使用者要求)。
+    //   最後同步時間讀 version.json 的 buildAt(=最近一次同步/建置)。verRow 保留 DOM 但不再填內容。
+    // file:// 無法 fetch(CORS,origin null)→ 不顯示同步時間;http(s) 才去抓 buildAt
     if (!/^https?:$/.test(location.protocol)) return;
     fetch('version.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })

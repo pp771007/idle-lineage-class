@@ -231,7 +231,7 @@
   function apply() {
     if (_busy) return; _busy = true;
     try {
-      injectCss(); ensureBadge(); ensureMarquee();
+      injectCss();   // 🚫 「加掛版」雲朵徽章與公告跑馬燈已移除(使用者要求)——只留外掛外框收納
       var menu = document.getElementById('main-menu');
       if (menu) {
         if (isMobileNow()) { teardownModalUI(menu); ensureFrame(); }

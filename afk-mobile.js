@@ -45,7 +45,8 @@
         st.id = 'afk-mobile-bar-offset';
         // 只位移舞台頂部、縮短其高度讓開橫幅；--orig-bar-h 為 0（官方網域/無橫幅）時等同不動。
         st.textContent =
-            '#app-stage{ top: var(--orig-bar-h, 0px) !important; height: calc(100% - var(--orig-bar-h, 0px)) !important; }\n'
+            // 讓開橫幅：舞台頂部下移橫幅高度、縮短其高度；並允許縱向捲動——橫幅壓縮高度後首頁/內容超出時可滑到底。
+            '#app-stage{ top: var(--orig-bar-h, 0px) !important; height: calc(100% - var(--orig-bar-h, 0px)) !important; overflow-y: auto !important; }\n'
             // 選角畫面（上游新版）：每列＝存檔鈕 + 固定寬匯入區，手機會把鈕擠成「存...」。改成直向堆疊：鈕全寬、匯入區在下。
             + 'body.m-mobile #slot-list > div{ flex-wrap:wrap !important; }\n'
             + 'body.m-mobile #slot-list > div > button:first-child{ flex:1 1 100% !important; }\n'

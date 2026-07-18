@@ -82,9 +82,9 @@
         if (document.getElementById('afk-trad-overlay')) return;
         var ov = document.createElement('div');
         ov.id = 'afk-trad-overlay';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:16px;';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:calc(var(--orig-bar-h,0px) + 14px) 12px 12px;';
         var card = document.createElement('div');
-        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:480px;width:100%;max-height:86vh;overflow:auto;';
+        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:480px;width:100%;max-height:calc(100vh - var(--orig-bar-h,0px) - 30px);overflow:auto;';
         var max = (typeof SAVE_SLOT_MAX !== 'undefined') ? SAVE_SLOT_MAX : 8;
         var rows = '';
         for (var s = 1; s <= max; s++) {

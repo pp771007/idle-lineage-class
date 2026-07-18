@@ -50,7 +50,7 @@
         if (document.getElementById('afk-ps-overlay')) return;
         var ov = document.createElement('div');
         ov.id = 'afk-ps-overlay';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:16px;';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:calc(var(--orig-bar-h,0px) + 14px) 12px 12px;';
         var opts = [
             { k: 'noanim', name: '關閉戰鬥動畫', desc: '怪物/玩家/傭兵/寵物/召喚的逐幀動畫停止（省 CPU；傷害/戰鬥數值不變）' },
             { k: 'lowfps', name: '降低畫面更新頻率', desc: '畫面更新節流到約 8fps（更省電；遊戲邏輯照跑，只是畫面較不即時）' }

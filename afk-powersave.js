@@ -16,7 +16,8 @@
     function set(k, v) { try { localStorage.setItem('afk_ps_' + k, v ? '1' : '0'); } catch (e) {} }
 
     // ① 關戰鬥動畫：包住 8fps ticker 會呼叫的 sprite 函式，開啟時直接 no-op（畫面停在當前幀、不再逐幀動）。
-    ['_mobAnimApply', '_allySpritesApply', '_playerMorphApply'].forEach(function (fn) {
+    //   _petAnimApply=寵物/召喚物 sprite(js/22 自己的 ticker,已改間接呼叫讓 wrapper 生效);漏包它=關動畫後召喚物照樣跑(踩過)。
+    ['_mobAnimApply', '_allySpritesApply', '_playerMorphApply', '_petAnimApply'].forEach(function (fn) {
         if (typeof window[fn] === 'function' && !window[fn].__afkPs) {
             var o = window[fn];
             window[fn] = function () { if (on('noanim')) return; return o.apply(this, arguments); };

@@ -107,8 +107,11 @@ const WPN_ATTACK_SFX = {
     wand: 255, qigu: 249, unarmed: 246, wpn_other: 248,      // 法杖(staff)/氣功(借鈍器)/徒手(unarmed)/其他(預設劍)
 };
 
+// 🔇 發聲總閘：玩家開關 && 非快轉。離線/背景補跑(state.ff)會壓縮時間跑大量戰鬥拍，
+//    音效不擋的話回前景瞬間全部疊在一起爆播(玩家回報)——補跑期間一律靜音。
+function _sfxAudible() { return _sfxCfg.on && !(typeof state !== 'undefined' && state && state.ff); }
 function playSfx(key) {
-    if (!_sfxCfg.on) return;
+    if (!_sfxAudible()) return;
     var def = SFX_DEFS[key]; if (!def) return;
     var poolKey = key;
     if (key === 'hurt') {   // 🧝 v3.0.47 變身受傷音優先（怪物編號音／騎士/法師職業語音）；未備/未載完→退回本職變體→通用
@@ -433,7 +436,7 @@ function _sfxPlayPool(poolKey, vol) {   // 直接播放指定 pool key（不查 
 }
 function _sfxDynLoad(poolKey, file) { if (_sfxDynTried[poolKey]) return; _sfxDynTried[poolKey] = true; _sfxTryLoad(poolKey, { file: file || poolKey }); }
 function playMobHurt(mob) {
-    if (!_sfxCfg.on || !mob) return;
+    if (!_sfxAudible() || !mob) return;   // 🔇 含 state.ff：離線補跑逐拍觸發怪物受擊·一律靜音
     var n = MOB_HURT_SFX[mob.n]; if (n === undefined) return;   // 沒對應→不出聲（不退回通用，避免亂套）
     var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     if (now - _mobHurtLast < 90) return;   // 全域節流：多目標／連擊不洗版
@@ -443,7 +446,7 @@ function playMobHurt(mob) {
     _sfxPlayPool(key, 0.50);   // 缺檔(null)→_sfxPlayPool 回 false→靜音
 }
 function playSpellCast(skn) {
-    if (!_sfxCfg.on) return;
+    if (!_sfxAudible()) return;   // 🔇 含 state.ff：離線補跑期間靜音
     var _msk = (typeof _morphSkillOverride === 'function') ? _morphSkillOverride() : null;   // 🌑 v3.4.83 冥皇變身施法音覆蓋（死亡騎士技能音 91·取代 per-法術；其他變身→null 維持原音）
     if (_msk) {
         var nowM = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -462,7 +465,7 @@ function playSpellCast(skn) {
 }
 
 function playMobKill(mob) {
-    if (!_sfxCfg.on) return;
+    if (!_sfxAudible()) return;   // 🔇 含 state.ff：離線補跑期間靜音
     var n = (mob && mob.n != null) ? MOB_KILL_SFX[mob.n] : undefined;
     if (n === undefined) { playSfx('kill'); return; }   // 無對應→通用擊殺音
     var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();

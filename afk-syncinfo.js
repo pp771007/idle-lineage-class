@@ -11,7 +11,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
-  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('syncinfo')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('skin')) return;   // 🎚️ 外掛開關:與 afk-skin 共用「首頁外掛入口/資訊」一顆開關(都是純首頁視覺)
 
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);

@@ -63,6 +63,13 @@
             + 'body.m-mobile .fixed.inset-0{ padding-top: var(--orig-bar-h, 0px); }\n'
             //   ② 黑市/NPC/倉庫浮動視窗(#town-interaction-container)狩獵中會被移到 body 頂(靜態流·在橫幅下)：讓位並縮短高度。
             + 'body.m-mobile > #town-interaction-container:not(.hidden){ margin-top: var(--orig-bar-h, 0px) !important; height: calc(100dvh - var(--orig-bar-h, 0px) - 16px) !important; }\n'
+            // 登入頁：上游用「絕對定位藝術舞台」——#main-menu(top:31%) 與 #login-meta-layer(版權·pin bottom:4%) 各自絕對定位。
+            //   我方往 #main-menu 注入了掉落查詢/小百科/外掛框後它變很高 → 蓋到底部版權層(文字重疊·使用者回報)。
+            //   手機改成「流式堆疊」(DOM 序 title→menu→meta 自然由上而下排)，不再重疊；藝術背景圖 absolute inset:0 照樣鋪滿。
+            + 'body.m-mobile #login-art-stage{ height:auto !important; min-height:100dvh; aspect-ratio:auto !important; display:flex !important; flex-direction:column !important; justify-content:flex-start !important; }\n'
+            + 'body.m-mobile #login-title-layer, body.m-mobile #main-menu, body.m-mobile #login-meta-layer{ position:static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; width:auto !important; transform:none !important; }\n'
+            + 'body.m-mobile #login-title-layer{ margin-top:14px; }\n'
+            + 'body.m-mobile #login-meta-layer{ margin:10px auto 18px !important; text-align:center; }\n'
             // 選角畫面（上游新版）：每列＝存檔鈕 + 固定寬匯入區，手機會把鈕擠成「存...」。改成直向堆疊：鈕全寬、匯入區在下。
             + 'body.m-mobile #slot-list > div{ flex-wrap:wrap !important; }\n'
             + 'body.m-mobile #slot-list > div > button:first-child{ flex:1 1 100% !important; }\n'

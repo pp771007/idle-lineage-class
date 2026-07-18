@@ -65,7 +65,6 @@
         { id: 'backnav', name: '手機返回鍵', desc: '子畫面按返回回首頁而非關 App（僅手機）', group: '系統與其他' },
         { id: 'pwa', name: 'PWA 安裝/離線', desc: '安裝成 App、圖片離線快取對帳', group: '系統與其他' },
         { id: 'storage', name: '設定選單', desc: '首頁 ⚙ 設定鈕與存檔大小檢查', group: '系統與其他' },
-        { id: 'analytics', name: '匿名人數統計', desc: '只在正式站台送、不用 cookie', group: '系統與其他' },
         { id: 'powersave', name: '省電模式', desc: '首頁設定→關戰鬥動畫/降畫面更新頻率（補回上游沒有的 2 個省電選項）', group: '系統與其他' },
         { id: 'skin', name: '首頁品牌/公告', desc: '加掛版標記、跑馬燈、外掛入口收納', group: '系統與其他' },
         { id: 'syncinfo', name: '首頁版本資訊', desc: '顯示原作者與加掛版版本號', group: '系統與其他' },

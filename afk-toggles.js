@@ -47,7 +47,7 @@
     // ── 內建外掛目錄：先自動登錄，面板一定列得出來（就算某支外掛載入失敗也能被關/開）──
     //   id = 外掛檔名去掉 afk- 前綴；def:false 才預設關。infra(afk-ui/extradata/sw/toggles)刻意不列＝不可關。
     [
-        { id: 'mobile', name: '手機版面', desc: '手機底部導覽列、一行式狀態列、版面修正', group: '遊戲介面' },
+        { id: 'mobile', name: '手機版面（加掛，暫停用）', desc: '舊版手機版面覆寫；與上游 v3.5 新版手機縮放衝突，預設關閉改用原版手機版面（待薄化重做）', group: '遊戲介面', def: false },
         { id: 'toast', name: '手機提示 toast', desc: '把點擊事件的訊息浮現成 toast（僅手機）', group: '遊戲介面' },
         { id: 'mobname', name: '怪物名稱顯示', desc: '怪物名稱常駐/鎖定中/hover 三選一', group: '遊戲介面' },
         { id: 'statpts', name: '能力值來源分解', desc: '能力值面板顯示始/升/藥/總點數來源', group: '遊戲介面' },

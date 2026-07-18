@@ -129,18 +129,18 @@
 
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
-    // ── 永遠可達的入口（逃生門）──────────────────────────────
-    // 掛到首頁主選單；主選單還沒出現就用 observer 等它。此按鈕本身不可被關。
+    // ── 永遠可達的入口（逃生門）：左上角固定小按鈕（首頁 + 遊戲內都在；本按鈕不可被關）──
+    //   位置讓開非官方橫幅（--orig-bar-h，由 afk-mobile 量測；無橫幅則為 0）。
     function injectEntry() {
         if (document.getElementById('afk-toggles-entry')) return true;
-        var menu = document.getElementById('main-menu');
-        if (!menu) return false;
+        if (!document.body) return false;
         var btn = document.createElement('button');
         btn.id = 'afk-toggles-entry';
-        btn.textContent = '🎚️ 外掛開關';
-        btn.style.cssText = 'display:block;margin:8px auto 0;background:rgba(15,23,42,.7);border:1px solid #334155;color:#cbd5e1;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;';
+        btn.textContent = '🎚️';
+        btn.title = '外掛開關';
+        btn.style.cssText = 'position:fixed;left:6px;top:calc(var(--orig-bar-h,0px) + 6px);z-index:100001;background:rgba(15,23,42,.82);border:1px solid #334155;color:#cbd5e1;border-radius:8px;padding:4px 8px;font-size:17px;line-height:1;cursor:pointer;';
         btn.addEventListener('click', openPanel);
-        menu.appendChild(btn);
+        document.body.appendChild(btn);
         return true;
     }
     if (!injectEntry()) {

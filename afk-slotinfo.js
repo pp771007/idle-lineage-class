@@ -68,14 +68,16 @@
     if (!list) return;
     var rows = list.children;
     for (var i = 0; i < rows.length; i++) {
-      var btn = rows[i].children[0];
-      if (!btn || btn.querySelector('.afk-slot-extra')) continue;   // openSlotSelect 每次重建清單,理論上不會殘留;仍防呆去重
+      var row = rows[i];
+      if (!row || row.querySelector('.afk-slot-extra')) continue;   // openSlotSelect 每次重建清單,理論上不會殘留;仍防呆去重
       var info = read(i + 1);
       if (!info.mapName && !info.idleText && !info.sherine) continue;
-      btn.style.flexWrap = 'wrap';
+      // 🆕 上游新版選角：每列＝存檔鈕 + 固定寬匯入區(手機會把鈕擠窄)。改把資訊掛到「整列」下方滿寬一行，
+      //   而非塞進被擠窄的按鈕內 → 桌機/手機都在按鈕列底下橫排一行，不再擠成直排。
+      row.style.flexWrap = 'wrap';
       var box = document.createElement('span');
       box.className = 'afk-slot-extra';
-      box.style.cssText = 'flex-basis:100%;width:100%;display:flex;flex-direction:column;gap:1px;margin-top:3px;font-size:.8rem;font-weight:400;color:#94a3b8;line-height:1.3;';
+      box.style.cssText = 'flex-basis:100%;width:100%;display:flex;flex-flow:row wrap;align-items:center;gap:2px 10px;margin-top:3px;padding:0 4px;font-size:.8rem;font-weight:400;color:#94a3b8;line-height:1.3;';
       // 🔮 席琳世界狀態:一般＝綠(同遊戲 c-sherine)、瘋狂＝猩紅(同瘋狂主題);用正式名稱
       if (info.sherine) {
         var s = document.createElement('span');
@@ -85,7 +87,7 @@
       }
       if (info.mapName) { var a = document.createElement('span'); a.textContent = '📍 ' + info.mapName; box.appendChild(a); }
       if (info.idleText) { var b = document.createElement('span'); b.textContent = info.idleText; box.appendChild(b); }
-      btn.appendChild(box);
+      row.appendChild(box);
     }
   }
 

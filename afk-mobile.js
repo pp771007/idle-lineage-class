@@ -45,7 +45,11 @@
         st.id = 'afk-mobile-bar-offset';
         // 只位移舞台頂部、縮短其高度讓開橫幅；--orig-bar-h 為 0（官方網域/無橫幅）時等同不動。
         st.textContent =
-            '#app-stage{ top: var(--orig-bar-h, 0px) !important; height: calc(100% - var(--orig-bar-h, 0px)) !important; }';
+            '#app-stage{ top: var(--orig-bar-h, 0px) !important; height: calc(100% - var(--orig-bar-h, 0px)) !important; }\n'
+            // 選角畫面（上游新版）：每列＝存檔鈕 + 固定寬匯入區，手機會把鈕擠成「存...」。改成直向堆疊：鈕全寬、匯入區在下。
+            + 'body.m-mobile #slot-list > div{ flex-wrap:wrap !important; }\n'
+            + 'body.m-mobile #slot-list > div > button:first-child{ flex:1 1 100% !important; }\n'
+            + 'body.m-mobile #slot-list > div > .w-56{ width:100% !important; }';
         (document.head || document.documentElement).appendChild(st);
     }
 

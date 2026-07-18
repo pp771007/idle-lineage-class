@@ -18,6 +18,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('mobname')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   var STORAGE_KEY = 'afk_mobname_mode';
   var DEFAULT_MODE = 'vanilla';

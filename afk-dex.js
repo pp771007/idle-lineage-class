@@ -11,6 +11,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('dex')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   var MAX_RESULTS = 60;
   var INDEX = [];   // [{ id, mob, maps:[名稱], drops:[[id,名稱,pct]], hay:可搜尋字串(小寫) }]

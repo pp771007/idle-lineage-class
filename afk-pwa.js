@@ -32,6 +32,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('pwa')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   var ICON = 'pwa-icon-192.png';
   var reg = null;            // ServiceWorkerRegistration

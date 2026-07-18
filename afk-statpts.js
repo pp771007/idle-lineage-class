@@ -17,6 +17,7 @@
  *      優雅降級:找不到 updateUI / player.base / 屬性元素就安靜停用。
  */
 (function () {
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('statpts')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
   var STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
   function n(o, s) { return (o && o[s]) || 0; }
 

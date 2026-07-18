@@ -18,6 +18,7 @@
  */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('training')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   // ---- 依賴檢查（缺了優雅降級，不弄壞遊戲） --------------------------------
   // 注意：mapState/DB/state/player/TICK_MS 在 index.html 是 let/const，不會掛上 window（只有 var/function 會），

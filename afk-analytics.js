@@ -18,6 +18,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('analytics')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   // Cloudflare 後台 Web Analytics 給的 beacon token(Add a site → 程式碼裡的 data-cf-beacon token)。
   var CF_BEACON_TOKEN = 'c5fb974a7cd046c18bf7375a9d7b51e8';

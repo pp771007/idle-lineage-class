@@ -11,6 +11,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('itemsearch')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   var q = { wpn: '', arm: '', item: '' };   // 各清單的查詢字串(單一事實來源)
   var TAB_KEYS = [

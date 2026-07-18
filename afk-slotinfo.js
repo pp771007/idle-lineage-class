@@ -12,6 +12,7 @@
  * 優雅降級:openSlotSelect / __afk 不存在就安靜停用,不弄壞畫面。
  */
 (function () {
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('slotinfo')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
   // 把離線毫秒數格式化成「X 天 Y 小時 / X 小時 Y 分 / X 分鐘 / 剛剛」
   function fmtIdle(ms) {
     if (ms < 0) ms = 0;

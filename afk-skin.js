@@ -19,6 +19,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('skin')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   // 外掛入口的「顯示順序」(都是 #main-menu 的子孫;依此序排入 Modal/外框)。
   //   原作者+正版最後同步(#afk-syncinfo)置頂,接掉落查詢/小百科,再巴哈/Line(#afk-syncinfo-links),最後設定。

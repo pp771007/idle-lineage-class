@@ -13,6 +13,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('mobile')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   var MQ = '(max-width: 768px)';
 

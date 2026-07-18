@@ -39,7 +39,7 @@ const logs = [];
 // 各外掛的開機 log:'[AFK] hooks OK' / '[AFK-mobile] hooks OK' / …(集中定義,goto 後輪詢等待 + 最後判定共用)
 // afk-mobile 為「桌機零接觸」設計——只有偵測到手機尺寸/裝置才會 init 並印出 hooks OK(見 afk-mobile.js);
 //   故它單獨在「手機模擬」那一輪驗,桌機那輪不列入(否則桌機永遠等不到它、smoke 假性失敗)。
-const needMobileOnly = ['[AFK-mobile]'];
+const needMobileOnly = [];   // ⏳ afk-mobile 重寫中·預設關閉(與上游 app-stage 衝突)→暫不要求;重寫完加回 '[AFK-mobile]'
 const need = ['[AFK]', '[AFK-slotinfo]', '[AFK-dex]', '[AFK-wiki]', '[AFK-syncinfo]', '[AFK-statpts]', '[AFK-pwa]', '[AFK-storage]', '[AFK-history]', '[AFK-diag]', '[AFK-mobname]', '[AFK-training]', '[AFK-itemsearch]', '[AFK-skin]'];
 const seen = (list) => list.every((n) => logs.some((l) => l.includes(n) && l.includes('hooks OK')));
 

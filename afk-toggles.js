@@ -53,6 +53,7 @@
         { id: 'itemsearch', name: '背包名稱搜尋', desc: '背包武器/防具/道具分頁加搜尋框', group: '遊戲介面' },
         { id: 'invlist', name: '背包條列式', desc: '背包改成一行一物品（取代上游格狀皮膚）；桌機/手機通用', group: '遊戲介面' },
         { id: 'warehouse', name: '倉庫擴充', desc: '金幣全部存入/取出、遺物與席琳遺骸分類', group: '遊戲介面' },
+        { id: 'backnav', name: '手機返回鍵', desc: '子畫面按返回回首頁而非關 App（僅手機）', group: '遊戲介面' },
         { id: 'dex', name: '怪物/掉落查詢', desc: '首頁入口：查怪名/地圖/掉落物', group: '查詢與資訊' },
         { id: 'wiki', name: '小百科', desc: '首頁入口：職業/裝備/機制/地圖等資料', group: '查詢與資訊' },
         { id: 'slotinfo', name: '選角掛機資訊', desc: '選存檔位顯示掛哪張圖、掛多久', group: '查詢與資訊' },
@@ -61,15 +62,14 @@
         { id: 'diag', name: '快取診斷', desc: '設定選單：回報問題用的取證工具', group: '查詢與資訊' },
         { id: 'autobuy', name: '自動購買魔法屏障', desc: '魔法屏障卷軸耗盡自動補貨（肉已被上游移除；箭矢/藥水上游原生已有）', group: '自動化' },
         { id: 'training', name: '木人場', desc: '自動化面板：量測真實 DPS', group: '自動化' },
-        { id: 'dograce', name: '奇岩賽狗場', desc: '奇岩城的賭狗小遊戲（浮動球入口，只賺金幣）', group: '自動化' },
         { id: 'bossring', name: '傳送控制戒指自動找 BOSS', desc: '持傳送控制戒指時，場上無 BOSS 自動用瞬移卷軸召來（線上前景；排名/裂痕/軍王/攻城不套用）', group: '自動化' },
-        { id: 'backnav', name: '手機返回鍵', desc: '子畫面按返回回首頁而非關 App（僅手機）', group: '系統與其他' },
         { id: 'pwa', name: 'PWA 安裝/離線', desc: '安裝成 App、圖片離線快取對帳', group: '系統與其他' },
         { id: 'storage', name: '設定選單', desc: '首頁 ⚙ 設定鈕與存檔大小檢查', group: '系統與其他' },
         { id: 'powersave', name: '省電模式', desc: '首頁設定→關戰鬥動畫/降畫面更新頻率（補回上游沒有的 2 個省電選項）', group: '系統與其他' },
         { id: 'skin', name: '首頁外掛入口/資訊', desc: '外掛入口收納（桌機🔌鈕/手機外框）＋原作者資訊、最後更新時間、巴哈/Line 連結', group: '系統與其他' },
         { id: 'offline', name: '離線快速結算', desc: '關掉遊戲後回來自動結算掛機收益', group: '遊戲玩法' },
-        { id: 'traditional', name: '傳統模式(偽)', desc: '打到/製作/潘朵拉的裝備自帶隨機強化值（商店除外），每角色各自開關', group: '遊戲玩法' }
+        { id: 'traditional', name: '傳統模式(偽)', desc: '打到/製作/潘朵拉的裝備自帶隨機強化值（商店除外），每角色各自開關', group: '遊戲玩法' },
+        { id: 'dograce', name: '奇岩賽狗場', desc: '奇岩城的賭狗小遊戲（浮動球入口，只賺金幣）', group: '遊戲玩法' }
     ].forEach(api.register);
 
     // 開啟彈窗當下：實測非官方橫幅(#_orig_pbar)高度,直接寫進 overlay 的 padding-top,讓卡片一定落在橫幅下方。

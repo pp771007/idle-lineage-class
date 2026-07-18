@@ -68,7 +68,27 @@ function patchMaybeSpawnMobs() {
   console.log(`[patch] maybeSpawnMobs 抽取完成（${FILE}）`);
 }
 
-const PATCHES = [patchMaybeSpawnMobs];
+// ── 補丁 2：gainItem 自帶強化值鉤子（偽傳統／自動衝裝）────────────
+//   上游把傳統模式挖掉後 `let _tEn = 0;` 寫死。改成呼叫外掛鉤子 window.__afkTradRollEn(d, forceNormal, _noAffixCtx)：
+//   afk-traditional.js 提供它 → 對「該角色有開偽傳統 + 非商店(forceNormal 假) + 裝備」回傳隨機強化值，其餘回 0。
+//   未載外掛/未開 → 恆 0，與原版完全一致。詞綴/疊加/簽章全走上游原路（en 在簽章之前就定好，堆疊正確）。
+function patchTradEnHook() {
+  const FILE = 'js/08-items-equip.js';
+  let s = readFileSync(FILE, 'utf8');
+  if (s.includes('__afkTradRollEn')) { already++; return; }
+
+  const ANCHOR = 'let _tEn = 0;   // 🏛️ v3.0.83 傳統模式已取消：掉落自帶強化值停用（任何來源恆 +0·手動強化照常）';
+  if (s.indexOf(ANCHOR) < 0) throw new Error(`[${FILE}] 找不到 gainItem 的 _tEn 錨點——上游可能改寫了掉落強化段，請人工檢查後更新錨點。`);
+
+  const REPLACE = "let _tEn = (typeof window.__afkTradRollEn === 'function') ? (window.__afkTradRollEn(d, forceNormal, _noAffixCtx) || 0) : 0;   // 🔌 加掛版補丁：偽傳統(自動衝裝)自帶強化值鉤子（外掛 afk-traditional 提供；未載/未開→0）";
+  s = s.replace(ANCHOR, REPLACE);
+
+  if (!CHECK) writeFileSync(FILE, s);
+  changed++;
+  console.log(`[patch] gainItem _tEn 偽傳統鉤子（${FILE}）`);
+}
+
+const PATCHES = [patchMaybeSpawnMobs, patchTradEnHook];
 
 try {
   for (const p of PATCHES) p();

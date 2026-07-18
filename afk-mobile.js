@@ -58,6 +58,11 @@
             + 'body.m-mobile #load-select-panel:not(.hidden){ min-height: calc(100dvh - var(--orig-bar-h, 0px)) !important; overscroll-behavior: contain !important; }\n'
             // 選角面板顯示時，讓外層 #creation-screen 完全不捲(它自己會捲)→ 只剩 panel 單層捲，不再兩層打架卡住。
             + 'body.m-mobile #creation-screen:has(#load-select-panel:not(.hidden)){ overflow: hidden !important; }\n'
+            // 上游全螢幕彈窗也會被橫幅蓋(潘朵拉黑市/道具詳情/各圖鑑…)。兩類讓位：
+            //   ① 置中類 Tailwind modal(.fixed.inset-0·flex 置中)：加 padding-top 把置中內容推到橫幅下(遊戲畫面容器用 id 非這組 class，不受影響)。
+            + 'body.m-mobile .fixed.inset-0{ padding-top: var(--orig-bar-h, 0px); }\n'
+            //   ② 黑市/NPC/倉庫浮動視窗(#town-interaction-container)狩獵中會被移到 body 頂(靜態流·在橫幅下)：讓位並縮短高度。
+            + 'body.m-mobile > #town-interaction-container:not(.hidden){ margin-top: var(--orig-bar-h, 0px) !important; height: calc(100dvh - var(--orig-bar-h, 0px) - 16px) !important; }\n'
             // 選角畫面（上游新版）：每列＝存檔鈕 + 固定寬匯入區，手機會把鈕擠成「存...」。改成直向堆疊：鈕全寬、匯入區在下。
             + 'body.m-mobile #slot-list > div{ flex-wrap:wrap !important; }\n'
             + 'body.m-mobile #slot-list > div > button:first-child{ flex:1 1 100% !important; }\n'

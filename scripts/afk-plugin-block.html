@@ -1,0 +1,38 @@
+    <!-- ═══════════ 加掛版外掛層（核心永遠是原作者原版；我們的功能全部是外掛疊上去） ═══════════ -->
+    <!-- 此區塊由 scripts/sync-upstream.mjs 於「拉上游 index.html 後」自動注入到 </body> 之前。?v= 由 stamp-code-versions 補。 -->
+    <!-- afk-toggles 必須最先載入：外掛開關中樞（逃生門，自己不可被關；某支外掛壞掉時玩家關掉它就能用原版繼續玩） -->
+    <script src="afk-toggles.js"></script>
+    <!-- 共用基礎：自製彈窗/確認、dex/wiki 共用資料表（其他外掛依賴，排前面） -->
+    <script src="afk-ui.js"></script>
+    <script src="afk-extradata.js"></script>
+    <!-- 離線快速結算（自己 monkey-patch 包核心 saveGame/loadGame/changeMap/killMob/gainItem；搭配 maybeSpawnMobs 補丁） -->
+    <script src="afk-offline.js"></script>
+    <!-- 手機版面 / 返回鍵 -->
+    <script src="afk-mobile.js"></script>
+    <script src="afk-backnav.js"></script>
+    <!-- 資訊頁 / 查詢頁 -->
+    <script src="afk-slotinfo.js"></script>
+    <script src="afk-dex.js"></script>
+    <script src="afk-wiki.js"></script>
+    <!-- 設定選單 / 存檔 / 診斷 / 離線紀錄 -->
+    <script src="afk-storage.js"></script>
+    <script src="afk-history.js"></script>
+    <script src="afk-diag.js"></script>
+    <!-- 遊戲內小工具 -->
+    <script src="afk-statpts.js"></script>
+    <script src="afk-autobuy.js"></script>
+    <script src="afk-training.js"></script>
+    <script src="afk-itemsearch.js"></script>
+    <script src="afk-mobname.js"></script>
+    <script src="afk-toast.js"></script>
+    <!-- 傳統模式(偽)/自動衝裝：需搭配 scripts/apply-core-patches.mjs 的 gainItem _tEn 鉤子 -->
+    <script src="afk-traditional.js"></script>
+    <!-- 迷你遊戲（我方自製） -->
+    <script src="js/dograce.js"></script>
+    <!-- PWA / SW / 統計 / 品牌（skin 固定排最後） -->
+    <script src="afk-pwa.js"></script>
+    <script src="afk-sw.js"></script>
+    <script src="afk-syncinfo.js"></script>
+    <script src="afk-analytics.js"></script>
+    <script src="afk-skin.js"></script>
+    <!-- ═══════════ 加掛版外掛層 END ═══════════ -->

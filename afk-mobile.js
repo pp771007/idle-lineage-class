@@ -46,9 +46,12 @@
         // 只位移舞台頂部、縮短其高度讓開橫幅；--orig-bar-h 為 0（官方網域/無橫幅）時等同不動。
         st.textContent =
             // 讓開橫幅：#creation-screen(登入/創角/選角)與 #game-screen 本身就是 position:fixed;top:0(相對視窗定位)，
-            //   所以位移父層 #app-stage 對它們無效——必須直接位移這兩個全螢幕容器。頂部下移橫幅高度、縮短高度、
-            //   允許縱向捲動(橫幅壓縮高度後內容超出可滑到底)。只動 top/height/overflow、不碰 display → 不影響 .hidden 隱藏。
-            '#app-stage, #creation-screen, #game-screen{ top: var(--orig-bar-h, 0px) !important; height: calc(100% - var(--orig-bar-h, 0px)) !important; overflow-y: auto !important; }\n'
+            //   所以位移父層 #app-stage 對它們無效——必須直接位移這兩個全螢幕容器。頂部下移橫幅高度、縮短高度。
+            //   只動 top/height、不碰 display → 不影響 .hidden 隱藏。
+            '#app-stage, #creation-screen, #game-screen{ top: var(--orig-bar-h, 0px) !important; height: calc(100% - var(--orig-bar-h, 0px)) !important; }\n'
+            // 只有首頁/選角(#creation-screen)需要整頁縱向捲動(內容比縮短後的高度高)；
+            //   #game-screen 不加 overflow → 避免它與背包內層 viewport 形成巢狀捲動，害武器等小溢出分頁的觸控被外層吃掉。
+            + '#creation-screen{ overflow-y: auto !important; }\n'
             // 選角畫面（上游新版）：每列＝存檔鈕 + 固定寬匯入區，手機會把鈕擠成「存...」。改成直向堆疊：鈕全寬、匯入區在下。
             + 'body.m-mobile #slot-list > div{ flex-wrap:wrap !important; }\n'
             + 'body.m-mobile #slot-list > div > button:first-child{ flex:1 1 100% !important; }\n'

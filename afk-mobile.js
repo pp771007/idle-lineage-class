@@ -61,8 +61,17 @@
             // 上游全螢幕彈窗也會被橫幅蓋(潘朵拉黑市/道具詳情/各圖鑑…)。兩類讓位：
             //   ① 置中類 Tailwind modal(.fixed.inset-0·flex 置中)：加 padding-top 把置中內容推到橫幅下(遊戲畫面容器用 id 非這組 class，不受影響)。
             + 'body.m-mobile .fixed.inset-0{ padding-top: var(--orig-bar-h, 0px); }\n'
-            //   ② 黑市/NPC/倉庫浮動視窗(#town-interaction-container)狩獵中會被移到 body 頂(靜態流·在橫幅下)：讓位並縮短高度。
-            + 'body.m-mobile > #town-interaction-container:not(.hidden){ margin-top: var(--orig-bar-h, 0px) !important; height: calc(100dvh - var(--orig-bar-h, 0px) - 16px) !important; }\n'
+            //   ② 全螢幕/頂端錨定的浮動窗(倉庫/道具詳情/黑市·NPC)：核心手機把它們釘 top:8px/inset:8px、無視橫幅→頂端被蓋。
+            //      ⚠ 核心是 #id !important 規則，:is(.class) 特異度壓不過(倉庫踩過)，必須用「實際 id」選擇器才蓋得掉。頂端下移橫幅高度、縮短高度。
+            + 'body.m-mobile #warehouse-window-frame, body.m-mobile #item-modal:not(.hidden), body.m-mobile #town-interaction-container:not(.hidden){ top: calc(8px + var(--orig-bar-h, 0px)) !important; height: calc(100dvh - 16px - var(--orig-bar-h, 0px)) !important; }\n'
+            //   ③ 內聯 position:fixed 的置中彈窗(非 .fixed.inset-0 class·抓不到)：一樣補 padding-top 讓置中內容落在橫幅下。
+            + 'body.m-mobile :is(#autosell-rule-modal, #autosell-preview-modal, #poly-modal, #summon-select-overlay, #pet-evo-overlay, #pet-gear-overlay){ padding-top: var(--orig-bar-h, 0px) !important; }\n'
+            //   ④ transform 置中的裝備視窗(class 選擇器·特異度足夠蓋核心)：中心下移半個橫幅、封頂高度，頂端不被蓋。
+            + 'body.m-mobile .equipment-window-frame{ top: calc(50% + var(--orig-bar-h, 0px) / 2) !important; max-height: calc(100dvh - 16px - var(--orig-bar-h, 0px)) !important; }\n'
+            //   ⑤ 右欄分頁(統計/道具/收藏…)：核心手機把 #tab-content-panel 設固定高+內層 overflow-auto，與外層 #game-screen 捲動疊成「雙捲軸」。
+            //      讓分頁內容順流展開→只由 #game-screen 單層捲動(與 左/中 欄一致)；黏頂的 #mobile-vitals/分頁列照舊固定。
+            + 'body.m-mobile #tab-content-panel{ height: auto !important; min-height: 0 !important; overflow: visible !important; }\n'
+            + 'body.m-mobile #tab-content-panel > .ability-window-tab, body.m-mobile #tab-content-panel > [id^="tab-"]{ height: auto !important; overflow: visible !important; }\n'
             // 登入頁：上游用「絕對定位藝術舞台」——#main-menu(top:31%) 與 #login-meta-layer(版權·pin bottom:4%) 各自絕對定位。
             //   我方往 #main-menu 注入了掉落查詢/小百科/外掛框後它變很高 → 蓋到底部版權層(文字重疊·使用者回報)。
             //   手機改成「流式堆疊」(DOM 序 title→menu→meta 自然由上而下排)，不再重疊；藝術背景圖 absolute inset:0 照樣鋪滿。

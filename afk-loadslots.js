@@ -21,9 +21,11 @@
 
     var maxPage = Math.ceil(SAVE_SLOT_MAX / 4);
 
-    // 分頁列改 flex 橫排、取消原本 2-tab 絕對定位與 ::after 數字
-    var css = '#load-page-tabs{display:flex !important;gap:10px !important;justify-content:center !important;position:static !important;width:auto !important;flex-wrap:wrap !important;height:auto !important;margin:6px auto !important;}'
-        + '#load-page-tabs button{position:static !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;min-width:34px;transform:none !important;}'
+    // ⚠ 保留 #load-page-tabs「原本的絕對定位」(手機 top:524px 在卡片下方·桌機 top:56.9%)——只加寬容納 N 顆、
+    //   把按鈕改 relative 讓 flex 橫排、抑制原本 ::after 數字改用 textContent(page3+ 沒 ::after)。
+    //   之前誤把整個容器改 position:static → 它跑到流式頂端被絕對定位的卡片蓋住(分頁鈕看似不見·已修)。
+    var css = '#load-page-tabs{width:auto !important;min-width:0 !important;height:auto !important;gap:8px !important;justify-content:center !important;padding:0 6px !important;flex-wrap:wrap !important;}'
+        + '#load-page-tabs button{position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;min-width:34px;}'
         + '#load-page-tabs button::after{content:none !important;}';
     var st = document.createElement('style'); st.id = 'afk-loadslots-css'; st.textContent = css;
     (document.head || document.documentElement).appendChild(st);

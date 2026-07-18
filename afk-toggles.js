@@ -143,13 +143,17 @@
         document.body.appendChild(btn);
         return true;
     }
-    if (!injectEntry()) {
-        try {
-            var mo = new MutationObserver(function () { if (injectEntry()) mo.disconnect(); });
-            mo.observe(document.documentElement, { childList: true, subtree: true });
-            // 保險：主選單長時間沒出現時，仍提供全域函式讓其他入口呼叫
-            setTimeout(function () { try { mo.disconnect(); } catch (e) {} }, 30000);
-        } catch (e) {}
+    injectEntry();
+    // 只在首頁顯示：進遊戲（#game-screen 顯示 / #main-menu 隱藏）就把左上角開關鈕藏起來。
+    function syncEntryVisibility() {
+        var btn = document.getElementById('afk-toggles-entry');
+        if (!btn) { injectEntry(); btn = document.getElementById('afk-toggles-entry'); if (!btn) return; }
+        var menu = document.getElementById('main-menu');
+        var gs = document.getElementById('game-screen');
+        var onHome = menu ? !menu.classList.contains('hidden') : (!gs || gs.classList.contains('hidden'));
+        btn.style.display = onHome ? '' : 'none';
     }
+    syncEntryVisibility();
+    setInterval(syncEntryVisibility, 1000);
     try { console.log('[AFK-toggles] ready'); } catch (e) {}
 })();

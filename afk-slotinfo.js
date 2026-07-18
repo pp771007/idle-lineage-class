@@ -100,9 +100,49 @@
     return true;
   }
 
-  if (wrapSlotSelect()) {
-    console.log('[AFK-slotinfo] hooks OK — 選角畫面附加掛機地點/已掛機時間(桌機 + 手機共用)。');
+  // --- 🆕 上游新版「卡片式」選角(openLoadSelect/renderLoadSelect)：資訊面板 #load-info-panel 顯示選中角色的
+  //   名稱/職業/等級/能力…。這才是「開始遊戲」實際走的畫面(舊 openSlotSelect 的 #slot-list 不是它)。
+  //   在資訊面板底部補一列「📍掛在哪 ⏱已掛機」，對應目前選中的卡片(.load-slot-card.selected 的 data-slot)。
+  function appendLoadInfo() {
+    var panel = document.getElementById('load-info-panel');
+    if (!panel) return;
+    var sel = document.querySelector('#load-slot-grid .load-slot-card.selected');
+    var slot = sel ? parseInt(sel.getAttribute('data-slot'), 10) : 0;
+    var box = document.getElementById('afk-load-slotinfo');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'afk-load-slotinfo';
+      box.className = 'load-info-row';   // 沿用面板列樣式
+      box.style.cssText = 'display:flex;flex-flow:column;gap:2px;align-items:flex-start;margin-top:6px;padding-top:8px;border-top:1px solid rgba(148,163,184,.25);font-size:.82rem;line-height:1.35;';
+      panel.appendChild(box);
+    }
+    var info = slot ? read(slot) : { mapName: '', idleText: '', sherine: '' };
+    if (!info.mapName && !info.idleText && !info.sherine) { box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    box.innerHTML = '';
+    if (info.sherine) {
+      var s = document.createElement('span');
+      s.textContent = info.sherine === 'mad' ? '🔥 瘋狂的席琳世界' : '🔮 席琳的世界';
+      s.style.cssText = 'font-weight:700;color:' + (info.sherine === 'mad' ? '#fb7185' : '#4ade80') + ';';
+      box.appendChild(s);
+    }
+    if (info.mapName) { var a = document.createElement('span'); a.style.color = '#cbd5e1'; a.textContent = '📍 ' + info.mapName; box.appendChild(a); }
+    if (info.idleText) { var b = document.createElement('span'); b.style.color = '#94a3b8'; b.textContent = info.idleText; box.appendChild(b); }
+  }
+  function wrapLoadInfo() {
+    if (typeof window.updateLoadInfo !== 'function' || window.updateLoadInfo.__afkSlotInfo) return false;
+    var orig = window.updateLoadInfo;
+    var wrapped = function () { orig.apply(this, arguments); try { appendLoadInfo(); } catch (e) {} };
+    wrapped.__afkSlotInfo = true;
+    window.updateLoadInfo = wrapped;
+    return true;
+  }
+
+  var okOld = wrapSlotSelect();      // 舊按鈕列 #slot-list(可能仍被某些流程用到)
+  var okNew = wrapLoadInfo();        // 🆕 新卡片式選角資訊面板(開始遊戲實際走這個)
+  if (okOld || okNew) {
+    console.log('[AFK-slotinfo] hooks OK — 選角畫面附加掛機地點/已掛機時間(舊列表' + (okOld ? '✓' : '✗') + ' / 新卡片' + (okNew ? '✓' : '✗') + ')。');
   } else {
-    console.warn('[AFK-slotinfo] 找不到 openSlotSelect,選角畫面掛機資訊停用。');
+    console.warn('[AFK-slotinfo] 找不到 openSlotSelect / updateLoadInfo,選角畫面掛機資訊停用。');
   }
 })();

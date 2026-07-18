@@ -49,9 +49,15 @@
             //   所以位移父層 #app-stage 對它們無效——必須直接位移這兩個全螢幕容器。頂部下移橫幅高度、縮短高度。
             //   只動 top/height、不碰 display → 不影響 .hidden 隱藏。
             '#app-stage, #creation-screen, #game-screen{ top: var(--orig-bar-h, 0px) !important; height: calc(100% - var(--orig-bar-h, 0px)) !important; }\n'
-            // 只有首頁/選角(#creation-screen)需要整頁縱向捲動(內容比縮短後的高度高)；
+            // 只有首頁(#main-menu 在 #creation-screen 內)需要整頁縱向捲動(內容比縮短後的高度高)；
             //   #game-screen 不加 overflow → 避免它與背包內層 viewport 形成巢狀捲動，害武器等小溢出分頁的觸控被外層吃掉。
             + '#creation-screen{ overflow-y: auto !important; }\n'
+            // 🆕 卡片式選角面板 #load-select-panel(手機)本身 position:absolute;inset:0;overflow:auto;min-height:100dvh，
+            //   但它在被橫幅讓位縮短的 #creation-screen 內 → min-height:100dvh 比容器高 → creation-screen 也被迫捲，
+            //   兩層巢狀捲動打架＝滾一下就卡住(使用者回報)。把它的 min-height 改成剛好=讓位後可視高度 → 只剩它單層捲。
+            + 'body.m-mobile #load-select-panel:not(.hidden){ min-height: calc(100dvh - var(--orig-bar-h, 0px)) !important; overscroll-behavior: contain !important; }\n'
+            // 選角面板顯示時，讓外層 #creation-screen 完全不捲(它自己會捲)→ 只剩 panel 單層捲，不再兩層打架卡住。
+            + 'body.m-mobile #creation-screen:has(#load-select-panel:not(.hidden)){ overflow: hidden !important; }\n'
             // 選角畫面（上游新版）：每列＝存檔鈕 + 固定寬匯入區，手機會把鈕擠成「存...」。改成直向堆疊：鈕全寬、匯入區在下。
             + 'body.m-mobile #slot-list > div{ flex-wrap:wrap !important; }\n'
             + 'body.m-mobile #slot-list > div > button:first-child{ flex:1 1 100% !important; }\n'

@@ -6,7 +6,7 @@
  *   資產（assets/ public/）由呼叫端（GitHub Action）先用 rsync --delete 鏡像好，本腳本只碰程式碼與 manifest。
  *
  * 流程：
- *   1. 用上游原版覆蓋核心 js/NN-*.js 與 css/*（保留我方 js/dograce.js、afk-*.js、scripts/、tools/）。
+ *   1. 用上游原版覆蓋核心 js/NN-*.js 與 css/*（保留我方 afk-*.js、scripts/、tools/）。
  *   2. index.html = 上游 index.html + 注入外掛區塊（scripts/afk-plugin-block.html）到 </body> 之前。
  *   3. 跑 apply-core-patches.mjs 把加掛版必要的核心鉤子補回去（錨點式，插不進就 exit 1）。
  *   4. 重產 anim-manifest / 對帳 manifest，stamp 版本號與 SW。
@@ -26,7 +26,7 @@ if (!UP || !existsSync(join(UP, 'index.html'))) {
 function run(cmd) { console.log('$ ' + cmd); execSync(cmd, { stdio: 'inherit' }); }
 
 // ── 1) 覆蓋核心 js/NN-*.js 與 css/* ─────────────────────────────
-//   只覆蓋「編號核心檔」；我方 js/dograce.js、js/sfx-index.js、js/anim-manifest.js（下面重產）不動。
+//   只覆蓋「編號核心檔」；我方 js/sfx-index.js、js/anim-manifest.js（下面重產）不動。
 const upJsFiles = readdirSync(join(UP, 'js')).filter((f) => /^\d\d?-.+\.js$/.test(f));
 let copied = 0, added = 0;
 for (const f of upJsFiles) {

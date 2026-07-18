@@ -327,7 +327,7 @@ function summonElementDamage(dice, ele, t, flatBonus, mult, mrPen) {
     return Math.max(1, Math.floor(Math.max(1, Math.floor(base * mrFactor)) * fragileMult(t) * elementCounterMult(ele, t.e)));   // 🔮 魔法不受物理 DR；脆弱＋屬性剋制仍保留
 }
 // ===== 協力角色：讀取其他存檔位(非當前)的角色，以其真實戰力(等級/能力/裝備)一起作戰 =====
-function allySlotList() { return ['1','2','3','4','5','6','7','8'].filter(n => n !== String(currentSlot)); }   // 8 格存檔：可招募自身以外全部 7 個角色。
+function allySlotList() { return (function(){ let a=[]; for(let n=1;n<=SAVE_SLOT_MAX;n++){ if(String(n)!==String(currentSlot)) a.push(String(n)); } return a; })(); }   // 8 格存檔：可招募自身以外全部 7 個角色。
 const ALLY_ACTIVE_MAX = 3;         // 非王族協力傭兵上限。
 const ROYAL_ALLY_ACTIVE_MAX = 7;   // 王族最多帶滿帳號其餘 7 個角色。
 function allyActiveCap() {

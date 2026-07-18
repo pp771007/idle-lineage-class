@@ -59,6 +59,7 @@
         { id: 'diag', name: '快取診斷', desc: '設定選單：回報問題用的取證工具', group: '查詢與資訊' },
         { id: 'autobuy', name: '自動購買', desc: '肉/魔法屏障卷軸耗盡自動補貨', group: '自動化' },
         { id: 'training', name: '木人場', desc: '自動化面板：量測真實 DPS', group: '自動化' },
+        { id: 'dograce', name: '奇岩賽狗場', desc: '奇岩城的賭狗小遊戲（浮動球入口，只賺金幣）', group: '自動化' },
         { id: 'backnav', name: '手機返回鍵', desc: '子畫面按返回回首頁而非關 App（僅手機）', group: '系統與其他' },
         { id: 'pwa', name: 'PWA 安裝/離線', desc: '安裝成 App、圖片離線快取對帳', group: '系統與其他' },
         { id: 'storage', name: '設定選單', desc: '首頁 ⚙ 設定鈕與存檔大小檢查', group: '系統與其他' },

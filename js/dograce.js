@@ -6,6 +6,7 @@
 // 檔名刻意不用數字開頭（比照 js/offline.js），避免日後手動合併原版新增 js/2x-*.js 撞名。
 (function () {
     'use strict';
+    if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('dograce')) return;   // 🎚️ 外掛開關
 
     // ---- 時間常數（一場 5 分鐘；全部具名，方便調節奏） ----
     var CYCLE_MS = 300000;      // 一場總長（5 分鐘）
@@ -640,6 +641,18 @@
         winner: winnerOf, placeBet: placeBet, claim: claimTicket, DOGS: DOGS
     };
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { console.log('[dograce] ready'); });
-    else console.log('[dograce] ready');
+    // 🎯 入口：在奇岩城（town_giran）自動顯示賽狗場浮動球（取代舊核心的波金 NPC；點球開下注視窗）。
+    //    球一旦出現即跨畫面常駐（原設計，可拖曳/縮放），故只在奇岩城「確保出現一次」，離開不強制隱藏。
+    setInterval(function () {
+        try {
+            if (typeof mapState === 'undefined' || !mapState || mapState.current !== 'town_giran') return;
+            var ball = document.getElementById('dograce-ball');
+            var win = document.getElementById('dograce-win');
+            var winOpen = win && win.style.display !== 'none';
+            if ((!ball || ball.style.display === 'none') && !winOpen) toBall();
+        } catch (e) {}
+    }, 2000);
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { console.log('[dograce] ready — 奇岩城賽狗場入口已就緒'); });
+    else console.log('[dograce] ready — 奇岩城賽狗場入口已就緒');
 })();

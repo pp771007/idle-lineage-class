@@ -72,36 +72,8 @@
     // ── 對外 API ──────────────────────────────────────────────
     window.AFK_TRAD = { isOn: isOn, setOn: setOn, roll: rollEnhance };
 
-    // ── UI：遊戲內小開關（只在載入角色後顯示，切換「目前這個角色」）──────
+    // ── UI ──（遊戲內小開關已移除；改由首頁「⚙ 其他功能 → 傳統模式(偽) 設定」逐存檔位設定）
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-    function syncBtn(btn) {
-        var slot = slotOf(), on = isOn(slot);
-        btn.textContent = '🏛️ 傳統模式(偽)：' + (on ? '開' : '關');
-        btn.style.borderColor = on ? '#a78bfa' : '#334155';
-        btn.style.color = on ? '#c4b5fd' : '#94a3b8';
-    }
-    function injectInGameToggle() {
-        // 只在「已載入角色」時掛（有 currentSlot 且遊戲畫面在）；主選單不掛
-        var slot = slotOf();
-        var gameScreen = document.getElementById('game-screen');
-        var visible = gameScreen && !gameScreen.classList.contains('hidden');
-        var existing = document.getElementById('afk-trad-toggle');
-        if (slot == null || !visible) { if (existing) existing.remove(); return; }
-        if (existing) { syncBtn(existing); return; }
-        var btn = document.createElement('button');
-        btn.id = 'afk-trad-toggle';
-        btn.type = 'button';
-        btn.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:9000;background:rgba(15,23,42,.85);border:1px solid #334155;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;';
-        btn.addEventListener('click', function () {
-            var s = slotOf(); if (s == null) return;
-            var next = !isOn(s); setOn(s, next); syncBtn(btn);
-            try {
-                if (typeof logSys === 'function') logSys('<span style="color:#c4b5fd;font-weight:bold;">🏛️ 傳統模式(偽) 已' + (next ? '開啟' : '關閉') + '</span>：' + (next ? '之後打到/製作/潘朵拉的裝備會自帶隨機強化值（商店除外）。' : '之後拿到的裝備恢復 +0。') + '已有裝備不受影響。');
-            } catch (e) {}
-        });
-        syncBtn(btn);
-        document.body.appendChild(btn);
-    }
 
     // 首頁「⚙ 其他功能」設定選單註冊一個「各角色設定」面板（可在未載入時逐存檔位設定）
     window.AFK_SETTINGS = window.AFK_SETTINGS || { _items: [], add: function (it) { this._items.push(it); } };
@@ -135,7 +107,6 @@
         card.querySelectorAll('input[data-slot]').forEach(function (cb) {
             cb.addEventListener('change', function () {
                 setOn(parseInt(cb.getAttribute('data-slot'), 10), cb.checked);
-                var t = document.getElementById('afk-trad-toggle'); if (t) syncBtn(t);
             });
         });
     }
@@ -146,14 +117,6 @@
         } catch (e) {}
         return '';
     }
-
-    // 進出遊戲時更新遊戲內小開關
-    try {
-        var mo = new MutationObserver(function () { injectInGameToggle(); });
-        mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'], subtree: true });
-    } catch (e) {}
-    injectInGameToggle();
-    setInterval(injectInGameToggle, 3000);   // 兜底：class 變動 observer 漏接時仍會更新
 
     try { console.log('[AFK-traditional] hooks OK — 傳統模式(偽)/自動衝裝已就緒（核心鉤子 __afkTradRollEn）。'); } catch (e) {}
 })();

@@ -49,10 +49,23 @@
         (document.head || document.documentElement).appendChild(st);
     }
 
+    var _barRO = null, _barEl = null;
+    function applyBarH() {
+        var h = _barEl ? Math.ceil(_barEl.getBoundingClientRect().height) : 0;
+        if (h > 0) h += 6;   // 安全邊距：橫幅換行/字重/邊距量測誤差，多讓一點確保完全不被蓋
+        document.documentElement.style.setProperty('--orig-bar-h', h + 'px');
+    }
     function measureBar() {
         var bar = findBanner();
-        var h = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0;
-        document.documentElement.style.setProperty('--orig-bar-h', h + 'px');
+        if (bar !== _barEl) {
+            _barEl = bar;
+            if (_barRO) { try { _barRO.disconnect(); } catch (e) {} _barRO = null; }
+            // 橫幅高度會隨寬度換行變 → 用 ResizeObserver 跟著它變，量測永遠準
+            if (bar && typeof ResizeObserver === 'function') {
+                try { _barRO = new ResizeObserver(applyBarH); _barRO.observe(bar); } catch (e) {}
+            }
+        }
+        applyBarH();
     }
 
     // body.m-mobile：只是「現在是手機」的標記（afk-toast/mobname/diag/skin/training/dograce 靠它做各自的
@@ -74,71 +87,121 @@
     window.addEventListener('resize', function () { syncMobileClass(); measureBar(); });
     var _n = 0, _iv = setInterval(function () { measureBar(); if (++_n >= 12) clearInterval(_iv); }, 1000);
 
-    // ── 底部導覽列（手機外殼）──────────────────────────────────
-    // 上游手機版面把三欄（#col-left 狀態/隊伍/技能、#col-center 戰鬥/地圖/日誌、#col-right 背包分頁）
-    //   直向堆疊成長捲軸。這裡加一條底部導覽，一次只顯示一欄（HP/MP 由上游 #mobile-vitals 頂條常駐）。
-    //   純「顯示/隱藏整欄 + 該欄補滿寬」，不動欄「內部」排版 → 與上游版面相容。
+    // ── 底部導覽列 + 浮動日誌（手機外殼）─────────────────────────
+    // 上游手機把三欄（#col-left 狀態/隊伍/技能、#col-center 戰鬥/地圖/日誌、#col-right 背包分頁）直向堆疊。
+    //   底部導覽一次只顯示一欄；日誌（#log-row 含戰鬥/系統）拆進浮動面板、由「📜 日誌」開關（不佔戰鬥視圖）。
+    //   純「顯示/隱藏整欄 + 補滿寬 + 搬日誌」，不動欄「內部」排版 → 與上游版面相容；離開遊戲/桌機一律還原。
     var VIEWS = [
         { id: 'center', label: '⚔️ 戰鬥' },
         { id: 'left', label: '👥 隊伍' },
-        { id: 'right', label: '🎒 背包' }
+        { id: 'right', label: '🎒 背包' },
+        { id: 'log', label: '📜 日誌' }
     ];
     var _navStyled = false;
     function ensureNavStyle() {
         if (_navStyled) return; _navStyled = true;
         var css = [
-            'body:not(.m-mobile) #m-nav{display:none !important;}',
-            'body.m-mobile #m-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:9000;background:#0f172a;border-top:1px solid #334155;padding-bottom:env(safe-area-inset-bottom,0px);}',
-            'body.m-mobile #m-nav .m-nav-btn{flex:1;background:transparent;border:none;color:#94a3b8;font-size:13px;font-weight:600;padding:10px 4px;cursor:pointer;}',
+            'body:not(.m-mobile) #m-nav,body:not(.m-mobile) #m-log-sheet{display:none !important;}',
+            'body.m-mobile #m-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:9600;background:#0f172a;border-top:1px solid #334155;padding-bottom:env(safe-area-inset-bottom,0px);}',
+            'body.m-mobile #m-nav .m-nav-btn{flex:1;background:transparent;border:none;color:#94a3b8;font-size:12px;font-weight:600;padding:10px 2px;cursor:pointer;}',
             'body.m-mobile #m-nav .m-nav-btn.on{color:#38bdf8;background:rgba(56,189,248,.08);}',
-            // 一次只顯示一欄，且補滿寬（覆寫上游 col 的固定寬）
+            // 一次只顯示一欄，補滿寬（覆寫上游 col 固定寬）
             'body.m-mobile #col-left,body.m-mobile #col-center,body.m-mobile #col-right{display:none !important;width:100% !important;max-width:none !important;}',
             'body.m-mobile.mview-left #col-left{display:flex !important;}',
             'body.m-mobile.mview-center #col-center{display:flex !important;}',
             'body.m-mobile.mview-right #col-right{display:flex !important;}',
-            // 內容讓開底部導覽列高度
-            'body.m-mobile #game-screen{padding-bottom:60px !important;}'
+            'body.m-mobile #game-screen{padding-bottom:60px !important;}',
+            // 浮動日誌面板
+            'body.m-mobile #m-log-sheet{display:none;position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));height:46vh;z-index:9500;background:#0b1222;border-top:2px solid #475569;box-shadow:0 -10px 30px rgba(0,0,0,.6);flex-direction:column;}',
+            'body.m-mobile.mlog-open #m-log-sheet{display:flex;}',
+            'body.m-mobile #m-log-hd{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #334155;color:#cbd5e1;font-weight:700;flex:0 0 auto;}',
+            'body.m-mobile #m-log-hd button{background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:2px 12px;cursor:pointer;}',
+            'body.m-mobile #m-log-body{flex:1;overflow:auto;padding:6px;min-height:0;}',
+            'body.m-mobile #m-log-body #log-row{flex-direction:column !important;height:100%;gap:8px;}',
+            'body.m-mobile #m-log-body #combat-log-panel,body.m-mobile #m-log-body #syslog-panel{height:auto !important;flex:1 1 50% !important;min-height:0;}'
         ].join('\n');
         var st = document.createElement('style'); st.id = 'afk-mobile-nav-style'; st.textContent = css;
         (document.head || document.documentElement).appendChild(st);
     }
+
+    // 浮動日誌：把 #log-row 搬進面板（記原始父層供還原）
+    var _logHome = null;
+    function ensureLogSheet() {
+        var sheet = document.getElementById('m-log-sheet');
+        if (!sheet) {
+            sheet = document.createElement('div'); sheet.id = 'm-log-sheet';
+            sheet.innerHTML = '<div id="m-log-hd"><span>📜 日誌</span><button type="button" id="m-log-close">✕ 關閉</button></div><div id="m-log-body"></div>';
+            document.body.appendChild(sheet);
+            sheet.querySelector('#m-log-close').addEventListener('click', closeLog);
+        }
+        return sheet;
+    }
+    function moveLogToSheet() {
+        var row = document.getElementById('log-row'); if (!row) return;
+        var body = ensureLogSheet().querySelector('#m-log-body');
+        if (row.parentNode !== body) { if (!_logHome) _logHome = row.parentNode; body.appendChild(row); }
+    }
+    function restoreLog() {
+        var row = document.getElementById('log-row');
+        if (row && _logHome && row.parentNode !== _logHome) _logHome.appendChild(row);
+        var sheet = document.getElementById('m-log-sheet'); if (sheet) sheet.remove();
+        document.body.classList.remove('mlog-open');
+    }
+    function openLog() { moveLogToSheet(); document.body.classList.add('mlog-open'); updateNavActive(); }
+    function closeLog() { document.body.classList.remove('mlog-open'); updateNavActive(); }
+    function toggleLog() { if (document.body.classList.contains('mlog-open')) closeLog(); else openLog(); }
+
     function setView(id) {
+        if (document.body.classList.contains('mlog-open')) closeLog();   // 切欄一併收日誌
         document.body.classList.remove('mview-left', 'mview-center', 'mview-right');
         document.body.classList.add('mview-' + id);
-        var nav = document.getElementById('m-nav');
-        if (nav) { var btns = nav.querySelectorAll('.m-nav-btn'); for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-view') === id); }
+        updateNavActive();
     }
-    function currentView() { var b = document.body.className; var m = b.match(/mview-(left|center|right)/); return m ? m[1] : null; }
+    function currentView() { var m = document.body.className.match(/mview-(left|center|right)/); return m ? m[1] : null; }
+    function updateNavActive() {
+        var nav = document.getElementById('m-nav'); if (!nav) return;
+        var view = currentView(), logOpen = document.body.classList.contains('mlog-open');
+        var btns = nav.querySelectorAll('.m-nav-btn');
+        for (var i = 0; i < btns.length; i++) {
+            var id = btns[i].getAttribute('data-view');
+            btns[i].classList.toggle('on', id === 'log' ? logOpen : (!logOpen && id === view));
+        }
+    }
     function buildNav() {
         if (!detectMobile()) return;
         var gs = document.getElementById('game-screen');
         if (!gs || gs.classList.contains('hidden')) return;   // 只在遊戲畫面建
         ensureNavStyle();
+        moveLogToSheet();   // 手機一律把日誌搬出戰鬥欄（放進面板，預設收合）
         if (!document.getElementById('m-nav')) {
             var nav = document.createElement('div'); nav.id = 'm-nav';
             VIEWS.forEach(function (v) {
                 var btn = document.createElement('button');
                 btn.className = 'm-nav-btn'; btn.type = 'button';
                 btn.setAttribute('data-view', v.id); btn.textContent = v.label;
-                btn.addEventListener('click', function () { setView(v.id); });
+                btn.addEventListener('click', v.id === 'log' ? toggleLog : function (id) { return function () { setView(id); }; }(v.id));
                 nav.appendChild(btn);
             });
             document.body.appendChild(nav);
         }
         if (!currentView()) setView('center');   // 預設戰鬥
+        else updateNavActive();
     }
-    // 進遊戲才建/離開遊戲移除；用 class 變動 observer + 兜底輪詢
     function navTick() {
         var gs = document.getElementById('game-screen');
         var inGame = detectMobile() && gs && !gs.classList.contains('hidden');
         if (inGame) buildNav();
-        else { var nav = document.getElementById('m-nav'); if (nav) nav.remove(); document.body.classList.remove('mview-left', 'mview-center', 'mview-right'); }
+        else {
+            var nav = document.getElementById('m-nav'); if (nav) nav.remove();
+            restoreLog();   // 離開遊戲：日誌搬回原位、收面板
+            document.body.classList.remove('mview-left', 'mview-center', 'mview-right');
+        }
     }
     setInterval(navTick, 1500);
     navTick();
 
-    // ── 對外介面（afk-offline 沿用 isMobile）──
-    window.__afkm = { version: '2.0.0', isMobile: detectMobile, setView: setView };
+    // ── 對外介面（afk-offline 沿用 isMobile；setView/openLog 供離線結算後開日誌）──
+    window.__afkm = { version: '2.0.0', isMobile: detectMobile, setView: setView, openLog: openLog, setLog: function () { openLog(); } };
 
     try { console.log('[AFK-mobile] hooks OK — 手機薄殼（橫幅讓位·版面用上游原版）。'); } catch (e) {}
 })();

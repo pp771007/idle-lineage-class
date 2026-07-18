@@ -57,7 +57,7 @@
         { id: 'slotinfo', name: '選角掛機資訊', desc: '選存檔位顯示掛哪張圖、掛多久', group: '查詢與資訊' },
         { id: 'history', name: '離線掛機紀錄', desc: '設定選單：最近離線結算紀錄', group: '查詢與資訊' },
         { id: 'diag', name: '快取診斷', desc: '設定選單：回報問題用的取證工具', group: '查詢與資訊' },
-        { id: 'autobuy', name: '自動購買', desc: '肉/魔法屏障卷軸耗盡自動補貨', group: '自動化' },
+        { id: 'autobuy', name: '自動購買（上游已內建，多餘）', desc: '肉已被上游移除、魔法屏障卷軸上游 v3.3.15 起「自動使用＝自動購買」已內建 → 本外掛預設關閉', group: '自動化', def: false },
         { id: 'training', name: '木人場', desc: '自動化面板：量測真實 DPS', group: '自動化' },
         { id: 'dograce', name: '奇岩賽狗場', desc: '奇岩城的賭狗小遊戲（浮動球入口，只賺金幣）', group: '自動化' },
         { id: 'backnav', name: '手機返回鍵', desc: '子畫面按返回回首頁而非關 App（僅手機）', group: '系統與其他' },

@@ -74,8 +74,71 @@
     window.addEventListener('resize', function () { syncMobileClass(); measureBar(); });
     var _n = 0, _iv = setInterval(function () { measureBar(); if (++_n >= 12) clearInterval(_iv); }, 1000);
 
+    // ── 底部導覽列（手機外殼）──────────────────────────────────
+    // 上游手機版面把三欄（#col-left 狀態/隊伍/技能、#col-center 戰鬥/地圖/日誌、#col-right 背包分頁）
+    //   直向堆疊成長捲軸。這裡加一條底部導覽，一次只顯示一欄（HP/MP 由上游 #mobile-vitals 頂條常駐）。
+    //   純「顯示/隱藏整欄 + 該欄補滿寬」，不動欄「內部」排版 → 與上游版面相容。
+    var VIEWS = [
+        { id: 'center', label: '⚔️ 戰鬥' },
+        { id: 'left', label: '👥 隊伍' },
+        { id: 'right', label: '🎒 背包' }
+    ];
+    var _navStyled = false;
+    function ensureNavStyle() {
+        if (_navStyled) return; _navStyled = true;
+        var css = [
+            'body:not(.m-mobile) #m-nav{display:none !important;}',
+            'body.m-mobile #m-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:9000;background:#0f172a;border-top:1px solid #334155;padding-bottom:env(safe-area-inset-bottom,0px);}',
+            'body.m-mobile #m-nav .m-nav-btn{flex:1;background:transparent;border:none;color:#94a3b8;font-size:13px;font-weight:600;padding:10px 4px;cursor:pointer;}',
+            'body.m-mobile #m-nav .m-nav-btn.on{color:#38bdf8;background:rgba(56,189,248,.08);}',
+            // 一次只顯示一欄，且補滿寬（覆寫上游 col 的固定寬）
+            'body.m-mobile #col-left,body.m-mobile #col-center,body.m-mobile #col-right{display:none !important;width:100% !important;max-width:none !important;}',
+            'body.m-mobile.mview-left #col-left{display:flex !important;}',
+            'body.m-mobile.mview-center #col-center{display:flex !important;}',
+            'body.m-mobile.mview-right #col-right{display:flex !important;}',
+            // 內容讓開底部導覽列高度
+            'body.m-mobile #game-screen{padding-bottom:60px !important;}'
+        ].join('\n');
+        var st = document.createElement('style'); st.id = 'afk-mobile-nav-style'; st.textContent = css;
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function setView(id) {
+        document.body.classList.remove('mview-left', 'mview-center', 'mview-right');
+        document.body.classList.add('mview-' + id);
+        var nav = document.getElementById('m-nav');
+        if (nav) { var btns = nav.querySelectorAll('.m-nav-btn'); for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-view') === id); }
+    }
+    function currentView() { var b = document.body.className; var m = b.match(/mview-(left|center|right)/); return m ? m[1] : null; }
+    function buildNav() {
+        if (!detectMobile()) return;
+        var gs = document.getElementById('game-screen');
+        if (!gs || gs.classList.contains('hidden')) return;   // 只在遊戲畫面建
+        ensureNavStyle();
+        if (!document.getElementById('m-nav')) {
+            var nav = document.createElement('div'); nav.id = 'm-nav';
+            VIEWS.forEach(function (v) {
+                var btn = document.createElement('button');
+                btn.className = 'm-nav-btn'; btn.type = 'button';
+                btn.setAttribute('data-view', v.id); btn.textContent = v.label;
+                btn.addEventListener('click', function () { setView(v.id); });
+                nav.appendChild(btn);
+            });
+            document.body.appendChild(nav);
+        }
+        if (!currentView()) setView('center');   // 預設戰鬥
+    }
+    // 進遊戲才建/離開遊戲移除；用 class 變動 observer + 兜底輪詢
+    function navTick() {
+        var gs = document.getElementById('game-screen');
+        var inGame = detectMobile() && gs && !gs.classList.contains('hidden');
+        if (inGame) buildNav();
+        else { var nav = document.getElementById('m-nav'); if (nav) nav.remove(); document.body.classList.remove('mview-left', 'mview-center', 'mview-right'); }
+    }
+    setInterval(navTick, 1500);
+    navTick();
+
     // ── 對外介面（afk-offline 沿用 isMobile）──
-    window.__afkm = { version: '2.0.0', isMobile: detectMobile };
+    window.__afkm = { version: '2.0.0', isMobile: detectMobile, setView: setView };
 
     try { console.log('[AFK-mobile] hooks OK — 手機薄殼（橫幅讓位·版面用上游原版）。'); } catch (e) {}
 })();

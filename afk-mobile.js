@@ -38,6 +38,17 @@
         return null;
     }
 
+    // 上游全螢幕彈窗/浮動窗的「安全區」讓位：頂端讓開橫幅(--orig-bar-h)、底部讓開底部導覽(--m-nav-h)。
+    //   兩個變數都由本外掛量測寫入(無橫幅/無導覽時為 0px → 規則等同不動)，公式一律：
+    //   可用高度 = 100dvh - var(--orig-bar-h) - var(--m-nav-h)。新的被蓋案例優先併進下面 ①~④ 的清單，別另立公式。
+    // 上游手機版把彈窗分兩型(css/style.css 手機 media query)：
+    //   A. 頂端錨定 top:8px + height:calc(100dvh-16px) 的浮動窗(倉庫/道具詳情/城鎮互動)
+    //   B. flex 置中容器 + 內卡 max-height:calc(100dvh-16px)(自動賣出/各圖鑑/收藏/潘朵拉寶箱…)
+    //   兩型的 100dvh 都不知道橫幅與導覽 → A 型改 top/height，B 型改容器 padding + 內卡 max-height。
+    //   ⚠ B 型光改容器 padding 不夠：內卡比 padding 後的剩餘空間高時，flex 置中會「上下均分溢出」，
+    //     頂端照樣鑽進橫幅底下(自動賣出規則的標題/Close 被蓋就是這樣來的)——必須同時壓內卡 max-height。
+    var MODAL_HOSTS = '#autosell-rule-modal, #autosell-preview-modal, #poly-modal, #osiris-box-modal, #summon-select-overlay, #pet-evo-overlay, #pet-gear-overlay, #card-book, #equip-book, #misc-book, #relic-book, #collection-panel';
+    var MODAL_BOXES = '#autosell-rule-modal .as-box, #autosell-preview-modal > div, #poly-modal > div, #osiris-box-modal > div, #summon-select-overlay > div, #pet-evo-overlay > div, #pet-gear-overlay > div, #card-book > div, #equip-book > div, #misc-book > div, #relic-book > div, #collection-panel > div';
     var _styleInjected = false;
     function ensureOffsetStyle() {
         if (_styleInjected) return; _styleInjected = true;
@@ -58,20 +69,29 @@
             + 'body.m-mobile #load-select-panel:not(.hidden){ min-height: calc(100dvh - var(--orig-bar-h, 0px)) !important; overscroll-behavior: contain !important; }\n'
             // 選角面板顯示時，讓外層 #creation-screen 完全不捲(它自己會捲)→ 只剩 panel 單層捲，不再兩層打架卡住。
             + 'body.m-mobile #creation-screen:has(#load-select-panel:not(.hidden)){ overflow: hidden !important; }\n'
-            // 上游全螢幕彈窗也會被橫幅蓋(潘朵拉黑市/道具詳情/各圖鑑…)。兩類讓位：
-            //   ① 置中類 Tailwind modal(.fixed.inset-0·flex 置中)：加 padding-top 把置中內容推到橫幅下(遊戲畫面容器用 id 非這組 class，不受影響)。
-            + 'body.m-mobile .fixed.inset-0{ padding-top: var(--orig-bar-h, 0px); }\n'
-            //   ② 全螢幕/頂端錨定的浮動窗(倉庫/道具詳情/黑市·NPC)：核心手機把它們釘 top:8px/inset:8px、無視橫幅→頂端被蓋。
-            //      ⚠ 核心是 #id !important 規則，:is(.class) 特異度壓不過(倉庫踩過)，必須用「實際 id」選擇器才蓋得掉。頂端下移橫幅高度、縮短高度。
-            + 'body.m-mobile #warehouse-window-frame, body.m-mobile #item-modal:not(.hidden), body.m-mobile #town-interaction-container:not(.hidden){ top: calc(8px + var(--orig-bar-h, 0px)) !important; height: calc(100dvh - 16px - var(--orig-bar-h, 0px)) !important; }\n'
-            //   ③ 內聯 position:fixed 的置中彈窗(非 .fixed.inset-0 class·抓不到)：一樣補 padding-top 讓置中內容落在橫幅下。
-            + 'body.m-mobile :is(#autosell-rule-modal, #autosell-preview-modal, #poly-modal, #summon-select-overlay, #pet-evo-overlay, #pet-gear-overlay){ padding-top: var(--orig-bar-h, 0px) !important; }\n'
-            //   ④ transform 置中的裝備視窗(class 選擇器·特異度足夠蓋核心)：中心下移半個橫幅、封頂高度，頂端不被蓋。
-            + 'body.m-mobile .equipment-window-frame{ top: calc(50% + var(--orig-bar-h, 0px) / 2) !important; max-height: calc(100dvh - 16px - var(--orig-bar-h, 0px)) !important; }\n'
+            //   ① 置中類 Tailwind modal(.fixed.inset-0·flex 置中)：padding 把置中內容夾進安全區(遊戲畫面容器用 id 非這組 class，不受影響)。
+            + 'body.m-mobile .fixed.inset-0{ padding-top: var(--orig-bar-h, 0px); padding-bottom: var(--m-nav-h, 0px); }\n'
+            //   ② A 型·頂端錨定的浮動窗(倉庫/道具詳情/黑市·NPC)：核心手機把它們釘 top:8px + 100dvh 高、無視橫幅與導覽
+            //      (這幾個 z-index 都低於 #m-nav → 底段整條被導覽蓋住、內層捲到底也看不到)。
+            //      ⚠ 核心是 #id !important 規則，:is(.class) 特異度壓不過(倉庫踩過)，必須用「實際 id」選擇器才蓋得掉。
+            + 'body.m-mobile #warehouse-window-frame, body.m-mobile #item-modal:not(.hidden), body.m-mobile #town-interaction-container:not(.hidden){ top: calc(8px + var(--orig-bar-h, 0px)) !important; height: calc(100dvh - 16px - var(--orig-bar-h, 0px) - var(--m-nav-h, 0px)) !important; }\n'
+            //   ③ B 型·置中彈窗容器(含內聯 position:fixed 與 .fixed.inset-0 兩種都有的)：padding 夾安全區 + 內卡壓 max-height。
+            + 'body.m-mobile :is(' + MODAL_HOSTS + '){ padding-top: calc(var(--orig-bar-h, 0px) + 8px) !important; padding-bottom: calc(var(--m-nav-h, 0px) + 8px) !important; }\n'
+            + 'body.m-mobile :is(' + MODAL_BOXES + '){ max-height: calc(100dvh - var(--orig-bar-h, 0px) - var(--m-nav-h, 0px) - 16px) !important; }\n'
+            //   ④ transform 置中的裝備視窗「獨立模式」：中心對齊安全區中線、封頂高度。
+            //      ⚠ 必須排除嵌入模式(.equipment-window-embedded·js/19 init 就掛上、現行永遠嵌入)：嵌入時 frame 由 JS 內聯
+            //        top:0 對齊 host，這裡的 top !important 會壓過內聯值把 12 格整個往下推出安全區(踩過)。
+            + 'body.m-mobile #equipment-window:not(.equipment-window-embedded) .equipment-window-frame{ top: calc(50% + var(--orig-bar-h, 0px) / 2 - var(--m-nav-h, 0px) / 2) !important; max-height: calc(100dvh - 16px - var(--orig-bar-h, 0px) - var(--m-nav-h, 0px)) !important; }\n'
             //   ⑤ 右欄分頁(統計/道具/收藏…)：核心手機把 #tab-content-panel 設固定高+內層 overflow-auto，與外層 #game-screen 捲動疊成「雙捲軸」。
             //      讓分頁內容順流展開→只由 #game-screen 單層捲動(與 左/中 欄一致)；黏頂的 #mobile-vitals/分頁列照舊固定。
-            + 'body.m-mobile #tab-content-panel{ height: auto !important; min-height: 0 !important; overflow: visible !important; }\n'
-            + 'body.m-mobile #tab-content-panel > .ability-window-tab, body.m-mobile #tab-content-panel > [id^="tab-"]{ height: auto !important; overflow: visible !important; }\n'
+            //      ⚠ 必須排除 .equipment-panel-host：「裝備」分頁是核心的「嵌入式裝備視窗」(js/19)——#equipment-window 以
+            //        position:fixed 蓋在 #tab-content-panel 的視窗座標上，依賴 host 有明確高度(--equipment-panel-height)。
+            //        這條 auto 高度與那條同特異度、本檔較晚載入會蓋掉它 → host 塌掉、12 格裝備框整個錯位(踩過)。
+            + 'body.m-mobile #tab-content-panel:not(.equipment-panel-host){ height: auto !important; min-height: 0 !important; overflow: visible !important; }\n'
+            + 'body.m-mobile #tab-content-panel:not(.equipment-panel-host) > .ability-window-tab, body.m-mobile #tab-content-panel:not(.equipment-panel-host) > [id^="tab-"]{ height: auto !important; overflow: visible !important; }\n'
+            //   ⑥ 內層捲動區的 iOS 觸控三件套：溢出量小時沒有這組會「滑不動」(觸控被外層吃掉·afk-invlist 踩過同一雷)；
+            //      overscroll-behavior:contain 同時擋「捲到底把後面的遊戲畫面一起帶著捲」的連鎖(雙層捲軸打架)。
+            + 'body.m-mobile :is(.classic-skill-grid-scroll, #warehouse-window-content, #interaction-content, .as-box, #combat-log, #sys-log){ -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }\n'
             // 登入頁：上游用「絕對定位藝術舞台」——#main-menu(top:31%) 與 #login-meta-layer(版權·pin bottom:4%) 各自絕對定位。
             //   我方往 #main-menu 注入了掉落查詢/小百科/外掛框後它變很高 → 蓋到底部版權層(文字重疊·使用者回報)。
             //   手機改成「流式堆疊」(DOM 序 title→menu→meta 自然由上而下排)，不再重疊；藝術背景圖 absolute inset:0 照樣鋪滿。
@@ -148,9 +168,11 @@
             'body.m-mobile.mview-left #col-left{display:flex !important;}',
             'body.m-mobile.mview-center #col-center{display:flex !important;}',
             'body.m-mobile.mview-right #col-right{display:flex !important;}',
-            'body.m-mobile #game-screen{padding-bottom:60px !important;}',
+            // 底部讓位：--m-nav-h=導覽實測高度(含 iPhone safe-area 的 env padding；量測見 applyNavH)。
+            //   寫死 60px 在實機 iPhone 會不夠(導覽 ~59px + home 條 safe-area ~34px)→ 清單最後一兩列被蓋。
+            'body.m-mobile #game-screen{padding-bottom:calc(8px + var(--m-nav-h,0px)) !important;}',
             // 浮動日誌面板
-            'body.m-mobile #m-log-sheet{display:none;position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));height:46vh;z-index:9500;background:#0b1222;border-top:2px solid #475569;box-shadow:0 -10px 30px rgba(0,0,0,.6);flex-direction:column;}',
+            'body.m-mobile #m-log-sheet{display:none;position:fixed;left:0;right:0;bottom:var(--m-nav-h,0px);height:46vh;z-index:9500;background:#0b1222;border-top:2px solid #475569;box-shadow:0 -10px 30px rgba(0,0,0,.6);flex-direction:column;}',
             'body.m-mobile.mlog-open #m-log-sheet{display:flex;}',
             'body.m-mobile #m-log-hd{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #334155;color:#cbd5e1;font-weight:700;flex:0 0 auto;}',
             'body.m-mobile #m-log-hd button{background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:2px 12px;cursor:pointer;}',
@@ -264,6 +286,16 @@
             btns[i].classList.toggle('on', id === 'log' ? logOpen : (!logOpen && id === view));
         }
     }
+    // --m-nav-h：底部導覽實際佔高(含 safe-area padding)。無導覽(桌機/首頁)時 0 → 讓位規則自動失效。
+    function applyNavH() {
+        var nav = document.getElementById('m-nav');
+        var h = 0;
+        if (nav && document.body.classList.contains('m-mobile')) {
+            try { h = Math.ceil(nav.getBoundingClientRect().height); } catch (e) {}
+        }
+        document.documentElement.style.setProperty('--m-nav-h', h + 'px');
+    }
+
     function buildNav() {
         if (!detectMobile()) return;
         var gs = document.getElementById('game-screen');
@@ -293,6 +325,7 @@
             restoreLog();   // 離開遊戲：日誌搬回原位、收面板
             document.body.classList.remove('mview-left', 'mview-center', 'mview-right');
         }
+        applyNavH();
     }
     setInterval(navTick, 1500);
     navTick();

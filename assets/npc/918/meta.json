@@ -1,0 +1,160 @@
+{
+ "canvas": {
+  "w": 27,
+  "h": 54
+ },
+ "latticeOrigin": {
+  "x": -13,
+  "y": 57
+ },
+ "files": {
+  "idle": {
+   "src": "918-13.spr",
+   "frames": 6,
+   "palette": 128,
+   "blocks": 41,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 487,
+     "bbox": [
+      7,
+      1,
+      26,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 489,
+     "bbox": [
+      7,
+      1,
+      26,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 486,
+     "bbox": [
+      7,
+      1,
+      26,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 486,
+     "bbox": [
+      7,
+      1,
+      26,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 486,
+     "bbox": [
+      7,
+      1,
+      26,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 491,
+     "bbox": [
+      7,
+      0,
+      26,
+      53
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "idle_s": {
+   "src": "919-13.spr",
+   "frames": 6,
+   "palette": 9,
+   "blocks": 18,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 107,
+     "bbox": [
+      0,
+      46,
+      19,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 106,
+     "bbox": [
+      0,
+      46,
+      19,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 104,
+     "bbox": [
+      0,
+      46,
+      19,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 103,
+     "bbox": [
+      0,
+      47,
+      19,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 105,
+     "bbox": [
+      0,
+      46,
+      19,
+      53
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 110,
+     "bbox": [
+      0,
+      46,
+      19,
+      53
+     ],
+     "hdrOK": true
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "canvas": {
+  "w": 78,
+  "h": 32
+ },
+ "latticeOrigin": {
+  "x": 9,
+  "y": 49
+ },
+ "files": {
+  "idle": {
+   "src": "1149-0.spr",
+   "frames": 1,
+   "palette": 1,
+   "blocks": 10,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 1396,
+     "bbox": [
+      0,
+      0,
+      77,
+      31
+     ],
+     "hdrOK": false
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,53 @@
+{
+ "canvas": {
+  "w": 32,
+  "h": 19
+ },
+ "latticeOrigin": {
+  "x": -7,
+  "y": 12
+ },
+ "files": {
+  "idle": {
+   "src": "31-18.spr",
+   "frames": 3,
+   "palette": 128,
+   "blocks": 11,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 438,
+     "bbox": [
+      0,
+      1,
+      31,
+      18
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 419,
+     "bbox": [
+      0,
+      1,
+      31,
+      18
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 423,
+     "bbox": [
+      0,
+      0,
+      31,
+      18
+     ],
+     "hdrOK": true
+    }
+   ]
+  }
+ }
+}

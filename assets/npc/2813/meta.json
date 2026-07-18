@@ -1,0 +1,226 @@
+{
+ "canvas": {
+  "w": 26,
+  "h": 57
+ },
+ "latticeOrigin": {
+  "x": -6,
+  "y": 54
+ },
+ "files": {
+  "idle": {
+   "src": "2813-13.spr",
+   "frames": 9,
+   "palette": 246,
+   "blocks": 62,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 496,
+     "bbox": [
+      11,
+      0,
+      24,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 501,
+     "bbox": [
+      11,
+      0,
+      24,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 508,
+     "bbox": [
+      11,
+      0,
+      24,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 519,
+     "bbox": [
+      11,
+      0,
+      25,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 519,
+     "bbox": [
+      11,
+      0,
+      25,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 519,
+     "bbox": [
+      11,
+      0,
+      25,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 509,
+     "bbox": [
+      11,
+      0,
+      24,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 7,
+     "px": 502,
+     "bbox": [
+      11,
+      0,
+      24,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 8,
+     "px": 496,
+     "bbox": [
+      11,
+      0,
+      24,
+      56
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "idle_s": {
+   "src": "2814-13.spr",
+   "frames": 9,
+   "palette": 5,
+   "blocks": 14,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 90,
+     "bbox": [
+      1,
+      46,
+      22,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 92,
+     "bbox": [
+      1,
+      46,
+      22,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 91,
+     "bbox": [
+      1,
+      46,
+      22,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 93,
+     "bbox": [
+      0,
+      46,
+      22,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 91,
+     "bbox": [
+      0,
+      46,
+      22,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 93,
+     "bbox": [
+      0,
+      46,
+      22,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 91,
+     "bbox": [
+      1,
+      46,
+      22,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 7,
+     "px": 92,
+     "bbox": [
+      1,
+      46,
+      22,
+      56
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 8,
+     "px": 90,
+     "bbox": [
+      1,
+      46,
+      22,
+      56
+     ],
+     "hdrOK": true
+    }
+   ]
+  }
+ }
+}

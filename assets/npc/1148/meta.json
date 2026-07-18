@@ -1,0 +1,50 @@
+{
+ "canvas": {
+  "w": 78,
+  "h": 80
+ },
+ "latticeOrigin": {
+  "x": 9,
+  "y": 96
+ },
+ "files": {
+  "idle": {
+   "src": "1148-0.spr",
+   "frames": 1,
+   "palette": 128,
+   "blocks": 18,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 2492,
+     "bbox": [
+      21,
+      0,
+      77,
+      79
+     ],
+     "hdrOK": false
+    }
+   ]
+  },
+  "idle_s": {
+   "src": "1149-0.spr",
+   "frames": 1,
+   "palette": 1,
+   "blocks": 10,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 1396,
+     "bbox": [
+      0,
+      47,
+      77,
+      78
+     ],
+     "hdrOK": false
+    }
+   ]
+  }
+ }
+}

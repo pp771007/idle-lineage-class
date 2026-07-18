@@ -2,12 +2,15 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- 🚀 v3.0.74 移植參考版優化：禁止瀏覽器快取 HTML→改檔後玩家重整即拿到新版 js/css（免手動硬重載/清快取） -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script>
-      // 📱 手機/平板：以固定設計寬度讓整個桌機版面「等比縮小」到螢幕，避免欄位溢出導致按鈕被裁切/點不到。
-      //    桌機瀏覽器會忽略 viewport meta，故此設定僅影響行動裝置，完全不動桌機(1920/1440/4K)顯示。
+      // 📱 手機使用真實裝置寬度，交由手機專用 CSS 重新排列；桌機維持原本流動三欄版面。
       (function () {
-        var DESIGN_W = 1180;   // 三欄(左340+中+右380+間距)的舒適設計寬度；行動裝置會縮放到實際螢幕寬
+        var DESIGN_W = 1180;   // 保留舊版相容欄位；新版手機不再強制套用此設計寬度。
         function isMobileDevice() {
           var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
           var minSide = Math.min(screen.width || 9999, screen.height || 9999);
@@ -18,19 +21,19 @@
           var m = document.querySelector('meta[name="viewport"]');
           if (!m) return null;
           var mobile = (typeof forceMobile === 'boolean') ? forceMobile : isMobileDevice();
-          m.setAttribute('content', mobile ? ('width=' + DESIGN_W) : 'width=device-width, initial-scale=1.0');
+          m.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
           return m.getAttribute('content');
         }
         window.__mobileScaling = { DESIGN_W: DESIGN_W, isMobileDevice: isMobileDevice, apply: applyViewport };
         applyViewport();
       })();
     </script>
-    <title>放置天堂</title>
+    <title>放置天堂 - 日出之國</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <link rel="stylesheet" href="css/style.css?v=44fa498c43">
-    <link rel="stylesheet" href="css/floating-ui.css?v=967385f6f6">
-    <link rel="stylesheet" href="css/tailwind-built.css?v=c0926cfba4"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
+    <link rel="stylesheet" href="css/style.css?v=v3.5.36-ally-aura-icon">
+    <link rel="stylesheet" href="css/floating-ui.css?v=20260714-weight-colors">
+    <link rel="stylesheet" href="css/tailwind-built.css"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
 <body class="h-screen w-screen overflow-hidden">
 
@@ -43,18 +46,20 @@
         <img id="login-bg-image" src="public/assets/login/310.png" alt="登入畫面背景">
         <img id="login-anim-image" src="public/assets/login/273.png" alt="登入畫面動畫">
         <div id="login-title-layer" class="text-center">
-            <h1 class="text-4xl font-bold text-yellow-400 mb-2">放置天堂</h1>
+            <h1 class="text-4xl font-bold text-yellow-400 mb-2">放置天堂 - 日出之國</h1>
             <p class="text-base text-slate-400">創造您的角色並開始冒險</p>
         </div>
 
         <div id="main-menu" class="flex flex-col gap-5 items-center my-12">
-            <button onclick="openSlotSelect('new')" class="btn text-xl w-72 py-4 bg-blue-700 hover:bg-blue-600 border-blue-500">新遊戲 (創建角色)</button>
-            <button onclick="openSlotSelect('load')" id="btn-load" class="btn text-xl w-72 py-4 bg-emerald-700 hover:bg-emerald-600 border-emerald-500">載入遊戲進度</button>
-            <button onclick="openPowerSaveModal()" id="btn-powersave" class="btn text-base w-72 py-2.5 bg-slate-700 hover:bg-slate-600 border-slate-500">🔋 省電模式</button>
-            <p class="text-xs text-slate-500 -mt-2 w-72 text-center">手機發燙、耗電快或裝置卡頓時，可關閉戰鬥特效／動畫等顯示效果（開始前設定，遊戲中不再提供）</p>
+            <button onclick="openLoadSelect()" id="btn-start-menu" class="btn text-xl w-72 py-4 bg-blue-700 hover:bg-blue-600 border-blue-500">開始遊戲</button>
+            <button onclick="toggleVfxPref()" id="btn-vfx-toggle" class="btn text-base w-72 py-2.5 bg-slate-700 hover:bg-slate-600 border-slate-500">✨ 戰鬥特效：開啟</button>
+            <button onclick="toggleVfxNumPref()" id="btn-vfxnum-toggle" class="btn text-base w-72 py-2.5 bg-slate-700 hover:bg-slate-600 border-slate-500">🔢 傷害數字：開啟</button>
+            <p class="text-xs text-slate-500 -mt-2 w-72 text-center">效果較弱/卡頓的裝置可關閉戰鬥特效；「傷害數字」可獨立關閉、其餘特效保留（開始前設定，遊戲中不再提供）</p>
         </div>
 
         <div id="login-meta-layer">
+            <!-- 🏷️ 版本號（由 js/14 window.onload 依 GAME_VERSION 填入；此處 v2.4.0 僅為 JS 失效時的後備文字） -->
+            <div id="login-version" class="text-center text-sm text-slate-300 font-medium tracking-wide select-none">v2.4.0</div>
             <div id="login-disclaimer" class="text-center text-xs text-slate-400 leading-relaxed mx-auto">本遊戲為非官方免費同人作品，絕無營利意圖；遊戲內圖片與音樂版權歸原權利方 NCSOFT 所有，其餘程式為獨立開發，嚴禁商業販售。</div>
         </div>
       </div>
@@ -65,72 +70,84 @@
             <button onclick="slotBackToMenu()" class="btn px-6 py-2 bg-slate-700 hover:bg-slate-600 text-base font-bold">返回</button>
         </div>
 
-        <div id="creation-panel" class="hidden flex flex-row gap-6 items-start">
-
-            <div id="creation-img-wrap" class="w-[340px] h-[600px] border-4 border-amber-800 p-2 bg-slate-950/40 rounded-lg shadow-[0_0_30px_rgba(0,0,0,0.9)] outline outline-1 outline-offset-4 outline-amber-700/40 flex items-center justify-center shrink-0 overflow-hidden">
-                <img id="class-preview-img" src="assets/start/prince.png" alt="職業預覽" class="w-full h-full object-cover object-top rounded pointer-events-none drop-shadow-[0_10px_15px_rgba(0,0,0,0.8)]">
+        <div id="load-select-panel" class="hidden" aria-label="角色選擇">
+          <div id="load-art-stage">
+            <img id="load-select-bg" src="public/assets/login/load.png" alt="角色選擇背景" draggable="false">
+            <div id="load-slot-grid" aria-label="存檔角色"></div>
+            <img id="load-select-overlay" src="public/assets/login/load1.png" alt="" aria-hidden="true" draggable="false">
+            <div id="load-page-tabs" aria-label="存檔頁切換">
+                <button onclick="loadSetPage(1)" id="load-page-1" type="button" aria-label="存檔 1 到 4"></button>
+                <button onclick="loadSetPage(2)" id="load-page-2" type="button" aria-label="存檔 5 到 8"></button>
             </div>
-
-            <div id="creation-controls" class="flex-1 h-[600px] flex flex-col justify-between min-w-0">
-                <div id="creation-row" class="flex gap-4 flex-1 min-h-0">
-                    <div id="creation-class-box" class="w-[290px] h-full bg-slate-800/50 p-5 rounded-xl border border-slate-700 flex flex-col shrink-0">
-                        <h2 class="text-lg text-yellow-400 mb-3 font-bold shrink-0">1. 選擇職業</h2>
-                        <!-- 職業按鈕區：8 個職業（16 鈕）一次完整顯示、不捲動；👑 王族放第一位 -->
-                        <div class="grid grid-cols-2 gap-1.5 shrink-0 content-start">
-                            <button onclick="selectClass('m_royal')" id="btn-class-m_royal" class="btn py-1 text-sm font-bold">王子</button>
-                            <button onclick="selectClass('f_royal')" id="btn-class-f_royal" class="btn py-1 text-sm font-bold">公主</button>
-                            <button onclick="selectClass('m_knight')" id="btn-class-m_knight" class="btn py-1 text-sm font-bold">男騎士</button>
-                            <button onclick="selectClass('f_knight')" id="btn-class-f_knight" class="btn py-1 text-sm font-bold">女騎士</button>
-                            <button onclick="selectClass('m_mage')" id="btn-class-m_mage" class="btn py-1 text-sm font-bold">男法師</button>
-                            <button onclick="selectClass('f_mage')" id="btn-class-f_mage" class="btn py-1 text-sm font-bold">女法師</button>
-                            <button onclick="selectClass('m_elf')" id="btn-class-m_elf" class="btn py-1 text-sm font-bold">男妖精</button>
-                            <button onclick="selectClass('f_elf')" id="btn-class-f_elf" class="btn py-1 text-sm font-bold">女妖精</button>
-                            <button onclick="selectClass('m_dark')" id="btn-class-m_dark" class="btn py-1 text-sm font-bold">男黑暗妖精</button>
-                            <button onclick="selectClass('f_dark')" id="btn-class-f_dark" class="btn py-1 text-sm font-bold">女黑暗妖精</button>
-                            <button onclick="selectClass('m_illusionist')" id="btn-class-m_illusionist" class="btn py-1 text-sm font-bold">男幻術士</button>
-                            <button onclick="selectClass('f_illusionist')" id="btn-class-f_illusionist" class="btn py-1 text-sm font-bold">女幻術士</button>
-                            <button onclick="selectClass('m_Dknight')" id="btn-class-m_Dknight" class="btn py-1 text-sm font-bold">男龍騎士</button>
-                            <button onclick="selectClass('f_Dknight')" id="btn-class-f_Dknight" class="btn py-1 text-sm font-bold">女龍騎士</button>
-                            <button onclick="selectClass('m_warrior')" id="btn-class-m_warrior" class="btn py-1 text-sm font-bold">男戰士</button>
-                            <button onclick="selectClass('f_warrior')" id="btn-class-f_warrior" class="btn py-1 text-sm font-bold">女戰士</button>
-                        </div>
-                        <div id="class-desc" class="mt-3 text-slate-300 text-sm leading-relaxed flex-1 min-h-0 overflow-y-auto pr-1"></div>
-                    </div>
-                    
-                    <div class="flex-1 h-full bg-slate-800/50 p-5 rounded-xl border border-slate-700 flex flex-col" id="stat-allocation">
-                        <h2 class="text-lg text-yellow-400 mb-4 font-bold flex justify-between items-center shrink-0">
-                            <span>2. 分配能力</span>
-                            <span class="text-emerald-400 text-sm">剩餘: <span id="creation-pts" class="text-xl">0</span></span>
-                        </h2>
-                        <div class="space-y-4 text-base flex-1 flex flex-col justify-center">
-                            <div class="flex justify-between items-center"><span class="w-12 text-red-300">力量</span> <button class="btn px-3 py-0.5" onclick="adjStat('str', -1)">-</button> <span id="c-str" class="w-8 text-center font-bold text-red-200"></span> <button class="btn px-3 py-0.5" onclick="adjStat('str', 1)">+</button></div>
-                            <div class="flex justify-between items-center"><span class="w-12 text-green-300">敏捷</span> <button class="btn px-3 py-0.5" onclick="adjStat('dex', -1)">-</button> <span id="c-dex" class="w-8 text-center font-bold text-green-200"></span> <button class="btn px-3 py-0.5" onclick="adjStat('dex', 1)">+</button></div>
-                            <div class="flex justify-between items-center"><span class="w-12 text-orange-300">體質</span> <button class="btn px-3 py-0.5" onclick="adjStat('con', -1)">-</button> <span id="c-con" class="w-8 text-center font-bold text-orange-200"></span> <button class="btn px-3 py-0.5" onclick="adjStat('con', 1)">+</button></div>
-                            <div class="flex justify-between items-center"><span class="w-12 text-blue-300">智力</span> <button class="btn px-3 py-0.5" onclick="adjStat('int', -1)">-</button> <span id="c-int" class="w-8 text-center font-bold text-blue-200"></span> <button class="btn px-3 py-0.5" onclick="adjStat('int', 1)">+</button></div>
-                            <div class="flex justify-between items-center"><span class="w-12 text-purple-300">精神</span> <button class="btn px-3 py-0.5" onclick="adjStat('wis', -1)">-</button> <span id="c-wis" class="w-8 text-center font-bold text-purple-200"></span> <button class="btn px-3 py-0.5" onclick="adjStat('wis', 1)">+</button></div>
-                            <div class="flex justify-between items-center"><span class="w-12 text-pink-300">魅力</span> <button class="btn px-3 py-0.5" onclick="adjStat('cha', -1)">-</button> <span id="c-cha" class="w-8 text-center font-bold text-pink-200"></span> <button class="btn px-3 py-0.5" onclick="adjStat('cha', 1)">+</button></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <label class="flex items-center gap-2 mt-2 px-1 cursor-pointer select-none" title="開啟後此角色永久套用經典（硬核）規則，無法事後關閉">
-                    <input type="checkbox" id="create-classic-toggle" onchange="onToggleClassic(this)" class="w-5 h-5 accent-amber-600 shrink-0">
-                    <span class="text-amber-300 font-bold shrink-0">經典模式</span>
-                    <span class="text-slate-400 text-xs">經驗/金錢砍半、掉寶率 1/10、死亡噴經驗（永久）</span>
-                </label>
-                <label id="lbl-create-traditional" class="flex items-center gap-2 mt-2 px-1 cursor-pointer select-none" title="傳統模式可單獨開啟、或與經典模式並用，永久生效">
-                    <input type="checkbox" id="create-traditional-toggle" onchange="onToggleTraditional(this)" class="w-5 h-5 accent-purple-600 shrink-0">
-                    <span class="text-purple-300 font-bold shrink-0">傳統模式</span>
-                    <span class="text-slate-400 text-xs">裝備不可強化、無施法卷軸，改由掉落/製作裝備自帶隨機強化值（永久；可單開或＋經典）</span>
-                </label>
-                <div class="flex gap-4 shrink-0 mt-3">
-                    <button onclick="backToMenu()" class="btn w-1/4 py-2.5 text-base">返回</button>
-                    <button onclick="startGame()" id="btn-start" class="btn w-3/4 py-2.5 font-bold text-lg text-white shadow-lg" disabled>開始冒險</button>
-                </div>
+            <section id="load-info-panel" aria-live="polite">
+                <div class="load-info-row name"><span>Character Name</span><strong id="load-info-name"></strong></div>
+                <div class="load-info-row pledge"><span>Blood Pledge</span><strong id="load-info-pledge"></strong></div>
+                <div class="load-info-row class"><span>Class</span><strong id="load-info-class"></strong></div>
+                <div class="load-info-row alignment"><span>Alignment</span><strong id="load-info-alignment"></strong></div>
+                <div class="load-info-row hp"><span>Hit Point</span><strong id="load-info-hp"></strong></div>
+                <div class="load-info-row mp"><span>Mana Point</span><strong id="load-info-mp"></strong></div>
+                <div class="load-info-row ac"><span>Armor Class</span><strong id="load-info-ac"></strong></div>
+                <div class="load-info-row lv"><span>Level</span><strong id="load-info-lv"></strong></div>
+                <div class="load-info-row str"><span>Strength</span><strong id="load-info-str"></strong></div>
+                <div class="load-info-row dex"><span>Dexterity</span><strong id="load-info-dex"></strong></div>
+                <div class="load-info-row con"><span>Constitution</span><strong id="load-info-con"></strong></div>
+                <div class="load-info-row wis"><span>Wisdom</span><strong id="load-info-wis"></strong></div>
+                <div class="load-info-row cha"><span>Charisma</span><strong id="load-info-cha"></strong></div>
+                <div class="load-info-row int"><span>Intelligence</span><strong id="load-info-int"></strong></div>
+            </section>
+            <div id="load-action-panel">
+                <button onclick="loadCreateSelected()" id="load-btn-create" type="button">創新角色</button>
+                <button onclick="loadImportSelected()" id="load-btn-import" type="button">匯入進度</button>
+                <button onclick="loadEnterSelected()" id="load-btn-enter" type="button" class="hidden">進入遊戲</button>
+                <button onclick="loadDeleteSelected()" id="load-btn-delete" type="button" class="hidden" style="color:#e7a09a;border-color:rgba(151,61,52,.82);">刪除角色</button>
+                <button onclick="loadBackToMenu()" id="load-btn-back" type="button">返回</button>
             </div>
-
+          </div>
         </div>
 
+                <div id="creation-panel" class="hidden" aria-label="創建角色">
+            <img id="creation-bg-image" src="public/assets/login/824.png" alt="創角背景" draggable="false">
+
+            <section id="creation-class-desc-frame" aria-live="polite">
+                <h2 id="creation-class-title">王子</h2>
+                <div id="class-desc"></div>
+            </section>
+
+            <div id="creation-avatar-stage" aria-hidden="true">
+                <img id="class-preview-img" src="assets/start/prince/714.png" alt="職業預覽" draggable="false">
+            </div>
+            <nav id="creation-class-list" aria-label="職業選擇">
+                <button onclick="selectClassBase('royal')" id="btn-class-base-royal" class="creation-class-btn class-left class-pos-1" type="button" title="王族"><img src="assets/logo/王族logo.png" alt="王族"></button>
+                <button onclick="selectClassBase('knight')" id="btn-class-base-knight" class="creation-class-btn class-left class-pos-2" type="button" title="騎士"><img src="assets/logo/騎士logo.png" alt="騎士"></button>
+                <button onclick="selectClassBase('mage')" id="btn-class-base-mage" class="creation-class-btn class-left class-pos-3" type="button" title="法師"><img src="assets/logo/法師logo.png" alt="法師"></button>
+                <button onclick="selectClassBase('elf')" id="btn-class-base-elf" class="creation-class-btn class-left class-pos-4" type="button" title="妖精"><img src="assets/logo/妖精logo.png" alt="妖精"></button>
+                <button onclick="selectClassBase('dark')" id="btn-class-base-dark" class="creation-class-btn class-right class-pos-1" type="button" title="黑暗妖精"><img src="assets/logo/黑暗妖精logo.png" alt="黑暗妖精"></button>
+                <button onclick="selectClassBase('illusionist')" id="btn-class-base-illusionist" class="creation-class-btn class-right class-pos-2" type="button" title="幻術士"><img src="assets/logo/幻術士logo.png" alt="幻術士"></button>
+                <button onclick="selectClassBase('Dknight')" id="btn-class-base-Dknight" class="creation-class-btn class-right class-pos-3" type="button" title="龍騎士"><img src="assets/logo/龍騎士logo.png" alt="龍騎士"></button>
+                <button onclick="selectClassBase('warrior')" id="btn-class-base-warrior" class="creation-class-btn class-right class-pos-4" type="button" title="戰士"><img src="assets/logo/戰士logo.png" alt="戰士"></button>
+            </nav>
+
+            <div id="creation-gender-panel" aria-label="性別選擇">
+                <button onclick="selectGender('m')" id="btn-gender-m" class="creation-gender-btn" type="button" title="男性">♂</button>
+                <button onclick="selectGender('f')" id="btn-gender-f" class="creation-gender-btn" type="button" title="女性">♀</button>
+            </div>
+<div id="stat-allocation" aria-label="能力配點">
+                <div id="creation-pts">0</div>
+                <div class="creation-stat-control stat-str"><span id="c-str" class="creation-stat-value"></span><button class="creation-stat-btn" onclick="adjStat('str', -1)">-</button><button class="creation-stat-btn" onclick="adjStat('str', 1)">+</button></div>
+                <div class="creation-stat-control stat-dex"><span id="c-dex" class="creation-stat-value"></span><button class="creation-stat-btn" onclick="adjStat('dex', -1)">-</button><button class="creation-stat-btn" onclick="adjStat('dex', 1)">+</button></div>
+                <div class="creation-stat-control stat-con"><span id="c-con" class="creation-stat-value"></span><button class="creation-stat-btn" onclick="adjStat('con', -1)">-</button><button class="creation-stat-btn" onclick="adjStat('con', 1)">+</button></div>
+                <div class="creation-stat-control stat-wis"><span id="c-wis" class="creation-stat-value"></span><button class="creation-stat-btn" onclick="adjStat('wis', -1)">-</button><button class="creation-stat-btn" onclick="adjStat('wis', 1)">+</button></div>
+                <div class="creation-stat-control stat-cha"><span id="c-cha" class="creation-stat-value"></span><button class="creation-stat-btn" onclick="adjStat('cha', -1)">-</button><button class="creation-stat-btn" onclick="adjStat('cha', 1)">+</button></div>
+                <div class="creation-stat-control stat-int"><span id="c-int" class="creation-stat-value"></span><button class="creation-stat-btn" onclick="adjStat('int', -1)">-</button><button class="creation-stat-btn" onclick="adjStat('int', 1)">+</button></div>
+            </div>
+
+            <label id="classic-mode-control" title="開啟後此角色永久套用經典規則，無法事後關閉">
+                <input type="checkbox" id="create-classic-toggle" onchange="onToggleClassic(this)">
+                <span>經典模式</span>
+            </label>
+            <button onclick="backToMenu()" id="creation-back-button" type="button">返回</button>
+            <button onclick="startGame()" id="btn-start" class="creation-start-button" type="button" disabled>開始遊戲</button>
+        </div>
     </div>
 
     <script>
@@ -170,31 +187,34 @@
                 <div class="mv-row"><span class="mv-label" style="color:#f87171">HP</span><div class="mv-bar"><div id="mv-hp-fill" style="background:#dc2626;width:100%"></div><span id="mv-hp-txt">0/0</span></div></div>
                 <div class="mv-row"><span class="mv-label" style="color:#60a5fa">MP</span><div class="mv-bar"><div id="mv-mp-fill" style="background:#2563eb;width:100%"></div><span id="mv-mp-txt">0/0</span></div></div>
             </div>
-            <button id="mv-action-btn" onclick="returnToTown()">回村</button>
         </div>
 
 <!-- 左側：狀態與自動化 -->
         <div id="col-left" class="w-[340px] flex flex-col gap-4">
             <!-- 新增了 id="status-panel"，並加入去底色與加深背景的樣式確保文字可讀 -->
             <div id="status-panel" class="panel bg-cover bg-top bg-no-repeat" style="background-blend-mode: multiply; background-color: rgba(30, 41, 59, 0.85);">
-                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：物品掉落 ×1/10、經驗減半、金幣剩一般模式的 1/2、死亡損失該等級 5% 最大經驗（不降等）">⚔經典</span><span id="traditional-badge" class="hidden font-bold ml-1" style="color:#c4b5fd;text-shadow:0 0 5px rgba(196,181,253,0.7);font-size:0.85rem;line-height:1;" title="傳統模式（經典之上）：所有裝備無強化、改由掉落自帶強化值、怪物/黑市無施法卷軸、倉庫與角色獨立">🏛️傳統</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
-                <div class="p-4 space-y-3 text-base">
-                    <div class="flex justify-between text-slate-400 border-b border-slate-700 pb-2"><span>等級</span> <span class="text-white font-bold text-xl" id="st-lv">1</span></div>
-                    <div class="flex justify-between text-slate-400"><span>防禦 (AC)</span> <span class="text-white font-bold" id="st-ac">10</span></div>
-                    <div class="flex justify-between text-slate-400"><span>魔防 (MR)</span> <span class="text-white font-bold" id="st-mr">0</span></div>
-                    <div class="flex justify-between text-slate-400"><span>金幣</span> <span class="text-yellow-400 font-bold" id="st-gold">0</span></div>
-                </div>
-                <div class="p-4 pt-0 flex flex-col gap-3">
-                    <div class="flex items-center gap-3"><span class="text-red-400 font-bold w-10 text-right text-base">HP</span><div class="bar-bg flex-1 !h-6"><div id="bar-hp" class="bar-fill bg-red-600" style="width:100%"></div><div id="txt-hp" class="bar-text text-white !text-sm !line-height-[24px]">16/16</div></div></div>
-                    <div class="flex items-center gap-3"><span class="text-blue-400 font-bold w-10 text-right text-base">MP</span><div class="bar-bg flex-1 !h-6"><div id="bar-mp" class="bar-fill bg-blue-600" style="width:100%"></div><div id="txt-mp" class="bar-text text-white !text-sm !line-height-[24px]">1/1</div></div></div>
-                    <div class="flex items-center gap-3 mt-1"><span class="text-yellow-500 font-bold w-10 text-right text-sm">EXP</span><div class="bar-bg flex-1 !h-4"><div id="bar-exp" class="bar-fill bg-yellow-500" style="width:0%"></div><div id="txt-exp" class="bar-text font-normal !text-xs !line-height-[16px]">0.00%</div></div></div>
+                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：死亡損失該等級 5% 最大經驗（不降等）、無祝福/精通/席琳；掉落率、經驗與金幣獲得與一般模式相同">⚔經典</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
+                <div class="status-compact-body text-base">
+                    <div class="status-level-row text-slate-400">
+                        <span>等級</span><span class="text-white font-bold text-xl" id="st-lv">1</span>
+                    </div>
+                    <div class="status-defense-row">
+                        <span class="status-stat"><span>AC</span><strong id="st-ac">10</strong></span>
+                        <span class="status-stat"><span>MR</span><strong id="st-mr">0</strong></span>
+                    </div>
+                    <div class="status-gold-row"><span>金幣</span><span class="text-yellow-400 font-bold" id="st-gold">0</span></div>
+                    <div class="status-vitals-row">
+                        <div class="bar-bg compact-vital-bar" title="HP"><div id="bar-hp" class="bar-fill bg-red-600" style="width:100%"></div><div id="txt-hp" class="bar-text text-white">16/16</div></div>
+                        <div class="bar-bg compact-vital-bar" title="MP"><div id="bar-mp" class="bar-fill bg-blue-600" style="width:100%"></div><div id="txt-mp" class="bar-text text-white">1/1</div></div>
+                    </div>
+                    <div class="bar-bg status-exp-bar" title="EXP"><div id="bar-exp" class="bar-fill bg-yellow-500" style="width:0%"></div><div id="txt-exp" class="bar-text font-normal">0.00%</div></div>
                     <div id="castle-guard-row" class="flex items-center gap-3 mt-1 hidden"><span id="cg-name" class="text-amber-300 font-bold w-16 text-right text-xs leading-tight whitespace-nowrap">護衛</span><div class="bar-bg flex-1 !h-4"><div id="cg-bar" class="bar-fill bg-amber-500" style="width:100%"></div><div id="cg-txt" class="bar-text text-white !text-xs !line-height-[16px]">0/0</div></div></div>
                 </div>
             </div>
 
             <!-- 🤝 協力傭兵隊伍面板（Phase 1：隊伍/技能設定分頁；無傭兵時自動隱藏，不佔版面） -->
             <div id="squad-panel" class="panel" style="display:none;">
-                <div class="panel-header flex items-center justify-center" style="user-select:none;"><span class="text-center">協力傭兵隊伍</span></div><!-- 🔧 v2.6.76 取消收合按鈕·面板恆展開（用戶要求） -->
+                <div class="panel-header flex items-center justify-center" style="user-select:none;"><span class="text-center">隊伍與夥伴</span></div><!-- 🔧 v2.6.76 取消收合按鈕·面板恆展開（用戶要求） -->
                 <div id="squad-body" class="p-3 flex flex-col gap-2">
                     <div class="flex gap-2">
                         <button id="squad-tab-btn-team" class="flex-1 py-1 text-sm font-bold rounded border" style="background:#334155;border-color:#475569;color:#cbd5e1;" onclick="switchSquadTab('team')">隊伍</button>
@@ -217,6 +237,7 @@
     <div class="flex items-center gap-3">
         <button onclick="revive()" id="btn-revive" class="hidden bg-red-800 hover:bg-red-700 px-6 py-1.5 text-white font-bold border border-red-500 rounded anim-flash text-base shadow-md">祈求復活</button>
         <button onclick="reviveInPlace()" id="btn-revive-inplace" class="hidden bg-yellow-700 hover:bg-yellow-600 px-6 py-1.5 text-white font-bold border border-yellow-500 rounded anim-flash text-base shadow-md">原地復活</button>
+        <button onclick="openPandoraShortcut()" id="btn-pandora-shortcut" class="bg-amber-950 hover:bg-amber-900 px-3 py-1 text-amber-200 font-bold border border-amber-700 rounded text-sm shadow-md whitespace-nowrap min-w-[3.25rem] text-center" title="與潘朵拉對話，開啟黑市">黑市</button>
         <button onclick="playerTeleport()" id="btn-teleport" class="hidden bg-fuchsia-800 hover:bg-fuchsia-700 px-3 py-1 text-white font-bold border border-fuchsia-500 rounded text-sm shadow-md whitespace-nowrap min-w-[3.25rem] text-center" title="傳送術／瞬間移動卷軸（於對應地圖可進入隱藏狩獵區域）">瞬移</button>
         <button onclick="returnToTown()" id="btn-return-town" class="bg-emerald-800 hover:bg-emerald-700 px-3 py-1 text-white font-bold border border-emerald-500 rounded text-sm shadow-md whitespace-nowrap min-w-[3.25rem] text-center">回村</button>
         <select id="map-category" class="bg-slate-800 border border-slate-600 text-white px-3 py-1.5 text-base rounded outline-none" onchange="onMapCategoryChange()">
@@ -233,19 +254,22 @@
             <div id="battle-view" class="p-4"><div id="status-icon-bar" aria-label="角色狀態圖示"></div><div id="mob-list" class="flex gap-4 w-full"></div></div>
                 
                 <div id="town-view" class="hidden p-6 flex-col items-center gap-4 flex-1 h-full min-h-0">
-                    <h2 class="text-3xl font-bold text-emerald-400 drop-shadow-md shrink-0" id="town-name">銀騎士村</h2>
-                    <p class="text-lg text-slate-300 shrink-0">這裡是安全區域，您的體力與魔力已完全恢復。</p>
-                    
-                    <div id="town-npc-container" class="w-full bg-slate-900/50 rounded-lg flex-1 overflow-y-auto mt-2 grid grid-cols-2 gap-3 content-start pb-4">
+                    <h2 class="text-3xl font-bold text-emerald-400 drop-shadow-md shrink-0 hidden" id="town-name">銀騎士村</h2>
+                    <p class="text-lg text-slate-300 shrink-0 hidden">這裡是安全區域，您的體力與魔力已完全恢復。</p>
+
+                    <!-- 🏘️ v3.2.83 城鎮 NPC 地圖（與狩獵框同尺寸 800×450·動態站位 NPC）-->
+                    <div id="town-npc-map"></div>
+
+                    <div id="town-npc-container" class="w-full bg-slate-900/50 rounded-lg flex-1 overflow-y-auto mt-2 grid grid-cols-2 gap-3 content-start pb-4 hidden">
                         </div>
 
                     <div id="town-interaction-container" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 flex-1 mt-2 hidden flex-col min-h-0">
-                        <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3 shrink-0">
-                            <div class="flex items-end gap-3">
-                                <h3 class="text-2xl font-bold text-yellow-400" id="interaction-npc-name">NPC名稱</h3>
-                                <span class="text-slate-400 text-sm mb-1" id="interaction-npc-title">[職業]</span>
+                        <div id="town-interaction-header" class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3 shrink-0">
+                            <div id="town-interaction-heading" class="flex items-center">
+                                <h3 class="font-bold text-yellow-400" id="interaction-npc-name">NPC名稱</h3>
+                                <span class="text-slate-400" id="interaction-npc-title">[職業]</span>
                             </div>
-                            <button class="btn px-4 py-2 bg-slate-700 hover:bg-slate-600 text-base font-bold" onclick="closeNpcInteraction()">返回村莊</button>
+                            <button id="town-interaction-close" class="btn bg-slate-700 hover:bg-slate-600 font-bold" onclick="closeNpcInteraction()">關閉</button>
                         </div>
                         <div id="interaction-content" class="flex-1 overflow-y-auto pe-2">
                             </div>
@@ -288,7 +312,7 @@
         <!-- 右側：清單面板 -->
         <div id="col-right" class="w-[380px] flex flex-col gap-3">
             <div class="panel p-2 grid grid-cols-3 gap-2 bg-slate-800 tab-bar">
-                <button class="btn active text-base py-2 font-bold px-0" onclick="switchTab('stats', this); toggleEquipmentWindow()" title="單擊開啟或關閉裝備視窗">能力</button>
+                <button class="btn active text-base py-2 font-bold px-0" onclick="switchTab('stats', this)" title="查看角色能力">能力</button>
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('equip', this)">裝備</button>
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('skill', this)">技能</button>
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('weapons', this)">武器</button>
@@ -305,52 +329,60 @@
             </div>
 
             <div id="tab-content-panel" class="panel flex-1 flex flex-col overflow-hidden relative">
-                <!-- 能力 -->
-                <div id="tab-stats" class="p-5 overflow-y-auto h-full flex flex-col gap-5 text-lg">
-                    <div class="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <div class="text-red-300 flex items-center">力量 (STR)</div> <div class="flex items-center justify-end gap-1.5"><button class="alloc-minus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('str',-1)">-</button><span class="text-red-200 font-bold w-8 text-right" id="dt-str">0</span><button class="alloc-plus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('str',1)">+</button></div>
-                        <div class="text-green-300 flex items-center">敏捷 (DEX)</div> <div class="flex items-center justify-end gap-1.5"><button class="alloc-minus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('dex',-1)">-</button><span class="text-green-200 font-bold w-8 text-right" id="dt-dex">0</span><button class="alloc-plus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('dex',1)">+</button></div>
-                        <div class="text-orange-300 flex items-center">體質 (CON)</div> <div class="flex items-center justify-end gap-1.5"><button class="alloc-minus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('con',-1)">-</button><span class="text-orange-200 font-bold w-8 text-right" id="dt-con">0</span><button class="alloc-plus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('con',1)">+</button></div>
-                        <div class="text-blue-300 flex items-center">智力 (INT)</div> <div class="flex items-center justify-end gap-1.5"><button class="alloc-minus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('int',-1)">-</button><span class="text-blue-200 font-bold w-8 text-right" id="dt-int">0</span><button class="alloc-plus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('int',1)">+</button></div>
-                        <div class="text-purple-300 flex items-center">精神 (WIS)</div> <div class="flex items-center justify-end gap-1.5"><button class="alloc-minus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('wis',-1)">-</button><span class="text-purple-200 font-bold w-8 text-right" id="dt-wis">0</span><button class="alloc-plus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('wis',1)">+</button></div>
-                        <div class="text-pink-300 flex items-center">魅力 (CHA)</div> <div class="flex items-center justify-end gap-1.5"><button class="alloc-minus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('cha',-1)">-</button><span class="text-pink-200 font-bold w-8 text-right" id="dt-cha">8</span><button class="alloc-plus hidden btn px-2.5 py-0.5 text-base leading-none" onclick="adjAlloc('cha',1)">+</button></div>
-                    </div>
-                    <div class="border-t border-slate-700 pt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-base">
-                        <span class="stat-row" data-grp="melee"><div class="text-slate-200">近距離傷害</div> <div class="text-white text-right font-bold" id="dt-mdmg">0</div></span>
-                        <span class="stat-row" data-grp="melee"><div class="text-slate-200">近距離命中</div> <div class="text-white text-right font-bold" id="dt-mhit">0</div></span>
-                        <span class="stat-row" data-grp="melee"><div class="text-slate-200">近距離爆擊率</div> <div class="text-white text-right font-bold" id="dt-mcrit-p">0%</div></span>
-                        <span class="stat-row" data-grp="ranged"><div class="text-slate-200">遠距離傷害</div> <div class="text-white text-right font-bold" id="dt-rdmg">0</div></span>
-                        <span class="stat-row" data-grp="ranged"><div class="text-slate-200">遠距離命中</div> <div class="text-white text-right font-bold" id="dt-rhit">0</div></span>
-                        <span class="stat-row" data-grp="ranged"><div class="text-slate-200">遠距離爆擊率</div> <div class="text-white text-right font-bold" id="dt-rcrit">0%</div></span>
-                        <span class="stat-row" data-grp="extra"><div class="text-slate-200">額外傷害</div> <div class="text-white text-right font-bold" id="dt-edmg">0</div></span>
-                        <span class="stat-row" data-grp="extra"><div class="text-slate-200">額外命中</div> <div class="text-white text-right font-bold" id="dt-ehit">0</div></span>
-                        <div class="text-slate-200">魔法傷害</div> <div class="text-white text-right font-bold" id="dt-mgdmg">0</div>
-                        <div class="text-slate-200">額外魔法點數</div> <div class="text-white text-right font-bold" id="dt-sp">0</div>
-                        <div class="text-slate-200">魔法命中</div> <div class="text-white text-right font-bold" id="dt-mhit-mag">0</div>
-                        <div class="text-slate-200">魔法爆擊率</div> <div class="text-white text-right font-bold" id="dt-mcrit">0%</div>
-                        <div class="text-slate-200">MP消耗減免</div> <div class="text-white text-right font-bold" id="dt-mpreduce">0%</div>
-                        <div class="text-slate-400 text-red-400">HP恢復量</div> <div class="text-red-400 text-right font-bold" id="dt-hpr">0</div>
-						<div class="text-slate-400 text-blue-300">MP恢復量</div> <div class="text-blue-300 text-right font-bold" id="dt-mpr">0</div>
-						<div class="text-slate-200">迴避率 (ER)</div> <div class="text-white text-right font-bold" id="dt-er">0%</div>
-                        <div class="text-slate-200">傷害減免 (DR)</div> <div class="text-white text-right font-bold" id="dt-dr">0</div>
-                        <div class="text-slate-200">無屬性抗性</div> <div class="text-white text-right font-bold" id="dt-resnone">0%</div>
-                        <div class="text-red-300">火屬性抗性</div> <div class="text-red-200 text-right font-bold" id="dt-resfire">0%</div>
-                        <div class="text-blue-300">水屬性抗性</div> <div class="text-blue-200 text-right font-bold" id="dt-reswater">0%</div>
-                        <div class="text-green-300">風屬性抗性</div> <div class="text-green-200 text-right font-bold" id="dt-reswind">0%</div>
-                        <div class="text-amber-300">地屬性抗性</div> <div class="text-amber-200 text-right font-bold" id="dt-researth">0%</div>
-                        <div class="text-slate-200">攻擊速度</div> <div class="text-white text-right font-bold" id="dt-spd">1.0s</div>
-                    </div>
-                    <div class="border-t border-slate-700 pt-4 text-base leading-relaxed" id="dt-buffs"></div>
-                    
-                    <!-- 升級點數／回憶蠟燭配點：點數與「確認/取消」工具列（+/- 按鈕已併入上方六大屬性列） -->
-                    <div id="alloc-edit-bar" class="hidden mt-auto border-t border-slate-700 pt-4 bg-slate-800 -mx-5 -mb-5 p-5 rounded-b-xl flex items-center justify-between gap-3 flex-wrap">
-                        <div class="flex flex-col">
-                            <span class="text-yellow-400 font-bold text-lg" id="alloc-bar-label">升級點數：0</span>
-                            <span id="alloc-bar-hint" class="hidden text-slate-400 text-xs">以上方 +／- 重新分配，按「確認」才生效</span>
+                <!-- 能力：400×825 經典資訊欄底圖；配點框只在回憶蠟燭流程顯示 -->
+                <div id="tab-stats" class="ability-window-tab h-full">
+                    <div class="ability-window-shell">
+                        <div class="ability-primary-control ability-primary-str"><button class="alloc-minus hidden" onclick="adjAlloc('str',-1)" aria-label="力量減一">−</button><span id="dt-str">0</span><button class="alloc-plus hidden" onclick="adjAlloc('str',1)" aria-label="力量加一">＋</button></div>
+                        <div class="ability-primary-control ability-primary-dex"><button class="alloc-minus hidden" onclick="adjAlloc('dex',-1)" aria-label="敏捷減一">−</button><span id="dt-dex">0</span><button class="alloc-plus hidden" onclick="adjAlloc('dex',1)" aria-label="敏捷加一">＋</button></div>
+                        <div class="ability-primary-control ability-primary-con"><button class="alloc-minus hidden" onclick="adjAlloc('con',-1)" aria-label="體質減一">−</button><span id="dt-con">0</span><button class="alloc-plus hidden" onclick="adjAlloc('con',1)" aria-label="體質加一">＋</button></div>
+                        <div class="ability-primary-control ability-primary-int"><button class="alloc-minus hidden" onclick="adjAlloc('int',-1)" aria-label="智力減一">−</button><span id="dt-int">0</span><button class="alloc-plus hidden" onclick="adjAlloc('int',1)" aria-label="智力加一">＋</button></div>
+                        <div class="ability-primary-control ability-primary-wis"><button class="alloc-minus hidden" onclick="adjAlloc('wis',-1)" aria-label="精神減一">−</button><span id="dt-wis">0</span><button class="alloc-plus hidden" onclick="adjAlloc('wis',1)" aria-label="精神加一">＋</button></div>
+                        <div class="ability-primary-control ability-primary-cha"><button class="alloc-minus hidden" onclick="adjAlloc('cha',-1)" aria-label="魅力減一">−</button><span id="dt-cha">0</span><button class="alloc-plus hidden" onclick="adjAlloc('cha',1)" aria-label="魅力加一">＋</button></div>
+
+                        <div class="ability-detail-column ability-detail-left">
+                            <div><span>近距離傷害</span><strong id="dt-mdmg">0</strong></div>
+                            <div><span>近距離命中</span><strong id="dt-mhit">0</strong></div>
+                            <div><span>近距離爆擊率</span><strong id="dt-mcrit-p">0%</strong></div>
+                            <div><span>近距離爆擊傷害</span><strong id="dt-mcritdmg">0%</strong></div>
+                            <div class="ability-detail-spacer" aria-hidden="true"></div>
+                            <div><span>遠距離傷害</span><strong id="dt-rdmg">0</strong></div>
+                            <div><span>遠距離命中</span><strong id="dt-rhit">0</strong></div>
+                            <div><span>遠距離爆擊率</span><strong id="dt-rcrit">0%</strong></div>
+                            <div><span>遠距離爆擊傷害</span><strong id="dt-rcritdmg">0%</strong></div>
+                            <div><span>迴避率</span><strong id="dt-er">0%</strong></div>
+                            <div><span>HP恢復量</span><strong id="dt-hpr">0</strong></div>
+                            <div><span>藥水恢復量</span><strong id="dt-potion">0%</strong></div>
+                            <div><span>傷害減免</span><strong id="dt-dr">0</strong></div>
+                            <div><span>移動速度</span><strong id="dt-movespeed">100%</strong></div>
+                            <div><span>攻擊速度</span><strong id="dt-spd">1.0s</strong></div>
                         </div>
-                        <div class="flex gap-2">
-                            <button id="alloc-confirm-btn" onclick="confirmRespec()" class="hidden btn px-5 py-2 bg-emerald-800 border-emerald-600 text-emerald-100 font-bold">確認</button>
-                            <button id="alloc-cancel-btn" onclick="cancelRespec()" class="hidden btn px-5 py-2 bg-slate-700 border-slate-500 text-slate-200 font-bold">取消</button>
+                        <div class="ability-detail-column ability-detail-right">
+                            <div><span>魔法傷害</span><strong id="dt-mgdmg">0</strong></div>
+                            <div><span>魔法命中</span><strong id="dt-mhit-mag">0</strong></div>
+                            <div><span>額外魔法點數</span><strong id="dt-sp">0</strong></div>
+                            <div><span>魔法爆擊率</span><strong id="dt-mcrit">0%</strong></div>
+                            <div class="ability-magic-crit-dmg"><span>魔法爆擊傷害</span><strong id="dt-mgcritdmg">0%</strong></div>
+                            <div><span>MP恢復量</span><strong id="dt-mpr">0</strong></div>
+                            <div><span>MP消耗減免</span><strong id="dt-mpreduce">0%</strong></div>
+                            <div><span>擊殺回魔</span><strong id="dt-mpkill">0</strong></div>
+                            <div><span>魔法防禦</span><strong id="dt-mr">0</strong></div>
+                            <div class="ability-detail-spacer" aria-hidden="true"></div>
+                            <div><span>無屬性抗性</span><strong id="dt-resnone">0</strong></div>
+                            <div class="ability-res-fire"><span>火屬性抗性</span><strong id="dt-resfire">0</strong></div>
+                            <div class="ability-res-water"><span>水屬性抗性</span><strong id="dt-reswater">0</strong></div>
+                            <div class="ability-res-wind"><span>風屬性抗性</span><strong id="dt-reswind">0</strong></div>
+                            <div class="ability-res-earth"><span>地屬性抗性</span><strong id="dt-researth">0</strong></div>
+                        </div>
+
+                        <div class="ability-hidden-values" aria-hidden="true"><span id="dt-edmg">0</span><span id="dt-ehit">0</span></div>
+                        <div id="dt-buffs" class="ability-buffs"></div>
+
+                        <div id="alloc-edit-bar" class="hidden ability-respec-overlay">
+                            <span id="alloc-bar-label" class="ability-respec-points">0</span>
+                            <div class="ability-respec-actions">
+                                <span id="alloc-bar-hint">以上方 ＋／− 重新分配，確認後才會消耗回憶蠟燭</span>
+                                <div><button id="alloc-confirm-btn" onclick="confirmRespec()" class="hidden">確認</button><button id="alloc-cancel-btn" onclick="cancelRespec()" class="hidden">取消</button></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -393,25 +425,23 @@
                         <div class="flex justify-between items-center mb-2 text-sm"><span class="text-green-400 font-bold">治癒魔法</span><span>HP &lt; <input type="number" id="set-mp-heal" value="50" class="w-12 bg-slate-900 border text-center text-white rounded">%</span></div>
                         <select id="sel-heal-skill" class="w-full bg-slate-900 border text-green-300 px-2 py-2 rounded text-sm"><option value="">無</option></select>
                         <div class="flex justify-between items-center mb-1 mt-3 text-sm border-t border-slate-700 pt-2"><span class="text-rose-400 font-bold">消耗HP技能</span><span>HP &gt; <input type="number" id="set-hp-skill" value="0" min="0" max="100" class="w-12 bg-slate-900 border text-center text-white rounded">%</span></div>
-                        <div class="text-[11px] text-slate-500 mb-1 leading-tight">HP 低於此比例時，暫停自動施放「消耗HP的技能」（龍騎士龍魔法／屠宰者／覺醒、冥想術、堅固防護等）。0＝不限制。</div>
                         <div id="ui-convert-row" class="hidden">
                             <div class="flex justify-between items-center mb-2 mt-3 text-sm"><span class="text-cyan-400 font-bold">轉換魔法</span><span>HP &gt; <input type="number" id="set-hp-convert" value="50" class="w-12 bg-slate-900 border text-center text-white rounded">%</span></div>
                             <select id="sel-convert-skill" class="w-full bg-slate-900 border text-cyan-300 px-2 py-2 rounded text-sm"><option value="">無</option></select>
                         </div>
                     </div>
 
-                    <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 grid grid-cols-2 gap-3 text-sm">
-                        <div class="col-span-2 flex justify-between items-center"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-haste" class="w-4 h-4"> <span class="text-green-300">自我加速藥水</span></label><label class="cursor-pointer flex items-center gap-1 text-xs text-slate-400"><input type="checkbox" id="set-auto-buy-haste" class="w-3 h-3"> <span>自動購買</span></label></div>
-                        <div id="ui-brave-row" class="col-span-2 flex justify-between items-center"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-brave" class="w-4 h-4"> <span class="text-purple-300">勇敢藥水</span></label><label class="cursor-pointer flex items-center gap-1 text-xs text-slate-400"><input type="checkbox" id="set-auto-buy-brave" class="w-3 h-3"> <span>自動購買</span></label></div>
-                        <div class="col-span-2 flex justify-between items-center"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-blue" class="w-4 h-4"> <span class="text-blue-300">藍色藥水</span></label><label class="cursor-pointer flex items-center gap-1 text-xs text-slate-400"><input type="checkbox" id="set-auto-buy-blue" class="w-3 h-3"> <span>自動購買</span></label></div>
-                        <div id="ui-cautious-row" class="col-span-2 flex justify-between items-center"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-cautious" class="w-4 h-4"> <span class="text-purple-300">慎重藥水</span></label><label class="cursor-pointer flex items-center gap-1 text-xs text-slate-400"><input type="checkbox" id="set-auto-buy-cautious" class="w-3 h-3"> <span>自動購買</span></label></div>
-                        <div id="ui-elfcookie-row" class="col-span-2 flex justify-between items-center"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-elfcookie" class="w-4 h-4"> <span class="text-yellow-200">精靈餅乾</span></label><label class="cursor-pointer flex items-center gap-1 text-xs text-slate-400"><input type="checkbox" id="set-auto-buy-elfcookie" class="w-3 h-3"> <span>自動購買</span></label></div>
-                        <div class="col-span-2 flex justify-between items-center border-t border-slate-700 pt-2 mt-1"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-poly" class="w-4 h-4"> <span class="text-gray-300">變形卷軸</span></label><label class="cursor-pointer flex items-center gap-1 text-xs text-slate-400"><input type="checkbox" id="set-auto-buy-poly" class="w-3 h-3"> <span>自動購買</span></label></div>
-                        <div class="col-span-2 flex justify-between items-center border-t border-slate-700 pt-2 mt-1"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-magicbarrier" class="w-4 h-4"> <span class="text-cyan-300">魔法卷軸(魔法屏障)</span></label><span class="text-xs text-slate-500">無自動購買</span></div>
-                        <div class="col-span-2 flex justify-between items-center border-t border-slate-700 pt-2 mt-1"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-teleport" class="w-4 h-4"> <span class="text-sky-300">瞬間移動卷軸(遇BOSS)</span></label><label class="cursor-pointer flex items-center gap-1 text-xs text-slate-400"><input type="checkbox" id="set-auto-buy-teleport" class="w-3 h-3"> <span>自動購買</span></label></div>
-                        <div class="col-span-2 flex justify-between items-center border-t border-slate-700 pt-2 mt-1"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-teleport-boss" class="w-4 h-4"> <span class="text-rose-300">傳送控制戒指自動找BOSS</span></label><span class="text-xs text-slate-500">需帶戒指·離線不套用</span></div>
-                        <div class="col-span-2 flex justify-between items-center border-t border-slate-700 pt-2 mt-1"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-auto-buy-revive" class="w-4 h-4"> <span class="text-emerald-300">復活卷軸不足時自動購買</span></label></div>
-                        <div class="col-span-2 flex justify-between items-center border-t border-slate-700 pt-2 mt-1"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-auto-buy-arrow" class="w-4 h-4" checked> <span class="text-orange-300">弓箭耗盡時自動購買 1000 銀箭</span></label></div>
+                    <!-- 🧪 v3.3.15 藥水/卷軸：自動使用＝自動購買合併（勾選＝缺貨時自動買一瓶再用）；左右各一縮短高度 -->
+                    <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm items-center">
+                        <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-haste" class="w-4 h-4"> <span class="text-green-300">自我加速藥水</span></label>
+                        <label id="ui-brave-row" class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-brave" class="w-4 h-4"> <span class="text-purple-300">勇敢藥水</span></label>
+                        <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-blue" class="w-4 h-4"> <span class="text-blue-300">藍色藥水</span></label>
+                        <label id="ui-cautious-row" class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-cautious" class="w-4 h-4"> <span class="text-purple-300">慎重藥水</span></label>
+                        <label id="ui-elfcookie-row" class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-elfcookie" class="w-4 h-4"> <span class="text-yellow-200">精靈餅乾</span></label>
+                        <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-poly" class="w-4 h-4"> <span class="text-gray-300">變形卷軸</span></label>
+                        <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-magicbarrier" class="w-4 h-4"> <span class="text-cyan-300">魔法屏障卷軸</span></label>
+                        <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-teleport" class="w-4 h-4"> <span class="text-sky-300">迴避頭目(瞬移卷軸)</span></label>
+                        <label class="col-span-2 cursor-pointer flex items-center gap-2 border-t border-slate-700 pt-2 mt-1"><input type="checkbox" id="set-auto-buy-arrow" class="w-4 h-4" checked> <span class="text-orange-300">弓箭耗盡時自動購買 1000 銀箭</span></label>
 						<div id="auto-buff-skills" class="col-span-2 grid grid-cols-2 gap-1 mt-1 border-t border-slate-600 pt-2"></div>
                     </div>
                     <!-- 匯出/存檔 已移至右上角按鈕區（3×4） -->
@@ -420,7 +450,7 @@
         </div>
     </div>
 
-    <section id="equipment-window" class="equipment-window hidden" aria-label="角色裝備" aria-hidden="true"><div id="equipment-window-frame" class="equipment-window-frame"><img class="equipment-window-bg" src="assets/equipment-window-bg.png" alt="" draggable="false"><div id="equipment-window-drag" class="equipment-window-drag"></div><button id="equipment-window-close" class="equipment-window-close" type="button" aria-label="關閉裝備視窗"></button><button id="equipment-window-next" class="equipment-window-arrow equipment-window-next" type="button" aria-label="下一頁"></button><button id="equipment-window-prev" class="equipment-window-arrow equipment-window-prev" type="button" aria-label="上一頁"></button><div id="equipment-window-stats" class="equipment-window-stats"></div><div id="equipment-window-slots" class="equipment-window-slots"></div><div id="equipment-morph-snapshot" class="equipment-morph-snapshot hidden" aria-live="polite"><div id="equipment-morph-name" class="equipment-morph-name"></div><img id="equipment-morph-image" class="equipment-morph-image" alt="" draggable="false"><div id="equipment-morph-bonus" class="equipment-morph-bonus"></div></div><aside id="equipment-side-panel" class="equipment-side-panel hidden"><header class="equipment-side-header"><div><strong id="equipment-side-title">武器</strong><small>單擊查看・雙擊直接裝備</small></div><button id="equipment-side-close" type="button">✕</button></header><div id="equipment-side-list" class="equipment-side-list"></div></aside></div></section>
+    <section id="equipment-window" class="equipment-window hidden" aria-label="角色裝備" aria-hidden="true"><div id="equipment-window-frame" class="equipment-window-frame"><img class="equipment-window-bg" alt="" draggable="false"><div id="equipment-window-drag" class="equipment-window-drag"></div><button id="equipment-window-close" class="equipment-window-close" type="button" aria-label="關閉裝備視窗"></button><button id="equipment-window-next" class="equipment-window-arrow equipment-window-next" type="button" aria-label="下一頁"></button><button id="equipment-window-prev" class="equipment-window-arrow equipment-window-prev" type="button" aria-label="上一頁"></button><div id="equipment-window-weight" class="equipment-window-weight" aria-live="polite">負重 0 %</div><div id="equipment-window-stats" class="equipment-window-stats"></div><div id="equipment-window-slots" class="equipment-window-slots"></div><div id="equipment-morph-snapshot" class="equipment-morph-snapshot hidden" aria-live="polite"><div id="equipment-morph-name" class="equipment-morph-name"></div><img id="equipment-morph-image" class="equipment-morph-image" alt="" draggable="false"><div id="equipment-morph-bonus" class="equipment-morph-bonus"></div></div><aside id="equipment-side-panel" class="equipment-side-panel hidden"><header class="equipment-side-header"><div><strong id="equipment-side-title">武器</strong><small>單擊查看・雙擊直接裝備</small></div><button id="equipment-side-close" type="button">✕</button></header><div id="equipment-side-list" class="equipment-side-list"></div></aside></div></section>
     <section id="warehouse-window" class="warehouse-window hidden" aria-label="共用倉庫" aria-hidden="true"><div id="warehouse-window-frame" class="warehouse-window-frame"><header id="warehouse-window-drag" class="warehouse-window-header"><div><h2>共用倉庫</h2><span>背包與倉庫之間存入／取出物品</span></div><button id="warehouse-window-close" type="button">Close</button></header><div id="warehouse-window-content" class="warehouse-window-content"></div></div></section>
 
     <!-- 物品操作 Modal -->
@@ -481,7 +511,7 @@
         </div>
     </div>
 
-    <!-- 📦 收藏面板（裝備 / 道具 / 怪物 / 遺物 四大入口）-->
+    <!-- 📦 收藏面板（裝備 / 道具 / 怪物 三大入口）-->
     <div id="collection-panel" class="hidden fixed inset-0 z-[46] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onclick="collectionPanelBackdrop(event)">
         <div class="w-full max-w-sm flex flex-col bg-slate-900/95 rounded-2xl border-2 border-amber-700/60 shadow-[0_0_60px_rgba(0,0,0,0.85)] overflow-hidden">
             <div class="flex items-center justify-between px-5 py-3 border-b border-slate-700 bg-gradient-to-b from-[#3a2f12] to-[#241c0c]">
@@ -515,75 +545,65 @@
     })();
     </script>
 
-<script src="js/anim-manifest.js?v=e571a3b008"></script>
-<script src="js/00-data.js?v=c964252c08"></script>
-<script src="js/01-drops-config.js?v=29b8a41e61"></script>
-<script src="js/02-stats-recompute.js?v=fab5902451"></script>
-<script src="js/03-combat-core.js?v=ba6a33b635"></script>
-<script src="js/04-combat-attack.js?v=aa73605dff"></script>
-<script src="js/05-kill-progression.js?v=286b4fbb3a"></script>
-<script src="js/06-status-allies.js?v=eba7e8d3e3"></script>
-<script src="js/07-skills-cast.js?v=47b188a1f2"></script>
-<script src="js/08-items-equip.js?v=839d061365"></script>
-<script src="js/09-vfx-render.js?v=c3f1d08e8f"></script>
-<script src="js/10-ui-tabs.js?v=ada52e6a11"></script>
-<script src="js/11-world-map.js?v=7705d3228b"></script>
-<script src="js/12-npc-quests.js?v=d3eb8bdb1b"></script>
-<script src="js/13-shop-save.js?v=cf92eed308"></script>
-<script src="js/14-craft-pandora.js?v=2ae9d32a91"></script>
-<script src="js/15-cards.js?v=5aa85edaac"></script>
-<script src="js/16-equip-book.js?v=aba2144851"></script>
-<script src="js/18-misc-book.js?v=6bed07560e"></script>
-<script src="js/sfx-index.js?v=544a8255e1"></script>
-<script src="js/17-audio.js?v=a2e82dbbce"></script>
-<script src="js/19-equipment-window.js?v=7088f605cd"></script>
-<script src="js/20-warehouse-window.js?v=2f838984a8"></script>
-<script src="js/21-relic-book.js?v=bdeff66680"></script>
-<script src="js/22-pets.js?v=911009677f"></script>
-<script src="js/23-summons.js?v=b2add4e3b7"></script>
-<!-- 離線掛機(核心模組,2026-07-10 由外掛 afk-offline.js 移入;不用數字檔名,避免與日後手動合併原版的新編號檔衝突) -->
-<script src="js/offline.js?v=40a2781e9c"></script>
-<!-- 奇岩賽狗場(核心模組;不用數字檔名,避免與日後手動合併原版的新編號檔衝突) -->
-<script src="js/dograce.js?v=e7a5b43597"></script>
-<!-- 手機版介面外掛(可獨立維護;原作者更新後重新加回此行即可) -->
-<script src="afk-mobile.js?v=5fb24f67a5"></script>
-<!-- 手機返回鍵/手勢:在「選存檔位/創角」子畫面回首頁(History API,無 DOM 掛點;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-backnav.js?v=583cb72dd2"></script>
-<!-- 選角畫面掛機資訊提供者(📍掛機地點/⏱已掛機時間;桌機附加渲染+手機共用資料源 AFK_SLOTINFO.read;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-slotinfo.js?v=5bbf74c91d"></script>
-<!-- 共用補充資料(掉落查詢+小百科共用的手動清單;純資料無 DOM,需先於 dex/wiki 載入) -->
-<script src="afk-extradata.js?v=db353a2a12"></script>
-<!-- 怪物/掉落查詢外掛(可獨立維護;原作者更新後重新加回此行即可) -->
-<script src="afk-dex.js?v=7866879a64"></script>
-<!-- 小百科外掛(專精/武器特性/職業魔法;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-wiki.js?v=b5f9e3e148"></script>
-<!-- 背景大圖快取 Service Worker 註冊(可獨立維護;原作者更新後重新加回此行即可) -->
-<script src="afk-sw.js?v=0c1440decf"></script>
-<!-- 手機 toast 提示(點按鈕的系統日誌訊息浮現;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-toast.js?v=9eefc1e368"></script>
-<!-- 能力值面板補點數分解 始/升/藥/總(可獨立維護;原作者更新後重新加回此行即可) -->
-<script src="afk-statpts.js?v=4b77da1ea0"></script>
-<!-- 首頁顯示原作者與加掛版版本號(可獨立維護) -->
-<script src="afk-syncinfo.js?v=a6bbc3051c"></script>
-<!-- 統一自製彈窗:全域接管 window.alert(可獨立維護;原作者更新後重新加回此行即可) -->
-<script src="afk-ui.js?v=344756fa77"></script>
-<!-- 外掛自動購買:肉 / 魔法屏障卷軸(可獨立維護;原作者更新後重新加回此行即可) -->
-<script src="afk-autobuy.js?v=483784fb82"></script>
-<!-- PWA:安裝成免網路遊玩 + 自動/手動更新 + 背景預抓離線資源(可獨立維護;原作者更新後重新加回此行即可) -->
-<script src="afk-pwa.js?v=550cce0b3a"></script>
-<!-- 首頁設定鈕:檢查存檔大小(純唯讀列出 localStorage 各 key 用量;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-storage.js?v=62818052fc"></script>
-<!-- 離線掛機歷史紀錄:首頁設定選單列出各角色最近 5 筆離線收益(純唯讀讀 afk_hist_<slot>;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-history.js?v=ff000b30ef"></script>
-<script src="afk-diag.js?v=77be4a7c90"></script>
-<!-- 顯示怪物名稱模式:首頁設定選單三選一(全部常駐/鎖定中常駐/原版;純 CSS+body 屬性;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-mobname.js?v=c1bb8d530d"></script>
-<!-- 木人場:選怪→打不死木人→量即時DPS(純測試,效果只在 afk_dummy 假地圖,不擋存檔、離線不結算;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-training.js?v=bf9db09222"></script>
-<!-- 背包(武器/防具/道具)與倉庫清單的名稱搜尋(顯示層過濾;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-itemsearch.js?v=91f92465eb"></script><!-- Cloudflare Web Analytics beacon 注入:統計人數/開啟次數(只在正式站台送;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-analytics.js?v=76c0635b4e"></script>
-<!-- 首頁「加掛版」品牌標記 + 外掛區外框(純視覺;需排在其他 afk-* 之後;可獨立維護,原作者更新後重新加回此行即可) -->
-<script src="afk-skin.js?v=d79a6a9b33"></script>
+    <script src="js/anim-manifest.js?v=v3.5.25-gongzhu-idle"></script>
+    <script src="js/00-data.js?v=v3.5.49-ticket-item-purge"></script>
+<script src="js/01-drops-config.js?v=v3.5.27-relic-batch18"></script>
+<script src="js/02-stats-recompute.js?v=v3.5.47-save-worker-guard"></script>
+    <script src="js/03-combat-core.js?v=v3.5.27-relic-batch18"></script>
+    <script src="js/04-combat-attack.js?v=v3.5.49-ticket-item-purge"></script>
+<script src="js/05-kill-progression.js?v=v3.5.27-relic-batch18"></script>
+    <script src="js/06-status-allies.js?v=v3.5.46-merc-support-hp-cost"></script>
+    <script src="js/07-skills-cast.js?v=v3.5.42-dash-move-speed"></script>
+<script src="js/08-items-equip.js?v=v3.5.36-ally-aura-icon"></script>
+<script src="js/09-vfx-render.js?v=v3.5.48-deadcode-purge"></script>
+<script src="js/10-ui-tabs.js?v=v3.5.42-dash-move-speed"></script>
+<script src="js/11-world-map.js?v=v3.5.28-pandora-relic-market"></script>
+<script src="js/12-npc-quests.js?v=v3.5.49-ticket-item-purge"></script>
+<script src="js/13-shop-save.js?v=v3.5.47-save-worker-guard"></script>
+<script src="js/14-craft-pandora.js?v=v3.5.48-deadcode-purge"></script>
+<script src="js/15-cards.js?v=v3.5.35-lindvior-card"></script>
+<script src="js/16-equip-book.js?v=v3.2.37-petgear"></script>
+<script src="js/18-misc-book.js?v=v3.2.13-bless-cleanup"></script>
+<script src="js/17-audio.js?v=v3.5.18-morphfx-fix"></script>
+<script src="js/19-equipment-window.js?v=v3.5.21-true-shanna"></script>
+<script src="js/20-warehouse-window.js?v=20260702a"></script>
+<script src="js/21-relic-book.js?v=v3.1.7"></script>
+    <script src="js/23-summons.js?v=v3.4.101-terror-types"></script>
+    <script src="js/22-pets.js?v=v3.5.2-party-debuffs"></script>
+    <script src="js/24-pandora-relic-market.js?v=v3.5.38-relic-requirement-pools"></script>
+
+    <!-- ═══════════ 加掛版外掛層（核心永遠是原作者原版；我們的功能全部是外掛疊上去） ═══════════ -->
+    <!-- afk-toggles 必須最先載入：外掛開關中樞（逃生門，自己不可被關；某支外掛壞掉時玩家關掉它就能用原版繼續玩） -->
+    <script src="afk-toggles.js"></script>
+    <!-- 共用基礎：自製彈窗/確認、dex/wiki 共用資料表（其他外掛依賴，排前面） -->
+    <script src="afk-ui.js"></script>
+    <script src="afk-extradata.js"></script>
+    <!-- 手機版面 / 返回鍵 -->
+    <script src="afk-mobile.js"></script>
+    <script src="afk-backnav.js"></script>
+    <!-- 資訊頁 / 查詢頁 -->
+    <script src="afk-slotinfo.js"></script>
+    <script src="afk-dex.js"></script>
+    <script src="afk-wiki.js"></script>
+    <!-- 設定選單 / 存檔 / 診斷 / 離線紀錄 -->
+    <script src="afk-storage.js"></script>
+    <script src="afk-history.js"></script>
+    <script src="afk-diag.js"></script>
+    <!-- 遊戲內小工具 -->
+    <script src="afk-statpts.js"></script>
+    <script src="afk-autobuy.js"></script>
+    <script src="afk-training.js"></script>
+    <script src="afk-itemsearch.js"></script>
+    <script src="afk-mobname.js"></script>
+    <script src="afk-toast.js"></script>
+    <!-- 迷你遊戲（我方自製） -->
+    <script src="js/dograce.js"></script>
+    <!-- PWA / SW / 統計 / 品牌（skin 固定排最後） -->
+    <script src="afk-pwa.js"></script>
+    <script src="afk-sw.js"></script>
+    <script src="afk-syncinfo.js"></script>
+    <script src="afk-analytics.js"></script>
+    <script src="afk-skin.js"></script>
+    <!-- ⏳ rearch 進行中：afk-offline.js（離線結算·還原中）、afk-traditional.js（傳統模式·新建中）尚未載入 -->
 </body>
 </html>

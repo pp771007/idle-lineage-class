@@ -1,0 +1,130 @@
+/**
+ * afk-toggles.js — 外掛開關中樞（所有 afk-* 外掛的地基，必須「最先」載入）
+ *
+ * 目的：核心永遠是原作者原版；我們的功能全是外掛疊上去。外掛靠「包核心函式」運作，
+ *   上游一改名就可能斷。此開關讓「某支外掛壞掉時，玩家自己在首頁關掉它 → 遊戲回到原版
+ *   行為照常能玩」，作者再慢慢修。
+ *
+ * 契約：
+ *   - 每支外掛在檔案最前面先 `if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('<id>')) return;`（純新增型），
+ *     或在「包核心函式」的 wrapper 內每次呼叫先問 `AFK_TOGGLES.enabled('<id>')`，關掉就 `return 原函式(...)`（透明放行）。
+ *   - 外掛載入時呼叫 `AFK_TOGGLES.register({id,name,desc,group,def})` 讓自己出現在開關面板。
+ *   - 讀不到 AFK_TOGGLES（此檔沒載到）時，外掛一律「當作開啟」照常運作（enabled 預設 true），不因缺開關而失效。
+ *
+ * 這支自己「不可被關」——它是逃生門。故意不包任何核心函式、不依賴任何其他外掛。
+ */
+(function () {
+    'use strict';
+    var LS = 'afk_toggle_';
+    var registry = [];   // {id,name,desc,group,def}
+
+    function find(id) { for (var i = 0; i < registry.length; i++) if (registry[i].id === id) return registry[i]; return null; }
+
+    var api = {
+        // 外掛自我登錄（重複 id 忽略）
+        register: function (spec) {
+            if (!spec || !spec.id || find(spec.id)) return;
+            registry.push({
+                id: spec.id,
+                name: spec.name || spec.id,
+                desc: spec.desc || '',
+                group: spec.group || '其他',
+                def: spec.def !== false   // 預設開；傳 def:false 才預設關
+            });
+        },
+        // 這支外掛現在是否啟用（讀 localStorage，未設過→用預設；讀不到 localStorage→啟用）
+        enabled: function (id) {
+            var r = find(id), def = r ? r.def : true;
+            try { var v = localStorage.getItem(LS + id); return v === null ? def : v === '1'; }
+            catch (e) { return def; }
+        },
+        set: function (id, on) { try { localStorage.setItem(LS + id, on ? '1' : '0'); } catch (e) {} },
+        list: function () { return registry.slice(); },
+        openPanel: openPanel
+    };
+    window.AFK_TOGGLES = api;
+
+    // ── 開關面板 ─────────────────────────────────────────────
+    function openPanel() {
+        if (document.getElementById('afk-toggles-overlay')) return;
+        var ov = document.createElement('div');
+        ov.id = 'afk-toggles-overlay';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:16px;';
+        var card = document.createElement('div');
+        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:560px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.6);';
+
+        var groups = {};
+        registry.forEach(function (r) { (groups[r.group] = groups[r.group] || []).push(r); });
+
+        var html = '<div style="padding:16px 18px;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+            + '<div><div style="font-size:17px;font-weight:700;">🎚️ 外掛開關</div>'
+            + '<div style="font-size:12px;color:#94a3b8;margin-top:3px;">某個外掛出問題時，先關掉它就能用原版繼續玩，作者修好再打開。改完按「重新整理」生效。</div></div>'
+            + '<button id="afk-tg-close" style="flex:none;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:6px 12px;cursor:pointer;">關閉</button></div>'
+            + '<div style="padding:10px 14px;">';
+
+        if (!registry.length) {
+            html += '<div style="color:#94a3b8;padding:14px;text-align:center;">目前沒有任何外掛登錄開關。</div>';
+        } else {
+            Object.keys(groups).forEach(function (g) {
+                html += '<div style="font-size:12px;color:#7dd3fc;font-weight:700;margin:12px 4px 6px;">' + esc(g) + '</div>';
+                groups[g].forEach(function (r) {
+                    var on = api.enabled(r.id);
+                    html += '<label style="display:flex;align-items:center;gap:12px;padding:9px 10px;border:1px solid #1e293b;border-radius:10px;margin-bottom:6px;cursor:pointer;background:#0b1222;">'
+                        + '<input type="checkbox" data-tgid="' + esc(r.id) + '" ' + (on ? 'checked' : '') + ' style="width:18px;height:18px;flex:none;accent-color:#38bdf8;">'
+                        + '<span style="flex:1;min-width:0;"><span style="font-weight:600;">' + esc(r.name) + '</span>'
+                        + (r.desc ? '<span style="display:block;font-size:11px;color:#94a3b8;margin-top:2px;">' + esc(r.desc) + '</span>' : '')
+                        + '</span></label>';
+                });
+            });
+        }
+        html += '</div>'
+            + '<div id="afk-tg-note" style="display:none;padding:10px 16px;color:#fbbf24;font-size:13px;border-top:1px solid #1e293b;">已變更，按下方「重新整理」套用。</div>'
+            + '<div style="padding:12px 16px;border-top:1px solid #1e293b;display:flex;gap:10px;justify-content:flex-end;">'
+            + '<button id="afk-tg-reset" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:8px 14px;cursor:pointer;">全部恢復預設</button>'
+            + '<button id="afk-tg-reload" style="background:#0ea5e9;border:none;color:#04263a;font-weight:700;border-radius:8px;padding:8px 16px;cursor:pointer;">重新整理</button></div>';
+
+        card.innerHTML = html;
+        ov.appendChild(card);
+        document.body.appendChild(ov);
+
+        function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+        ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+        card.querySelector('#afk-tg-close').addEventListener('click', close);
+        var note = card.querySelector('#afk-tg-note');
+        card.querySelectorAll('input[data-tgid]').forEach(function (cb) {
+            cb.addEventListener('change', function () { api.set(cb.getAttribute('data-tgid'), cb.checked); note.style.display = 'block'; });
+        });
+        card.querySelector('#afk-tg-reset').addEventListener('click', function () {
+            registry.forEach(function (r) { try { localStorage.removeItem(LS + r.id); } catch (e) {} });
+            card.querySelectorAll('input[data-tgid]').forEach(function (cb) { cb.checked = api.enabled(cb.getAttribute('data-tgid')); });
+            note.style.display = 'block';
+        });
+        card.querySelector('#afk-tg-reload').addEventListener('click', function () { try { location.reload(); } catch (e) { close(); } });
+    }
+
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+    // ── 永遠可達的入口（逃生門）──────────────────────────────
+    // 掛到首頁主選單；主選單還沒出現就用 observer 等它。此按鈕本身不可被關。
+    function injectEntry() {
+        if (document.getElementById('afk-toggles-entry')) return true;
+        var menu = document.getElementById('main-menu');
+        if (!menu) return false;
+        var btn = document.createElement('button');
+        btn.id = 'afk-toggles-entry';
+        btn.textContent = '🎚️ 外掛開關';
+        btn.style.cssText = 'display:block;margin:8px auto 0;background:rgba(15,23,42,.7);border:1px solid #334155;color:#cbd5e1;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;';
+        btn.addEventListener('click', openPanel);
+        menu.appendChild(btn);
+        return true;
+    }
+    if (!injectEntry()) {
+        try {
+            var mo = new MutationObserver(function () { if (injectEntry()) mo.disconnect(); });
+            mo.observe(document.documentElement, { childList: true, subtree: true });
+            // 保險：主選單長時間沒出現時，仍提供全域函式讓其他入口呼叫
+            setTimeout(function () { try { mo.disconnect(); } catch (e) {} }, 30000);
+        } catch (e) {}
+    }
+    try { console.log('[AFK-toggles] ready'); } catch (e) {}
+})();

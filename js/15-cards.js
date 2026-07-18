@@ -36,9 +36,14 @@ const CARD_REGIONS = [
     { key: 'aden',         name: '亞丁',       stat: 'resWind',  vals: [1, 2, 3],   maps: ['twilight_mt', 'dream_island'] },
     { key: 'tower',        name: '傲慢之塔',   stat: 'extraHit', vals: [1, 2, 3],   maps: '__pride__' },
     { key: 'rastabad',     name: '拉斯塔巴德', stat: 'mr',       vals: [1, 3, 5],   maps: ['rastabad_cave1', 'rastabad_cave2', 'rastabad_cave3', 'rastabad_gate', 'giant_tomb', 'demon_temple', 'rastabad_beast', 'dark_magic_lab', 'necro_training', 'elder_room', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room'] },
-    { key: 'rift',         name: '時空裂痕',   stat: 'resEarth', vals: [1, 2, 3],   maps: ['thebes_desert', 'thebes_pyramid', 'thebes_temple', 'tikal_area', 'tikal_deep', 'tikal_altar'] }
+    { key: 'rift',         name: '時空裂痕',   stat: 'resEarth', vals: [1, 2, 3],   maps: ['thebes_desert', 'thebes_pyramid', 'thebes_temple', 'tikal_area', 'tikal_deep', 'tikal_altar', 'sunrise_castle', 'sunrise_east', 'sunrise_west', 'sunrise_north'] }
 ];
 const CARD_STAT_LABEL = { mhp: 'HP', mmp: 'MP', mpR: 'MP自動恢復量', hpR: 'HP自動恢復量', dr: '傷害減免', weight: '負重上限', extraMp: '額外魔法點數', extraDmg: '額外傷害', extraHit: '額外命中', mr: 'MR', resFire: '火屬性抗性', resWater: '水屬性抗性', resWind: '風屬性抗性', resEarth: '地屬性抗性' };
+
+// ---- 特殊刷出怪：不在任何 DB.maps 出怪池（掃圖建索引抓不到）→ 手動歸入指定卡片地區（同時開通掉卡＋圖鑑）----
+//  怪id → { region: CARD_REGIONS key, mapLabel: 金卡「出沒」顯示文字 }
+//  🐉 v3.5.35 風龍林德拜爾：持有頑皮幼龍蛋於野外 1% 特殊刷出（js/03）·歸入亞丁地區（完成加成 resWind·風龍對味）。
+const CARD_SPECIAL_MOBS = { lindvior: { region: 'aden', mapLabel: '野外（持有頑皮幼龍蛋時極低機率遭遇）' } };
 
 // ---- 地圖 key → 中文名（供金卡「出沒地圖」顯示）----
 const _CARD_MAP_NAMES = {};
@@ -49,6 +54,7 @@ const _CARD_MAP_NAMES = {};
 })();
 function _cardMapName(k) {
     if (_CARD_MAP_NAMES[k]) return _CARD_MAP_NAMES[k];
+    let sp = k.match(/^__special_(.+)$/); if (sp && CARD_SPECIAL_MOBS[sp[1]]) return CARD_SPECIAL_MOBS[sp[1]].mapLabel;   // 🐉 特殊刷出怪：顯示自訂出沒說明
     let m = k.match(/^pride_f(\d+)$/); if (m) return '傲慢之塔' + m[1] + '樓';
     m = k.match(/^pride_(\d+)_(\d+)$/); if (m) return '傲慢之塔' + m[1] + '~' + m[2] + '樓';
     return k;
@@ -64,20 +70,28 @@ const CARD_MOB_MAPS = {};      // mobName -> [mapKey,...]
     CARD_REGIONS.forEach(reg => {
         let maps = (reg.maps === '__pride__') ? prideMaps : reg.maps;
         let names = [];
+        function regMob(mid, mob, mk) {   // 單一登錄點（出怪池怪＋變身鏈後續階共用）
+            let nm = mob.n;
+            if (names.indexOf(nm) === -1) names.push(nm);
+            if (!CARD_MOB_INFO[nm]) CARD_MOB_INFO[nm] = { id: mid, mob: mob };
+            (CARD_MOB_REGIONS[nm] = CARD_MOB_REGIONS[nm] || []);
+            if (CARD_MOB_REGIONS[nm].indexOf(reg.key) === -1) CARD_MOB_REGIONS[nm].push(reg.key);
+            (CARD_MOB_MAPS[nm] = CARD_MOB_MAPS[nm] || []);
+            if (CARD_MOB_MAPS[nm].indexOf(mk) === -1) CARD_MOB_MAPS[nm].push(mk);
+        }
         maps.forEach(mk => {
             let pool = DB.maps[mk]; if (!pool) return;
             pool.forEach(mid => {
                 let mob = DB.mobs[mid]; if (!mob || !mob.n) return;
                 if (mob.race === '血盟' || mob.race === '建築') return;   // 血盟／建築標籤排除（不收集、不掉卡：守護塔/城門/樓梯/傳送門等）
-                let nm = mob.n;
-                if (names.indexOf(nm) === -1) names.push(nm);
-                if (!CARD_MOB_INFO[nm]) CARD_MOB_INFO[nm] = { id: mid, mob: mob };
-                (CARD_MOB_REGIONS[nm] = CARD_MOB_REGIONS[nm] || []);
-                if (CARD_MOB_REGIONS[nm].indexOf(reg.key) === -1) CARD_MOB_REGIONS[nm].push(reg.key);
-                (CARD_MOB_MAPS[nm] = CARD_MOB_MAPS[nm] || []);
-                if (CARD_MOB_MAPS[nm].indexOf(mk) === -1) CARD_MOB_MAPS[nm].push(mk);
+                regMob(mid, mob, mk);
+                // 🦊 v3.5.2 變身鏈後續階（transformTo 目標·不在出怪池：九尾/殺生石）＝跟隨鏈根同圖同地區入圖鑑
+                let seen = {}; seen[mid] = 1; let t = mob.transformTo;
+                while (t && DB.mobs[t] && DB.mobs[t].n && !seen[t]) { seen[t] = 1; regMob(t, DB.mobs[t], mk); t = DB.mobs[t].transformTo; }
             });
         });
+        // 🐉 特殊刷出怪（CARD_SPECIAL_MOBS）：歸入指定地區——入 CARD_MOB_INFO 後 killMob 的掉卡閘（rollCardDrops）自動放行
+        for (let sid in CARD_SPECIAL_MOBS) { let sp = CARD_SPECIAL_MOBS[sid]; if (sp.region === reg.key && DB.mobs[sid] && DB.mobs[sid].n) regMob(sid, DB.mobs[sid], '__special_' + sid); }
         names.sort((a, b) => (CARD_MOB_INFO[a].mob.lv || 0) - (CARD_MOB_INFO[b].mob.lv || 0));
         CARD_REGION_MOBS[reg.key] = names;
     });
@@ -119,12 +133,27 @@ function ensureCardBook() {
 }
 
 // ---- 掉落（killMob 呼叫）：血盟以外、且該怪屬於某卡片地區才有卡；三階各自獨立、一般＝經典機率（不乘 classicDropMult）----
+// 🦊 v3.5.2 變身鏈卡片規則：中間階（有 transformTo·玉藻/九尾）不掉卡；最終階（殺生石）擲中時從整鏈三張卡隨機選一張。
+const CARD_CHAIN_BY_FINAL = (() => {   // 最終階怪名 -> 整鏈怪名清單（從鏈根走到底·目前僅九尾狐鏈）
+    const isTarget = {}; for (const k in DB.mobs) { const t = DB.mobs[k] && DB.mobs[k].transformTo; if (t) isTarget[t] = 1; }
+    const m = {};
+    for (const k in DB.mobs) {
+        const d = DB.mobs[k];
+        if (!d || !d.transformTo || isTarget[k]) continue;   // 只從鏈根出發（自己不是任何怪的變身目標）
+        const chain = [d.n]; let t = d.transformTo, guard = 0;
+        while (t && DB.mobs[t] && guard++ < 10) { chain.push(DB.mobs[t].n); t = DB.mobs[t].transformTo; }
+        m[chain[chain.length - 1]] = chain;
+    }
+    return m;
+})();
 function rollCardDrops(mob) {
     if (!mob || mob.race === '血盟' || mob.race === '建築') return;
+    if (mob.transformTo) return;   // 🦊 變身中間階被「擊敗」不掉卡——整鏈卡由最終階出
     if (!CARD_MOB_INFO[mob.n]) return;
-    _cardDropRoll(mob.n, 3, 0.00001);    // 金卡 0.001%
-    _cardDropRoll(mob.n, 2, 0.0001);     // 銀卡 0.01%
-    _cardDropRoll(mob.n, 1, 0.001);      // 普卡 0.1%
+    const chainPool = CARD_CHAIN_BY_FINAL[mob.n] || null;   // 最終階＝擲中時整鏈隨機
+    _cardDropRoll(mob.n, 3, 0.00001, chainPool);    // 金卡 0.001%
+    _cardDropRoll(mob.n, 2, 0.0001, chainPool);     // 銀卡 0.01%
+    _cardDropRoll(mob.n, 1, 0.001, chainPool);      // 普卡 0.1%
 }
 // 🎴 加分登錄 + 開通溢出退費（普/銀/金共用·useCardItem 與 acquireCard 單一真相）。回傳 {useN, overflow}。
 function _cardRegister(name, tier, count) {
@@ -149,11 +178,12 @@ function acquireCard(name, tier, count) {
     let rf = _cardRefundMsg(r.overflow);
     logSys(`<span class="${ct.col} font-bold">🎴 自動登錄「${name}」</span>` + (r.useN > 1 ? `<span class="text-slate-400">（${r.useN} 張）</span>` : '') + (rf ? `<span class="text-amber-300">（開通退費 ${rf}）</span>` : ''));
     if (cardDexTier(name) > oldTier && typeof calcStats === 'function') calcStats();   // 階級提升→重算地區完成加成
-    if ((r.overflow > 0 || count > r.useN) && typeof renderTabs === 'function') renderTabs();   // 有實體退費/多餘卡進背包→刷新道具欄（🚀 非 force：背包變動由分區簽章接住,戰鬥中走 250ms 節流,不再每殺一隻整組重刻五分頁）
+    if ((r.overflow > 0 || count > r.useN) && typeof renderTabs === 'function') renderTabs(true);   // 有實體退費/多餘卡進背包→刷新道具欄
     if (typeof _cardBookOpen !== 'undefined' && _cardBookOpen && typeof renderCardBook === 'function') renderCardBook();
 }
-function _cardDropRoll(name, tier, rate) {
+function _cardDropRoll(name, tier, rate, pool) {
     if (Math.random() >= rate) return;
+    if (pool && pool.length) name = pool[Math.floor(Math.random() * pool.length)];   // 🦊 變身鏈最終階：擲中後從整鏈隨機選一張（每階獨立選）
     acquireCard(name, tier, 1);   // 🎴 未開通→自動登錄(完成退溢出)；已開通→實體卡進背包
 }
 
@@ -587,12 +617,13 @@ function _codexMobThumbHtml(nm, mi, silh) {
     let hasW2 = (typeof MOB_ANIM_WEAPON_FX2 !== 'undefined') && MOB_ANIM_WEAPON_FX2.has(nm);
     if (!hasS && !hasW && !hasW2) return single;   // 純本體動畫怪→單張
     let enc = encodeURIComponent(nm);
+    let _dp = (typeof MOB_ANIM_8DIR !== 'undefined' && MOB_ANIM_8DIR.has(nm)) ? 'd6/' : '';   // 🧭 v3.2.64 八方向怪：影子/武器層亦在 d6 子夾（面對玩家向·同本體 mi.src）
     let st = 'position:absolute;top:0;left:0;width:64px;height:64px;object-fit:contain;';
     let L = '';
-    if (hasS) L += `<img src="assets/anim/${enc}/idle_s_0.png" style="${st}mix-blend-mode:multiply" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
+    if (hasS) L += `<img src="assets/anim/${enc}/${_dp}idle_s_0.png" style="${st}mix-blend-mode:multiply" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
     L += `<img src="${mi.src}" data-fb="${fb}" alt="${nm}" style="${st}" onerror="_mobImgErr(this)">`;
-    if (hasW) L += `<img src="assets/anim/${enc}/idle_w_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
-    if (hasW2) L += `<img src="assets/anim/${enc}/idle_w2_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
+    if (hasW) L += `<img src="assets/anim/${enc}/${_dp}idle_w_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
+    if (hasW2) L += `<img src="assets/anim/${enc}/${_dp}idle_w2_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
     return `<div style="position:relative;width:64px;height:64px">${L}</div>`;
 }
 

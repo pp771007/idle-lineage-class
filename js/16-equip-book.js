@@ -22,7 +22,7 @@ const EQUIP_CATEGORIES = [
     { key: 'chainsword', name: '鎖鏈劍',   group: '武器' },
     { key: 'bow',        name: '弓',       group: '武器' },
     { key: 'xbow',       name: '十字弓',   group: '武器' },
-    { key: 'quiver',     name: '箭筒',     group: '武器' },   // 🏺 只有遺物箭筒（改造便利箭筒／艾庫尤卡的永續箭筒）；一般箭矢＝彈藥不收錄，故「裝備收集冊」此分類恆為空、不會顯示
+    { key: 'quiver',     name: '箭筒',     group: '武器' },   // 🏺 v3.2.0 遺物箭筒（isArrow+relic·改造便利箭筒/艾庫尤卡的永續箭筒）：一般箭矢仍不收錄；本分類只在「遺物收集冊」出現（裝備收集冊 buildEquipIndex 跳過遺物→陣列空→分頁自動隱藏·EQUIP_CAT_BONUS 無此鍵→無全收集加成）
     { key: 'wand',       name: '魔杖',     group: '武器' },
     { key: 'qigu',       name: '奇古獸',   group: '武器' },
     { key: 'wpn_other',  name: '其他武器', group: '武器' },
@@ -85,7 +85,7 @@ const EQUIP_CAT_BONUS = {
 function equipCatKey(id, d) {
     if (!d) return null;
     if (d.type === 'wpn') {
-        if (d.isArrow) return (typeof isRelic === 'function' && isRelic(d)) ? 'quiver' : null;   // 🏺 遺物箭筒歸「箭筒」分類（進遺物收集冊）；一般箭矢＝彈藥，不收錄
+        if (d.isArrow) return (typeof isRelic === 'function' && isRelic(d)) ? 'quiver' : null;   // 🏺 v3.2.0 遺物箭筒歸「箭筒」分類（供遺物收集冊）；一般箭矢＝彈藥，不收錄
         if (d.isBow) return /十字弓|弩/.test(d.n || '') ? 'xbow' : 'bow';
         if (d.qigu) return 'qigu';
         if (d.chainsword) return 'chainsword';
@@ -109,8 +109,7 @@ function equipCatKey(id, d) {
         return 'wpn_other';
     }
     if (d.type === 'arm') {
-        if (d.slot === 'petarm') return 'pet';   // 🐾 寵物防具（type:arm 但歸「寵物裝備」分類，不是玩家防具）
-        if (d.armguard) return 'armguard';                           // 臂甲（slot:shield但 armguard 旗標）
+        if (d.armguard) return 'armguard';                           // 臂甲（slot:shield 但 armguard 旗標）
         if (d.slot === 'helm') return 'helm';
         if (d.slot === 'armor') return 'armor';
         if (d.slot === 'shin') return 'shin';   // 🦵 脛甲（盔甲下方·額外防具）
@@ -119,6 +118,7 @@ function equipCatKey(id, d) {
         if (d.slot === 'boots') return 'boots';
         if (d.slot === 'gloves') return 'gloves';
         if (d.slot === 'shield') return 'shield';
+        if (d.slot === 'petarm') return 'pet';   // 🛡️ v3.2.37 寵物防具 → 寵物裝備分類
         return null;
     }
     if (d.type === 'acc') {
@@ -126,7 +126,7 @@ function equipCatKey(id, d) {
         if (d.slot === 'ring') return 'ring';
         if (d.slot === 'belt') return 'belt';
         if (d.slot === 'ear1' || d.slot === 'ear2' || d.slot === 'ear') return 'ear';
-        if (d.slot === 'pet' || d.slot === 'petwpn' || d.slot === 'petarm') return 'pet';   // 🐾 之牙(petwpn)與寵物防具(petarm)同歸「寵物裝備」分類
+        if (d.slot === 'pet' || d.slot === 'petwpn') return 'pet';   // 🦴 v3.2.37 之牙改 slot:petwpn（寵物個別武器）
         if (d.slot === 'doll') return 'doll';
         return null;
     }

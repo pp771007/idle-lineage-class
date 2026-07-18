@@ -12,9 +12,17 @@ const MISC_CATEGORIES = [
     { key: 'special', name: '其他' }
 ];
 
+// 已停用且無獲取管道的舊道具：保留物品定義供舊存檔辨識，但永不列入收集冊、完成數或全收集加成。
+const MISC_BOOK_EXCLUDED = {
+    new_item_bless_wpn: true,
+    new_item_bless_arm: true,
+    new_item_bless_acc: true
+};
+
 // ---- 將一個道具分到類別 key（回傳 null＝不收錄：裝備/怪物卡片/收集冊本體）----
 function miscCatKey(id, d) {
     if (!d) return null;
+    if (MISC_BOOK_EXCLUDED[id]) return null;
     var t = d.type;
     if (t === 'wpn' || t === 'arm' || t === 'acc') return null;          // 裝備 → 裝備收集冊
     if (id === 'item_card_book' || id === 'item_equip_book') return null; // 兩本收集冊本體
@@ -54,8 +62,8 @@ const OBTAINABLE_MISC = (function buildObtainableMisc() {
     } catch (e) {}
     // (e) 地區獵殺加成道具（const 在 js/01 為閉包內·此處內聯）
     ['new_item_164', 'new_item_195', 'new_item_165'].forEach(add);
-    // (f) 兌換/特殊掉落取得的卷軸（gachaWeight0·掃描器漏掉·顯式補）：祝福的卷軸(伊賽馬利)、賦予祝福/解除詛咒卷軸(克里斯特/特殊掉落)
-    ['scroll_weapon_b', 'scroll_armor_b', 'new_item_bless_wpn', 'new_item_bless_arm', 'new_item_bless_acc', 'new_item_uncurse'].forEach(add);
+    // (f) 兌換/特殊取得的卷軸（gachaWeight0·掃描器漏掉·顯式補）：祝福的卷軸(伊賽馬利)、解除詛咒卷軸
+    ['scroll_weapon_b', 'scroll_armor_b', 'new_item_uncurse'].forEach(add);
     return S;
 })();
 function miscObtainable(id) { return !!OBTAINABLE_MISC[id]; }
@@ -103,16 +111,17 @@ function miscCollectionBonus(p, d) {
     }
 }
 
-// ---- 經典/傳統模式無法獲得的卷軸 → 預設「圖鑑已開通」(計入收集·讓卷軸類仍可完成) ----
-//   經典(classicMode)：賦予祝福+解除詛咒+祝福的卷軸無法獲得（克里斯特/碧恩 隱藏）；經典+傳統：再加所有強化卷軸(含詛咒的·僅經典+傳統任何來源都不產生施法卷軸·見 js/08:2)。
-const MISC_SCROLL_BLESS_UNCURSE = ['new_item_bless_wpn', 'new_item_bless_arm', 'new_item_bless_acc', 'new_item_uncurse', 'scroll_weapon_b', 'scroll_armor_b'];
-const MISC_SCROLL_ENHANCE = ['scroll_weapon', 'scroll_armor', 'scroll_acc', 'scroll_weapon_c', 'scroll_armor_c'];
+// ---- 無法獲得但仍有用途的卷軸 → 預設「圖鑑已開通」(計入收集·讓卷軸類仍可完成) ----
+//   new_item_uncurse 既有持有者仍可用、無新來源所以全模式開通；祝福的施法卷軸 scroll_*_b 仍可由伊賽馬利兌換→只在經典開通。
+//   已停用的三種賦予祝福卷軸由 MISC_BOOK_EXCLUDED 完全排除，不再用自動開通方式佔據收集冊格位。
+//   🏛️v3.0.83 傳統模式已取消：經典+傳統的強化卷軸自動開通分支移除（施法卷軸已恢復全模式可取得）。
+const MISC_SCROLL_UNCURSE = ['new_item_uncurse'];
+const MISC_SCROLL_BLESSED = ['scroll_weapon_b', 'scroll_armor_b'];
 function _miscModeAutoComplete() {
     if (!player) return;
     if (!player.miscDex) player.miscDex = {};
-    var marks = [];
-    if (player.classicMode) marks = marks.concat(MISC_SCROLL_BLESS_UNCURSE);                       // 經典：祝福/解除詛咒卷軸
-    if (player.classicMode && player.traditionalMode) marks = marks.concat(MISC_SCROLL_ENHANCE);   // 經典+傳統：所有強化卷軸
+    var marks = [].concat(MISC_SCROLL_UNCURSE);                                                    // 全模式：解除詛咒卷軸（來源已移除但仍有用途）
+    if (player.classicMode) marks = marks.concat(MISC_SCROLL_BLESSED);                             // 經典：祝福的施法卷軸（經典不掉施法卷軸→無從兌換）
     var changed = false;
     marks.forEach(function (id) { if (DB.items[id] && MISC_ITEM_CAT[id] && !player.miscDex[id]) { player.miscDex[id] = true; changed = true; } });
     if (changed && typeof saveMiscDex === 'function') saveMiscDex();
@@ -144,7 +153,7 @@ function ensureMiscDex() {
     // 🏛️ v3.0.61 倉庫庫存也補登錄（唯讀當前模式倉庫桶·同 ensureEquipBook）：收集冊上線前入倉的道具從未經 gainItem 登錄→讀檔時一併點亮
     try { if (typeof loadWarehouse === 'function') { var _w = loadWarehouse(); if (_w && Array.isArray(_w.items)) _w.items.forEach(reg); } } catch (e) {}
     if (changed && typeof saveMiscDex === 'function') saveMiscDex();
-    _miscModeAutoComplete();   // 🔒 經典/傳統：無法獲得的卷軸預設已收集
+    _miscModeAutoComplete();   // 🔒 經典：無法獲得的卷軸預設已收集
 }
 
 // ===== 🧰 道具收集冊 全螢幕書頁 UI =====
@@ -189,7 +198,7 @@ function renderMiscBook() {
         var d = DB.items[id]; var got = miscDexHas(id);
         var imgUrl = (typeof getIconUrl === 'function') ? getIconUrl(d) : (d.img || '');
         var silh = got ? '' : ' card-silhouette';
-        var glow = (got && typeof getGlowClass === 'function') ? getGlowClass({ id: id }, d) : '';                 // 🌟 祝福(金)/詛咒(紅)/賦予祝福(紫)卷軸對應光芒
+        var glow = (got && typeof getGlowClass === 'function') ? getGlowClass({ id: id }, d) : '';                 // 🌟 祝福(金)/詛咒(紅)卷軸對應光芒
         var nameCol = (got && typeof getItemColor === 'function') ? getItemColor({ id: id }) : (d.c || 'text-white');   // 祝福的=c-blessed金、詛咒的=c-cursed紅
         var nameHtml = got
             ? '<div class="text-xs font-bold ' + nameCol + ' truncate" title="' + (d.n || '') + '">' + (d.n || '') + '</div>'

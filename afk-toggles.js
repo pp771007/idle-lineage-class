@@ -72,12 +72,22 @@
         { id: 'traditional', name: '傳統模式(偽)／自動衝裝', desc: '打到/製作/潘朵拉的裝備自帶隨機強化值（商店除外），每角色各自開關', group: '核心玩法（不建議關）' }
     ].forEach(api.register);
 
+    // 開啟彈窗當下：實測非官方橫幅(#_orig_pbar)高度,直接寫進 overlay 的 padding-top,讓卡片一定落在橫幅下方。
+    //   不依賴 afk-mobile 非同步量測的 --orig-bar-h(橫幅由 gameLoop 晚注入、量測靠每秒 interval,面板開太早會讀到 0 而被蓋)。
+    function bannerPadPx() {
+        try { var b = document.getElementById('_orig_pbar'); if (b) { var h = b.getBoundingClientRect().height; if (h > 0) return Math.ceil(h) + 14; } } catch (e) {}
+        return 14;
+    }
+    function applyBannerPad(ov) { ov.style.paddingTop = bannerPadPx() + 'px'; }
+    api.applyBannerPad = applyBannerPad;   // 供其他外掛面板(傳統/省電…)共用
+
     // ── 開關面板 ─────────────────────────────────────────────
     function openPanel() {
         if (document.getElementById('afk-toggles-overlay')) return;
         var ov = document.createElement('div');
         ov.id = 'afk-toggles-overlay';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:calc(var(--orig-bar-h,0px) + 14px) 12px 12px;';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:14px 12px 12px;';
+        applyBannerPad(ov);   // 開啟當下實測橫幅高度直接設 padding-top（不靠 afk-mobile 的非同步 --orig-bar-h，避免量測未就緒時被橫幅蓋住）
         var card = document.createElement('div');
         card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:560px;width:100%;max-height:calc(100vh - var(--orig-bar-h,0px) - 30px);overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.6);';
 

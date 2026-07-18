@@ -641,20 +641,15 @@
         winner: winnerOf, placeBet: placeBet, claim: claimTicket, DOGS: DOGS
     };
 
-    // 🎯 入口：賽狗場只在「奇岩城鎮（town_giran）」出現浮動球（取代舊核心的波金 NPC；點球開下注視窗）。
-    //    離開奇岩城鎮就把球/視窗收起來——賽狗場屬於奇岩城，不跟著玩家跑到別的地圖。
+    // 🎯 入口：進「奇岩城鎮（town_giran）」時自動打開賽狗場浮動球（取代舊核心波金 NPC）。
+    //    球一旦出現即「跨畫面常駐」——離開奇岩城照樣在（可拖曳/縮放），方便邊打怪邊玩；不強制隱藏。
     setInterval(function () {
         try {
-            var inGiran = (typeof mapState !== 'undefined' && mapState && mapState.current === 'town_giran');
+            if (typeof mapState === 'undefined' || !mapState || mapState.current !== 'town_giran') return;
             var ball = document.getElementById('dograce-ball');
             var win = document.getElementById('dograce-win');
             var winOpen = win && win.style.display !== 'none';
-            if (inGiran) {
-                if ((!ball || ball.style.display === 'none') && !winOpen) toBall();
-            } else {
-                if (ball) ball.style.display = 'none';
-                if (win) win.style.display = 'none';   // 離開奇岩城鎮收起賽狗場
-            }
+            if ((!ball || ball.style.display === 'none') && !winOpen) toBall();   // 進奇岩城鎮確保球出現一次
         } catch (e) {}
     }, 2000);
 

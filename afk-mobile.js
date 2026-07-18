@@ -121,8 +121,12 @@
             'body.m-mobile #m-log-hd{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #334155;color:#cbd5e1;font-weight:700;flex:0 0 auto;}',
             'body.m-mobile #m-log-hd button{background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:2px 12px;cursor:pointer;}',
             'body.m-mobile #m-log-body{flex:1;overflow:auto;padding:6px;min-height:0;}',
-            'body.m-mobile #m-log-body #log-row{flex-direction:column !important;height:100%;gap:8px;}',
-            'body.m-mobile #m-log-body #combat-log-panel,body.m-mobile #m-log-body #syslog-panel{height:auto !important;flex:1 1 50% !important;min-height:0;}'
+            'body.m-mobile #m-log-body #log-row{flex-direction:column !important;height:100%;gap:0;}',
+            // 像 main：一次只顯示一個日誌（戰鬥/系統），由標題列 ⇆ 切換
+            'body.m-mobile #m-log-body #combat-log-panel,body.m-mobile #m-log-body #syslog-panel{height:100% !important;flex:1 1 100% !important;min-height:0;}',
+            'body.m-mobile.mlog-sys #m-log-body #combat-log-panel{display:none !important;}',
+            'body.m-mobile:not(.mlog-sys) #m-log-body #syslog-panel{display:none !important;}',
+            'body.m-mobile #m-log-hd .m-log-sw{background:#1e293b;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:2px 10px;margin-right:6px;cursor:pointer;}'
         ].join('\n');
         var st = document.createElement('style'); st.id = 'afk-mobile-nav-style'; st.textContent = css;
         (document.head || document.documentElement).appendChild(st);
@@ -134,9 +138,10 @@
         var sheet = document.getElementById('m-log-sheet');
         if (!sheet) {
             sheet = document.createElement('div'); sheet.id = 'm-log-sheet';
-            sheet.innerHTML = '<div id="m-log-hd"><span>📜 日誌</span><button type="button" id="m-log-close">✕ 關閉</button></div><div id="m-log-body"></div>';
+            sheet.innerHTML = '<div id="m-log-hd"><span id="m-log-title">📜 戰鬥日誌</span><span style="display:flex;align-items:center;"><button type="button" class="m-log-sw">⇆ 切換</button><button type="button" id="m-log-close">✕ 關閉</button></span></div><div id="m-log-body"></div>';
             document.body.appendChild(sheet);
             sheet.querySelector('#m-log-close').addEventListener('click', closeLog);
+            sheet.querySelector('.m-log-sw').addEventListener('click', switchLog);
         }
         return sheet;
     }
@@ -150,6 +155,11 @@
         if (row && _logHome && row.parentNode !== _logHome) _logHome.appendChild(row);
         var sheet = document.getElementById('m-log-sheet'); if (sheet) sheet.remove();
         document.body.classList.remove('mlog-open');
+    }
+    function switchLog() {
+        document.body.classList.toggle('mlog-sys');
+        var t = document.getElementById('m-log-title');
+        if (t) t.textContent = document.body.classList.contains('mlog-sys') ? '📜 系統與物品日誌' : '📜 戰鬥日誌';
     }
     function openLog() { moveLogToSheet(); document.body.classList.add('mlog-open'); updateNavActive(); }
     function closeLog() { document.body.classList.remove('mlog-open'); updateNavActive(); }

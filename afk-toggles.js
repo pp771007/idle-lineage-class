@@ -51,6 +51,7 @@
         { id: 'mobname', name: '怪物名稱顯示', desc: '怪物名稱常駐/鎖定中/hover 三選一', group: '遊戲介面' },
         { id: 'statpts', name: '能力值來源分解', desc: '能力值面板顯示始/升/藥/總點數來源', group: '遊戲介面' },
         { id: 'itemsearch', name: '背包名稱搜尋', desc: '背包武器/防具/道具分頁加搜尋框', group: '遊戲介面' },
+        { id: 'invlist', name: '背包條列式', desc: '背包改成一行一物品（取代上游格狀皮膚）；桌機/手機通用', group: '遊戲介面' },
         { id: 'dex', name: '怪物/掉落查詢', desc: '首頁入口：查怪名/地圖/掉落物', group: '查詢與資訊' },
         { id: 'wiki', name: '小百科', desc: '首頁入口：職業/裝備/機制/地圖等資料', group: '查詢與資訊' },
         { id: 'slotinfo', name: '選角掛機資訊', desc: '選存檔位顯示掛哪張圖、掛多久', group: '查詢與資訊' },
@@ -149,10 +150,10 @@
     function syncEntryVisibility() {
         var btn = document.getElementById('afk-toggles-entry');
         if (!btn) { injectEntry(); btn = document.getElementById('afk-toggles-entry'); if (!btn) return; }
-        var menu = document.getElementById('main-menu');
+        // 以「遊戲畫面是否顯示」為準（最可靠）：game-screen 沒隱藏＝在遊戲中→藏開關鈕；否則(首頁/選角/創角)顯示。
         var gs = document.getElementById('game-screen');
-        var onHome = menu ? !menu.classList.contains('hidden') : (!gs || gs.classList.contains('hidden'));
-        btn.style.display = onHome ? '' : 'none';
+        var inGame = gs && !gs.classList.contains('hidden');
+        btn.style.display = inGame ? 'none' : '';
     }
     syncEntryVisibility();
     setInterval(syncEntryVisibility, 1000);

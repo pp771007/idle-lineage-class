@@ -59,6 +59,7 @@
         { id: 'autobuy', name: '自動購買魔法屏障', desc: '魔法屏障卷軸耗盡自動補貨（肉已被上游移除；箭矢/藥水上游原生已有）', group: '自動化' },
         { id: 'training', name: '木人場', desc: '自動化面板：量測真實 DPS', group: '自動化' },
         { id: 'dograce', name: '奇岩賽狗場', desc: '奇岩城的賭狗小遊戲（浮動球入口，只賺金幣）', group: '自動化' },
+        { id: 'bossring', name: '傳送控制戒指自動找 BOSS', desc: '持傳送控制戒指時，場上無 BOSS 自動用瞬移卷軸召來（線上前景；排名/裂痕/軍王/攻城不套用）', group: '自動化' },
         { id: 'backnav', name: '手機返回鍵', desc: '子畫面按返回回首頁而非關 App（僅手機）', group: '系統與其他' },
         { id: 'pwa', name: 'PWA 安裝/離線', desc: '安裝成 App、圖片離線快取對帳', group: '系統與其他' },
         { id: 'storage', name: '設定選單', desc: '首頁 ⚙ 設定鈕與存檔大小檢查', group: '系統與其他' },

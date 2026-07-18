@@ -16,7 +16,9 @@
         // 外殼：拆掉藝術背景圖與固定比例，變普通滿高容器
         'body.afk-invlist .classic-inventory-shell{aspect-ratio:auto !important;background:none !important;height:100% !important;min-height:220px;max-width:100% !important;}',
         // 視窗：絕對定位的 4 欄 grid → 靜態單欄直向清單，正常捲動
-        'body.afk-invlist .classic-inventory-viewport{position:static !important;inset:auto !important;left:auto !important;top:auto !important;width:100% !important;height:100% !important;display:flex !important;flex-direction:column !important;gap:3px !important;padding:4px !important;grid-template-columns:none !important;grid-auto-rows:auto !important;background:transparent !important;}',
+        //   ⚠ iOS 觸控捲動：溢出量小時（如武器只多幾件）沒有 -webkit-overflow-scrolling:touch 會滑不動、
+        //     觸控被外層 #game-screen 吃掉（防具/道具溢出大反而滑得動）。補齊 iOS 觸控三件套。
+        'body.afk-invlist .classic-inventory-viewport{position:static !important;inset:auto !important;left:auto !important;top:auto !important;width:100% !important;height:100% !important;display:flex !important;flex-direction:column !important;gap:3px !important;padding:4px !important;grid-template-columns:none !important;grid-auto-rows:auto !important;background:transparent !important;overflow-y:auto !important;-webkit-overflow-scrolling:touch !important;touch-action:pan-y !important;overscroll-behavior:contain !important;}',
         // 每格：滿寬一行(圖示 + 名稱靠左、勾選/標籤靠右)
         'body.afk-invlist .classic-inventory-viewport > .list-item{width:100% !important;height:auto !important;min-height:34px;aspect-ratio:auto !important;display:flex !important;align-items:center !important;justify-content:space-between !important;padding:5px 9px !important;border:1px solid #334155 !important;border-radius:6px !important;background:rgba(15,23,42,.55) !important;box-shadow:none !important;overflow:visible !important;}',
         'body.afk-invlist .classic-inventory-viewport > .list-item:hover{border-color:#7dd3fc !important;filter:none;background:rgba(30,41,59,.75) !important;}',

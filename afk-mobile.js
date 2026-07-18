@@ -102,7 +102,8 @@
         { id: 'center', label: '⚔️ 戰鬥' },
         { id: 'left', label: '👥 隊伍' },
         { id: 'right', label: '🎒 背包' },
-        { id: 'log', label: '📜 日誌' }
+        { id: 'log', label: '📜 日誌' },
+        { id: 'logout', label: '🚪 登出' }   // 特判：不是切欄，而是跳確認窗→存檔→回首頁
     ];
     var _navStyled = false;
     function ensureNavStyle() {
@@ -129,7 +130,23 @@
             'body.m-mobile #m-log-body #combat-log-panel,body.m-mobile #m-log-body #syslog-panel{height:100% !important;flex:1 1 100% !important;min-height:0;}',
             'body.m-mobile.mlog-sys #m-log-body #combat-log-panel{display:none !important;}',
             'body.m-mobile:not(.mlog-sys) #m-log-body #syslog-panel{display:none !important;}',
-            'body.m-mobile #m-log-hd .m-log-sw{background:#1e293b;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:2px 10px;margin-right:6px;cursor:pointer;}'
+            'body.m-mobile #m-log-hd .m-log-sw{background:#1e293b;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:2px 10px;margin-right:6px;cursor:pointer;}',
+            // 登出確認視窗（自製，取代原生 confirm）
+            '#m-logout-modal{display:none;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:99998;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
+            '#m-logout-modal.open{display:flex;}',
+            '#m-logout-card{width:min(360px,92vw);background:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}',
+            '#m-logout-msg{color:#e2e8f0;font-size:15px;line-height:1.7;text-align:center;margin-bottom:18px;}',
+            '#m-logout-btns{display:flex;gap:10px;}',
+            '#m-logout-btns button{flex:1;padding:11px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit;border:1px solid #334155;touch-action:manipulation;}',
+            '#m-logout-cancel{background:#1e293b;color:#cbd5e1;}',
+            '#m-logout-cancel:active{background:#334155;}',
+            '#m-logout-ok{background:#b45309;color:#fff;border-color:#d97706;}',
+            '#m-logout-ok:active{background:#92400e;}',
+            // 登出遮罩：按確定後立刻蓋住，撐過 reload 重開機那幾秒
+            '#m-logout-overlay{position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:100000;background:#020617;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}',
+            '#m-logout-overlay-spin{width:38px;height:38px;border:3px solid #334155;border-top-color:#f59e0b;border-radius:50%;animation:m-logout-spin 0.8s linear infinite;}',
+            '#m-logout-overlay-txt{color:#e2e8f0;font-size:15px;letter-spacing:0.5px;}',
+            '@keyframes m-logout-spin{to{transform:rotate(360deg);}}'
         ].join('\n');
         var st = document.createElement('style'); st.id = 'afk-mobile-nav-style'; st.textContent = css;
         (document.head || document.documentElement).appendChild(st);
@@ -168,6 +185,39 @@
     function closeLog() { document.body.classList.remove('mlog-open'); updateNavActive(); }
     function toggleLog() { if (document.body.classList.contains('mlog-open')) closeLog(); else openLog(); }
 
+    // --- 登出回首頁：自製確認窗（不用原生 confirm，iOS Safari 會抑制）→ 存檔 → 記離線錨點 → reload ---
+    function doLogout() {
+        var m = document.getElementById('m-logout-modal') || buildLogoutModal();
+        m.classList.add('open');
+    }
+    function buildLogoutModal() {
+        var m = document.createElement('div');
+        m.id = 'm-logout-modal';
+        m.innerHTML =
+            '<div id="m-logout-card">' +
+            '<div id="m-logout-msg">回首頁前會<b>自動幫你存檔</b>，進度不會遺失。<br>登出後會開始離線掛機（上限 24 小時）。<br>確定回首頁？</div>' +
+            '<div id="m-logout-btns"><button id="m-logout-cancel" type="button">取消</button><button id="m-logout-ok" type="button">確定回首頁</button></div>' +
+            '</div>';
+        document.body.appendChild(m);
+        function close() { m.classList.remove('open'); }
+        m.addEventListener('click', function (e) { if (e.target === m) close(); });
+        m.querySelector('#m-logout-cancel').addEventListener('click', close);
+        m.querySelector('#m-logout-ok').addEventListener('click', function () {
+            try { if (typeof window.saveGame === 'function') window.saveGame(); } catch (e) {}   // 先存當前進度（漏掉上次自動存檔後的收益）
+            try { if (window.__afk && window.__afk.stamp) window.__afk.stamp(); } catch (e) {}   // 存完蓋錨點：存檔時間=離線起算時間
+            showLogoutOverlay();   // 立刻蓋遮罩：reload 重開機那幾秒別看到殘留戰鬥畫面
+            requestAnimationFrame(function () { requestAnimationFrame(function () { try { location.reload(); } catch (e) {} }); });
+        });
+        return m;
+    }
+    function showLogoutOverlay() {
+        if (document.getElementById('m-logout-overlay')) return;
+        var o = document.createElement('div');
+        o.id = 'm-logout-overlay';
+        o.innerHTML = '<div id="m-logout-overlay-spin"></div><div id="m-logout-overlay-txt">已自動存檔，正在回首頁…</div>';
+        document.body.appendChild(o);
+    }
+
     function setView(id) {
         if (document.body.classList.contains('mlog-open')) closeLog();   // 切欄一併收日誌
         document.body.classList.remove('mview-left', 'mview-center', 'mview-right');
@@ -196,7 +246,7 @@
                 var btn = document.createElement('button');
                 btn.className = 'm-nav-btn'; btn.type = 'button';
                 btn.setAttribute('data-view', v.id); btn.textContent = v.label;
-                btn.addEventListener('click', v.id === 'log' ? toggleLog : function (id) { return function () { setView(id); }; }(v.id));
+                btn.addEventListener('click', v.id === 'log' ? toggleLog : (v.id === 'logout' ? doLogout : function (id) { return function () { setView(id); }; }(v.id)));
                 nav.appendChild(btn);
             });
             document.body.appendChild(nav);

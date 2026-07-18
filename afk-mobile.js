@@ -97,6 +97,10 @@
             //   ⑥ 內層捲動區的 iOS 觸控三件套：溢出量小時沒有這組會「滑不動」(觸控被外層吃掉·afk-invlist 踩過同一雷)；
             //      overscroll-behavior:contain 同時擋「捲到底把後面的遊戲畫面一起帶著捲」的連鎖(雙層捲軸打架)。
             + 'body.m-mobile :is(.classic-skill-grid-scroll, #warehouse-window-content, #interaction-content, .as-box, #combat-log, #sys-log, #card-book-body, #equip-book-body, #misc-book-body, #relic-book-body, #modal-compare, #item-modal > div:not(#modal-compare)){ -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }\n'
+            //   ⑥b 道具視窗說明文字:卡片是 .panel(flex 直欄),上游手機 CSS 給 #modal-item-desc 設 min-height:0
+            //      = 允許縮到比內容矮 → 文字被壓扁溢出畫在按鈕底下(裝備比對開啟時最明顯)。鎖 flex-shrink,
+            //      內容撐開改由外層卡片(上游 overflow-y:auto)捲動。寫這裡不動上游 css,同步原版也不會丟。
+            + 'body.m-mobile #modal-item-desc{ flex: 0 0 auto !important; }\n'
             //   ⑦ 嵌入式裝備視窗:body 層級 fixed 圖層,原生捲動鏈走 DOM 祖先碰不到 #game-screen(手指拖 12 格區=划不動)。
             //      touch-action:none 關掉原生捲動(免 iOS 對 body 橡皮筋),垂直拖曳由 bindEquipTouchScroll 轉發給 #game-screen。
             + 'body.m-mobile #equipment-window.equipment-window-embedded:not(.hidden){ touch-action: none; }\n'

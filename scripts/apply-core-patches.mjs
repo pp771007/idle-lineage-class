@@ -123,7 +123,56 @@ function patch16Slots() {
   } else { already++; }
 }
 
-const PATCHES = [patchMaybeSpawnMobs, patchTradEnHook, patch16Slots];
+// ── 補丁 4：js/22 寵/召 sprite ticker 改「間接呼叫」──────────────
+//   上游 setInterval(_petAnimApply, …) 直接捕捉原函式參照 → afk-powersave 的 wrapper 攔不到
+//   (關戰鬥動畫後寵物/召喚照樣動)。改箭頭間接呼叫=每次經全域解析,外掛包得住。
+function patchPetAnimTicker() {
+  const FILE = 'js/22-pets.js';
+  let s = readFileSync(FILE, 'utf8');
+  if (s.includes('setInterval(() => { _petAnimApply(); }')) { already++; return; }
+  const ANCHOR = 'setInterval(_petAnimApply, 1000 / PET_ANIM_FPS);';
+  if (s.indexOf(ANCHOR) < 0) throw new Error(`[${FILE}] 找不到 _petAnimApply ticker 錨點——上游可能改寫了寵物動畫排程。`);
+  s = s.replace(ANCHOR, 'setInterval(() => { _petAnimApply(); }, 1000 / PET_ANIM_FPS);   // 🔌 加掛版補丁:間接呼叫讓外掛(省電模式)wrapper 攔得住;直接傳參照會被捕死原函式');
+  if (!CHECK) writeFileSync(FILE, s);
+  changed++;
+  console.log(`[patch] 寵/召 sprite ticker 間接呼叫（${FILE}）`);
+}
+
+// ── 補丁 5：js/07 迴避頭目 與 外掛「自動找BOSS」互斥 ─────────────
+//   afk-bossring 召來的王若被「迴避頭目(瞬移卷軸)」自動逃離立刻瞬移走=功能互咬。
+//   逃離條件加 !_huntBoss(讀外掛暴露的 AFK_BOSSRING.huntActive();外掛未載=false 照常)。
+function patchBossHuntEscape() {
+  const FILE = 'js/07-skills-cast.js';
+  let s = readFileSync(FILE, 'utf8');
+  if (s.includes('AFK_BOSSRING')) { already++; return; }
+  const A1 = "let tChk = document.getElementById('set-teleport');";
+  const A2 = 'if (tChk && tChk.checked && mapState.mobs.some(m => m && m.boss && !m.noAutoTeleport)';
+  if (s.indexOf(A1) < 0 || s.indexOf(A2) < 0) throw new Error(`[${FILE}] 找不到迴避頭目錨點——上游可能改寫了自動瞬移段。`);
+  s = s.replace(A1, A1 + "\n        let _huntBoss = !!(window.AFK_BOSSRING && window.AFK_BOSSRING.huntActive && window.AFK_BOSSRING.huntActive());   // 🔌 加掛版補丁:外掛「自動找BOSS」進行中→抑制逃離(否則剛召來的王立刻被瞬移走);外掛未載入=false 照常");
+  s = s.replace(A2, 'if (tChk && tChk.checked && !_huntBoss && mapState.mobs.some(m => m && m.boss && !m.noAutoTeleport)');
+  if (!CHECK) writeFileSync(FILE, s);
+  changed++;
+  console.log(`[patch] 迴避頭目×自動找BOSS互斥（${FILE}）`);
+}
+
+// ── 補丁 6：js/08 useItem 加 keepModal 參數 ─────────────────────
+//   外掛自動瞬移(afk-bossring)非 silent 使用卷軸時,上游會 closeModal() 把玩家開著的物品視窗關掉。
+//   加第三參數 keepModal 讓自動路徑保留視窗(未傳=false,原行為不變)。
+function patchUseItemKeepModal() {
+  const FILE = 'js/08-items-equip.js';
+  let s = readFileSync(FILE, 'utf8');
+  if (s.includes('keepModal')) { already++; return; }
+  const A1 = 'function useItem(u, silent = false) {';
+  const A2 = "if(!silent && document.getElementById('item-modal').classList.contains('hidden') === false";
+  if (s.indexOf(A1) < 0 || s.indexOf(A2) < 0) throw new Error(`[${FILE}] 找不到 useItem 錨點——上游可能改寫了簽名或關窗段。`);
+  s = s.replace(A1, 'function useItem(u, silent = false, keepModal = false) {   // 🔌 加掛版補丁 keepModal:自動觸發(如外掛自動瞬移)非 silent 使用時,不關玩家開著的物品視窗');
+  s = s.replace(A2, "if(!silent && !keepModal && document.getElementById('item-modal').classList.contains('hidden') === false");
+  if (!CHECK) writeFileSync(FILE, s);
+  changed++;
+  console.log(`[patch] useItem keepModal（${FILE}）`);
+}
+
+const PATCHES = [patchMaybeSpawnMobs, patchTradEnHook, patch16Slots, patchPetAnimTicker, patchBossHuntEscape, patchUseItemKeepModal];
 
 try {
   for (const p of PATCHES) p();

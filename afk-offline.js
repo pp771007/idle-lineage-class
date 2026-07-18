@@ -1268,6 +1268,25 @@
         return _gi.apply(this, arguments);
       };
     }
+
+    // ── ff 洩漏守衛(包核心全域,不動核心檔):補跑期間 sprite 幀凍結、戰鬥音效靜音 ──
+    //   上游 8fps ticker 只看 document.hidden:補跑中照推玩家/傭兵 sprite 幀,受擊又是 HP-delta 驅動
+    //   (補跑每拍都在扣血)→ 人物站在凍結畫面上狂播受傷動作;音效逐拍觸發、回前景全部疊在一起爆播(玩家回報)。
+    //   sprite 用 ffSmall 放行小補跑(≤2秒前景微卡頓,否則正常遊玩偶爾停格);音效連小補跑也靜音(疊音更煩)。
+    ['_playerMorphApply', '_allySpritesApply'].forEach(function (fn) {
+      if (typeof window[fn] === 'function' && !window[fn].__afkFfGuard) {
+        var _o = window[fn];
+        window[fn] = function () { if (typeof state !== 'undefined' && state && state.ff && !state.ffSmall) return; return _o.apply(this, arguments); };
+        window[fn].__afkFfGuard = true;
+      }
+    });
+    ['playSfx', 'playMobHurt', 'playSpellCast', 'playMobKill'].forEach(function (fn) {
+      if (typeof window[fn] === 'function' && !window[fn].__afkFfGuard) {
+        var _o = window[fn];
+        window[fn] = function () { if (typeof state !== 'undefined' && state && state.ff) return; return _o.apply(this, arguments); };
+        window[fn].__afkFfGuard = true;
+      }
+    });
   })();
 
   console.log('[AFK] hooks OK — 離線掛機(外掛)已啟用(上限 ' + CAP_HOURS + ' 小時，撞死即停，存活回原狩獵圖，分段檢查點防中斷)。');

@@ -2849,9 +2849,7 @@ button.classic-skill-cell { cursor:pointer; }
     #item-modal > div:not(#modal-compare) { flex: 1 1 auto; min-height: 0; padding: 14px !important; overflow-y: auto; }
     #modal-compare:not(.hidden) { flex: 0 1 38dvh; max-height: 38dvh !important; padding: 12px !important; overflow-y: auto; }
     #modal-item-name { font-size: 18px !important; margin-bottom: 8px !important; padding-bottom: 8px !important; }
-    /* ⚠ 卡片是 .panel(flex 直欄):desc 若允許 shrink(min-height:0)會被壓到比內容矮→文字溢出畫在按鈕底下。
-       flex-shrink 鎖 0 讓內容撐開、由外層卡片 overflow-y:auto 捲動。 */
-    #modal-item-desc { font-size: 14px !important; margin-bottom: 12px !important; min-height: 0 !important; flex: 0 0 auto !important; }
+    #modal-item-desc { font-size: 14px !important; margin-bottom: 12px !important; min-height: 0 !important; }
     #modal-actions { gap: 7px !important; }
     #modal-actions button, #item-modal > div:not(#modal-compare) > button { min-height: 42px; padding: 7px 8px !important; font-size: 14px !important; }
 

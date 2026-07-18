@@ -21,6 +21,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('offline')) return;   // 🎚️ 外掛開關:關掉→不掛任何鉤子,遊戲回原版(無離線結算)
 
   // ----- 可調參數 ---------------------------------------------------------
   var CAP_HOURS        = 24;                      // 離線收益上限(小時)
@@ -1232,5 +1233,42 @@
     forceCatchup: function (mins, noFast) { _forceNoFast = !!noFast; runCatchup(Math.floor((mins || 60) * 60000 / TICK_MS), true, (typeof mapState !== 'undefined' && mapState && mapState.current) || ''); }   // 帶當前地圖,否則 gotoMap(undefined) 空轉零收益;noFast=true 強制全模擬(A/B 用)
   };
 
-  console.log('[AFK] hooks OK — 離線掛機(核心)已啟用(上限 ' + CAP_HOURS + ' 小時，撞死即停，存活回原狩獵圖，分段檢查點防中斷)。');
+  // ═══ 外掛化掛點:自己 monkey-patch 上游原版核心(取代舊「核心直呼」;上游沒這些鉤子) ═══
+  //   saveGame/changeMap 尾端蓋錨點;loadGame 前後擷取+結算;killMob/gainItem 結算期間計數。
+  //   全部保留原函式並 apply(),關掉本外掛(上方 gate return)則核心完全原版。
+  (function installOfflineHooks() {
+    if (typeof saveGame === 'function') {
+      var _save = saveGame;
+      window.saveGame = function () { var r = _save.apply(this, arguments); try { stamp(); } catch (e) {} return r; };
+    }
+    if (typeof changeMap === 'function') {
+      var _cm = changeMap;
+      window.changeMap = function () { var r = _cm.apply(this, arguments); try { stamp(); } catch (e) {} return r; };
+    }
+    if (typeof loadGame === 'function') {
+      var _load = loadGame;
+      window.loadGame = function () {
+        var pre = null; try { pre = window.offlinePreLoad(); } catch (e) {}   // ⚠ 必須在原 loadGame(回村甦醒會蓋 afk_map)之前擷取
+        var r = _load.apply(this, arguments);
+        try { window.offlineAfterLoad(pre); } catch (e) { try { console.warn('[AFK] offlineAfterLoad error:', e); } catch (_) {} }
+        return r;
+      };
+    }
+    if (typeof killMob === 'function') {
+      var _km = killMob;
+      window.killMob = function (idx) {
+        if (window.__afkKillTally) { try { var m = mapState.mobs[idx]; if (m && !m._dead && m.n) window.__afkKillTally[m.n] = (window.__afkKillTally[m.n] || 0) + 1; } catch (e) {} }
+        return _km.apply(this, arguments);
+      };
+    }
+    if (typeof gainItem === 'function') {
+      var _gi = gainItem;
+      window.gainItem = function (id, cnt) {
+        if (window.__afkGainTally && id) { try { window.__afkGainTally[id] = (window.__afkGainTally[id] || 0) + (cnt == null ? 1 : cnt); } catch (e) {} }
+        return _gi.apply(this, arguments);
+      };
+    }
+  })();
+
+  console.log('[AFK] hooks OK — 離線掛機(外掛)已啟用(上限 ' + CAP_HOURS + ' 小時，撞死即停，存活回原狩獵圖，分段檢查點防中斷)。');
 })();

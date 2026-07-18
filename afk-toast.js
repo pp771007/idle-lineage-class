@@ -21,7 +21,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
-  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('toast')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('mobile')) return;   // 🎚️ 併入「手機版面」開關(toast 屬手機介面一部分)
 
   var TOAST_MS = 3500;          // 每則 toast 停留時間(毫秒)
   var MAX_TOASTS = 1;           // 畫面同時最多幾張,超過移除最舊(使用者要求只留一張)

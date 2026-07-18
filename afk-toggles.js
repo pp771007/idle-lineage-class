@@ -47,8 +47,7 @@
     // ── 內建外掛目錄：先自動登錄，面板一定列得出來（就算某支外掛載入失敗也能被關/開）──
     //   id = 外掛檔名去掉 afk- 前綴；def:false 才預設關。infra(afk-ui/extradata/sw/toggles)刻意不列＝不可關。
     [
-        { id: 'mobile', name: '手機薄殼', desc: '讓空間給非官方橫幅（桌機/手機通用）＋手機標記；版面用上游原版、不覆寫', group: '遊戲介面' },
-        { id: 'toast', name: '手機提示 toast', desc: '把點擊事件的訊息浮現成 toast（僅手機）', group: '遊戲介面' },
+        { id: 'mobile', name: '手機版面', desc: '底部導覽/浮動日誌/手機提示 toast/橫幅讓位；版面內部用上游原版', group: '遊戲介面' },
         { id: 'mobname', name: '怪物名稱顯示', desc: '怪物名稱常駐/鎖定中/hover 三選一', group: '遊戲介面' },
         { id: 'statpts', name: '能力值來源分解', desc: '能力值面板顯示始/升/藥/總點數來源', group: '遊戲介面' },
         { id: 'itemsearch', name: '背包名稱搜尋', desc: '背包武器/防具/道具分頁加搜尋框', group: '遊戲介面' },
@@ -57,7 +56,7 @@
         { id: 'slotinfo', name: '選角掛機資訊', desc: '選存檔位顯示掛哪張圖、掛多久', group: '查詢與資訊' },
         { id: 'history', name: '離線掛機紀錄', desc: '設定選單：最近離線結算紀錄', group: '查詢與資訊' },
         { id: 'diag', name: '快取診斷', desc: '設定選單：回報問題用的取證工具', group: '查詢與資訊' },
-        { id: 'autobuy', name: '自動購買（上游已內建，多餘）', desc: '肉已被上游移除、魔法屏障卷軸上游 v3.3.15 起「自動使用＝自動購買」已內建 → 本外掛預設關閉', group: '自動化', def: false },
+        { id: 'autobuy', name: '自動購買魔法屏障', desc: '魔法屏障卷軸耗盡自動補貨（肉已被上游移除；箭矢/藥水上游原生已有）', group: '自動化' },
         { id: 'training', name: '木人場', desc: '自動化面板：量測真實 DPS', group: '自動化' },
         { id: 'dograce', name: '奇岩賽狗場', desc: '奇岩城的賭狗小遊戲（浮動球入口，只賺金幣）', group: '自動化' },
         { id: 'backnav', name: '手機返回鍵', desc: '子畫面按返回回首頁而非關 App（僅手機）', group: '系統與其他' },

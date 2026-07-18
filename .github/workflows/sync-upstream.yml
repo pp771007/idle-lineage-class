@@ -1,0 +1,61 @@
+name: 同步上游原版（開 PR）
+
+# ⚠ 手動觸發 only（workflow_dispatch）：就算合併進 main 也不會自己排程跑，要在 Actions 頁面按「Run workflow」才動。
+#    產出一律開 PR、不直接 push main —— 自動更新的結果永遠是等人 review 的 PR，不會蓋掉 main。
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: '上游要同步到的 ref（預設 main 最新）'
+        required: false
+        default: 'main'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 本 repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Clone 上游原版（shines871）
+        run: |
+          git clone --depth 1 --branch "${{ github.event.inputs.upstream_ref }}" \
+            https://github.com/shines871/idle-lineage-class.git /tmp/upstream
+          echo "UP_SHA=$(git -C /tmp/upstream rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - name: 鏡像資產（assets / public）
+        run: |
+          rsync -a --delete /tmp/upstream/assets/ assets/
+          if [ -d /tmp/upstream/public/assets ]; then rsync -a --delete /tmp/upstream/public/assets/ public/assets/; fi
+
+      - name: 同步核心 + 套補丁 + 重組 index + 重產 manifest + smoke
+        run: node scripts/sync-upstream.mjs /tmp/upstream
+
+      - name: 有變更才開 PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "上游無變更，或同步後與現況一致 → 不開 PR。"
+            exit 0
+          fi
+          BR="auto/upstream-sync-${UP_SHA}-$(date +%Y%m%d-%H%M)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BR"
+          git add -A
+          git commit -m "chore(sync): 同步上游原版 ${UP_SHA}（核心整包換 + 自動補丁 + 重產）"
+          git push origin "$BR"
+          gh pr create \
+            --title "同步上游原版 ${UP_SHA}" \
+            --body "自動同步上游原版核心（shines871 @ ${UP_SHA}）。核心已整包換原版 + \`apply-core-patches.mjs\` 補回加掛版鉤子（maybeSpawnMobs / gainItem 強化）+ 重組 index + 重產 manifest + smoke 綠。**外掛層未動**。請 review 後合併。若補丁腳本錨點失效會在上一步 exit 1（不會產生 PR）。" \
+            --base main --head "$BR"

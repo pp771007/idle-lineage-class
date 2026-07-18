@@ -37,9 +37,12 @@
 
   function norm(s) { return (s || '').toLowerCase(); }
 
-  // 過濾 container 的「直接子元素」:textContent 含關鍵字才顯示。skipEl=搜尋框自己(不過濾)。
-  function filterChildren(container, kw, skipEl) {
-    if (!container) return;
+  // 過濾「實際裝物品列的容器」的直接子元素:textContent 含關鍵字才顯示。skipEl=搜尋框自己(不過濾)。
+  //   ⚠ 上游 1.8 皮膚把列搬進 .classic-inventory-viewport 內層——過濾分頁 div 的直接子層打不到任何列
+  //   (搜尋看起來沒作用),一律先找 viewport、沒有才退回分頁 div。
+  function filterChildren(tabDiv, kw, skipEl) {
+    if (!tabDiv) return;
+    var container = tabDiv.querySelector('.classic-inventory-viewport') || tabDiv;
     kw = norm(kw.trim());
     for (var i = 0; i < container.children.length; i++) {
       var el = container.children[i];
@@ -51,7 +54,9 @@
 
   function makeBox(inputId, key, onChange) {
     var wrap = document.createElement('div');
-    wrap.className = 'afk-isearch';
+    // ⚠ 'sticky' class 是保命符:上游 decorateClassicInventoryTab 會把「沒有 sticky/toolbar class 的分頁子元素」
+    //   全部搬進 viewport 物品格裡——搜尋框被搬走就變成格子裡的一格(版面亂+每輪重繪都被搬=打字中斷)。
+    wrap.className = 'afk-isearch sticky';
     wrap.dataset.afkPersist = '1';   // 背包重建(_clearInvTab)時保留此節點:輸入框若被換新,手機打字中的焦點與軟鍵盤會被中斷
     var inp = document.createElement('input');
     inp.id = inputId; inp.type = 'search'; inp.autocomplete = 'off';
@@ -92,6 +97,11 @@
       }
       var cur = document.getElementById(inputId);
       cur = cur && cur.parentElement;
+      // 舊輪次被搬進 viewport 的框撈回分頁層(頭部之後);位置不對的框留著會被當物品格
+      if (cur && cur.parentElement !== div) {
+        var hdr = div.firstElementChild;
+        div.insertBefore(cur, hdr && hdr !== cur ? hdr.nextSibling : div.firstChild);
+      }
       if (cur) stickBelowHeader(div, cur);
       filterChildren(div, q[t.key], cur);
     });

@@ -113,7 +113,18 @@
             if (!mapHasBossPool()) return;               // 無 BOSS 池的圖不動作(防無限燒卷軸)
             if (state._manualTpUntil && (state.ticks || 0) < state._manualTpUntil) return;   // 手動瞬移後抑制期
             var sc = player.inv.find(function (i) { return i && i.id === 'scroll_teleport' && (i.cnt || 1) >= 1; });
-            if (!sc) return;                             // 沒瞬移卷軸就不動
+            if (!sc) {
+                // 缺瞬移卷軸→比照上游「迴避頭目」自動購買一張(勾了功能=同意買;金幣不夠才作罷)
+                try {
+                    var cost = shopPrice(DB.items.scroll_teleport.p);
+                    if (player.gold >= cost) {
+                        player.gold -= cost;
+                        gainItem('scroll_teleport', 1, true, true);
+                        sc = player.inv.find(function (i) { return i && i.id === 'scroll_teleport' && (i.cnt || 1) >= 1; });
+                    }
+                } catch (e) {}
+            }
+            if (!sc) return;                             // 買不起也沒存貨 → 不動
             useItem(sc.uid, false, true);                // 非 silent=戒指 forceBoss;keepModal=自動觸發別關玩家開著的視窗
             _waitUntil = (state.ticks || 0) + 100;       // 等 10 秒讓 BOSS 生出來,不連續空瞬移
         } catch (e) {}

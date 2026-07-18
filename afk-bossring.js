@@ -5,6 +5,8 @@
  *   缺的是我方原本在核心加的「自動」——場上沒 BOSS 時自動用瞬移卷軸召來、清掉後再瞬移。這支把它做成外掛。
  *
  * 行為（比照我方 main 設計）：
+ *   - 遊戲內有一個勾選框「傳送控制戒指自動找BOSS」(比照舊 main 的 #set-teleport-boss)，勾了才自動。
+ *     插在設定面板「藥水不足自動買」(#set-auto-buy-pot) 下方；狀態存 localStorage afk_bossring_on(預設開)。
  *   - 只在「線上前景遊玩」跑（離線快速結算 state.ff 期間不套用；跟遇 BOSS 自動逃離互斥＝有王就不瞬移）。
  *   - 持有傳送控制戒指、場上無 BOSS、非排除地圖（軍王之室/攻城/時空裂痕/排名攀登/遺忘之島）、手動瞬移抑制期外，
  *     且背包有瞬移卷軸 → 自動 useItem(卷軸, 非silent) → 上游的 hasTeleportRing() 讓下一次生怪必定 BOSS。
@@ -18,6 +20,28 @@
         try { console.warn('[AFK-bossring] 缺核心 useItem / hasTeleportRing，自動找 BOSS 停用。'); } catch (e) {}
         return;
     }
+
+    var LS = 'afk_bossring_on';
+    function isOn() { try { var v = localStorage.getItem(LS); return v === null ? true : v === '1'; } catch (e) { return true; } }   // 預設開(保留原本一律自動的行為)
+    function setOn(v) { try { localStorage.setItem(LS, v ? '1' : '0'); } catch (e) {} }
+
+    // 遊戲內勾選框：插在設定面板「藥水不足自動買」(#set-auto-buy-pot) 那格下方。idempotent、定期確保還在。
+    function injectCheckbox() {
+        if (document.getElementById('set-teleport-boss')) return;
+        var anchor = document.getElementById('set-auto-buy-pot');
+        if (!anchor) return;
+        var host = anchor.closest('label') || anchor.parentElement;
+        if (!host || !host.parentElement) return;
+        var lbl = document.createElement('label');
+        lbl.className = 'cursor-pointer flex items-center gap-2 mt-1 border-t border-slate-700 pt-2';
+        lbl.innerHTML = '<input type="checkbox" id="set-teleport-boss" class="w-4 h-4"><span class="text-sm text-rose-300">傳送控制戒指自動找BOSS</span><span class="text-xs text-slate-500">需帶戒指·離線不套用</span>';
+        host.parentElement.insertBefore(lbl, host.nextSibling);
+        var cb = lbl.querySelector('#set-teleport-boss');
+        cb.checked = isOn();
+        cb.addEventListener('change', function () { setOn(cb.checked); });
+    }
+    setInterval(injectCheckbox, 1500);
+    injectCheckbox();
 
     function anyBoss() { try { return mapState.mobs.some(function (m) { return m && m.boss && !m._dead; }); } catch (e) { return true; } }
     function excludedMap() {
@@ -37,6 +61,7 @@
 
     function tick() {
         try {
+            if (!isOn()) return;                         // 勾選框沒勾 → 不自動
             if (typeof state === 'undefined' || !state || !state.running || state.ff) return;   // 只線上前景
             if (typeof mapState === 'undefined' || !mapState || !mapState.mobs) return;
             if (typeof player === 'undefined' || !player || !player.inv) return;

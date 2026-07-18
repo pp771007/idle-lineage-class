@@ -89,6 +89,11 @@
             //        這條 auto 高度與那條同特異度、本檔較晚載入會蓋掉它 → host 塌掉、12 格裝備框整個錯位(踩過)。
             + 'body.m-mobile #tab-content-panel:not(.equipment-panel-host){ height: auto !important; min-height: 0 !important; overflow: visible !important; }\n'
             + 'body.m-mobile #tab-content-panel:not(.equipment-panel-host) > .ability-window-tab, body.m-mobile #tab-content-panel:not(.equipment-panel-host) > [id^="tab-"]{ height: auto !important; overflow: visible !important; }\n'
+            //      ⚠ 背包條列式(afk-invlist)把 .classic-inventory-viewport 設成自己的捲動容器(overflow:auto+overscroll contain),
+            //        分頁流式化後它 height 撐開、沒東西可捲 → 手勢在它身上被 contain 擋死、不鏈給 #game-screen=整頁滑不動。
+            //        手機流式下退回普通元素,由 #game-screen 單層捲動(桌機不受影響,invlist 原規則照舊)。
+            + 'body.m-mobile #tab-content-panel:not(.equipment-panel-host) .classic-inventory-shell{ height: auto !important; }\n'
+            + 'body.m-mobile #tab-content-panel:not(.equipment-panel-host) .classic-inventory-viewport{ height: auto !important; overflow: visible !important; overscroll-behavior: auto !important; touch-action: auto !important; }\n'
             //   ⑥ 內層捲動區的 iOS 觸控三件套：溢出量小時沒有這組會「滑不動」(觸控被外層吃掉·afk-invlist 踩過同一雷)；
             //      overscroll-behavior:contain 同時擋「捲到底把後面的遊戲畫面一起帶著捲」的連鎖(雙層捲軸打架)。
             + 'body.m-mobile :is(.classic-skill-grid-scroll, #warehouse-window-content, #interaction-content, .as-box, #combat-log, #sys-log, #card-book-body, #equip-book-body, #misc-book-body, #relic-book-body, #modal-compare, #item-modal > div:not(#modal-compare)){ -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }\n'

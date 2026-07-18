@@ -300,6 +300,51 @@ function applyPlayerHitstun() {
     state.pDmgTick = (state.pDmgTick || 0) - hs;   // 攻擊累加器倒退 → 下次攻擊延後 hs tick
     state._pStunCycle = true;
 }
+// 🔌 加掛版補丁(apply-core-patches)：出怪排程抽成具名函式，供 afk-offline 離線快速結算與 tick() 共用同一份排程。
+function maybeSpawnMobs() {
+        let isPureBossMap = PURE_BOSS_MAPS.includes(mapState.current) && !KING_ROOMS[mapState.current];   // 🔧 軍王之室仍屬純BOSS房(免自動瞬移/追蹤)，但版面用三格
+        if(!mapState.spawnAt) mapState.spawnAt = [null, null, null, null, null];
+        let nowT = state.ticks;
+        if(KING_ROOMS[mapState.current] && state._kbRespawnAt != null) {
+            // 🔧 軍王之室復活等待中：5 秒內不刷任何怪；時間到則消耗 1 把鑰匙、從頭重生軍王與兩側小怪（背景/離線補跑期間也照常復活）
+            if(nowT >= state._kbRespawnAt) { state._kbRespawnAt = null; kbRoomRespawn(); }
+        } else if(KING_ROOMS[mapState.current] && KING_ROOMS[mapState.current].dual) {
+            // 🏛️ 雙BOSS祭壇：不逐格自動補怪（初次生成於 changeMap；單隻陣亡不補）。防呆：兩隻皆亡卻未標記全滅 → 補標，交由 settleDeadMobs 啟動 5 秒同時復活
+            if(state._kbVictory !== true && !mapState.mobs.some(m => m && m.boss)) state._kbVictory = true;
+        } else {
+            let slotCount = backSlotsActive() ? 5 : 3;                          // 🆕 一般狩獵地圖開放後排兩格(3,4)→最多 5 隻；特殊版面維持 3 格
+            for(let i=0; i<slotCount; i++) {
+                if(mapState.mobs[i]) { mapState.spawnAt[i] = null; continue; } // 有怪：清除排程
+                if(isPureBossMap && i !== 1) continue;                          // 純 BOSS 房只生中央
+                let delay;
+                if(isPureBossMap) {
+                    delay = 50;                                                 // 🔧 純BOSS房(三龍窟)：BOSS死亡後固定 5 秒(50 tick)才刷新，不受日光術/席琳的世界加速影響（2026-06 用戶調整 3 分鐘→5 秒）
+                } else if(KING_ROOMS[mapState.current]) {
+                    delay = 50;                                                 // 🔧 軍王之室：固定 5 秒復活，不受日光術/席琳的世界加速影響
+                } else {
+                    // 🐾 重生延遲＝基準 50 tick(5秒) × 玩家有效移動延遲倍率。
+                    // 變身(wlk·16=100%)、加速、勇敢／餅乾、行走加速、裝備移速與資訊面板共用 playerMoveDelayMultiplier()。
+                    // ⚡ v3.4.26 日光術／席琳的世界由「固定 −1 秒(−10 tick)」改為【乘算 ×0.8】（用戶要求）：
+                    //    基準 5 秒下 ×0.8＝4 秒（與舊制 −1 秒等值·手感不變）；但在已被加速到很快時只按比例縮短，
+                    //    不再像減法那樣把結果打成負數 → 舊制可觸底 0.1 秒(1 tick)＝怪一死立刻補位，已修正。
+                    //    全項目相乘故所有加速一律「按比例」疊加；下限 5 tick＝0.5 秒（全加成極限約 6 tick／0.6 秒，此 clamp 為安全底線）。
+                    let _mv = playerMoveDelayMultiplier();
+                    if (player.buffs.sk_sunlight > 0) _mv *= 0.8;                     // ☀️ v3.4.26 日光術：重生延遲 ×0.8（原「固定 −1 秒」→乘算）
+                    if (sherineWorldActive() && !isSiegeArea(mapState.current)) _mv *= 0.8;   // 🔮 v3.4.26 席琳的世界：重生延遲 ×0.8（與日光術相乘疊加）
+                    delay = Math.max(5, Math.round(50 * _mv));                       // 🚧 下限 5 tick＝0.5 秒
+                }
+                if(mapState.spawnAt[i] == null) mapState.spawnAt[i] = nowT + delay; // 空格剛出現：排程 delay 後（一般／純BOSS房／軍王之室皆 5 秒）
+                if(nowT >= mapState.spawnAt[i]) {
+                    // 🌑 v3.4.18 聖地/崩壞廳 BOSS 復活收費：首次生成免費（入場費已付），之後每次復活扣 1 入場道具；沒道具→傳送出去、停止本輪出怪
+                    if(isPureBossMap && i === 1 && typeof SANCT_RESPAWN_COST !== 'undefined' && SANCT_RESPAWN_COST[mapState.current]) {
+                        if(mapState._sanctBossSpawned) { if(!sanctBossRespawnCharge()) { mapState.spawnAt[i] = null; break; } }   // 復活：扣道具/無道具傳送出去
+                        else mapState._sanctBossSpawned = true;                                                                   // 首次生成免費
+                    }
+                    spawnMob(i); mapState.spawnAt[i] = null;
+                }
+            }
+        }
+    }
 function tick() {
     if(!state.running || player.dead) return;
     state.ticks++;
@@ -435,50 +480,7 @@ function tick() {
 
     // === 出怪判定：以邏輯 tick (state.ticks) 為準，與主迴圈時間補跑同步 ===
     // mapState.spawnAt[i] = 該格子預定出怪的 tick 值；為 null 代表該格目前有怪、無需排程。
-    {
-        let isPureBossMap = PURE_BOSS_MAPS.includes(mapState.current) && !KING_ROOMS[mapState.current];   // 🔧 軍王之室仍屬純BOSS房(免自動瞬移/追蹤)，但版面用三格
-        if(!mapState.spawnAt) mapState.spawnAt = [null, null, null, null, null];
-        let nowT = state.ticks;
-        if(KING_ROOMS[mapState.current] && state._kbRespawnAt != null) {
-            // 🔧 軍王之室復活等待中：5 秒內不刷任何怪；時間到則消耗 1 把鑰匙、從頭重生軍王與兩側小怪（背景/離線補跑期間也照常復活）
-            if(nowT >= state._kbRespawnAt) { state._kbRespawnAt = null; kbRoomRespawn(); }
-        } else if(KING_ROOMS[mapState.current] && KING_ROOMS[mapState.current].dual) {
-            // 🏛️ 雙BOSS祭壇：不逐格自動補怪（初次生成於 changeMap；單隻陣亡不補）。防呆：兩隻皆亡卻未標記全滅 → 補標，交由 settleDeadMobs 啟動 5 秒同時復活
-            if(state._kbVictory !== true && !mapState.mobs.some(m => m && m.boss)) state._kbVictory = true;
-        } else {
-            let slotCount = backSlotsActive() ? 5 : 3;                          // 🆕 一般狩獵地圖開放後排兩格(3,4)→最多 5 隻；特殊版面維持 3 格
-            for(let i=0; i<slotCount; i++) {
-                if(mapState.mobs[i]) { mapState.spawnAt[i] = null; continue; } // 有怪：清除排程
-                if(isPureBossMap && i !== 1) continue;                          // 純 BOSS 房只生中央
-                let delay;
-                if(isPureBossMap) {
-                    delay = 50;                                                 // 🔧 純BOSS房(三龍窟)：BOSS死亡後固定 5 秒(50 tick)才刷新，不受日光術/席琳的世界加速影響（2026-06 用戶調整 3 分鐘→5 秒）
-                } else if(KING_ROOMS[mapState.current]) {
-                    delay = 50;                                                 // 🔧 軍王之室：固定 5 秒復活，不受日光術/席琳的世界加速影響
-                } else {
-                    // 🐾 重生延遲＝基準 50 tick(5秒) × 玩家有效移動延遲倍率。
-                    // 變身(wlk·16=100%)、加速、勇敢／餅乾、行走加速、裝備移速與資訊面板共用 playerMoveDelayMultiplier()。
-                    // ⚡ v3.4.26 日光術／席琳的世界由「固定 −1 秒(−10 tick)」改為【乘算 ×0.8】（用戶要求）：
-                    //    基準 5 秒下 ×0.8＝4 秒（與舊制 −1 秒等值·手感不變）；但在已被加速到很快時只按比例縮短，
-                    //    不再像減法那樣把結果打成負數 → 舊制可觸底 0.1 秒(1 tick)＝怪一死立刻補位，已修正。
-                    //    全項目相乘故所有加速一律「按比例」疊加；下限 5 tick＝0.5 秒（全加成極限約 6 tick／0.6 秒，此 clamp 為安全底線）。
-                    let _mv = playerMoveDelayMultiplier();
-                    if (player.buffs.sk_sunlight > 0) _mv *= 0.8;                     // ☀️ v3.4.26 日光術：重生延遲 ×0.8（原「固定 −1 秒」→乘算）
-                    if (sherineWorldActive() && !isSiegeArea(mapState.current)) _mv *= 0.8;   // 🔮 v3.4.26 席琳的世界：重生延遲 ×0.8（與日光術相乘疊加）
-                    delay = Math.max(5, Math.round(50 * _mv));                       // 🚧 下限 5 tick＝0.5 秒
-                }
-                if(mapState.spawnAt[i] == null) mapState.spawnAt[i] = nowT + delay; // 空格剛出現：排程 delay 後（一般／純BOSS房／軍王之室皆 5 秒）
-                if(nowT >= mapState.spawnAt[i]) {
-                    // 🌑 v3.4.18 聖地/崩壞廳 BOSS 復活收費：首次生成免費（入場費已付），之後每次復活扣 1 入場道具；沒道具→傳送出去、停止本輪出怪
-                    if(isPureBossMap && i === 1 && typeof SANCT_RESPAWN_COST !== 'undefined' && SANCT_RESPAWN_COST[mapState.current]) {
-                        if(mapState._sanctBossSpawned) { if(!sanctBossRespawnCharge()) { mapState.spawnAt[i] = null; break; } }   // 復活：扣道具/無道具傳送出去
-                        else mapState._sanctBossSpawned = true;                                                                   // 首次生成免費
-                    }
-                    spawnMob(i); mapState.spawnAt[i] = null;
-                }
-            }
-        }
-    }
+    { maybeSpawnMobs(); }
     
     // 🔧 slowAtk / cleave 的遞減已由上方 statuses 通用迴圈處理（先前此處第二次遞減導致持續時間減半：寒冰吐息 8 秒變 4 秒、切割 2 秒變 1 秒）
     if(canAct) {

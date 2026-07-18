@@ -1012,7 +1012,7 @@
     { k: 'mode', n: '遊戲模式' },
     { k: 'npc', n: 'NPC總覽' }
   ];
-  var state = { tab: 'equipbook', cls: 'knight', q: '', magicCls: 'all', magicChar: '', collMode: null, equipCls: 'all', equipSlot: 'all', equipRegion: 'all' };   // 預設分頁=分頁列第一個(收藏-裝備)。equipSlot 必須是 EQUIP_GROUPS 的 key 或 'all'(舊值 'wpn' 已無此分組→整頁空白)
+  var state = { tab: 'equipbook', cls: 'knight', q: '', magicCls: 'all', magicChar: '', collMode: null, equipCls: 'all', equipSlot: 'all', equipRegion: 'all', relicRegion: 'all' };   // 預設分頁=分頁列第一個(收藏-裝備)。equipSlot 必須是 EQUIP_GROUPS 的 key 或 'all'(舊值 'wpn' 已無此分組→整頁空白)
   // 搜尋打字防抖:每次按鍵只重設計時器,停手這麼久才真的過濾+重渲染(降低逐字輸入的 INP)。
   var SEARCH_DEBOUNCE_MS = 150;
   var _searchTimer = null;
@@ -1100,6 +1100,9 @@
       // 🗺️ 遺物檢視的「掉落區域篩選」
       var eqrg = e.target.closest ? e.target.closest('[data-equipregion]') : null;
       if (eqrg) { state.equipRegion = eqrg.getAttribute('data-equipregion'); render(); return; }
+      // 🗺️ 收藏-遺物的「掉落區域篩選」(按區域看收集進度/缺哪些)
+      var rlrg = e.target.closest ? e.target.closest('[data-relicregion]') : null;
+      if (rlrg) { state.relicRegion = rlrg.getAttribute('data-relicregion'); render(); return; }
       // 收藏三分頁的「模式」切換(再點同一顆=收合)
       var cm = e.target.closest ? e.target.closest('[data-collmode]') : null;
       if (cm) { var cmv = cm.getAttribute('data-collmode'); state.collMode = (state.collMode === cmv) ? null : cmv; render(); return; }
@@ -1882,7 +1885,24 @@
     out += collModeRow();
     if (state.collMode !== null) {
       var b = collBuckets();
-      out += collBookProgressHTML('🏺 遺物收集進度（' + esc(b.mode) + '模式）', EQUIP_CATEGORIES, RELIC_CAT_ITEMS, b.relic || {}, null);
+      // 🗺️ 掉落區域篩選(選了模式才出現):選某區域 → 只看「掉落怪在該區域出沒」的遺物之收集進度,
+      //   讓玩家按活動範圍確認「這區還缺哪幾件」。重用裝備頁那份 relicDropIndex(遺物→區域)索引。
+      var _ridx = relicDropIndex();
+      var catItems = RELIC_CAT_ITEMS, regionRow = '';
+      if (_ridx && _ridx.regions.length) {
+        var rr = state.relicRegion || 'all';
+        regionRow = '<div class="m-wiki-mfilter"><button type="button" class="m-wiki-mfbtn' + (rr === 'all' ? ' on' : '') + '" data-relicregion="all">全部區域</button>' +
+          _ridx.regions.map(function (rg) { return '<button type="button" class="m-wiki-mfbtn' + (rg === rr ? ' on' : '') + '" data-relicregion="' + esc(rg) + '">' + esc(rg) + '</button>'; }).join('') + '</div>';
+        if (rr !== 'all') {   // 依區域過濾各部位的遺物清單(進度顯示照樣按部位分組)
+          catItems = {};
+          EQUIP_CATEGORIES.forEach(function (c) {
+            catItems[c.key] = (RELIC_CAT_ITEMS[c.key] || []).filter(function (id) { var x = _ridx.byItem[id]; return x && x.regions.indexOf(rr) >= 0; });
+          });
+        }
+      }
+      out += regionRow;
+      var _rgTitle = (state.relicRegion && state.relicRegion !== 'all') ? ('・' + esc(state.relicRegion)) : '';
+      out += collBookProgressHTML('🏺 遺物收集進度（' + esc(b.mode) + '模式' + _rgTitle + '）', EQUIP_CATEGORIES, catItems, b.relic || {}, null);
     } else {   // 未選模式:只列各部位有幾件(無進度、不爆缺項)
       out += wCard('🏺 各部位的遺物件數', wTbl(['部位', '遺物件數'],
         EQUIP_CATEGORIES.filter(function (c) { return (RELIC_CAT_ITEMS[c.key] || []).length > 0; })

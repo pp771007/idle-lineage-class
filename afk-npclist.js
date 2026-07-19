@@ -29,7 +29,7 @@
         '.afk-npcl-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px;}',
         '.afk-npcl-name{font-weight:700;}',
         '.afk-npcl-title{color:#94a3b8;font-size:12px;font-weight:400;margin-left:6px;}',
-        '.afk-npcl-desc{color:#64748b;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+        '.afk-npcl-desc{color:#64748b;font-size:12px;line-height:1.4;overflow-wrap:anywhere;}'
     ].join('\n');
     (document.head || document.documentElement).appendChild(st);
     document.body.classList.add('afk-npclist');

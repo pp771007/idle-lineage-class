@@ -57,9 +57,7 @@ for (const f of readdirSync(ROOT).filter((n) => /^afk-.*\.js$/.test(n))) {
 try {
   const parts = [];
   // ⚠ CRLF 正規化再雜湊,與 stamp-sw-version.mjs 同步(Windows 工作樹 CRLF vs CI LF)
-  const norm = (p) => Buffer.from(readFileSync(p, 'utf8').replace(/
-/g, '
-'));
+  const norm = (p) => Buffer.from(readFileSync(p, 'utf8').split('\r\n').join('\n'));
   if (existsSync(resolve(ROOT, 'index.html'))) parts.push(norm(resolve(ROOT, 'index.html')));
   if (existsSync(resolve(ROOT, 'manifest.webmanifest'))) parts.push(norm(resolve(ROOT, 'manifest.webmanifest')));
   for (const f of readdirSync(ROOT).filter((n) => /^afk-.*\.js$/.test(n)).sort()) parts.push(norm(resolve(ROOT, f)));

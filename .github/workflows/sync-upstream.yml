@@ -1,61 +1,150 @@
-name: 同步上游原版（開 PR）
+name: 同步上游原版
 
-# ⚠ 手動觸發 only（workflow_dispatch）：就算合併進 main 也不會自己排程跑，要在 Actions 頁面按「Run workflow」才動。
-#    產出一律開 PR、不直接 push main —— 自動更新的結果永遠是等人 review 的 PR，不會蓋掉 main。
+# 每小時檢查原作者 repo：有更新 → 鏡像資產 + 核心整包換 + 套錨點補丁 + 重產 manifest/版本 + smoke，
+# 全綠直接推 main（Pages 自動部署）並發 Release（標題帶原作者版本號）。
+# 失敗不推壞版本：錨點失效/同步錯誤、或外掛掛點 smoke 紅 → 各開 issue 通知，等人工處理。
+
 on:
-  workflow_dispatch:
-    inputs:
-      upstream_ref:
-        description: '上游要同步到的 ref（預設 main 最新）'
-        required: false
-        default: 'main'
+  schedule:
+    - cron: '23 * * * *'   # 每小時 :23（避開整點排程大軍，降低 GitHub 排隊延遲）
+  workflow_dispatch: {}
 
 permissions:
   contents: write
-  pull-requests: write
+  issues: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      # ── 早退：上游 HEAD 沒變就整包跳過 ──────────────────────────
+      #   一定要在 checkout 之前用 ls-remote + raw 檔判斷：stamp 的 BUILD_ID 含時間，
+      #   跑了 sync 腳本就必產生位元組變動 → 不早退的話每小時都會做白工甚至誤 commit。
+      - name: 檢查上游有無更新
+        id: chk
+        run: |
+          UP_SHA=$(git ls-remote https://github.com/shines871/idle-lineage-class.git refs/heads/main | cut -f1)
+          CUR=$(curl -fsSL "https://raw.githubusercontent.com/${{ github.repository }}/main/upstream-checkpoint.json" | jq -r '.syncedUpstreamCommit // empty' || true)
+          echo "up_sha=$UP_SHA" >> "$GITHUB_OUTPUT"
+          if [ -n "$UP_SHA" ] && [ "$UP_SHA" = "$CUR" ]; then
+            echo "上游無更新（$UP_SHA），跳過。"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "上游 $UP_SHA ≠ 已同步 $CUR → 執行同步。"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout 本 repo
+        if: steps.chk.outputs.changed == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node
+        if: steps.chk.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Clone 上游原版（shines871）
+        if: steps.chk.outputs.changed == 'true'
+        id: up
         run: |
-          git clone --depth 1 --branch "${{ github.event.inputs.upstream_ref }}" \
-            https://github.com/shines871/idle-lineage-class.git /tmp/upstream
-          echo "UP_SHA=$(git -C /tmp/upstream rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          git clone --depth 1 --branch main https://github.com/shines871/idle-lineage-class.git /tmp/upstream
+          echo "sha_short=$(git -C /tmp/upstream rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          VER=$(sed -n "s/.*GAME_VERSION = '\([^']*\)'.*/\1/p" /tmp/upstream/js/00-data.js | head -1); [ -n "$VER" ] || VER='?'
+          TITLE=$(sed -n 's/.*<title>\([^<]*\)<\/title>.*/\1/p' /tmp/upstream/index.html | head -1); [ -n "$TITLE" ] || TITLE='放置天堂'
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
 
-      - name: 鏡像資產（assets / public）
+      - name: 鏡像資產（assets / public，--delete 完整對齊）
+        if: steps.chk.outputs.changed == 'true'
         run: |
           rsync -a --delete /tmp/upstream/assets/ assets/
           if [ -d /tmp/upstream/public/assets ]; then rsync -a --delete /tmp/upstream/public/assets/ public/assets/; fi
 
-      - name: 同步核心 + 套補丁 + 重組 index + 重產 manifest + smoke
+      # smoke 需要 playwright；repo 刻意無 package.json（外掛是 vanilla JS），CI 臨時裝、commit 時用
+      # 「路徑白名單」add，node_modules/package.json 不會被收進去。
+      - name: 安裝 Playwright（smoke 用）
+        if: steps.chk.outputs.changed == 'true'
+        run: |
+          npm init -y > /dev/null
+          npm i -D playwright > /dev/null
+          npx playwright install --with-deps chromium
+
+      - name: 同步核心 + 套錨點補丁 + 重組 index + 重產 manifest/版本 + 更新 checkpoint
+        if: steps.chk.outputs.changed == 'true'
+        id: merge
+        continue-on-error: true   # 失敗（多半是錨點被上游改壞）→ 下面開 issue，不讓整包紅得無聲無息
+        env:
+          AFK_SKIP_SMOKE: '1'     # smoke 拆成獨立 step（失敗要走「開 issue、不推」而非腳本 exit 1）
         run: node scripts/sync-upstream.mjs /tmp/upstream
 
-      - name: 有變更才開 PR
+      - name: 外掛掛點冒煙測試（Playwright）
+        if: steps.chk.outputs.changed == 'true' && steps.merge.outcome == 'success'
+        id: smoke
+        continue-on-error: true
+        run: node scripts/smoke-hooks.mjs
+
+      - name: 提交並推送 main（全綠才推；Pages 隨之自動部署）
+        if: steps.chk.outputs.changed == 'true' && steps.merge.outcome == 'success' && steps.smoke.outcome == 'success'
+        id: push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 白名單 add：只收同步會動到的路徑（npm 產生的 package*.json / node_modules 不進版控）
+          git add -A -- index.html js/ css/ assets/ public/ sw.js version.json anim-manifest.json assets-manifest.json upstream-checkpoint.json
+          if git diff --cached --quiet; then
+            echo "同步後與現況一致，無需 commit。"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore(sync): 同步上游原版 ${{ steps.up.outputs.ver }}（${{ steps.up.outputs.sha_short }}）"
+            git push
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 打 tag + 發 Release（標題帶原作者版本號）
+        if: steps.chk.outputs.changed == 'true' && steps.push.outputs.pushed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "上游無變更，或同步後與現況一致 → 不開 PR。"
-            exit 0
+          TAG="v$(TZ='Asia/Taipei' date +%Y%m%d-%H%M)"
+          SHA="$(git rev-parse HEAD)"
+          GAME="${{ steps.up.outputs.title }}"
+          VER="${{ steps.up.outputs.ver }}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "已有同名 release $TAG，略過（避免重複）。"
+          else
+            printf '《%s》加掛版 — 已自動同步原作者最新版（原版版本 %s），外掛層照常疊加、不改動原遊戲內容（離線掛機／手機版面／掉落查詢／小百科／木人場／賽狗場等，遊戲內「外掛開關」可逐一管理）。\n\n原始碼請由下方 Source code (zip / tar.gz) 下載。\n線上遊玩：https://pp771007.github.io/idle-lineage-class/\n' "$GAME" "$VER" > /tmp/relnotes.md
+            gh release create "$TAG" --target "$SHA" --title "《${GAME}》加掛版 ${TAG}（原版 ${VER}）" --notes-file /tmp/relnotes.md
           fi
-          BR="auto/upstream-sync-${UP_SHA}-$(date +%Y%m%d-%H%M)"
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BR"
-          git add -A
-          git commit -m "chore(sync): 同步上游原版 ${UP_SHA}（核心整包換 + 自動補丁 + 重產）"
-          git push origin "$BR"
-          gh pr create \
-            --title "同步上游原版 ${UP_SHA}" \
-            --body "自動同步上游原版核心（shines871 @ ${UP_SHA}）。核心已整包換原版 + \`apply-core-patches.mjs\` 補回加掛版鉤子（maybeSpawnMobs / gainItem 強化）+ 重組 index + 重產 manifest + smoke 綠。**外掛層未動**。請 review 後合併。若補丁腳本錨點失效會在上一步 exit 1（不會產生 PR）。" \
-            --base main --head "$BR"
+
+      - name: 同步失敗（錨點/腳本）→ 開 issue 通知
+        if: steps.chk.outputs.changed == 'true' && steps.merge.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --state open --search "同步腳本失敗 in:title" --json number --jq 'length')
+          if [ "$existing" = "0" ]; then
+            gh issue create \
+              --title "⚠️ 同步腳本失敗（上游 ${{ steps.up.outputs.ver }}），可能是核心補丁錨點被改壞" \
+              --body "自動同步在 sync-upstream.mjs 階段失敗（最常見：上游改寫了 apply-core-patches.mjs 依賴的錨點字串）。已暫停推送。請本機跑 /sync-upstream 修正錨點後再推，詳見本次 workflow run log。"
+          else
+            echo "已有開啟中的同名 issue，略過。"
+          fi
+
+      - name: 掛點失效（smoke 紅）→ 開 issue 通知
+        if: steps.chk.outputs.changed == 'true' && steps.merge.outcome == 'success' && steps.smoke.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --state open --search "外掛掛點失效 in:title" --json number --jq 'length')
+          if [ "$existing" = "0" ]; then
+            gh issue create \
+              --title "⚠️ 原作者更新了（${{ steps.up.outputs.ver }}），但外掛掛點失效，需人工處理" \
+              --body "自動同步完成，但 Playwright 冒煙測試發現有外掛沒成功 hook（原作者可能改了 DOM 結構／id）。已暫停推送，避免推出外掛失效的版本。請本機跑 /sync-upstream 並修正失效的外掛掛點，詳見本次 workflow run log。"
+          else
+            echo "已有開啟中的同名 issue，略過。"
+          fi

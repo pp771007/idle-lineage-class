@@ -56,7 +56,28 @@ run('node scripts/gen-manifests.mjs');
 run('node scripts/stamp-code-versions.mjs');
 run('node scripts/stamp-sw-version.mjs');
 
-// ── 5) 冒煙檢查（外掛掛點）──────────────────────────────────────
-run('node scripts/smoke-hooks.mjs');
+// ── 5) 更新同步錨點（upstream-checkpoint.json）─────────────────
+//   clone 需帶 .git（rev-parse 取目前 checkout 的 commit）；沒有就跳過並警告（不擋流程）。
+try {
+  const upSha = execSync('git -C "' + UP + '" rev-parse HEAD', { encoding: 'utf8' }).trim();
+  const upVer = (readFileSync(join(UP, 'js', '00-data.js'), 'utf8').match(/GAME_VERSION = '([^']+)'/) || [])[1] || '?';
+  const ck = JSON.parse(readFileSync('upstream-checkpoint.json', 'utf8'));
+  ck.syncedUpstreamCommit = upSha;
+  const t = new Date(Date.now() + 8 * 3600 * 1000);   // 台灣時間（不可依賴 TZ 環境變數）
+  ck.syncedAt = t.toISOString().slice(0, 16).replace('T', ' ') + ' (UTC+8)';
+  ck.note = '由 sync-upstream.mjs 自動更新；上游 GAME_VERSION ' + upVer + '。架構=純上游鏡像+外掛層，syncedUpstreamCommit=目前核心/資產鏡像的上游 commit。';
+  writeFileSync('upstream-checkpoint.json', JSON.stringify(ck, null, 2) + '\n');
+  console.log('[sync] upstream-checkpoint.json → ' + upSha.slice(0, 9) + '（' + upVer + '）');
+} catch (e) {
+  console.warn('[sync] ⚠ upstream-checkpoint.json 未更新：' + e.message);
+}
 
-console.log('\n✅ sync-upstream 完成：核心已是上游原版 + 加掛版補丁，index/manifest/版本 已更新，smoke 綠。');
+// ── 6) 冒煙檢查（外掛掛點）──────────────────────────────────────
+//   CI 想把 smoke 拆成獨立 step（失敗→開 issue 而非整包紅）時，設 AFK_SKIP_SMOKE=1 跳過這裡、自己另跑。
+if (process.env.AFK_SKIP_SMOKE === '1') {
+  console.log('[sync] AFK_SKIP_SMOKE=1 → 跳過 smoke（呼叫端自行執行 node scripts/smoke-hooks.mjs）');
+} else {
+  run('node scripts/smoke-hooks.mjs');
+}
+
+console.log('\n✅ sync-upstream 完成：核心已是上游原版 + 加掛版補丁，index/manifest/版本/checkpoint 已更新。');

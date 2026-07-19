@@ -2987,14 +2987,14 @@
         var groups = '';
         [0, 1, 2].forEach(function (t) {
           var miss = names.filter(function (nm) { return tierOf(nm) === t; });
-          if (miss.length) groups += '<div class="m-wiki-desc" style="margin-top:4px;"><b>' + (t === 0 ? '❌ 未登錄' : '⬆ 目前' + CARD_TIER_CN[t]) + '（' + miss.length + '）</b>：' + miss.map(wDexLink).join('、') + '</div>';
+          if (miss.length) groups += '<div class="m-wiki-desc" style="margin-top:4px;"><b>' + (t === 0 ? '❌ 未登錄' : '⬆ 目前' + CARD_TIER_CN[t]) + '（' + miss.length + '）</b>：' + miss.map(function (nm) { return wDexLink(nm) + (t > 0 ? ' <span style="color:#94a3b8;font-size:12px;">' + (b.card[nm] || 0) + '/100</span>' : ''); }).join('、') + '</div>';   // 🎴 括號後附收集積分(0~100·滿100開金卡)——普/銀卡群才顯示,未登錄恆0省略
         });
         detail += wCard('📍 ' + esc(reg.name) + '（' + below + '／' + names.length + ' 隻未達金卡）', groups);
       }
     });
     return wCard('🎴 收集進度（' + esc(b.mode) + '模式）',
       wTbl(['地區', '怪數', '金', '銀', '普', '未登錄', '目前地區加成'], rows) +
-      wDesc('地區加成取「全部怪都達到」的最高階。下面各地區列出還缺的卡，點怪名可跳「掉落查詢」看出沒地圖。')) + detail;
+      wDesc('地區加成取「全部怪都達到」的最高階。下面各地區列出還缺的卡，點怪名可跳「掉落查詢」看出沒地圖。名字後的數字＝該怪收集積分（滿 100 開通金卡；打怪掉普卡 +1、銀卡 +10、金卡 +100，累積到 100 即可）。')) + detail;
   }
   // 收藏-裝備/道具分頁:選定模式的收集進度(含全收集加成)＋缺件清單(點名字跳掉落查詢看取得方式)
   // bonusOf 傳 null＝這本沒有「全收集加成」(遺物收集冊)→ 不畫那一欄

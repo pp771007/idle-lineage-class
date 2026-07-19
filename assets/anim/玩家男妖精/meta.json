@@ -1,0 +1,774 @@
+{
+ "canvas": {
+  "w": 117,
+  "h": 82
+ },
+ "latticeOrigin": {
+  "x": 22,
+  "y": 66
+ },
+ "files": {
+  "idle": {
+   "src": "3217-118.spr",
+   "frames": 8,
+   "palette": 256,
+   "blocks": 88,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 683,
+     "bbox": [
+      28,
+      12,
+      57,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 681,
+     "bbox": [
+      28,
+      12,
+      57,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 684,
+     "bbox": [
+      28,
+      12,
+      57,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 685,
+     "bbox": [
+      28,
+      13,
+      57,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 685,
+     "bbox": [
+      28,
+      13,
+      57,
+      75
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 5,
+     "px": 682,
+     "bbox": [
+      28,
+      13,
+      57,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 685,
+     "bbox": [
+      28,
+      12,
+      57,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 7,
+     "px": 677,
+     "bbox": [
+      28,
+      12,
+      57,
+      75
+     ],
+     "hdrOK": false
+    }
+   ]
+  },
+  "idle_s": {
+   "src": "3218-118.spr",
+   "frames": 8,
+   "palette": 5,
+   "blocks": 37,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 275,
+     "bbox": [
+      21,
+      55,
+      53,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 277,
+     "bbox": [
+      21,
+      55,
+      53,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 281,
+     "bbox": [
+      21,
+      55,
+      53,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 290,
+     "bbox": [
+      21,
+      55,
+      53,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 295,
+     "bbox": [
+      21,
+      55,
+      53,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 292,
+     "bbox": [
+      21,
+      55,
+      53,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 283,
+     "bbox": [
+      21,
+      55,
+      53,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 7,
+     "px": 281,
+     "bbox": [
+      21,
+      55,
+      53,
+      75
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "attack": {
+   "src": "3217-126.spr",
+   "frames": 8,
+   "palette": 256,
+   "blocks": 94,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 779,
+     "bbox": [
+      16,
+      13,
+      57,
+      72
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 837,
+     "bbox": [
+      18,
+      13,
+      58,
+      72
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 815,
+     "bbox": [
+      25,
+      7,
+      62,
+      73
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 3,
+     "px": 800,
+     "bbox": [
+      33,
+      8,
+      65,
+      73
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 4,
+     "px": 800,
+     "bbox": [
+      34,
+      9,
+      66,
+      73
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 5,
+     "px": 778,
+     "bbox": [
+      22,
+      8,
+      66,
+      73
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 6,
+     "px": 748,
+     "bbox": [
+      14,
+      10,
+      60,
+      73
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 7,
+     "px": 782,
+     "bbox": [
+      20,
+      0,
+      56,
+      72
+     ],
+     "hdrOK": false
+    }
+   ]
+  },
+  "attack_s": {
+   "src": "3218-126.spr",
+   "frames": 8,
+   "palette": 5,
+   "blocks": 51,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 291,
+     "bbox": [
+      6,
+      59,
+      53,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 328,
+     "bbox": [
+      5,
+      57,
+      54,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 346,
+     "bbox": [
+      13,
+      56,
+      61,
+      74
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 308,
+     "bbox": [
+      20,
+      53,
+      65,
+      73
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 291,
+     "bbox": [
+      21,
+      54,
+      65,
+      73
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 372,
+     "bbox": [
+      13,
+      52,
+      64,
+      79
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 313,
+     "bbox": [
+      5,
+      56,
+      59,
+      75
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 7,
+     "px": 280,
+     "bbox": [
+      11,
+      57,
+      54,
+      75
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "hurt": {
+   "src": "3217-134.spr",
+   "frames": 2,
+   "palette": 256,
+   "blocks": 24,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 761,
+     "bbox": [
+      20,
+      11,
+      58,
+      72
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 1,
+     "px": 724,
+     "bbox": [
+      15,
+      10,
+      57,
+      72
+     ],
+     "hdrOK": false
+    }
+   ]
+  },
+  "hurt_s": {
+   "src": "3218-134.spr",
+   "frames": 2,
+   "palette": 5,
+   "blocks": 11,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 282,
+     "bbox": [
+      18,
+      56,
+      54,
+      76
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 272,
+     "bbox": [
+      20,
+      55,
+      54,
+      76
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "death": {
+   "src": "3217-102.spr",
+   "frames": 7,
+   "palette": 256,
+   "blocks": 82,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 655,
+     "bbox": [
+      37,
+      6,
+      72,
+      64
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 743,
+     "bbox": [
+      26,
+      5,
+      92,
+      59
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 2,
+     "px": 705,
+     "bbox": [
+      18,
+      5,
+      106,
+      52
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 3,
+     "px": 659,
+     "bbox": [
+      13,
+      7,
+      110,
+      51
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 4,
+     "px": 711,
+     "bbox": [
+      11,
+      14,
+      114,
+      60
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 5,
+     "px": 667,
+     "bbox": [
+      10,
+      21,
+      116,
+      60
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 6,
+     "px": 669,
+     "bbox": [
+      61,
+      20,
+      116,
+      58
+     ],
+     "hdrOK": false
+    }
+   ]
+  },
+  "death_s": {
+   "src": "3218-102.spr",
+   "frames": 7,
+   "palette": 5,
+   "blocks": 43,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 171,
+     "bbox": [
+      34,
+      50,
+      62,
+      68
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 272,
+     "bbox": [
+      50,
+      42,
+      83,
+      62
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 351,
+     "bbox": [
+      50,
+      37,
+      101,
+      61
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 191,
+     "bbox": [
+      52,
+      37,
+      109,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 209,
+     "bbox": [
+      57,
+      27,
+      111,
+      61
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 186,
+     "bbox": [
+      58,
+      23,
+      115,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 163,
+     "bbox": [
+      60,
+      22,
+      115,
+      59
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "skill": {
+   "src": "3217-70.spr",
+   "frames": 6,
+   "palette": 256,
+   "blocks": 64,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 641,
+     "bbox": [
+      24,
+      18,
+      53,
+      72
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 1,
+     "px": 564,
+     "bbox": [
+      33,
+      18,
+      52,
+      72
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 2,
+     "px": 598,
+     "bbox": [
+      24,
+      11,
+      52,
+      72
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 3,
+     "px": 669,
+     "bbox": [
+      10,
+      18,
+      53,
+      72
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 4,
+     "px": 679,
+     "bbox": [
+      11,
+      17,
+      53,
+      72
+     ],
+     "hdrOK": false
+    },
+    {
+     "frame": 5,
+     "px": 664,
+     "bbox": [
+      23,
+      17,
+      56,
+      72
+     ],
+     "hdrOK": false
+    }
+   ]
+  },
+  "skill_s": {
+   "src": "3218-70.spr",
+   "frames": 6,
+   "palette": 5,
+   "blocks": 33,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 191,
+     "bbox": [
+      16,
+      61,
+      51,
+      79
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 212,
+     "bbox": [
+      21,
+      62,
+      51,
+      81
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 202,
+     "bbox": [
+      11,
+      62,
+      50,
+      72
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 214,
+     "bbox": [
+      0,
+      61,
+      51,
+      77
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 212,
+     "bbox": [
+      0,
+      61,
+      51,
+      76
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 181,
+     "bbox": [
+      12,
+      61,
+      51,
+      75
+     ],
+     "hdrOK": true
+    }
+   ]
+  }
+ }
+}

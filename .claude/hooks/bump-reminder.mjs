@@ -22,7 +22,7 @@ try { data = JSON.parse(raw); } catch {}
 
 const fp = data?.tool_input?.file_path || '';
 if (/^afk-.*\.js$/.test(basename(fp))) {
-  console.error(`📌 改了 ${basename(fp)}:push 前記得 bump index.html 裡它的 ?v=(日期+流水字母,如 20260629a→b),並跑 node scripts/stamp-sw-version.mjs。`);
+  console.error(`📌 改了 ${basename(fp)}:push 前記得跑 node scripts/stamp-code-versions.mjs(自動對齊 ?v=,含 afk-*.js)與 node scripts/stamp-sw-version.mjs(/prepush 內含)。`);
   process.exit(2); // PostToolUse exit 2:把這段提醒回饋給 Claude(不會擋下已完成的編輯)
 }
 process.exit(0);

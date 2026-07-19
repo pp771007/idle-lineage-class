@@ -1,0 +1,490 @@
+{
+ "canvas": {
+  "w": 38,
+  "h": 61
+ },
+ "latticeOrigin": {
+  "x": 3,
+  "y": 56
+ },
+ "files": {
+  "idle": {
+   "src": "1276-5.spr",
+   "frames": 21,
+   "palette": 32,
+   "blocks": 208,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 801,
+     "bbox": [
+      13,
+      2,
+      35,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 803,
+     "bbox": [
+      13,
+      2,
+      35,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 804,
+     "bbox": [
+      13,
+      2,
+      36,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 807,
+     "bbox": [
+      13,
+      2,
+      36,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 801,
+     "bbox": [
+      13,
+      2,
+      35,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 801,
+     "bbox": [
+      13,
+      2,
+      35,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 780,
+     "bbox": [
+      17,
+      2,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 7,
+     "px": 801,
+     "bbox": [
+      14,
+      2,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 8,
+     "px": 775,
+     "bbox": [
+      14,
+      2,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 9,
+     "px": 780,
+     "bbox": [
+      13,
+      2,
+      37,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 10,
+     "px": 768,
+     "bbox": [
+      14,
+      2,
+      37,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 11,
+     "px": 788,
+     "bbox": [
+      14,
+      1,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 12,
+     "px": 788,
+     "bbox": [
+      14,
+      0,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 13,
+     "px": 795,
+     "bbox": [
+      13,
+      0,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 14,
+     "px": 784,
+     "bbox": [
+      13,
+      0,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 15,
+     "px": 787,
+     "bbox": [
+      13,
+      0,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 16,
+     "px": 798,
+     "bbox": [
+      13,
+      0,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 17,
+     "px": 778,
+     "bbox": [
+      14,
+      2,
+      37,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 18,
+     "px": 790,
+     "bbox": [
+      14,
+      2,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 19,
+     "px": 810,
+     "bbox": [
+      14,
+      2,
+      36,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 20,
+     "px": 780,
+     "bbox": [
+      17,
+      2,
+      36,
+      58
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "idle_s": {
+   "src": "1277-5.spr",
+   "frames": 21,
+   "palette": 8,
+   "blocks": 77,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 144,
+     "bbox": [
+      3,
+      49,
+      35,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 145,
+     "bbox": [
+      2,
+      49,
+      35,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 145,
+     "bbox": [
+      2,
+      49,
+      35,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 148,
+     "bbox": [
+      2,
+      49,
+      36,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 145,
+     "bbox": [
+      2,
+      49,
+      35,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 148,
+     "bbox": [
+      2,
+      49,
+      35,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 140,
+     "bbox": [
+      6,
+      49,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 7,
+     "px": 173,
+     "bbox": [
+      6,
+      49,
+      34,
+      60
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 8,
+     "px": 166,
+     "bbox": [
+      3,
+      49,
+      34,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 9,
+     "px": 165,
+     "bbox": [
+      2,
+      49,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 10,
+     "px": 159,
+     "bbox": [
+      2,
+      49,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 11,
+     "px": 157,
+     "bbox": [
+      2,
+      49,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 12,
+     "px": 158,
+     "bbox": [
+      2,
+      49,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 13,
+     "px": 163,
+     "bbox": [
+      0,
+      48,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 14,
+     "px": 162,
+     "bbox": [
+      0,
+      49,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 15,
+     "px": 164,
+     "bbox": [
+      0,
+      49,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 16,
+     "px": 162,
+     "bbox": [
+      2,
+      48,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 17,
+     "px": 155,
+     "bbox": [
+      2,
+      49,
+      34,
+      58
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 18,
+     "px": 165,
+     "bbox": [
+      3,
+      49,
+      34,
+      59
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 19,
+     "px": 166,
+     "bbox": [
+      6,
+      49,
+      34,
+      60
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 20,
+     "px": 140,
+     "bbox": [
+      6,
+      49,
+      34,
+      58
+     ],
+     "hdrOK": true
+    }
+   ]
+  }
+ }
+}

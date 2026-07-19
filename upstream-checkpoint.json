@@ -1,10 +1,7 @@
 {
   "upstreamRepo": "https://github.com/shines871/idle-lineage-class.git",
   "localClone": "D:/otherPersonRepos/idle-lineage-class",
-  "divergedAtUpstream": "8a701d846b729171248521bd4153533d8078b44e",
-  "divergedAtOurs": "58ad5809f08a3b92e02c963ae8cebe553b482bf2",
-  "reviewedUpstreamCommit": "f0c9a4ef12450ec86f1be7cb85cb21c106fa4a3e",
-  "reviewedAt": "2026-07-16 11:05 (UTC+8)",
-  "reports": ["upstream-reviews/2026-07-10-v3.0.65-to-v3.1.67.md", "upstream-reviews/2026-07-13-v3.1.67-to-v3.3.15.md", "upstream-reviews/2026-07-14-v3.3.15-to-v3.4.23.md", "upstream-reviews/2026-07-16-v3.4.24-to-v3.4.83.md"],
-  "note": "分家點=2026-07-05 最後一次自動同步(上游 v3.0.65)。divergedAt* 兩個 commit 內容等價(js/ 全檔 blob 相同)、永不改動,是 3-way 移植的共同祖先。reviewedUpstreamCommit=已完成差異分析的上游 commit,由 /upstream-diff 推進;分析報告存 upstream-reviews/ 並列進 reports。2026-07-16 完成 v3.4.24→v3.4.83(27 commit)差異分析,產出報告 2026-07-16-v3.4.24-to-v3.4.83.md;核心發現=一個橫跨 00/01/02/03/04/06/07 的「方向魔法/治癒/幻覺公式重寫」大整包(閘門級產品決策,未定)+一批可獨立挑的新內容,王族改制我方已收斂到相同結論不需移植,防盜橫幅絕不移植。此輪報告項目尚未挑選移植。"
+  "syncedUpstreamCommit": "25b776c034ee89a50d1b97a81b74d5685b1053c7",
+  "syncedAt": "2026-07-19 10:40 (UTC+8)",
+  "note": "由 sync-upstream.mjs 自動更新；上游 GAME_VERSION v3.5.79。架構=純上游鏡像+外掛層，syncedUpstreamCommit=目前核心/資產鏡像的上游 commit。"
 }

@@ -11,6 +11,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('wiki')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   // 職業順序統一＝創角畫面順序(js/13-shop-save.js btnIds:royal→knight→mage→elf→dark→illusion→dragon→warrior)。
   // 小百科所有職業篩選列(主列 CLASSES／魔法 MAGIC_FILTERS／裝備 EQUIP_FILTERS)都照這個排,「全部」永遠最前。

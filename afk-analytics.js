@@ -18,6 +18,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  // ⚙️ 不做成開關(使用者要求)——本來就只在正式站台注入、只送 pageview、不用 cookie，自我判斷網域即可。
 
   // Cloudflare 後台 Web Analytics 給的 beacon token(Add a site → 程式碼裡的 data-cf-beacon token)。
   var CF_BEACON_TOKEN = 'c5fb974a7cd046c18bf7375a9d7b51e8';

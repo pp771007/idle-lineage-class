@@ -1,124 +1,98 @@
 /* ============================================================================
  * afk-itemsearch.js — 背包(武器/防具/道具分頁)的「名稱搜尋」
  *
- * 作法:包住 renderTabs,每次重繪後把搜尋框「重新注入」清單頂端,
- *   查詢字串存在外掛自己的狀態(不存 DOM)→ 重繪不會弄丟;比對用列的 textContent
- *   (含名稱/詞綴/強化值,子字串命中即顯示),不動遊戲資料、純顯示層過濾。
- * 重繪時機:背包分頁只有內容簽章變了才重建(renderTabs 分區重建),打字本身不觸發重繪;
- *   狩獵中掉寶重建會換掉輸入框 → 重注入時還原字串與焦點(游標移到最後),打字不中斷。
- * ※ 倉庫的名稱搜尋在核心 js/12(背包側與倉庫側共用單一關鍵字,見 whSetSearch)。
+ * 作法:搜尋框放在 #tab-content-panel 層(分頁 div 的「外面」)——核心 renderTabs 只重建各分頁
+ *   div 的內容、不動 panel 本身 → 搜尋框永遠是同一顆節點,打字(含中文組字)不會被戰鬥掉寶/裝備
+ *   刷新的重繪打斷。三個分頁共用同一個關鍵字;只在 武器/防具/道具 分頁顯示。
+ * 過濾:比對列的 textContent(含名稱/詞綴/強化值,子字串命中即顯示),純顯示層、不動遊戲資料。
+ *   ⚠ 隱藏一律 style.setProperty('display','none','important')——條列式外掛(afk-invlist)給每列
+ *   display:flex !important,一般 inline display:none 會被壓過(=搜尋看起來沒作用,踩過)。
+ * 列的位置:上游 1.8 皮膚把列放在 .classic-inventory-viewport 內層,先找它、沒有才退回分頁 div。
  * 優雅降級:renderTabs 不存在就安靜停用。
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('itemsearch')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
-  var q = { wpn: '', arm: '', item: '' };   // 各清單的查詢字串(單一事實來源)
-  var TAB_KEYS = [
-    { key: 'wpn', tabId: 'tab-weapons' },
-    { key: 'arm', tabId: 'tab-armors' },
-    { key: 'item', tabId: 'tab-items' }
-  ];
+  var q = '';   // 三分頁共用的查詢字串(單一事實來源;框是常駐節點,值也一直在)
+  var TAB_IDS = ['tab-weapons', 'tab-armors', 'tab-items'];
 
   function injectCss() {
     if (document.getElementById('afk-isearch-css')) return;
     var st = document.createElement('style');
     st.id = 'afk-isearch-css';
     st.textContent = [
-      // top 由 ensureTabSearch 依「快速操作頭部」的實際高度逐輪設定(它也是 sticky，見下)；這裡的 0 只是沒有頭部時的預設。
-      // 背景必須不透明(與 .panel/頭部同為 slate-800)：sticky 釘住時，捲上來的物品列會從半透明背景後透出。
-      '.afk-isearch{position:sticky;top:0;z-index:5;padding:2px 0 4px;background:#1e293b;flex:none;}',
-      '.afk-isearch input{width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#e2e8f0;padding:6px 10px;font-size:13px;font-family:inherit;outline:none;}',
-      '.afk-isearch input:focus{border-color:#b89243;}',
-      '.afk-isearch input::placeholder{color:#64748b;}'
+      '#afk-isearch{flex:none;padding:6px 10px 4px;background:#1e293b;display:none;}',
+      '#afk-isearch.is-on{display:block;}',
+      '#afk-isearch input{width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#e2e8f0;padding:6px 10px;font-size:13px;font-family:inherit;outline:none;}',
+      '#afk-isearch input:focus{border-color:#b89243;}',
+      '#afk-isearch input::placeholder{color:#64748b;}'
     ].join('\n');
     document.head.appendChild(st);
   }
 
   function norm(s) { return (s || '').toLowerCase(); }
 
-  // 過濾 container 的「直接子元素」:textContent 含關鍵字才顯示。skipEl=搜尋框自己(不過濾)。
-  function filterChildren(container, kw, skipEl) {
-    if (!container) return;
-    kw = norm(kw.trim());
+  // 過濾「實際裝物品列的容器」的直接子元素:textContent 含關鍵字才顯示。
+  function filterTab(tabId) {
+    var tabDiv = document.getElementById(tabId);
+    if (!tabDiv) return;
+    var container = tabDiv.querySelector('.classic-inventory-viewport') || tabDiv;
+    var kw = norm(q.trim());
     for (var i = 0; i < container.children.length; i++) {
       var el = container.children[i];
-      if (el === skipEl || el.classList.contains('afk-isearch')) continue;
-      if (el.dataset.afkKeep === '1') continue;   // 標記不過濾的列(快速操作頭部)
-      el.style.display = (!kw || norm(el.textContent).indexOf(kw) >= 0) ? '' : 'none';
+      if (el.id === 'afk-isearch') continue;
+      if (el.classList.contains('classic-list-toolbar')) continue;   // 快速操作頭部不過濾
+      if (!kw || norm(el.textContent).indexOf(kw) >= 0) el.style.removeProperty('display');
+      else el.style.setProperty('display', 'none', 'important');     // !important:蓋過條列式的 display:flex !important
     }
   }
+  function filterAll() { TAB_IDS.forEach(filterTab); }
 
-  function makeBox(inputId, key, onChange) {
-    var wrap = document.createElement('div');
-    wrap.className = 'afk-isearch';
-    wrap.dataset.afkPersist = '1';   // 背包重建(_clearInvTab)時保留此節點:輸入框若被換新,手機打字中的焦點與軟鍵盤會被中斷
-    var inp = document.createElement('input');
-    inp.id = inputId; inp.type = 'search'; inp.autocomplete = 'off';
-    inp.placeholder = '🔍 搜尋名稱…';
-    inp.value = q[key];
-    inp.addEventListener('input', function () { q[key] = inp.value; onChange(); });
-    wrap.appendChild(inp);
-    return wrap;
-  }
-
-  // 搜尋框釘住的位置＝「快速操作頭部」釘住後的底緣。
-  //   頭部(核心 js/10 產生)本身就是 sticky top:-12px、z-10、不透明底色;搜尋框若也釘在 top:0,
-  //   兩者位置重疊 → 頭部 z 較高又不透明 → 捲動後搜尋框整個被蓋住看不見(表現得像「沒有 sticky」)。
-  //   頭部高度會隨版面(桌機/手機、按鈕換行)變,故每輪重繪都重算,不寫死。
-  //   ⚠ 未顯示的分頁(display:none)量到的高度是 0 → 此時不可覆寫成 top:0(那等於沒修),
-  //     留著上次的值,等 switchTab 切到它、量得到真高度時再設(故本檔也包住 switchTab)。
-  function stickBelowHeader(div, box) {
-    var hdr = div.firstElementChild;
-    if (!hdr || hdr === box) return;
-    var hs = getComputedStyle(hdr);
-    if (hs.position !== 'sticky') return;   // 沒有 sticky 頭部 → 維持 CSS 預設 top:0
-    var h = hdr.offsetHeight;
-    if (!h) return;                          // 分頁隱藏中,量不到
-    box.style.top = Math.max(0, (parseFloat(hs.top) || 0) + h) + 'px';
-  }
-
-  // ---- 背包三分頁 -----------------------------------------------------------
-  function ensureTabSearch() {
-    TAB_KEYS.forEach(function (t) {
-      var div = document.getElementById(t.tabId);
-      if (!div) return;
-      var inputId = 'afk-isearch-' + t.key;
-      // 快速操作頭部每次重建都是新節點 → 每輪都要重新標記「不過濾」
-      if (div.firstElementChild && !div.firstElementChild.classList.contains('afk-isearch')) div.firstElementChild.dataset.afkKeep = '1';
-      if (!document.getElementById(inputId)) {
-        var box = makeBox(inputId, t.key, function () { filterChildren(div, q[t.key], box); });
-        div.insertBefore(box, div.firstElementChild ? div.firstElementChild.nextSibling : null);
-      }
-      var cur = document.getElementById(inputId);
-      cur = cur && cur.parentElement;
-      if (cur) stickBelowHeader(div, cur);
-      filterChildren(div, q[t.key], cur);
+  // 只在 武器/防具/道具 分頁顯示搜尋框
+  function syncVisible() {
+    var box = document.getElementById('afk-isearch');
+    if (!box) return;
+    var on = TAB_IDS.some(function (id) {
+      var d = document.getElementById(id);
+      return d && !d.classList.contains('hidden');
     });
+    box.classList.toggle('is-on', on);
+  }
+
+  function ensureBox() {
+    if (document.getElementById('afk-isearch')) return true;
+    var panel = document.getElementById('tab-content-panel');
+    var anchor = document.getElementById(TAB_IDS[0]);
+    if (!panel || !anchor) return false;
+    var box = document.createElement('div');
+    box.id = 'afk-isearch';
+    var inp = document.createElement('input');
+    inp.id = 'afk-isearch-input'; inp.type = 'search'; inp.autocomplete = 'off';
+    inp.placeholder = '🔍 搜尋名稱…(武/防/道具共用)';
+    inp.addEventListener('input', function () { q = inp.value; filterAll(); });
+    box.appendChild(inp);
+    panel.insertBefore(box, panel.firstElementChild);   // 分頁 div 外面:核心重繪不會碰到
+    syncVisible();
+    return true;
   }
 
   if (typeof window.renderTabs === 'function' && !window.renderTabs.__afkISearch) {
     var _origTabs = window.renderTabs;
     var wrapped = function () {
-      // 重繪會換掉輸入框:先記住「正在打字的是我們的框嗎」,重注入後還原焦點(游標移到最後)
-      var ae = document.activeElement;
-      var refocus = (ae && ae.id && ae.id.indexOf('afk-isearch-') === 0) ? ae.id : null;
       var r = _origTabs.apply(this, arguments);
-      try {
-        ensureTabSearch();
-        if (refocus) { var ni = document.getElementById(refocus); if (ni && document.activeElement !== ni) { ni.focus(); try { ni.setSelectionRange(ni.value.length, ni.value.length); } catch (e) {} } }
-      } catch (e) {}
+      try { ensureBox(); filterAll(); } catch (e) {}   // 重建後的新列要重套目前的關鍵字
       return r;
     };
     wrapped.__afkISearch = true;
     window.renderTabs = wrapped;
   }
 
-  // 切分頁後該分頁才「量得到」頭部高度(隱藏時是 0)→ 顯示的當下重算搜尋框要釘在哪。
   if (typeof window.switchTab === 'function' && !window.switchTab.__afkISearch) {
     var _origSwitch = window.switchTab;
     var wrappedSwitch = function () {
       var r = _origSwitch.apply(this, arguments);
-      try { ensureTabSearch(); } catch (e) {}
+      try { ensureBox(); syncVisible(); } catch (e) {}
       return r;
     };
     wrappedSwitch.__afkISearch = true;
@@ -126,6 +100,7 @@
   }
 
   injectCss();
+  ensureBox();
   if (typeof window.renderTabs === 'function') {
     console.log('[AFK-itemsearch] hooks OK — 背包(武/防/道)分頁支援名稱搜尋。');
   } else {

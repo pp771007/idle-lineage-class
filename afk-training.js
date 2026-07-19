@@ -18,6 +18,7 @@
  */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('training')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
   // ---- 依賴檢查（缺了優雅降級，不弄壞遊戲） --------------------------------
   // 注意：mapState/DB/state/player/TICK_MS 在 index.html 是 let/const，不會掛上 window（只有 var/function 會），
@@ -31,7 +32,7 @@
   }
 
   var TRAIN_MAP = 'afk_dummy';       // 獨立 map id：不可用 'training'——那是原作既有的新手地圖「新兵修練場」(有怪池)，會撞號
-  var TRAIN_BG = 'assets/area/新兵修練場.jpg';   // 木人場固定背景（主題相符）
+  var TRAIN_BG = 'assets/area/1920x1080/新兵修練場.jpg';   // 木人場固定背景（主題相符；用上游現行 1920x1080 版，資產可純鏡像）
   var TRAIN_HP = 1e9;                 // 天文血量：一拍傷害不可能打穿；本作無「依目標最大HP%」的玩家傷害，故安全
   var DEFAULT_MOB = 'orc';           // 妖魔
   var WINDOW_TICKS = 100;            // 即時 DPS 視窗 = 100 tick = 10 秒

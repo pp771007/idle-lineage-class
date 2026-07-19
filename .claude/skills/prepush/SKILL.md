@@ -15,10 +15,9 @@ disable-model-invocation: true
    - `git diff origin/main..HEAD --name-only` 抓出「動到的 `afk-*.js`」清單。
 
 2. **bump 改動的 `?v=`**
-   - **`js/*.js` 與 `css/*.css`：跑 `node scripts/stamp-code-versions.mjs`**(自動把 `?v=` 對齊「內容 sha1 前 10 碼」，不必手動算、也不會漏)。
+   - **`js/*.js`、`css/*.css`、`afk-*.js` 全部：跑 `node scripts/stamp-code-versions.mjs`**(自動把 `?v=` 對齊「內容 sha1 前 10 碼」，不必手動算、也不會漏；afk-*.js 也在涵蓋範圍，不要手動 bump)。
      🚨 **這步絕不可省**：`?v=` 沒 bump ⇒ URL 沒變 ⇒ 玩家的瀏覽器/SW 繼續用舊快取，而同頁其他有 bump 的檔卻是新的 ⇒ **新舊混搭**。2026-07-11 踩過：遺物移植同時改了 `js/04`(新增 `equipSkillDmgMult`)與 `js/07`(呼叫它)、兩個 `?v=` 都沒 bump → 先快取過舊 `js/04`、之後才抓 `js/07` 的玩家拿到「新 07 + 舊 04」→ 一施放技能就 `Can't find variable: equipSkillDmgMult`，離線結算整段中斷、收益歸零。**看玩家何時快取而定，故低機率、無法重現，極難查**。
-   - `afk-*.js`(外掛，`?v=` 用日期流水號、不是內容 hash)：對每支「有改動、但 index.html 裡 `?v=` 沒跟著變」的，bump 成「今天日期+流水字母」(如 `20260629a`→`20260629b`；同一支當天再改就往下一個字母)。
-   - 改到 `assets/`、`public/assets/` 的圖 → 跑 `node scripts/gen-manifests.mjs` 重產對帳清單一起 commit。
+   - 改到 `assets/`、`public/assets/` 的圖 → 跑 `node scripts/gen-manifests.mjs` 重產對帳清單一起 commit(動到 `assets/anim/` 另跑 `node tools/gen-anim-manifest.js`)。
 
 3. **重算 sw.js 版本**(PWA 偵測更新靠這個)
    - `node scripts/stamp-sw-version.mjs`
@@ -26,7 +25,7 @@ disable-model-invocation: true
 4. **冒煙測試**(確認外掛都掛得上、沒被改壞)
    - `node scripts/smoke-hooks.mjs` → 要看到「冒煙測試通過」、exit 0。
    - 紅了代表某外掛 hook 失效(遊戲碼被改到 / 外掛自己改壞)，回報是哪支。
-   - **smoke 沒有任何自動排程在跑(自動同步已停用)，這裡就是唯一的把關點，不可跳過。**
+   - **smoke 沒有任何自動排程在跑，這裡就是 push 前唯一的把關點，不可跳過。**(同步上游走 `/sync-upstream` 時腳本內也會跑一次。)
 
 5. **衝突標記把關**(rebase 沒解乾淨會壞整頁)
    - `grep -nE "^<<<<<<<|^=======|^>>>>>>>" index.html sw.js afk-*.js` 必須為空。

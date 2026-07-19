@@ -25,6 +25,10 @@ const hashOf = (rel) => createHash('sha1').update(readFileSync(join(ROOT, rel)))
 let html = readFileSync(INDEX, 'utf8');
 const stale = [];
 
+// 前置:src/href 沒帶 ?v= 的先補 ?v=0(sync-upstream 注入的外掛區塊刻意不寫 ?v=,靠這裡補——
+//   下面的置換 regex 只認「已有 ?v=」的引用,漏了這步新注入的外掛永遠不會被 stamp、快取失效)。
+html = html.replace(/\b(src|href)="((?:js|css)\/[\w.-]+\.(?:js|css)|afk-[\w.-]+\.js)"/g, '$1="$2?v=0"');
+
 html = html.replace(/((?:js|css)\/[\w.-]+\.(?:js|css)|afk-[\w.-]+\.js)\?v=([0-9a-z]+)/g, (whole, path, cur) => {
   let want;
   try { want = hashOf(path); } catch { return whole; }   // 檔案不存在(外部路徑等)→ 原樣保留

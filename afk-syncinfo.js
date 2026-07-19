@@ -11,6 +11,7 @@
  * ========================================================================== */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('skin')) return;   // 🎚️ 外掛開關:與 afk-skin 共用「首頁外掛入口/資訊」一顆開關(都是純首頁視覺)
 
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
@@ -49,7 +50,7 @@
     var foot = document.createElement('div');
     foot.id = 'afk-syncinfo';
     foot.innerHTML =
-      '<div class="afk-si-row"><span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span> <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(正版連結)</a></span></div>' +
+      '<div class="afk-si-row"><span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span></span></div>' +
       '<div class="afk-si-row afk-si-verrow"><span class="afk-si-ver"></span></div>' +
       '<div class="afk-si-row afk-si-updrow"><span class="afk-si-upd"></span></div>';
     menu.appendChild(foot);
@@ -65,21 +66,18 @@
     var verRow = foot.querySelector('.afk-si-verrow'), verEl = foot.querySelector('.afk-si-ver');
     var updRow = foot.querySelector('.afk-si-updrow'), updEl = foot.querySelector('.afk-si-upd');
     verRow.style.display = 'none'; updRow.style.display = 'none';   // 讀到才顯示,讀不到整列不佔位
-    // file:// 無法 fetch(CORS,origin null)→ 直接降級藏版本列,避免 console 噴紅字;http(s) 才去抓
+    // 🔄 2026-07 外掛化架構:核心永遠跟進原版 → 首頁只顯示「最後同步原版時間」,不寫「已跟進原版 vX」那行(使用者要求)。
+    //   最後同步時間讀 version.json 的 buildAt(=最近一次同步/建置)。verRow 保留 DOM 但不再填內容。
+    // file:// 無法 fetch(CORS,origin null)→ 不顯示同步時間;http(s) 才去抓 buildAt
     if (!/^https?:$/.test(location.protocol)) return;
     fetch('version.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
-        if (!j || !j.app) return;
-        // 第一列:加掛版版本號 · 更新日誌連結
-        verEl.innerHTML = '加掛版 v' + j.app +
-          '<span class="afk-si-dot">·</span><a class="afk-si-link" href="https://github.com/pp771007/idle-lineage-class/releases" target="_blank" rel="noopener">更新日誌</a>';
-        verRow.style.display = '';
-        // 第二列:最後更新時間(台灣時間),自成一行放在版本號下面
+        if (!j) return;
         var t = fmtUpdTime(j.buildAt, j.build);
-        if (t) { updEl.innerHTML = '最後更新 ' + t; updRow.style.display = ''; }
+        if (t) { updEl.innerHTML = '最後同步原版 ' + t; updRow.style.display = ''; }
       })
-      .catch(function () { /* 讀不到就維持隱藏 */ });
+      .catch(function () { /* 讀不到就只顯示版本 */ });
   }
 
   ready(init);

@@ -12,6 +12,7 @@
  * 優雅降級:openSlotSelect / __afk 不存在就安靜停用,不弄壞畫面。
  */
 (function () {
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('slotinfo')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
   // 把離線毫秒數格式化成「X 天 Y 小時 / X 小時 Y 分 / X 分鐘 / 剛剛」
   function fmtIdle(ms) {
     if (ms < 0) ms = 0;
@@ -67,14 +68,16 @@
     if (!list) return;
     var rows = list.children;
     for (var i = 0; i < rows.length; i++) {
-      var btn = rows[i].children[0];
-      if (!btn || btn.querySelector('.afk-slot-extra')) continue;   // openSlotSelect 每次重建清單,理論上不會殘留;仍防呆去重
+      var row = rows[i];
+      if (!row || row.querySelector('.afk-slot-extra')) continue;   // openSlotSelect 每次重建清單,理論上不會殘留;仍防呆去重
       var info = read(i + 1);
       if (!info.mapName && !info.idleText && !info.sherine) continue;
-      btn.style.flexWrap = 'wrap';
+      // 🆕 上游新版選角：每列＝存檔鈕 + 固定寬匯入區(手機會把鈕擠窄)。改把資訊掛到「整列」下方滿寬一行，
+      //   而非塞進被擠窄的按鈕內 → 桌機/手機都在按鈕列底下橫排一行，不再擠成直排。
+      row.style.flexWrap = 'wrap';
       var box = document.createElement('span');
       box.className = 'afk-slot-extra';
-      box.style.cssText = 'flex-basis:100%;width:100%;display:flex;flex-direction:column;gap:1px;margin-top:3px;font-size:.8rem;font-weight:400;color:#94a3b8;line-height:1.3;';
+      box.style.cssText = 'flex-basis:100%;width:100%;display:flex;flex-flow:row wrap;align-items:center;gap:2px 10px;margin-top:3px;padding:0 4px;font-size:.8rem;font-weight:400;color:#94a3b8;line-height:1.3;';
       // 🔮 席琳世界狀態:一般＝綠(同遊戲 c-sherine)、瘋狂＝猩紅(同瘋狂主題);用正式名稱
       if (info.sherine) {
         var s = document.createElement('span');
@@ -84,7 +87,7 @@
       }
       if (info.mapName) { var a = document.createElement('span'); a.textContent = '📍 ' + info.mapName; box.appendChild(a); }
       if (info.idleText) { var b = document.createElement('span'); b.textContent = info.idleText; box.appendChild(b); }
-      btn.appendChild(box);
+      row.appendChild(box);
     }
   }
 
@@ -97,9 +100,48 @@
     return true;
   }
 
-  if (wrapSlotSelect()) {
-    console.log('[AFK-slotinfo] hooks OK — 選角畫面附加掛機地點/已掛機時間(桌機 + 手機共用)。');
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // --- 🆕 上游新版「卡片式」選角(openLoadSelect/renderLoadSelect)：卡片在 #load-slot-grid，每張是角色立繪。
+  //   這才是「開始遊戲」實際走的畫面(舊 openSlotSelect 的 #slot-list 不是它)。掛機資訊直接疊在「每張卡底部」，
+  //   一頁 4 張一眼全看到(使用者要求，不用只顯示選中角色的共用資訊面板)。read() 無資料的卡(空位)略過。
+  function decorateCards() {
+    var grid = document.getElementById('load-slot-grid');
+    if (!grid) return;
+    var cards = grid.querySelectorAll('.load-slot-card');
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      var old = card.querySelector('.afk-card-slotinfo'); if (old) old.remove();   // 每次重繪清舊的
+      var slot = parseInt(card.getAttribute('data-slot'), 10);
+      if (!slot) continue;
+      var info = read(slot);
+      if (!info.mapName && !info.idleText && !info.sherine) continue;
+      try { if (getComputedStyle(card).position === 'static') card.style.position = 'relative'; } catch (e) {}
+      var html = '';
+      if (info.sherine) html += '<span style="color:' + (info.sherine === 'mad' ? '#fb7185' : '#4ade80') + ';">' + (info.sherine === 'mad' ? '🔥 瘋狂席琳' : '🔮 席琳世界') + '</span>';
+      if (info.mapName) html += '<span style="color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">📍 ' + esc(info.mapName) + '</span>';
+      if (info.idleText) html += '<span style="color:#cbd5e1;">' + esc(info.idleText.replace('⏱ 已掛機 ', '⏱ ')) + '</span>';
+      var cap = document.createElement('span');
+      cap.className = 'afk-card-slotinfo';
+      cap.style.cssText = 'position:absolute;left:0;right:0;bottom:0;z-index:3;pointer-events:none;display:flex;flex-flow:column;align-items:center;gap:1px;padding:4px 5px 5px;font-size:.64rem;line-height:1.3;font-weight:700;text-align:center;background:linear-gradient(to top,rgba(2,6,23,.95),rgba(2,6,23,.72) 62%,transparent);text-shadow:0 1px 2px #000;';
+      cap.innerHTML = html;
+      card.appendChild(cap);
+    }
+  }
+  function wrapRenderLoad() {
+    if (typeof window.renderLoadSelect !== 'function' || window.renderLoadSelect.__afkSlotInfo) return false;
+    var orig = window.renderLoadSelect;
+    var wrapped = function () { orig.apply(this, arguments); try { decorateCards(); } catch (e) {} };
+    wrapped.__afkSlotInfo = true;
+    window.renderLoadSelect = wrapped;
+    return true;
+  }
+
+  var okOld = wrapSlotSelect();      // 舊按鈕列 #slot-list(可能仍被某些流程用到)
+  var okNew = wrapRenderLoad();      // 🆕 新卡片式選角：每張卡底部疊掛機資訊
+  if (okOld || okNew) {
+    console.log('[AFK-slotinfo] hooks OK — 選角畫面附加掛機地點/已掛機時間(舊列表' + (okOld ? '✓' : '✗') + ' / 新卡片' + (okNew ? '✓' : '✗') + ')。');
   } else {
-    console.warn('[AFK-slotinfo] 找不到 openSlotSelect,選角畫面掛機資訊停用。');
+    console.warn('[AFK-slotinfo] 找不到 openSlotSelect / renderLoadSelect,選角畫面掛機資訊停用。');
   }
 })();

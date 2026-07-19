@@ -18,6 +18,7 @@
  */
 (function () {
   'use strict';
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('autobuy')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
 
 
   var SCROLL_ID = 'scroll_magicbarrier';  // 魔法卷軸(魔法屏障):商店單買,單價 = DB.items 的 p(1500)

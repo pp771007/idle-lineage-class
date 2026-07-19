@@ -17,6 +17,7 @@
  *      優雅降級:找不到 updateUI / player.base / 屬性元素就安靜停用。
  */
 (function () {
+  if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('statpts')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
   var STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
   function n(o, s) { return (o && o[s]) || 0; }
 
@@ -35,26 +36,28 @@
       sig += n(player.base, s0) + ',' + n(player.alloc, s0) + ',' + n(player.panacea, s0) + ';';
     }
     // 數值沒變、且分解行還在 DOM 上 → 不動任何 DOM(isConnected 是純屬性讀取,不觸發 layout)
-    if (sig === lastSig && lines.str && lines.str.isConnected) return;
+    // 🆕 上游新版「能力」面板＝一張背景圖(.ability-window-shell·position:relative·overflow:hidden)上
+    //   把六屬性值絕對定位(.ability-primary-*)。舊版「每格底下插一行」在這種版面會亂 → 改成把六屬性的
+    //   點數來源合成「一個區塊」放在能力圖「下方」(shell 的下一個兄弟),不碰圖內排版。
+    var block = document.getElementById('afk-stpts-block');
+    if (sig === lastSig && block && block.isConnected) return;
     lastSig = sig;
 
+    var shell = document.querySelector('.ability-window-shell');
+    if (!shell || !shell.parentElement) return;
+    if (!block || !block.isConnected) {
+      block = document.createElement('div');
+      block.id = 'afk-stpts-block';
+      block.className = 'afk-stpts';
+      shell.parentElement.insertBefore(block, shell.nextSibling);
+    }
+    var LBL = { str: '力量', dex: '敏捷', con: '體質', int: '智力', wis: '精神', cha: '魅力' };
+    var html = '<div class="afk-stpts-hd">點數來源（始出生／升升級／藥萬能藥／總＝不含裝備 buff）</div>';
     STATS.forEach(function (s) {
-      var valEl = document.getElementById('dt-' + s);   // 原作:夾在 +/- 之間的屬性值 <span>
-      if (!valEl) return;
-      var cell = valEl.parentElement;                   // 值欄(grid 直接子元素;flex 容器含 - 值 +)
-      if (!cell || !cell.parentElement) return;
       var bi = n(player.base, s), al = n(player.alloc, s), pa = n(player.panacea, s);
-      var txt = '始' + bi + '／升' + al + '／藥' + pa + '／總' + (bi + al + pa);   // 總=不含裝備/buff
-
-      var line = lines[s];
-      if (!line || !line.isConnected) {                 // 尚未插入 / 被外力移除 → 接既有的或新建,插在值欄之後
-        var nx = cell.nextElementSibling;
-        line = (nx && nx.classList && nx.classList.contains('afk-stpts')) ? nx : null;
-        if (!line) { line = document.createElement('div'); line.className = 'afk-stpts'; cell.after(line); }   // 靠 CSS grid-column:1/-1 撐成整列
-        lines[s] = line;
-      }
-      if (line.textContent !== txt) line.textContent = txt;
+      html += '<div class="afk-stpts-row"><b>' + LBL[s] + '</b><span>始 ' + bi + '</span><span>升 ' + al + '</span><span>藥 ' + pa + '</span><span class="afk-stpts-tot">總 ' + (bi + al + pa) + '</span></div>';
     });
+    if (block._h !== html) { block.innerHTML = html; block._h = html; }
   }
 
   function hook() {
@@ -72,8 +75,12 @@
 
   var st = document.createElement('style');
   st.textContent =
-    '.afk-stpts{grid-column:1 / -1;font-size:12px;font-weight:400;line-height:1.3;' +
-    'color:#94a3b8;letter-spacing:0;margin:-4px 0 2px;white-space:nowrap;text-align:left;}';
+    '.afk-stpts{margin:8px auto 0;max-width:400px;padding:8px 10px;background:rgba(15,23,42,.55);border:1px solid #334155;border-radius:8px;font-size:12px;color:#cbd5e1;line-height:1.4;}' +
+    '.afk-stpts-hd{font-size:11px;color:#94a3b8;margin-bottom:5px;}' +
+    '.afk-stpts-row{display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline;padding:3px 0;border-top:1px solid rgba(51,65,85,.5);}' +
+    '.afk-stpts-row:first-of-type{border-top:none;}' +
+    '.afk-stpts-row b{min-width:2.6em;color:#e2e8f0;font-weight:700;}' +
+    '.afk-stpts-tot{color:#fbbf24;font-weight:700;margin-left:auto;}';
   (document.head || document.documentElement).appendChild(st);
 
   // updateUI 可能還沒定義(遊戲腳本載入順序) → 輪詢幾次掛上

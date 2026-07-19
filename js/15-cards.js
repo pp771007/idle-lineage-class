@@ -36,9 +36,14 @@ const CARD_REGIONS = [
     { key: 'aden',         name: '亞丁',       stat: 'resWind',  vals: [1, 2, 3],   maps: ['twilight_mt', 'dream_island'] },
     { key: 'tower',        name: '傲慢之塔',   stat: 'extraHit', vals: [1, 2, 3],   maps: '__pride__' },
     { key: 'rastabad',     name: '拉斯塔巴德', stat: 'mr',       vals: [1, 3, 5],   maps: ['rastabad_cave1', 'rastabad_cave2', 'rastabad_cave3', 'rastabad_gate', 'giant_tomb', 'demon_temple', 'rastabad_beast', 'dark_magic_lab', 'necro_training', 'elder_room', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room'] },
-    { key: 'rift',         name: '時空裂痕',   stat: 'resEarth', vals: [1, 2, 3],   maps: ['thebes_desert', 'thebes_pyramid', 'thebes_temple', 'tikal_area', 'tikal_deep', 'tikal_altar'] }
+    { key: 'rift',         name: '時空裂痕',   stat: 'resEarth', vals: [1, 2, 3],   maps: ['thebes_desert', 'thebes_pyramid', 'thebes_temple', 'tikal_area', 'tikal_deep', 'tikal_altar', 'sunrise_castle', 'sunrise_east', 'sunrise_west', 'sunrise_north'] }
 ];
 const CARD_STAT_LABEL = { mhp: 'HP', mmp: 'MP', mpR: 'MP自動恢復量', hpR: 'HP自動恢復量', dr: '傷害減免', weight: '負重上限', extraMp: '額外魔法點數', extraDmg: '額外傷害', extraHit: '額外命中', mr: 'MR', resFire: '火屬性抗性', resWater: '水屬性抗性', resWind: '風屬性抗性', resEarth: '地屬性抗性' };
+
+// ---- 特殊刷出怪：不在任何 DB.maps 出怪池（掃圖建索引抓不到）→ 手動歸入指定卡片地區（同時開通掉卡＋圖鑑）----
+//  怪id → { region: CARD_REGIONS key, mapLabel: 金卡「出沒」顯示文字 }
+//  🐉 v3.5.35 風龍林德拜爾：持有頑皮幼龍蛋於野外 1% 特殊刷出（js/03）·歸入亞丁地區（完成加成 resWind·風龍對味）。
+const CARD_SPECIAL_MOBS = { lindvior: { region: 'aden', mapLabel: '野外（持有頑皮幼龍蛋時極低機率遭遇）' } };
 
 // ---- 地圖 key → 中文名（供金卡「出沒地圖」顯示）----
 const _CARD_MAP_NAMES = {};
@@ -49,6 +54,7 @@ const _CARD_MAP_NAMES = {};
 })();
 function _cardMapName(k) {
     if (_CARD_MAP_NAMES[k]) return _CARD_MAP_NAMES[k];
+    let sp = k.match(/^__special_(.+)$/); if (sp && CARD_SPECIAL_MOBS[sp[1]]) return CARD_SPECIAL_MOBS[sp[1]].mapLabel;   // 🐉 特殊刷出怪：顯示自訂出沒說明
     let m = k.match(/^pride_f(\d+)$/); if (m) return '傲慢之塔' + m[1] + '樓';
     m = k.match(/^pride_(\d+)_(\d+)$/); if (m) return '傲慢之塔' + m[1] + '~' + m[2] + '樓';
     return k;
@@ -64,20 +70,28 @@ const CARD_MOB_MAPS = {};      // mobName -> [mapKey,...]
     CARD_REGIONS.forEach(reg => {
         let maps = (reg.maps === '__pride__') ? prideMaps : reg.maps;
         let names = [];
+        function regMob(mid, mob, mk) {   // 單一登錄點（出怪池怪＋變身鏈後續階共用）
+            let nm = mob.n;
+            if (names.indexOf(nm) === -1) names.push(nm);
+            if (!CARD_MOB_INFO[nm]) CARD_MOB_INFO[nm] = { id: mid, mob: mob };
+            (CARD_MOB_REGIONS[nm] = CARD_MOB_REGIONS[nm] || []);
+            if (CARD_MOB_REGIONS[nm].indexOf(reg.key) === -1) CARD_MOB_REGIONS[nm].push(reg.key);
+            (CARD_MOB_MAPS[nm] = CARD_MOB_MAPS[nm] || []);
+            if (CARD_MOB_MAPS[nm].indexOf(mk) === -1) CARD_MOB_MAPS[nm].push(mk);
+        }
         maps.forEach(mk => {
             let pool = DB.maps[mk]; if (!pool) return;
             pool.forEach(mid => {
                 let mob = DB.mobs[mid]; if (!mob || !mob.n) return;
                 if (mob.race === '血盟' || mob.race === '建築') return;   // 血盟／建築標籤排除（不收集、不掉卡：守護塔/城門/樓梯/傳送門等）
-                let nm = mob.n;
-                if (names.indexOf(nm) === -1) names.push(nm);
-                if (!CARD_MOB_INFO[nm]) CARD_MOB_INFO[nm] = { id: mid, mob: mob };
-                (CARD_MOB_REGIONS[nm] = CARD_MOB_REGIONS[nm] || []);
-                if (CARD_MOB_REGIONS[nm].indexOf(reg.key) === -1) CARD_MOB_REGIONS[nm].push(reg.key);
-                (CARD_MOB_MAPS[nm] = CARD_MOB_MAPS[nm] || []);
-                if (CARD_MOB_MAPS[nm].indexOf(mk) === -1) CARD_MOB_MAPS[nm].push(mk);
+                regMob(mid, mob, mk);
+                // 🦊 v3.5.2 變身鏈後續階（transformTo 目標·不在出怪池：九尾/殺生石）＝跟隨鏈根同圖同地區入圖鑑
+                let seen = {}; seen[mid] = 1; let t = mob.transformTo;
+                while (t && DB.mobs[t] && DB.mobs[t].n && !seen[t]) { seen[t] = 1; regMob(t, DB.mobs[t], mk); t = DB.mobs[t].transformTo; }
             });
         });
+        // 🐉 特殊刷出怪（CARD_SPECIAL_MOBS）：歸入指定地區——入 CARD_MOB_INFO 後 killMob 的掉卡閘（rollCardDrops）自動放行
+        for (let sid in CARD_SPECIAL_MOBS) { let sp = CARD_SPECIAL_MOBS[sid]; if (sp.region === reg.key && DB.mobs[sid] && DB.mobs[sid].n) regMob(sid, DB.mobs[sid], '__special_' + sid); }
         names.sort((a, b) => (CARD_MOB_INFO[a].mob.lv || 0) - (CARD_MOB_INFO[b].mob.lv || 0));
         CARD_REGION_MOBS[reg.key] = names;
     });
@@ -119,12 +133,27 @@ function ensureCardBook() {
 }
 
 // ---- 掉落（killMob 呼叫）：血盟以外、且該怪屬於某卡片地區才有卡；三階各自獨立、一般＝經典機率（不乘 classicDropMult）----
+// 🦊 v3.5.2 變身鏈卡片規則：中間階（有 transformTo·玉藻/九尾）不掉卡；最終階（殺生石）擲中時從整鏈三張卡隨機選一張。
+const CARD_CHAIN_BY_FINAL = (() => {   // 最終階怪名 -> 整鏈怪名清單（從鏈根走到底·目前僅九尾狐鏈）
+    const isTarget = {}; for (const k in DB.mobs) { const t = DB.mobs[k] && DB.mobs[k].transformTo; if (t) isTarget[t] = 1; }
+    const m = {};
+    for (const k in DB.mobs) {
+        const d = DB.mobs[k];
+        if (!d || !d.transformTo || isTarget[k]) continue;   // 只從鏈根出發（自己不是任何怪的變身目標）
+        const chain = [d.n]; let t = d.transformTo, guard = 0;
+        while (t && DB.mobs[t] && guard++ < 10) { chain.push(DB.mobs[t].n); t = DB.mobs[t].transformTo; }
+        m[chain[chain.length - 1]] = chain;
+    }
+    return m;
+})();
 function rollCardDrops(mob) {
     if (!mob || mob.race === '血盟' || mob.race === '建築') return;
+    if (mob.transformTo) return;   // 🦊 變身中間階被「擊敗」不掉卡——整鏈卡由最終階出
     if (!CARD_MOB_INFO[mob.n]) return;
-    _cardDropRoll(mob.n, 3, 0.00001);    // 金卡 0.001%
-    _cardDropRoll(mob.n, 2, 0.0001);     // 銀卡 0.01%
-    _cardDropRoll(mob.n, 1, 0.001);      // 普卡 0.1%
+    const chainPool = CARD_CHAIN_BY_FINAL[mob.n] || null;   // 最終階＝擲中時整鏈隨機
+    _cardDropRoll(mob.n, 3, 0.00001, chainPool);    // 金卡 0.001%
+    _cardDropRoll(mob.n, 2, 0.0001, chainPool);     // 銀卡 0.01%
+    _cardDropRoll(mob.n, 1, 0.001, chainPool);      // 普卡 0.1%
 }
 // 🎴 加分登錄 + 開通溢出退費（普/銀/金共用·useCardItem 與 acquireCard 單一真相）。回傳 {useN, overflow}。
 function _cardRegister(name, tier, count) {
@@ -149,11 +178,12 @@ function acquireCard(name, tier, count) {
     let rf = _cardRefundMsg(r.overflow);
     logSys(`<span class="${ct.col} font-bold">🎴 自動登錄「${name}」</span>` + (r.useN > 1 ? `<span class="text-slate-400">（${r.useN} 張）</span>` : '') + (rf ? `<span class="text-amber-300">（開通退費 ${rf}）</span>` : ''));
     if (cardDexTier(name) > oldTier && typeof calcStats === 'function') calcStats();   // 階級提升→重算地區完成加成
-    if ((r.overflow > 0 || count > r.useN) && typeof renderTabs === 'function') renderTabs();   // 有實體退費/多餘卡進背包→刷新道具欄（🚀 非 force：背包變動由分區簽章接住,戰鬥中走 250ms 節流,不再每殺一隻整組重刻五分頁）
+    if ((r.overflow > 0 || count > r.useN) && typeof renderTabs === 'function') renderTabs(true);   // 有實體退費/多餘卡進背包→刷新道具欄
     if (typeof _cardBookOpen !== 'undefined' && _cardBookOpen && typeof renderCardBook === 'function') renderCardBook();
 }
-function _cardDropRoll(name, tier, rate) {
+function _cardDropRoll(name, tier, rate, pool) {
     if (Math.random() >= rate) return;
+    if (pool && pool.length) name = pool[Math.floor(Math.random() * pool.length)];   // 🦊 變身鏈最終階：擲中後從整鏈隨機選一張（每階獨立選）
     acquireCard(name, tier, 1);   // 🎴 未開通→自動登錄(完成退溢出)；已開通→實體卡進背包
 }
 
@@ -396,6 +426,50 @@ function exchangeGoldForBoxes(all) {
 
 // 背包內某階娃娃總數
 function dollTierCount(t) { return player.inv.filter(it => { let d = DB.items[it.id]; return d && d.doll && d.dollTier === t && !it.lock; }).reduce((s, it) => s + (it.cnt || 1), 0); }   // 🔒 只計「未鎖定」娃娃＝可合成數；鎖定的娃娃受保護、不列入也不會被消耗
+let _dollBatchSummary = null;
+function _dollAfterChange() {
+    if (typeof calcStats === 'function') calcStats();
+    if (typeof renderTabs === 'function') renderTabs(true);
+    if (typeof updateUI === 'function') updateUI();
+    if (typeof saveGame === 'function') saveGame();
+    let _c = document.getElementById('interaction-content'); if (_c) renderCardSynth(_c);
+}
+function _dollCountListHtml(map, max) {
+    let ids = Object.keys(map || {}).filter(id => map[id] > 0 && DB.items[id]);
+    ids.sort((a, b) => (DB.items[a].dollTier || 0) - (DB.items[b].dollTier || 0) || (DB.items[a].n || '').localeCompare(DB.items[b].n || ''));
+    let shown = ids.slice(0, max || 6).map(id => `<span class="${DB.items[id].c || ''} font-bold">${DB.items[id].n}</span>×${map[id]}`);
+    if (ids.length > shown.length) shown.push(`等 ${ids.length} 種`);
+    return shown.join('、');
+}
+// 批次操作先固定本次材料與分組；產物／退還物在全部結果算完前不回到背包，避免被後續批次再次選為材料。
+function _dollBatchSnapshot(tier, groupSize) {
+    let units = [];
+    for (let it of player.inv) {
+        let d = DB.items[it.id];
+        if (!(d && d.doll && d.dollTier === tier && !it.lock)) continue;
+        let c = Math.max(0, Math.floor(Number(it.cnt == null ? 1 : it.cnt)));
+        for (let k = 0; k < c; k++) units.push({ item: it, id: it.id });
+    }
+    let usable = Math.floor(units.length / groupSize) * groupSize;
+    let groups = [], takeMap = new Map();
+    for (let i = 0; i < usable; i++) {
+        let u = units[i];
+        if (i % groupSize === 0) groups.push([]);
+        groups[groups.length - 1].push(u.id);
+        takeMap.set(u.item, (takeMap.get(u.item) || 0) + 1);
+    }
+    return { groups: groups, takes: Array.from(takeMap, ([item, count]) => ({ item: item, count: count })) };
+}
+function _dollCommitBatchSnapshot(snapshot) {
+    for (let t of snapshot.takes) t.item.cnt = (t.item.cnt == null ? 1 : t.item.cnt) - t.count;
+    player.inv = player.inv.filter(it => it.cnt == null || it.cnt > 0);
+}
+function _dollGrantBatchCounts(map) {
+    for (let id of Object.keys(map || {})) {
+        let n = map[id] || 0;
+        if (n > 0) gainItem(id, n, true, true, false, true);   // 延後 renderTabs／自動排序，由批次交易結尾統一處理
+    }
+}
 // 合成：放入 count（2~4）個 fromTier 娃娃 → 機率得 1 個 fromTier+1；失敗退還 1 個輸入娃娃。
 //   只有「放 4 個」失敗才累積 1 點保底（per-tier 分開）；保底達 5 時下次 4 個合成必定成功並清空。committed RNG。
 //   ⚠️不變量：合成只讀寫「背包 player.inv」，絕不碰共用倉庫(loadWarehouse w.items)——存進倉庫的娃娃不計入也不會被消耗。dollTierCount 同。新增取料路徑勿改讀倉庫。
@@ -425,18 +499,69 @@ function dollSynth(fromTier, count) {
         let pool = DOLL_BY_TIER[fromTier + 1] || [];
         let pick = pool[Math.floor(_dollRng('synthR', seq) * pool.length)] || pool[0];
         gainItem(pick, 1, true, true);
-        logSys(`<span class="text-amber-200 font-bold">🪆 合成成功！</span>獲得 <span class="${DB.items[pick].c || ''} font-bold">${DB.items[pick].n}</span>。` + (guaranteed ? ' <span class="text-amber-300 text-xs">(保底達成)</span>' : ''));
+        if (_dollBatchSummary && _dollBatchSummary.type === 'synth') {
+            _dollBatchSummary.tries++;
+            _dollBatchSummary.success++;
+            if (guaranteed) _dollBatchSummary.guaranteed++;
+            _dollBatchSummary.made[pick] = (_dollBatchSummary.made[pick] || 0) + 1;
+        } else {
+            logSys(`<span class="text-amber-200 font-bold">🪆 合成成功！</span>獲得 <span class="${DB.items[pick].c || ''} font-bold">${DB.items[pick].n}</span>。` + (guaranteed ? ' <span class="text-amber-300 text-xs">(保底達成)</span>' : ''));
+        }
     } else {
         let back = consumed[Math.floor(_dollRng('synthF', seq) * consumed.length)] || consumed[0];
         gainItem(back, 1, true, true);
         if (count === 4) player.dollPity[fromTier] = (player.dollPity[fromTier] || 0) + 1;   // 只有 4 個合成失敗才累積保底
-        logSys(`<span class="text-slate-400">🪆 合成失敗…</span>退還 <span class="${DB.items[back].c || ''}">${DB.items[back].n}</span>。` + (count === 4 ? ` <span class="text-amber-300 text-xs">(第${fromTier}階保底 ${player.dollPity[fromTier]}/5)</span>` : ''));
+        if (_dollBatchSummary && _dollBatchSummary.type === 'synth') {
+            _dollBatchSummary.tries++;
+            _dollBatchSummary.fail++;
+            _dollBatchSummary.refunds[back] = (_dollBatchSummary.refunds[back] || 0) + 1;
+        } else {
+            logSys(`<span class="text-slate-400">🪆 合成失敗…</span>退還 <span class="${DB.items[back].c || ''}">${DB.items[back].n}</span>。` + (count === 4 ? ` <span class="text-amber-300 text-xs">(第${fromTier}階保底 ${player.dollPity[fromTier]}/5)</span>` : ''));
+        }
     }
-    if (typeof calcStats === 'function') calcStats();
-    if (typeof renderTabs === 'function') renderTabs(true);
-    if (typeof updateUI === 'function') updateUI();
-    if (typeof saveGame === 'function') saveGame();
-    let _c = document.getElementById('interaction-content'); if (_c) renderCardSynth(_c);
+    if (!_dollBatchSummary) _dollAfterChange();
+}
+function dollSynthAll(fromTier, count) {
+    fromTier = +fromTier; count = +count;
+    if (!DOLL_SYNTH_RATES[fromTier] || !DOLL_SYNTH_RATES[fromTier][count]) { logSys('<span class="text-red-400">無效的合成設定。</span>'); return; }
+    let snapshot = _dollBatchSnapshot(fromTier, count);
+    if (!snapshot.groups.length) { logSys(`<span class="text-red-400 font-bold">第 ${fromTier} 階魔法娃娃不足 ${count} 個（未鎖定）。</span>`); return; }
+    let sum = { type: 'synth', tries: 0, success: 0, fail: 0, guaranteed: 0, made: {}, refunds: {} };
+    let nextSeq = player.dollSeq == null ? 0 : player.dollSeq;
+    let nextPity = Object.assign({}, player.dollPity || {});
+    let rate = DOLL_SYNTH_RATES[fromTier][count];
+    let pool = DOLL_BY_TIER[fromTier + 1] || [];
+    for (let consumed of snapshot.groups) {
+        let seq = nextSeq++;
+        let pity = nextPity[fromTier] || 0;
+        let guaranteed = (count === 4 && pity >= 5);
+        let success = guaranteed || (_dollRng('synth', seq) * 100 < rate);
+        sum.tries++;
+        if (success) {
+            if (guaranteed) { nextPity[fromTier] = 0; sum.guaranteed++; }
+            let pick = pool[Math.floor(_dollRng('synthR', seq) * pool.length)] || pool[0];
+            sum.success++;
+            sum.made[pick] = (sum.made[pick] || 0) + 1;
+        } else {
+            let back = consumed[Math.floor(_dollRng('synthF', seq) * consumed.length)] || consumed[0];
+            if (count === 4) nextPity[fromTier] = (nextPity[fromTier] || 0) + 1;
+            sum.fail++;
+            sum.refunds[back] = (sum.refunds[back] || 0) + 1;
+        }
+    }
+    _dollCommitBatchSnapshot(snapshot);
+    player.dollSeq = nextSeq;
+    player.dollPity = nextPity;
+    _dollGrantBatchCounts(sum.refunds);
+    _dollGrantBatchCounts(sum.made);
+    let details = [];
+    let made = _dollCountListHtml(sum.made, 8);
+    let refunds = _dollCountListHtml(sum.refunds, 5);
+    if (made) details.push(`獲得 ${made}`);
+    if (refunds) details.push(`失敗退還 ${refunds}`);
+    if (sum.guaranteed) details.push(`保底成功 ${sum.guaranteed} 次`);
+    logSys(`<span class="text-amber-200 font-bold">🪆 全部合成完成！</span><span class="text-slate-300">第 ${fromTier} 階每次消耗 ${count} 個，共嘗試 ${sum.tries} 次，成功 ${sum.success} 次，失敗 ${sum.fail} 次${details.length ? '；' + details.join('；') : ''}。</span>`);
+    _dollAfterChange();
 }
 // 🔄 6 階重組：消耗 2 個（未鎖定）第 6 階娃娃 → 必得 1 個「與這 2 個材料皆不同」的第 6 階娃娃（現有 4 隻六階互換）。
 //   committed RNG（dollSeq·save/load 不變）；100% 成功（2→1 已是代價，不再賭機率）；⚠️同 dollSynth 只讀寫背包、不碰倉庫。
@@ -458,12 +583,34 @@ function dollRerollT6() {
     if (!pool.length) pool = (DOLL_BY_TIER[6] || []).slice();           // 防呆：六階種類≤消耗種類時退回全池（現有 4 隻不會發生）
     let pick = pool[Math.floor(_dollRng('t6re', seq) * pool.length)] || pool[0];
     gainItem(pick, 1, true, true);
-    logSys(`<span class="text-rose-300 font-bold">🔄 6 階重組完成！</span>消耗 2 個第 6 階，獲得 <span class="${DB.items[pick].c || ''} font-bold">${DB.items[pick].n}</span>。`);
-    if (typeof calcStats === 'function') calcStats();
-    if (typeof renderTabs === 'function') renderTabs(true);
-    if (typeof updateUI === 'function') updateUI();
-    if (typeof saveGame === 'function') saveGame();
-    let _c = document.getElementById('interaction-content'); if (_c) renderCardSynth(_c);
+    if (_dollBatchSummary && _dollBatchSummary.type === 'reroll') {
+        _dollBatchSummary.tries++;
+        _dollBatchSummary.made[pick] = (_dollBatchSummary.made[pick] || 0) + 1;
+    } else {
+        logSys(`<span class="text-rose-300 font-bold">🔄 6 階重組完成！</span>消耗 2 個第 6 階，獲得 <span class="${DB.items[pick].c || ''} font-bold">${DB.items[pick].n}</span>。`);
+    }
+    if (!_dollBatchSummary) _dollAfterChange();
+}
+function dollRerollT6All() {
+    let snapshot = _dollBatchSnapshot(6, 2);
+    if (!snapshot.groups.length) { logSys('<span class="text-red-400 font-bold">第 6 階魔法娃娃不足 2 個（未鎖定）。</span>'); return; }
+    let sum = { type: 'reroll', tries: 0, made: {} };
+    let nextSeq = player.dollSeq == null ? 0 : player.dollSeq;
+    for (let consumed of snapshot.groups) {
+        let seq = nextSeq++;
+        let exclude = new Set(consumed);
+        let pool = (DOLL_BY_TIER[6] || []).filter(id => !exclude.has(id));
+        if (!pool.length) pool = (DOLL_BY_TIER[6] || []).slice();
+        let pick = pool[Math.floor(_dollRng('t6re', seq) * pool.length)] || pool[0];
+        sum.tries++;
+        sum.made[pick] = (sum.made[pick] || 0) + 1;
+    }
+    _dollCommitBatchSnapshot(snapshot);
+    player.dollSeq = nextSeq;
+    _dollGrantBatchCounts(sum.made);
+    let made = _dollCountListHtml(sum.made, 8);
+    logSys(`<span class="text-rose-300 font-bold">🔄 全部重組完成！</span><span class="text-slate-300">共重組 ${sum.tries} 次${made ? '，獲得 ' + made : ''}。</span>`);
+    _dollAfterChange();
 }
 // 合成面板的階級/數量選擇（暫存於模組變數）
 let _dollSynthTier = 1, _dollSynthCount = 2;
@@ -528,7 +675,10 @@ function renderCardSynth(div) {
             <div>來源階級：<span class="inline-flex gap-1 ml-1">${[1,2,3,4,5].map(t => `<button class="btn px-2 py-0.5 text-xs ${_ft === t ? 'bg-sky-700 border-sky-400' : 'bg-slate-800 border-slate-600'}" onclick="setDollSynthTier(${t})">${t}階</button>`).join('')}</span></div>
             <div>放入數量：<span class="inline-flex gap-1 ml-1">${[2,3,4].map(n => `<button class="btn px-2 py-0.5 text-xs ${_cn === n ? 'bg-sky-700 border-sky-400' : 'bg-slate-800 border-slate-600'}" onclick="setDollSynthCount(${n})">${n} 個</button>`).join('')}</span></div>
             <div class="flex justify-between text-xs text-slate-400"><span>第 ${_ft} 階可合成：<span class="${_have >= _cn ? 'text-green-400' : 'text-red-400'} font-bold">${_have}</span> 個<span class="text-slate-500">（未鎖定）</span></span><span>成功率：<span class="text-amber-300 font-bold">${_rate}%</span></span><span>保底：<span class="text-amber-300 font-bold">${_pity}/5</span>${_cn === 4 && _pity >= 5 ? ' <span class="text-green-400 font-bold">必成</span>' : ''}</span></div>
-            <button class="btn w-full ${_canSyn ? 'bg-purple-800 hover:bg-purple-700 border-purple-500' : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'} py-2 font-bold" ${_canSyn ? '' : 'disabled'} onclick="dollSynth(${_ft},${_cn})">合成（消耗 ${_cn} 個第 ${_ft} 階）</button>
+            <div class="grid grid-cols-2 gap-2">
+                <button class="btn w-full ${_canSyn ? 'bg-purple-800 hover:bg-purple-700 border-purple-500' : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'} py-2 text-sm font-bold" ${_canSyn ? '' : 'disabled'} onclick="dollSynth(${_ft},${_cn})">合成</button>
+                <button class="btn w-full ${_canSyn ? 'bg-purple-900 hover:bg-purple-800 border-purple-500' : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'} py-2 text-sm font-bold" ${_canSyn ? '' : 'disabled'} onclick="dollSynthAll(${_ft},${_cn})">全部合成</button>
+            </div>
         </div></div>`;
     // 🔄 6 階重組（2 個 6 階 → 必得 1 個不同的 6 階）：六階無上一階可升，改提供「互換」
     let _t6 = dollTierCount(6), _canRe = _t6 >= 2;
@@ -536,7 +686,10 @@ function renderCardSynth(div) {
         <div class="bg-slate-900/60 border border-slate-700 rounded p-3 text-sm space-y-2">
             <div class="text-sm text-slate-300">🔄 <b>6 階重組</b> <span class="text-xs text-slate-400">（消耗 2 個第 6 階 → <b class="text-rose-300">必得</b> 1 個「與材料不同」的第 6 階；四隻六階娃娃互換用）</span></div>
             <div class="flex justify-between text-xs text-slate-400"><span>第 6 階可重組：<span class="${_canRe ? 'text-green-400' : 'text-red-400'} font-bold">${_t6}</span> 個<span class="text-slate-500">（未鎖定）</span></span></div>
-            <button class="btn w-full ${_canRe ? 'bg-rose-800 hover:bg-rose-700 border-rose-500' : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'} py-2 font-bold" ${_canRe ? '' : 'disabled'} onclick="dollRerollT6()">重組（消耗 2 個第 6 階）</button>
+            <div class="grid grid-cols-2 gap-2">
+                <button class="btn w-full ${_canRe ? 'bg-rose-800 hover:bg-rose-700 border-rose-500' : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'} py-2 text-sm font-bold" ${_canRe ? '' : 'disabled'} onclick="dollRerollT6()">重組</button>
+                <button class="btn w-full ${_canRe ? 'bg-rose-900 hover:bg-rose-800 border-rose-500' : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'} py-2 text-sm font-bold" ${_canRe ? '' : 'disabled'} onclick="dollRerollT6All()">全部重組</button>
+            </div>
         </div></div>`;
     div.innerHTML = h;
 }
@@ -587,12 +740,13 @@ function _codexMobThumbHtml(nm, mi, silh) {
     let hasW2 = (typeof MOB_ANIM_WEAPON_FX2 !== 'undefined') && MOB_ANIM_WEAPON_FX2.has(nm);
     if (!hasS && !hasW && !hasW2) return single;   // 純本體動畫怪→單張
     let enc = encodeURIComponent(nm);
+    let _dp = (typeof MOB_ANIM_8DIR !== 'undefined' && MOB_ANIM_8DIR.has(nm)) ? 'd6/' : '';   // 🧭 v3.2.64 八方向怪：影子/武器層亦在 d6 子夾（面對玩家向·同本體 mi.src）
     let st = 'position:absolute;top:0;left:0;width:64px;height:64px;object-fit:contain;';
     let L = '';
-    if (hasS) L += `<img src="assets/anim/${enc}/idle_s_0.png" style="${st}mix-blend-mode:multiply" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
+    if (hasS) L += `<img src="assets/anim/${enc}/${_dp}idle_s_0.png" style="${st}mix-blend-mode:multiply" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
     L += `<img src="${mi.src}" data-fb="${fb}" alt="${nm}" style="${st}" onerror="_mobImgErr(this)">`;
-    if (hasW) L += `<img src="assets/anim/${enc}/idle_w_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
-    if (hasW2) L += `<img src="assets/anim/${enc}/idle_w2_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
+    if (hasW) L += `<img src="assets/anim/${enc}/${_dp}idle_w_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
+    if (hasW2) L += `<img src="assets/anim/${enc}/${_dp}idle_w2_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
     return `<div style="position:relative;width:64px;height:64px">${L}</div>`;
 }
 

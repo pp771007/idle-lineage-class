@@ -1,0 +1,86 @@
+{
+ "canvas": {
+  "w": 46,
+  "h": 64
+ },
+ "latticeOrigin": {
+  "x": -1,
+  "y": 61
+ },
+ "files": {
+  "idle": {
+   "src": "864-13.spr",
+   "frames": 6,
+   "palette": 64,
+   "blocks": 72,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 947,
+     "bbox": [
+      1,
+      0,
+      44,
+      63
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 934,
+     "bbox": [
+      1,
+      0,
+      43,
+      63
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 930,
+     "bbox": [
+      0,
+      0,
+      43,
+      63
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 924,
+     "bbox": [
+      0,
+      0,
+      44,
+      63
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 938,
+     "bbox": [
+      0,
+      0,
+      44,
+      63
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 937,
+     "bbox": [
+      0,
+      0,
+      45,
+      63
+     ],
+     "hdrOK": true
+    }
+   ]
+  }
+ }
+}

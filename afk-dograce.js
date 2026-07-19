@@ -259,7 +259,7 @@
             win.className = 'dograce-win';
             win.innerHTML =
                 '<div class="dograce-head" id="dograce-head">' +
-                '<div class="dograce-title">🐕 奇岩賽狗場<span id="dograce-phase" class="dograce-phase"></span></div>' +
+                '<div class="dograce-title">🐕 賽狗場<span id="dograce-phase" class="dograce-phase"></span></div>' +
                 '<div class="dograce-headbtns">' +
                 '<button type="button" class="dograce-hb" data-act="ball" title="縮成小球">●</button>' +
                 '<button type="button" class="dograce-hb" data-act="min" title="收合/展開">－</button>' +
@@ -362,7 +362,11 @@
     // ---- 拖曳 + 位置記憶 ----
     // 可用區域上緣：官方版指引橫幅是 fixed 貼在視窗頂端，賽狗視窗/小圈圈都是 fixed 定位，
     // 不夾住上緣就會被壓在橫幅底下。官方網域沒有橫幅 → 0 → 行為與原本完全一樣。
-    function barTop() { return (typeof _origBarH === 'function') ? _origBarH() : 0; }
+    // ⚠ 直接量 #_orig_pbar 元素（+6 安全邊距，與 afk-mobile 同準）——不可依賴外部函式/CSS 變數（afk-mobile 可能被關）。
+    function barTop() {
+        try { var b = document.getElementById('_orig_pbar'); if (b) { var h = b.getBoundingClientRect().height; if (h > 0) return Math.ceil(h) + 6; } } catch (_) { }
+        return 0;
+    }
     // 可用區域下緣:手機底部有導覽列,視窗不可壓到它底下(桌機沒導覽列 → 回視窗底,行為不變)
     function usableBottom() {
         try { var n = document.getElementById('m-nav');
@@ -653,18 +657,39 @@
         winner: winnerOf, placeBet: placeBet, claim: claimTicket, DOGS: DOGS
     };
 
-    // 🎯 入口：進「奇岩城鎮（town_giran）」時自動打開賽狗場浮動球（取代舊核心波金 NPC）。
-    //    球一旦出現即「跨畫面常駐」——離開奇岩城照樣在（可拖曳/縮放），方便邊打怪邊玩；不強制隱藏。
-    setInterval(function () {
-        try {
-            if (typeof mapState === 'undefined' || !mapState || mapState.current !== 'town_giran') return;
-            var ball = document.getElementById('dograce-ball');
-            var win = document.getElementById('dograce-win');
-            var winOpen = win && win.style.display !== 'none';
-            if ((!ball || ball.style.display === 'none') && !winOpen) toBall();   // 進奇岩城鎮確保球出現一次
-        } catch (e) {}
-    }, 2000);
+    // 🎯 入口：自動化分頁「🔌 外掛」列（木人場旁）加「🐕 賽狗場」鈕；視窗/縮球一旦開啟即跨畫面常駐（可拖曳/縮球）。
+    function injectAutoNav() {
+        var panel = document.getElementById('tab-automation');
+        var scroll = panel;
+        if (!panel) { panel = document.getElementById('automation-panel'); scroll = panel && (panel.querySelector('.overflow-y-auto') || panel); }
+        if (!panel) return false;
+        if (document.getElementById('m-afk-nav-dograce')) return true;
+        var row = document.getElementById('m-afk-navrow');
+        if (!row) {
+            row = document.createElement('div');
+            row.id = 'm-afk-navrow';
+            row.className = 'bg-slate-800 p-3 rounded-lg border border-slate-700';
+            row.innerHTML = '<div class="text-sm text-amber-400 mb-2 border-b border-slate-700 pb-1 font-bold">🔌 外掛</div>' +
+                '<div id="m-afk-navrow-btns" style="display:flex;gap:8px;flex-wrap:wrap;"></div>';
+            scroll.appendChild(row);
+        }
+        var b = document.createElement('button');
+        b.id = 'm-afk-nav-dograce'; b.type = 'button';
+        b.className = 'btn py-2 text-sm bg-slate-700 hover:bg-slate-600 border-slate-500';
+        b.style.width = '100%';
+        b.style.marginTop = '8px';
+        b.textContent = '🐕 賽狗場';
+        b.addEventListener('click', function () { window.openRaceWindow(); });
+        row.appendChild(b);
+        return true;
+    }
+    var _navTries = 0;
+    (function tryInject() {
+        if (injectAutoNav()) return;
+        if (++_navTries < 40) setTimeout(tryInject, 500);
+        else console.warn('[dograce] 找不到 automation 面板，入口未注入（開過的視窗/縮球仍可用）');
+    })();
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { console.log('[dograce] ready — 奇岩城賽狗場入口已就緒'); });
-    else console.log('[dograce] ready — 奇岩城賽狗場入口已就緒');
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { console.log('[dograce] ready — 賽狗場入口(自動化分頁)已就緒'); });
+    else console.log('[dograce] ready — 賽狗場入口(自動化分頁)已就緒');
 })();

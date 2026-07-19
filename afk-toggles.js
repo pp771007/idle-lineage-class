@@ -63,7 +63,7 @@
         { id: 'history', name: '離線掛機紀錄', desc: '設定選單：最近離線結算紀錄', group: '查詢與資訊' },
         { id: 'diag', name: '快取診斷', desc: '設定選單：回報問題用的取證工具', group: '查詢與資訊' },
         { id: 'autobuy', name: '自動購買魔法屏障', desc: '魔法屏障卷軸耗盡自動補貨（肉已被上游移除；箭矢/藥水上游原生已有）', group: '自動化' },
-        { id: 'training', name: '木人場', desc: '自動化面板：量測真實 DPS', group: '自動化' },
+        { id: 'training', name: '木人場', desc: '自動化分頁「🔌 外掛」列開啟：量測真實 DPS', group: '遊戲玩法' },
         { id: 'bossring', name: '傳送控制戒指自動找 BOSS', desc: '持傳送控制戒指時，場上無 BOSS 自動用瞬移卷軸召來（線上前景；排名/裂痕/軍王/攻城不套用）', group: '自動化' },
         { id: 'pwa', name: 'PWA 安裝/離線', desc: '安裝成 App、圖片離線快取對帳', group: '系統與其他' },
         { id: 'storage', name: '設定選單', desc: '首頁 ⚙ 設定鈕與存檔大小檢查', group: '系統與其他' },
@@ -71,7 +71,7 @@
         { id: 'skin', name: '首頁外掛入口/資訊', desc: '外掛入口整理（桌機收成🔌鈕/手機依原版按鈕樣式直接排列）＋原作者資訊、最後更新時間、巴哈/Line 連結', group: '系統與其他' },
         { id: 'offline', name: '離線快速結算', desc: '關掉遊戲後回來自動結算掛機收益', group: '遊戲玩法' },
         { id: 'traditional', name: '傳統模式(偽)', desc: '打到/製作/潘朵拉的裝備自帶隨機強化值（商店除外）；在選角畫面的人物卡右上角勾「傳統」逐角色開關', group: '遊戲玩法' },
-        { id: 'dograce', name: '奇岩賽狗場', desc: '奇岩城的賭狗小遊戲（浮動球入口，只賺金幣）', group: '遊戲玩法' }
+        { id: 'dograce', name: '賽狗場', desc: '賭狗小遊戲（自動化分頁「🔌 外掛」列開啟，只賺金幣）', group: '遊戲玩法' }
     ].forEach(api.register);
 
     // 開啟彈窗當下：實測非官方橫幅(#_orig_pbar)高度,直接寫進 overlay 的 padding-top,讓卡片一定落在橫幅下方。

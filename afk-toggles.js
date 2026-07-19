@@ -54,6 +54,7 @@
         { id: 'invlist', name: '背包條列式', desc: '背包改成一行一物品（取代上游格狀皮膚）；桌機/手機通用', group: '遊戲介面' },
         { id: 'warehouse', name: '倉庫擴充', desc: '金幣全部存入/取出、遺物與席琳遺骸分類', group: '遊戲介面' },
         { id: 'eqlist', name: '裝備條列式', desc: '隱藏裝備分頁的 12 格圖形視窗，顯示原版部位條列', group: '遊戲介面' },
+        { id: 'npclist', name: '村莊 NPC 條列式', desc: '村莊畫面改為 NPC 列表（取代地圖站位；點列開功能）', group: '遊戲介面' },
         { id: 'backnav', name: '手機返回鍵', desc: '子畫面按返回回首頁而非關 App（僅手機）', group: '遊戲介面' },
         { id: 'dex', name: '怪物/掉落查詢', desc: '首頁入口：查怪名/地圖/掉落物', group: '查詢與資訊' },
         { id: 'wiki', name: '小百科', desc: '首頁入口：職業/裝備/機制/地圖等資料', group: '查詢與資訊' },

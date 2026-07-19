@@ -1,381 +1,154 @@
-# 放置天堂 — 專案規則
+# 放置天堂（加掛版）— 專案規則
 
-## 專案性質
+## 專案性質與架構（2026-07-19 起・純上游鏡像＋外掛層）
 
-- 網頁放置遊戲。遊戲本體由原作者(巴哈姆特 秋玥)製作,原版網址:**https://shines871.github.io/idle-lineage-class/**;本專案原是「原版 + 加掛外掛」的鏡像站。
-- **🛑 2026-07-06 起本專案獨立維護,不再跟進原作者版本(使用者決定)**:原本「每小時自動同步原版」的整組機制——GitHub workflow `sync-upstream.yml`、Cloudflare Worker `cf-sync-trigger/`(已 `wrangler delete`)、腳本 `scripts/sync-upstream.mjs`、首頁同步時間 `last-sync.json`——已全部從 repo 移除,只留 git 歷史。**背景沒有任何自動同步在跑**;首頁跑馬燈已公告「伺服器永久開放,但不再跟進原作者版本」。
-- 結構:`index.html`(殼)＋`js/*.js`(遊戲邏輯,00-data…等多檔)＋`css/`(樣式)＋`assets/`(圖,含 `anim/` 動畫幀)＋`public/assets/`(登入圖)＋根目錄 `afk-*.js`(外掛)。遊戲全域(`DB`/`tick`/`saveGame`/`MAP_CATEGORIES`…)定義在 `js/*.js`(一般 script,全域共用),外掛 `<script>` 排在 `</body>` 前、作者 js 之後,載入時全域已就緒。
-- **要看原版更新了什麼 / 選擇性移植原版功能 → 跑 `/upstream-diff` skill**(`.claude/skills/upstream-diff/`,2026-07-10 建):以 `upstream-checkpoint.json` 的 `reviewedUpstreamCommit` 為錨點,對上游本機 clone(`D:/otherPersonRepos/idle-lineage-class`)diff 分析 → 產出功能菜單報告(`upstream-reviews/`)給使用者挑 → 逐功能 3-way 移植(分家點兩邊 blob 等價,`git apply -3` 可用;assets 用 `git archive | tar -x` 搬,中文檔名安全)。**🚨 分家後兩邊每支核心 js 都各自改過,絕不可整檔覆蓋**;舊的「整檔覆蓋式自動同步」永久作廢(腳本留在 git 歷史,勿撈回來用)。
+- 網頁放置遊戲。遊戲本體由原作者(巴哈姆特 秋玥)製作,原版:**https://shines871.github.io/idle-lineage-class/**;本站(加掛版):https://pp771007.github.io/idle-lineage-class/。
+- **架構=「上游原版鏡像＋外掛層」**:核心(`js/NN-*.js`、`css/*`、`index.html`、`assets/`、`public/`)永遠是上游原文/原檔的位元組級鏡像;我們的所有功能都在**外掛層**——根目錄 `afk-*.js`(32 支)＋`sw.js`(PWA,上游沒有)＋極少量**錨點式核心補丁**(`scripts/apply-core-patches.mjs`)。
+- 歷史一句話:2026-07-06 曾與上游分家獨立維護(直接改核心);2026-07-19 起改回本架構(`rearch-plugins`),核心修改全數退回外掛/補丁,以便隨時整包跟進上游。舊的 3-way 逐功能移植 SOP 已作廢。
+- 上游本機 clone:`D:/otherPersonRepos/idle-lineage-class`。**引用上游做任何判斷前先 `git -C <clone> fetch`**——舊 clone 會讓「上游也是這樣」的結論整個相反(踩過)。
+- 同步狀態記在 `upstream-checkpoint.json`(`syncedUpstreamCommit`=目前鏡像的上游 commit)。
 
-## 🔄 要講「上游也是這樣」之前,先 `git -C <上游> pull`——舊 clone 會讓結論整個相反
+## ⭐ 修改原則(鐵則)
 
-上游 clone 放著就會過期(它天天在改)。拿它下的任何結論——「上游也沒這張圖」「上游也有這個 bug」「上游也是這樣寫」——**只要 clone 是舊的,就可能整個是錯的**(踩過:憑舊 clone 判定某圖「原版就缺、要不要拿別的頂替」,pull 完發現上游前一天剛加了那張圖,根本是我方漏搬)。
-**判準:任何一句「上游…」出口前,先 `git -C /d/otherPersonRepos/idle-lineage-class fetch && git pull --ff-only`,並在回報裡註明比對的是哪個 commit。**
+**🚨 絕不直接手改核心檔(`js/NN-*.js`/`css/*`/`index.html`)——下次同步上游會整包覆蓋,改了就丟。** 要動遊戲行為,依序考慮:
 
-## 🧩 移植一整個子系統後,要另外驗「掛點有沒有接、素材有沒有搬」——程式碼搬過來不等於功能會動
+1. **外掛 monkey-patch(首選)**:核心函式都是全域,外掛包裝(`var _orig = fn; fn = function(){...}`)能解決絕大多數需求。afk-offline 連整套離線結算都是這樣掛的。
+2. **錨點式核心補丁(最後手段)**:只有「外掛包不住」的才用——要抽函式、改函式簽名、改寫死的字面值。加進 `scripts/apply-core-patches.mjs`:靠「上游原文特徵字串」定位、冪等、**錨點找不到就 exit 1 大聲失敗**(不會默默壞)。補丁越少越好,現有 6 個:
+   | # | 檔 | 內容 |
+   |---|---|---|
+   | 1 | js/03 | `maybeSpawnMobs` 抽出(tick 出怪塊→具名函式,離線快速結算共用同一份排程) |
+   | 2 | js/08 | `gainItem` 自帶強化值鉤子 `__afkTradRollEn`(afk-traditional 偽傳統) |
+   | 3 | js/13+js/06 | 存檔位 8→16(`SAVE_SLOT_MAX`) |
+   | 4 | js/22 | 寵/召 sprite ticker 改間接呼叫(讓 afk-powersave 包得住) |
+   | 5 | js/07 | 迴避頭目 × 自動找BOSS 互斥(`AFK_BOSSRING.huntActive`) |
+   | 6 | js/08 | `useItem` 加 `keepModal` 參數(自動瞬移不關玩家視窗) |
+3. **index.html 不手改**:它=上游 index＋`scripts/afk-plugin-block.html` 注入到 `</body>` 前(sync 時自動重組)。**新增外掛 → 改 `afk-plugin-block.html`**(載入順序也在那裡管:afk-toggles 最先、afk-skin 最後),再把它的 `<script>` 行同步補進現行 index.html(或重跑 sync),有 DOM 掛點的加進 `scripts/smoke-hooks.mjs` 的 `need`。
+4. **CSS 覆寫**寫在外掛注入的 `<style>` 裡(如 afk-mobile),不改 `css/*.css`。
 
-寵物/召喚系統移植後同時中了三種:`petsGainExp()` 定義好好的但**全 repo 沒有任何呼叫點**(寵物永遠 0 經驗)、9 隻召喚物缺 8 方向動畫圖(戰場上**隱形**)、16 個寵物道具缺圖示(破圖)。共通點是**功能看起來在、實際半殘,且不會拋錯、smoke 也抓不到**——玩家回報才知道。
+**外掛開關(afk-toggles.js,載入順序第一)**:每支外掛可被玩家單獨關掉——某支壞掉時玩家關掉它就能用原版繼續玩(逃生門)。契約:
+- 純新增型外掛檔頭 `if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('<id>')) return;`;包核心函式型在 wrapper 內每次先問 `enabled()`,關掉就透明放行原函式。
+- 載入時 `AFK_TOGGLES.register({id,name,desc,group,def})` 進開關面板。讀不到 AFK_TOGGLES 一律當開啟。afk-toggles 自己不可被關、不依賴任何外掛。
 
-移植完(或大範圍搬功能後)跑這三項:
+**外掛通用守則**(沿用、仍然有效):
+- 優雅降級:需要的全域函式/元素不存在就 `console.warn` 後安靜停用,不可弄壞遊戲。
+- **🚨 絕不可盲呼叫「會寫入玩家存檔」的原作函式**(踩過:主選單狀態呼叫 `saveGame()` 把玩家第 1 格蓋成 Lv.1 null、無備份可救)。要存檔資料**直接讀 `localStorage`**(`lineage_idle_save_<n>`);非寫不可時先驗 `player && player.cls`。任何會動玩家 localStorage 的操作,都要假設可能在「未載入角色/currentSlot 不是預期那格」被觸發。
+- 外掛插 DOM 錨「穩定容器 id」,不要錨父子關係——錨不到只會安靜消失,smoke 驗不到,改過首頁版面要人工掃。
+- 覆寫「會被 `.hidden` 切換」的容器 display 時一律加 `:not(.hidden)`,否則畫面關不掉(踩過)。
+- 外掛自建遊戲物件(如木人場 spawn 怪)欄位要對齊核心 `spawnMob`,缺欄位(如 `_born`)會整個系統安靜失效。
+- 上游改版後外掛的「字串/DOM 結構假設」可能失效——同步後 smoke＋人工掃一輪首頁/手機版面。
 
-1. **掛點**:新模組「對外要被別人呼叫」的函式逐支 `grep -rn '<函式名>' js/ afk-*.js` ——**只找到定義那一行 = 漏掛**。反向也要:上游是在哪呼叫的(`grep` 上游 clone),那個呼叫點在我們這邊是不是被舊版程式碼覆蓋掉了(我們的 `js/05` 停在舊經驗模型,整段沒有那行)。
-2. **素材**:用**遊戲自己組路徑的那支函式**去驗檔案存在,不要憑欄位。物品圖示走 `getIconUrl(d)`(多數道具沒有 `icon`/`img` 欄位、是拿**中文名**去組 `assets/icons/{items,armors,weapons,accessories}/<名>.png`——查 `d.icon` 會得到「全部都在」的假綠燈,踩過);戰場 sprite 分兩種路徑:怪物走 `assets/anim/<名>/idle_0.png`(平面),**寵物/召喚物/精靈走 `assets/anim/<名>/d0..d7/`(8 方向),缺 8 方向就完全不顯示、無錯誤訊息**。
-3. **跟上游對素材清單**:`git -C <上游> -c core.quotepath=false ls-files assets | sort` 與我方 `comm -23` 比一次(**兩邊都要 `core.quotepath=false`,否則中文檔名一邊是 `\3xx` 跳脫、diff 全錯**)。差集要逐一判斷「屬於沒移植的功能(可略)」還是「該搬卻漏搬」。
-   **⚠️ 但 `comm -23` 只抓得到「缺檔」,抓不到「兩邊都有、內容卻不同」**(玩家回報「耳環有黑底」才發現:同名檔案我方是舊的黑底版、上游早已換成透明底)。**要比 blob sha,不是比檔名**:`ls-files -s` 取 sha → 取兩邊交集比對。找到差異別急著覆蓋——**逐張判斷是「上游修好了我方沒跟」還是「我方刻意改的」**(該次 6 張有差,只有 1 張是真問題,其餘是像素微差、不該動)。搬檔一律 `git archive <上游> HEAD "<路徑>" | tar -x -C .`(中文檔名安全);**`desktop.ini` 這種 OS 垃圾不要跟著搬**。改完 assets 記得 `node scripts/gen-manifests.mjs`。
-4. **取得途徑**:移植任何「玩家要拿到手的東西」(裝備/遺物/材料/書板),**驗完效果還要驗『拿不拿得到』**——定義、數值、效果、物品卡說明全對,只要漏搬掉落表就是**完全拿不到**,而且不會拋錯、smoke 也抓不到,玩家表現是「小百科查無取得途徑」(那不是小百科壞掉,是真的沒有途徑)。**判準:用遊戲自己的掉落表反查「誰會掉這件」**(掃 `MOB_DROPS` 等五張表找該 id),而不是看它有沒有定義;查無來源就去上游 `js/01-drops-config.js` 找對應那筆。**搬掉落行不要手抄**(一行動輒 20 筆):先確認「我方與上游那行的差異只有那筆新物品」,再整行採用上游。
+## 🔄 同步上游 SOP → 跑 `/sync-upstream` skill
 
-## 🔁 修完 bug 後:先判斷「這條值不值得留」,要留先問過使用者才寫(2026-07-12 改訂,取代舊的「一律寫回」)
+使用者說「同步原版/更新上游」就跑 `.claude/skills/sync-upstream/`。摘要:
+1. `git -C <clone> fetch` + checkout 目標 commit(通常 origin/main)。
+2. **assets 鏡像**:比對要用 **blob sha**(`git ls-files -s`),不能只比檔名——「兩邊都有但內容不同」佔過大宗(踩過:一次 10,149 檔)。補檔用 tar 走檔案清單(中文檔名不經 exe 參數);**上游沒有的檔要刪**(assets 已於 2026-07-19 達成純鏡像,刪前仍 grep `afk-*.js`+`scripts/` 確認外掛層沒引用)。
+3. `node scripts/sync-upstream.mjs <clone>`:覆蓋核心 js/css → 重組 index.html(上游+外掛區塊) → apply-core-patches → 重產 manifest → stamp 版本 → smoke。**錨點失效會 exit 1**→讀上游該處 diff、更新補丁錨點再跑。
+4. 更新 `upstream-checkpoint.json` → commit(不主動 push)。
+5. 後續提醒:小百科/掉落查詢內容要另跑 `/update-wiki` 對齊(看上游 BASE..TARGET 的遊戲資料 diff);上游 commit message 全是「1」不可依賴,一律讀 diff。
 
-> 舊規則是「踩到就寫進 CLAUDE.md」,結果堆了一堆**只發生過一次、成因早已被移除或被自動檢查擋掉**的舊案,把真正該記的東西稀釋掉。現在改成:
->
-> **修完 bug 先自問三題,三題都是「是」才值得寫;而且要寫之前,先在回覆裡把草稿條目念給使用者聽、等他點頭才動這份檔案——不要自己直接寫進去。**
->
-> 1. **還會再發生嗎?** 成因仍存在於現在的架構(不是「那段 code 已刪 / 引擎已換掉」),而且**換個功能也會踩到同一類**(判準可推廣),不是一次性手滑。
-> 2. **自動檢查擋不掉嗎?** smoke / hook / `/prepush` / stamp 腳本已經會抓的,寫進來只是重複——該去補那個自動檢查,不是補文件。
-> 3. **下次真的會想不起來嗎?** 不直觀、查很久才懂的才寫;看一眼 code 就懂的不用。
->
-> 寫法:標題一句話講結論,內文只寫「為什麼會中 + 判準/怎麼避」。**不要寫案發經過、A/B 數據、玩家回報細節**(那些是 git log 的事)。能併進現有條目就別開新段。
+CI 版:GitHub Actions `sync-upstream.yml`(手動觸發)做同一件事並開 PR;它的 assets 鏡像是 `rsync --delete`。**因此 `assets/`、`public/` 下不可放我方獨有檔案**(會被刪)——外掛需要圖優先引用上游既有檔(例:afk-training 背景用 `assets/area/1920x1080/新兵修練場.jpg`);真的要自有素材就放 assets 之外,或改 workflow 加 exclude。
 
-## 🏷️ 版本號與發版(/release)
-
-- **加掛版有自己的版本號(semver,`v1.0.0` 起跳)**,與原作者的版本(v3.0.x)脫鉤:存在 `version.json` 的 `app` 欄位,首頁由 `afk-syncinfo.js` 讀取顯示「加掛版 vX.Y.Z」。`stamp-sw-version.mjs` 重寫 version.json 時會**保留 `app` 欄位**,只有發版時才 bump(大改版→major、新功能→minor、純修正→patch)。
-- **發版流程已包成 `/release` skill**(`.claude/skills/release/`):使用者說「發版」就跑它——整理上次 tag 之後的 commits → 草擬玩家視角更新說明 → bump `version.json` 的 `app`+stamp+commit+push → 等 Pages 上線 → `git tag vX.Y.Z` + `gh release create`(標題 `《放置天堂 - 以血為盟》加掛版 vX.Y.Z`)。
-- **版本號自己決定,不要再問使用者(使用者明訂・2026-07-14)**:依改動性質套 semver 規則(大改版→major、新功能→minor、純修正→patch)直接 bump 下去,發完在回報裡告知版本號與更新說明即可。
-- **更新說明鐵則(使用者明訂・2026-07-07)**:只寫玩家需要知道的——功能更新、問題修正、玩起來有感的調整;**白話、不要術語**(寫「離線結算大幅加快,掛一整天回來幾秒算完」,不要寫「混合快速結算管線」);內部重構/文件/CI/腳本改動一律不寫。
-- 舊 tag 格式 `vYYYYMMDD-HHMM` 是自動同步時代的產物,**不再使用**;歷史 Release 保留不動。
-- 需要台灣時間戳時注意:**Windows git-bash 的 `TZ='Asia/Taipei' date` 不生效**(沒 tzdata,默默給 UTC;踩過 2026-07-06 tag 時間差 8 小時)→ 用 `date -u -d '+8 hours' +%Y%m%d-%H%M` 換算。
-
-## ⭐ 程式碼修改原則:依「功能性質」決定寫哪裡,不再一律偏好外掛
-
-> **🔓 2026-07-06 起可直接修改原作者程式碼(`js/*.js`/`css/*.css`/`index.html`)——已停止與原版同步,不再有「被覆蓋」問題。**
-> **🔓 2026-07-09 起「新功能一律寫外掛」的規則作廢(使用者明訂)**:既然核心碼可以改,就沒道理為了遷就外掛而多寫一層 monkey-patch。**照功能性質判斷該寫哪裡**。
-
-**判準——寫進核心碼(`js/*.js`)**,當這個功能是:
-- **既有遊戲機制的一部分**:改道具使用流程、戰鬥公式、UI 面板行為(例:萬能藥批量服用寫在 `js/02` 的 `openPanaceaModal`,就緊鄰同性質的歐西里斯寶箱 `openOsirisBox`)。
-- **需要 monkey-patch 核心函式才能達成**:要包 `useItem`/`renderTabs`/`saveGame` 才做得到 → 那就直接改那個函式,少一層 wrapper、少一份「跟上核心規則」的維護負擔。
-- **會用到核心的常數/規則**:外掛複製一份上限值/判斷式 = 上游一改就分歧(踩過:外掛自建怪物缺 `_born` 欄位整個系統安靜失效)。
-
-**判準——寫成外掛(`afk-*.js`)**,當這個功能是:
-- **遊戲之外的東西**:PWA、離線掛機結算、Service Worker、統計 beacon、首頁品牌/公告。
-- **獨立子系統、與核心低耦合**:小百科、掉落查詢、木人場、離線紀錄——自成一頁/一個面板,只讀核心資料。
-- **平台/裝置專屬的覆寫**:手機版面(`afk-mobile`)、返回鍵處理。
-
-猶豫時問:「**這段 code 需要知道核心的內部規則嗎?**」需要 → 寫核心。只讀資料、或整塊可插拔 → 外掛。
-
-- 外掛要能「優雅降級」:自我檢查需要的全域函式/元素是否存在,缺了就 `console.warn` 後安靜停用,**不可把遊戲弄壞**。
-- **「補原作者坑」的補丁一律直接改核心根治**(2026-07-09 `afk-fixes.js` 已全數搬回核心並刪檔)。不要再為了「不動原作者碼」去包一層 wrapper。
-- 改核心前先 grep 外掛有沒有包住同一個函式(如 `afk-mobile` 包過 renderTabs),避免兩層邏輯打架。(離線掛機已於 2026-07-10 移入核心 `js/offline.js`,不再包 saveGame/loadGame/changeMap——這幾支的離線掛點改為函式尾端直呼 `offlineStamp`/`offlinePreLoad`/`offlineAfterLoad`。)
-- 改了 `js/*.js` 要同步更新 index.html 該檔的 `?v=`(慣例=內容 sha1 前 10 碼,`sha1sum js/<檔> | cut -c1-10`)並跑 `node scripts/stamp-sw-version.mjs`(`/prepush` 內含)。
-
-### 🚨 外掛絕不可盲呼叫「會寫入/覆蓋玩家存檔」的原作者函式(踩過、害玩家存檔變 Lv.1 null)
-
-> **血淚教訓(存檔轉移外掛)**:匯出功能為了「存最新進度」呼叫了原作者的 `saveGame()`。但匯出鈕在**主選單**上,主選單是「**還沒載入角色**」的狀態——此時全域 `player` 是空白預設值(`name:null, lv:1`),而 `saveGame()` **沒有防呆**,直接把 `player` 寫進 `lineage_idle_save_<currentSlot>`,於是**把玩家第 1 格的真實存檔覆蓋成 Lv.1 null,且無備份可救**。
-
-- **外掛要拿存檔資料 → 直接讀 `localStorage`**(`lineage_idle_save_<n>`),**不要為了「拿最新」去呼叫 `saveGame()` 之類會寫檔的函式**。
-- **真的非呼叫寫檔函式不可時,務必先確認「真的有載入角色」再呼叫**:`if (player && player.cls) { ... }`(空白 `player` 的 `cls` 是 `null`)。`saveGame()` 寫的是「目前所在存檔位 `currentSlot`」,在選單/未載入狀態呼叫 = 拿空白角色蓋掉那一格。
-- 推論:**任何「會改動玩家 localStorage」的外掛操作,都要假設自己可能在「未載入角色 / currentSlot 不是使用者以為的那格」的狀態被觸發**,先驗狀態再動手;能唯讀就唯讀。
-- 原作者的存檔系統**只在「匯入」時才留 `*_bak` 備份**,`saveGame()`/一般存檔**不留備份**——所以一旦被外掛誤覆蓋就是永久損失,務必從源頭防止。
-
-## 目前的外掛(載入順序照 index.html;afk-skin 固定排最後。⚠ 離線掛機不在此表——2026-07-10 已移入核心 `js/offline.js`,見下方離線掛機章節)
+## 目前的外掛(32 支;載入順序見 `scripts/afk-plugin-block.html`)
 
 | 檔案 | 功能 |
 |---|---|
-| `afk-mobile.js` | 手機版面(底部導覽列、一行式狀態列、浮動日誌面板、修正彈窗溢出;桌機零接觸,只在手機尺寸/裝置 init) |
-| `afk-backnav.js` | 手機「返回鍵/返回手勢」在子畫面(選存檔位/創角)回首頁而不是關掉 PWA(History API 包作者畫面切換函式;只手機;無 DOM 掛點不列 smoke) |
-| `afk-slotinfo.js` | 選角/載入畫面的存檔鈕下方附加「📍目前掛哪張圖、⏱已掛多久」(讀核心離線模組寫的 `afk_map_/afk_ts_<slot>`,唯讀;暴露 `window.AFK_SLOTINFO.read(slot)`;桌機手機共用) |
-| `afk-extradata.js` | **掉落查詢+小百科共用的手動補充資料**(純資料、無 DOM、在 dex/wiki 之前載入,定義全域 `AFK_EXTRA`):`itemAcquire`(物品取得方式,`short` 給 dex 物品卡＋小百科裝備頁;`chain` 是舊傳說頁專用、現未使用)、`weaponTraitEff`/`weaponTagTrait`(武器特性白話對照,dex 物品卡共用)、`mapName`(地圖 id→中文)。**只放「不能從遊戲 DB 動態算」的手動補充**;補一件裝備取得只改這支、dex+wiki 同時生效。dex/wiki 都 call 時即時讀、沒載到優雅降級 |
-| `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;讀 DB.mobs/maps/items + **五張掉落表 MOB_DROPS／DARK_WEAPON_DROPS／DARK_CRYSTAL_DROPS／DRAGON_DROPS／WARRIOR_DROPS**(與原作 _auditMobDrops 同一組;漏讀哪張就查不到);龍騎士表的職業限定任務道具標「🐉僅X」(讀 `TRIAL_ITEM_CLASS`);**純兌換/無怪掉的成品**(龍騎士書板·鎖鏈劍·臂甲…)補 `AFK_EXTRA.itemAcquire[id].short`「取得方式」、且這類非裝備非商店物品要靠有 itemAcquire 才會收進搜尋索引;桌機手機共用;**支援獨立頁 `?view=dex`**,見下「獨立頁」;頂部「掉落率模式」下拉=一般/席琳×3/瘋狂席琳×5/經典×1/10 重算怪卡掉落率) |
-| `afk-wiki.js` | 小百科(首頁入口;**多分頁 + 關鍵字搜尋**:職業專精/武器特性/戰鬥機制/地圖/能力值/職業魔法/帶寵物/傭兵/任務/套裝/收藏-裝備/收藏-道具/收藏-怪物/魔法娃娃/裝備/強化/製作/負重/席琳/血盟/傲慢之塔/遺忘之島/軍王之室;部分讀遊戲資料、部分本檔手動維護(收藏-怪物讀 CARD_*、收藏-裝備讀 EQUIP_CATEGORIES/EQUIP_CAT_*、收藏-道具讀 MISC_CATEGORIES/MISC_CAT_*,皆 data-driven 自動跟上。**收藏三分頁**另有模式切換鈕:預設不選(防爆雷),點了才依模式共用桶 `lineage_idle_carddex/equipdex/miscdex+modeSuffix` **唯讀**顯示收集進度與缺項);桌機手機共用;**支援獨立頁 `?view=wiki`**;**改前先讀下方「小百科維護準則」**)。**「地圖」分頁**讀 `MAP_CATEGORIES`+`DB.maps/DB.mobs` 動態列出(每張標 📍進入路徑=在哪個分類、等級範圍、進入條件,自動同步;遊戲移動方式=地圖選單選分類再選圖直接傳送,故路徑即分類)。**「裝備」分頁**(`renderEquip`)讀 `DB.items` 依部位分組列出全部裝備+職業篩選(用遊戲 `equipOk` 真實規則);**詳情數值直接呼叫遊戲全域 `buildItemDescHTML({id,en:0,…})`**(永遠與遊戲一致、新增裝備/特效自動跟上、零手動維護),取得方式呼叫 `afk-dex.js` 暴露的 `window.AFK_DEX_API.acquireHTML(id)`(製作/商店/怪物掉落/`itemAcquire`)。每件詳情常駐 DOM(`display:none`)→ 完整數值與特效都進統一搜尋;詳情與整頁 HTML 都 memoize(`_equipDetail`/`_equipHtml`)→ 441 件搜尋重渲染不卡。**改裝備顯示時不要自己刻數值格式(會與遊戲分歧、得手動補),一律重用 `buildItemDescHTML`**。**「職業魔法」分頁**:每張魔法卡左側加圖示(`assets/icons/skills/<魔法名>.png`,與遊戲同路徑、缺圖 `onerror` 隱藏);選定單一職業時顯示「選擇角色」下拉(`charSelectHTML`,**唯讀**讀 8 格存檔 `_lzGet`/`_saveUnwrap` 取職業/等級/暱稱,預設不選、該職業無角色不顯示),選了角色後依其學過的魔法(`player.skills` 扣掉裝備臨時授予的 `grantedSkills`)把圖示變亮(`.is-learned`)/未學變暗(`.is-unlearned`);**絕不呼叫會寫存檔的原作函式**(見上方存檔鐵則) |
-| `afk-sw.js` | Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
-| `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |
-| `afk-statpts.js` | 能力值面板每個屬性下補一行「點數來源分解」(始/升/藥/總,不含裝備;monkey-patch `updateUI` 後插入;讀 `player.base/alloc/panacea`) |
-| `afk-syncinfo.js` | 首頁顯示「原作者:秋玥(正版連結)· 加掛版 vX.Y.Z」+ 巴哈討論串/Line 連結(顯示在 `#main-menu`;版本號讀根目錄 `version.json` 的 `app` 欄位,讀不到只藏版本列;檔名是「同步時間」時代的歷史名稱,沿用不改) |
-| `afk-ui.js` | 統一自製彈窗:全域接管 `window.alert` 成非阻塞深色卡片(iOS Safari 會抑制連續原生 alert);並提供 `window.AFK_UI.openLayer/closeLayer` 共用「返回鍵/ESC 關最上層 modal」管理器(小百科/掉落查詢有自己一套等效實作,不共用);另提供 **`AFK_UI.confirm({title,message,okText,cancelText,danger,onOk,onCancel})`** 共用確認彈窗(非阻塞、callback 分派;確定→onOk,取消/背景/ESC/返回鍵→onCancel;取代原生 confirm。要做「確認才執行」的功能一律用它) |
-| `afk-autobuy.js` | 外掛自動購買(設定面板「自動買銀箭」下方注入:肉耗盡自動買、魔法屏障卷軸自動補貨;包 `tick()` 低於門檻照商店價補;設定依存檔位存 `afk_autobuy_*_<slot>`;離線結算共用同一套 tick 邏輯,並暴露 `window.__afkAutobuyCheck` 供離線快速結算呼叫) |
-| `afk-pwa.js` | PWA 安裝 UI + 圖桶/程式桶對帳(設定選單「📥 安裝成 APP」,iOS 跳文字引導;`<head>` 的 manifest/圖示/theme-color 用 JS 注入。每次載入:`reg.update()` nudge 更新偵測 + 送三種 reconcile 給 SW(assets-manifest 逐張、anim-manifest 逐怪、現行 js/css 引用清單)。**無更新 UI、無預抓**——導覽 network-first 線上永遠最新,圖片用到才抓。SW 註冊沿用 afk-sw.js) |
-| `afk-storage.js` | 首頁「⚙ 設定」鈕 → 展開選單(`MENU_ITEMS` 可擴充,afk-history 也註冊進來)→ 檢查存檔大小(唯讀列出 localStorage 各 key 用量與 ~5MB 上限比例) |
-| `afk-diag.js` | 首頁設定選單「🩺 快取診斷」:玩家回報問題時的取證工具(手機沒有 console,這是唯一拿得到現場數字的管道)。**全程唯讀**——列出開啟方式/瀏覽器/螢幕、SW 是否在控制、儲存用量與配額、localStorage 佔比與吃空間排行、各快取桶筆數、逐張/逐怪對帳記錄、`逐怪對帳`(SW 回報:清了幾張/為何跳過)、各存檔位角色與背包件數、離線錨點、最近錯誤;可一鍵複製。**角色一律讀存檔而非全域 `player`**(入口在主選單、那裡沒載入角色),名稱職業重用遊戲的 `slotSummary()`、格數走 `SAVE_SLOT_MAX` |
-| `afk-history.js` | 首頁設定選單「📜 離線掛機紀錄」:每存檔位最近 5 筆離線結算卡片(時間/地點/經驗金錢/道具/擊殺;可篩選存檔位、多選欄位);讀核心離線模組寫的 `afk_hist_<slot>`,**對玩家存檔唯讀**;顯示偏好存 `afk_hist_prefs` |
-| `afk-itemsearch.js` | 背包(武器/防具/道具分頁)的名稱搜尋:包住 `renderTabs`,每次重繪後把搜尋框重新注入清單頂端;查詢字串存在外掛自己的狀態(不存 DOM)故重繪不會弄丟,重注入時還原字串與焦點(打字不中斷)。比對用列的 `textContent`(含名稱/詞綴/強化值),**純顯示層過濾、不動遊戲資料**。※ 倉庫的搜尋在核心 `js/12`(與背包側共用單一關鍵字,見 `whSetSearch`);`renderTabs` 不存在就安靜停用 |
-| `afk-mobname.js` | 怪物名稱顯示模式三選一(全部常駐/鎖定中常駐/原版 hover 才顯示;純 CSS + body data 屬性驅動,零 per-tick 成本;設定存 `afk_mobname_mode`) |
-| `afk-training.js` | 木人場(「⚙️ 自動化」面板入口;選 1~5 隻怪打不死量真實 DPS,HUD 顯示每隻/總 DPS;怪血設天文數字、每 tick 量血量變化=總傷害再補回,涵蓋所有傷害來源;包 `killMob` 攔即死;可套席琳/瘋狂席琳模式,重用原作 `applySherineBuff`) |
-| `afk-analytics.js` | 注入 Cloudflare Web Analytics beacon 統計人數/開啟次數(免費、不用 cookie;**只在正式站台注入**——非 https、localhost/127.0.0.1/`*.local` 一律略過,免本機測試污染統計;token 未填(`__` 開頭)時自動略過。不掛 DOM、不列入 smoke) |
-| `afk-skin.js` | 首頁「加掛版」品牌標記+公告跑馬燈+外掛入口收納(桌機收成一顆「🔌 外掛工具」鈕開 Modal、手機維持半透明外框;外掛鈕套原版首頁按鈕皮;本檔載入順序排最後,用 MutationObserver 等其他外掛的入口到齊再收納,idempotent) |
+| `afk-toggles.js` | 外掛開關中樞(最先載;逃生門,自己不可關) |
+| `afk-ui.js` | 共用彈窗:接管 alert、`AFK_UI.confirm`、openLayer/closeLayer(返回鍵/ESC 關最上層) |
+| `afk-extradata.js` | dex/wiki 共用手動補充資料(`AFK_EXTRA`:itemAcquire/武器特性白話/mapName) |
+| `afk-offline.js` | **離線掛機整套**(關遊戲才算離線;含快速結算引擎;monkey-patch saveGame/loadGame/changeMap/killMob/gainItem+補丁1) |
+| `afk-mobile.js` | 手機版面薄殼(底部導覽列切三欄、橫幅讓位、浮動日誌;版面用上游原版) |
+| `afk-backnav.js` | 手機返回鍵/手勢在子畫面回上層而不是關 PWA |
+| `afk-slotinfo.js` | 選角卡片疊「掛哪張圖/掛多久」(讀 afk-offline 的 afk_map_/afk_ts_,唯讀) |
+| `afk-loadslots.js` | 卡片式選角擴到 16 格(搭配補丁3) |
+| `afk-dex.js` | 掉落查詢(五張掉落表+特殊掉落 SPECIAL_BLOCKS;`?view=dex` 獨立頁) |
+| `afk-wiki.js` | 小百科(多分頁+統一搜尋;`?view=wiki` 獨立頁;改前讀下方維護準則) |
+| `afk-storage.js` | 首頁「⚙ 設定」選單(MENU_ITEMS 可擴充)+檢查存檔大小 |
+| `afk-history.js` | 離線掛機紀錄卡片(讀 afk_hist_<slot>,唯讀) |
+| `afk-diag.js` | 快取診斷(全程唯讀;欄位各自包錯;產物自帶版本號) |
+| `afk-powersave.js` | 省電模式(關戰鬥動畫/降更新頻率;涵蓋寵/召 ticker=補丁4) |
+| `afk-statpts.js` | 能力值來源分解(能力圖下方單一區塊) |
+| `afk-autobuy.js` | 自動買肉/魔法屏障卷軸補貨(預設開;離線結算共用 `__afkAutobuyCheck`) |
+| `afk-training.js` | 木人場(量真實 DPS;獨立 map id `afk_dummy`) |
+| `afk-bossring.js` | 傳送控制戒指自動找BOSS(缺卷軸自動購買;與迴避頭目互斥=補丁5) |
+| `afk-itemsearch.js` | 背包名稱搜尋(包 renderTabs 重注入;純顯示層過濾) |
+| `afk-invlist.js` | 背包條列式(桌機手機通用) |
+| `afk-eqlist.js` | 裝備分頁條列式(隱藏 12 格圖形窗,露出原生部位條列) |
+| `afk-npclist.js` | 村莊 NPC 條列式(鏡射地圖 NPC 成列表) |
+| `afk-mobname.js` | 怪物名稱顯示模式三選一(純 CSS+body data 驅動) |
+| `afk-toast.js` | 手機 toast(包 logSys,點擊同步窗內訊息浮現) |
+| `afk-traditional.js` | 傳統模式(偽)/自動衝裝(掉落自帶強化值;靠補丁2 的 `__afkTradRollEn` 鉤子) |
+| `afk-warehouse.js` | 倉庫增強(金幣全存/全取、遺物與席琳遺骸分類) |
+| `afk-dograce.js` | 賽狗場迷你遊戲(奇岩城鎮限定;自製) |
+| `afk-pwa.js` | PWA 安裝 UI+圖桶/程式桶對帳(reconcile 送 SW) |
+| `afk-sw.js` | Service Worker 註冊(sw.js 是我方檔,上游無 PWA) |
+| `afk-syncinfo.js` | 首頁顯示原作者連結+原版同步時間(讀 version.json 的 buildAt) |
+| `afk-analytics.js` | Cloudflare Web Analytics(只在正式站注入) |
+| `afk-skin.js` | 首頁外掛入口收納(桌機🔌鈕/手機依原版按鈕樣式;固定最後載,MutationObserver 等入口到齊) |
 
-> **小百科 / 掉落查詢的「獨立頁」(`?view=`)**:`index.html?view=wiki`、`index.html?view=dex` 會讓對應外掛把面板鋪滿整頁(藏掉創角/遊戲畫面、改 `document.title`、隱藏關閉鈕、背景點擊不關),並在最上方加一條**頁首導覽**(`#m-standalone-nav`:🏠首頁 / 📚小百科 / 📖掉落查詢,active 標亮)可互切與回首頁。看起來像獨立網頁。首頁兩顆入口旁各有一顆 `↗` 小鈕用 `window.open` 開新分頁到這網址;原本點主鈕開 modal 的行為保留。(頁首 `buildStandaloneNav` 在兩支外掛各有一份相同實作,只有 active 那支會跑、用 id 去重。)**資料仍來自 index.html 的 `DB`/`MOB_DROPS`/… 全域**(無法真的抽成獨立檔——那些 const 夾在遊戲主程式裡),所以獨立頁就是「重用 index.html 當資料源、只顯示該面板」。全寫在外掛內、不動遊戲碼。
+> **獨立頁與跨頁連結(dex↔wiki)**:`?view=dex`/`?view=wiki` 鋪滿整頁+頁首導覽;跨頁一律走對方暴露的 mode-aware `goto`(`AFK_DEX_API.goto({q})`/`AFK_WIKI_API.goto({tab,cls,q})`,自動判斷模態連模態/網址連網址);「名字→跳掉落查詢」inline 連結用 `<span class="m-dexlink" data-dexq="名字">`(全域委派);開對方前先 `close()` 來源模態。新增跨頁連結要重用/擴充 `goto`,不要在呼叫端自己判斷。
 
-> **🔗 小百科 ↔ 掉落查詢「跨頁連結」一律走通用 helper(別自己刻 openModal/location.href)**:要打通兩邊、做「點某物 → 跳到對方並定位」的連結時,呼叫對方暴露的 mode-aware `goto`——`AFK_DEX_API.goto({q})`(前往掉落查詢並搜尋)、`AFK_WIKI_API.goto({tab,cls,q})`(前往小百科並切分頁/搜尋)。它會自動判斷:**在任一獨立頁(`?view=`)→ 導去對方 `?view=…&q=/tab=/cls=`(網址連網址,對方初始化 `applyUrlState`/讀 `?q=` 還原);在遊戲內(模態)→ 開對方模態並套用(模態連模態)**。判斷用 `inStandaloneView()`(任一 `?view=` 即獨立頁)。範例:裝備詳情「🔍 查有哪些怪會掉這件」鈕(class `m-dex-pop-search`,全域委派→`gotoDex`)。**新增跨頁連結時:① 重用/擴充對方的 `goto`(需要新參數就加進 `goto` 與對方的 `applyUrlState`/初始化讀取),不要在呼叫端自己判斷模態/網址;② 反向若還沒有對應 `goto` 就比照現有那支鏡像新增。**
-> **🔗 「名字 → 跳掉落查詢搜尋」的 inline 連結用 `m-dexlink` + `data-dexq`**:要把某個物品/材料/地圖/怪名做成可點(跳掉落查詢搜尋該名)時,包成 `<span class="m-dexlink" data-dexq="名字">名字</span>` 即可——afk-dex 的全域 click 委派會接 `[data-dexq]` 走 `gotoDex`(模態/網址自動)。小百科側有共用 helper `wDexLink(name)`,dex 側的 `craftInfoHTML` 材料也用這個。**模態切換時兩個面板同 z-index、後載入的(小百科)會蓋住先載入的(掉落查詢)**——所以 `gotoDex`/`gotoWiki` 在開對方前會先呼叫對方 `AFK_*_API.close()` 關掉來源模態(並交出一層歷史、不用 `history.back` 以免誤觸對方 popstate)。**已連結化:製作頁(成品+材料)、地圖頁(地圖名+隱藏區域)、裝備詳情材料(craftInfoHTML)。** 尚未做(可續):套裝件名(縮寫不好精準連)、帶寵物/血盟怪名(在散文裡)、掉落查詢→小百科反向。
+## 🗺️ 離線掛機(afk-offline.js)原則
 
-### Service Worker / PWA 快取(sw.js 雙桶分離)
+核心原則:**離線掛機=把「在線上會發生的掛機」照跑一遍**(同圖續掛、撞死即停結算到死前、存活回原地)。「離線」定義=**關閉遊戲**;分頁切背景不算(遊戲照跑、心跳照蓋錨點,是預期行為,不要「順手修」)。
 
-> `afk-sw.js` 註冊 `sw.js`;`sw.js` 是**雙桶分離快取**:
-> - **程式桶 `CODE_CACHE`**(`code-v1`,**固定桶名、不隨版本換、不整桶倒掉**・2026-07-15 改):index.html + 全部外掛 js + 遊戲 js/css(含本機 `css/tailwind-built.css`)+ manifest + PWA 圖示 + 外部 CDN(`placehold.co`,怪圖載入失敗的備援圖,離線也要能用)。導覽文件走 network-first,js/css/圖示走 cache-first(帶 `?v=` 換版即換 URL,故不需換桶名;一次更新只重新下載真的有改的檔)。
->   舊版殘留 entry(?v= 已變的 js/css)由 `reconcileCode` 對帳清掉:afk-pwa 每次載入從 DOM 收集現行引用的 js/css URL 清單送 SW,只清「同源 .js/.css 且不在清單上」的。老玩家的舊制 `code-<hash>` 桶走**懶搬家**:`cacheFirst` 在固定桶 miss 時翻舊桶、命中就搬進固定桶回用,舊桶由 reconcileCode 收尾刪除。**⚠ 搬家/清理不可寫在 activate**:遊戲頁持續發請求,舊 SW 一直有進行中 fetch 事件,skipWaiting 交接被拖到不可控(實測新 SW 卡 waiting 十幾秒以上),activate 裡只留 claim 與清不明桶。
->   `CODE_VERSION` 仍由 `scripts/stamp-sw-version.mjs` 依「index.html＋manifest＋全部外掛 js＋遊戲 js/css 內容 hash」自動覆寫,但**只負責讓 sw.js 位元組變動 → 瀏覽器偵測到新 sw.js → 觸發 PWA 更新流程**,不再當桶名(舊設計「桶名=CODE_VERSION+activate 整桶刪」害每次發版全部玩家重新下載 ~4MB、首頁/登出卡 10~30 秒,已廢)。
->   **改任何程式檔後,push 前要跑 `node scripts/stamp-sw-version.mjs` 重算**(`/prepush` 內含)。漏跑的話「已安裝的 app」不會跳更新。
-> - **圖桶 `IMG_VERSION`**(`img-v3`,**固定桶名、不再 bump、不整桶倒掉**):`assets/` 全部圖,**純 on-demand 快取**(用到才抓;背景全預抓已於 2026-06-26 移除,流量太兇)。
->   失效走**逐張對帳**:`assets-manifest.json` 每張圖帶一個 git blob sha,SW(`reconcileImages`)記下自己快取的是哪個 sha;afk-pwa 每次載入把最新 manifest 送進 SW,只清掉 sha 對不上的舊圖(換一張只重抓一張,不重載整包 30MB),下次用到才 on-demand 抓新版。沒記過 sha 的舊快取 → SW 用實際 bytes 算 sha 補對帳,相符補記、不符才清。(沒預抓後「沒看過的新圖」離線本來就沒有,屬設計取捨。)
->   怪物動畫幀(`assets/anim/`,~3 萬檔)不進逐張清單,走 `anim-manifest.json`「一怪一雜湊」逐怪對帳(`reconcileAnim`)。
-> - **🚨 SW 不可以用 `cache.keys()` 列舉圖桶——筆數一多就拋 `Operation too large`,整支對帳靜默掛掉**:圖桶是 on-demand 累積的(玩越久、去過越多地圖越肥,動畫幀可上萬筆),`cache.keys()` 要把整份 Request 清單序列化回來,超過瀏覽器上限就直接拋錯。**症狀是「悄無聲息地不運作」**,不是報錯——判準:同一支 SW 裡「`reconcileImages` 活著(它不用 keys())、`reconcileAnim` 死了(它用了)」這種同門異命,靠 `afk-diag` 的「對帳記錄:圖片 N 張 / 怪物無記錄」一眼看穿。程式桶(數十筆)用 `keys()` 沒事,**只有圖桶不行**。
->   連帶三條(這三個要一起想,少一個就會變成「無限重抓」):**① 列舉不到時什麼都別做**——不知道快取裡有什麼,「清掉」與「採信」都是瞎猜(採信會讓玩家永遠看到舊圖,更糟);**② 記錄空 ≠ 全部過期**,那是「我不知道」;**③ 清之前先確認記錄寫得進去**(拿現有記錄試寫一次),清得掉卻記不住 → 下次再清一次 → 每次更新都重抓整包。`cache.put` 一律掛 catch(見下方 206 那條)——`writeAnimHashes` 就是漏了 catch 才讓失敗往外炸。
-> - **兩份 manifest 由 `scripts/gen-manifests.mjs` 重產**——**新增/更換/刪除任何 `assets/`、`public/assets/` 的圖後,跑一次並連 manifest 一起 commit**,否則玩家端(尤其 PWA 離線)對不到新圖。**判準:凡是「URL 路徑含 `/assets/`、會被 SW 圖桶快取」的圖,都必須在某份對帳清單裡**(assets-manifest 逐張,或 anim-manifest 逐怪),否則就是「快取卻不對帳→換圖卡舊」(踩過 2026-07-06:`public/assets/login/` 登入圖被快取卻不在 manifest)。新圖片資料夾進來時用 `grep -rlE 'src="[^"]*/assets/' index.html js` 對照 manifest 涵蓋範圍檢查。
-> - **更新接管:新 SW 安裝後停 waiting,等所有分頁/App 關閉後自然接手——install 刻意不 `skipWaiting`(2026-07-15 改)**。skipWaiting 會死鎖:頁面有常駐請求(主選單 BGM `<audio>` Range 串流、登入立繪逐幀輪播),舊 SW 永遠有進行中 fetch → 交接一直 pending;此時按重整/登出 → 導覽等交接、交接等頁面安靜、頁面等導覽完成才卸載 → 三方互等,headless 實測 3 次中 2 次卡 45 秒以上(=「每次更新後首頁/登出等很久」的另一半成因)。導覽 network-first＋js/css `?v=` 定址,舊 SW 服務新內容零差異,晚接手無代價。`skip-waiting` 訊息已移除,舊頁面殘留送來也一律忽略。**音檔(`assets/bgm|sfx`)fetch 不攔截**(Range/206 本來就進不了 Cache、離線行為不變,攔了只會讓 SW 掛著長壽 fetch 事件無法閒置)。
-> - afk-sw 無 DOM 掛點不列入 smoke;**afk-pwa 有 UI 掛點,已列入 smoke 的 `[AFK-pwa]` 檢查**。
-> - **⚠️ SW `cache.put` 絕不能存 206(Range 部分回應)——`res.ok` 對 206 也是 true,會踩雷(踩過 2026-06-30,玩家回報 `sw.js TypeError: Failed to execute 'put'`)**:`<audio>`/`<video>` 串流(`assets/bgm/*`、`assets/sfx/*` 音檔)用 `Range:` 抓 → server 回 **206 Partial Content**,而 `cache.put` 對 206 會 **reject**(`Partial response unsupported`)。**判準/解法:存進 Cache 的條件一律用 `res.status === 200`(不是 `res.ok`,後者含 206/204…),且 `cache.put(...).catch(()=>{})` 永遠掛 catch**(配額滿/race 也不該炸頁面)。新增任何「會被 Range 請求的媒體」或改 SW 快取邏輯時都套這條。
+實作要點(改離線行為前先讀 afk-offline.js 檔頭註解):
+- 掛點:外掛自己 monkey-patch `loadGame`(開頭擷取錨點/結尾結算)、`saveGame`/`changeMap`(結尾 stamp)、`killMob`/`gainItem`(結算期間計數);出怪走核心補丁抽出的 `maybeSpawnMobs()`(與線上同一份排程)。
+- 💾 分段檢查點:結算每 ~5 秒 saveGame+錨點推進到「已結算時點」;**任何新程式碼想在結算(`catchingUp`)期間蓋 afk_ts 都是 bug**。
+- ⚡ 快速結算:取樣→事件驅動逐殺(批次擊殺保 AOE、BOSS 懶驗證+抽驗、維持自動續 buff);危險/特殊圖退回全模擬。**快速段不跑 tick()/autoActions**——「只寫在 autoActions 的自動行為」要各自補,補法=**直接呼叫原作那支函式**(如瞬移 `useItem(uid,true)`),不要自己刻守衛清單(必漏、必分歧)。
+- 排名/計時挑戰類(時空裂痕、排名攀登)**離線一律不續、不結算**(續=刷榜 exploit);攀登/遺忘之島這類非選單圖用外掛自存旅程狀態+原作進場函式還原,不可走 gotoMap 選單路徑。
+- **判準:遊戲邏輯的時間判斷用 `state.ticks`,不用 `Date.now()`**(補跑壓縮時間,牆鐘幾乎凍結)。例外=「關遊戲也該倒數」的(攻城冷卻)留牆鐘。
+- **ff 洩漏判準**:補跑(`state.ff`)期間,戰鬥路徑**直接**呼叫的 `render*`/重副作用(`saveGame`)要被 `!state.ff` 擋住或函式內早退;**自己跑的 timer(setInterval/rAF)也要問「補跑期間它還在跑嗎」**。守衛用 `state.ff && !state.ffSmall`(小補跑要放行)。上游是原文改不得→這類守衛由 afk-offline 以 wrapper 實作(如 sprite ticker、音效靜音)。
+- debug:`window.__afk.forceCatchup(分鐘, noFast)`。全模擬慢是戰鬥模擬本身,不是掃描/記憶體,別往那優化。
 
-### 🎬 戰鬥 sprite 動作(js/09-vfx-render.js)的坑
+## 📦 Service Worker / PWA(sw.js 我方檔)
 
-- **受擊動作是「HP 掉了就播」(HP-delta 偵測),自傷技能(`hpCost`)的自扣血會被誤判成被打(踩過 2026-07-09:屠宰者全程只播受傷動作)**:`_playerMorphApply` 用 `hp < prevHp` 判受擊,而屠宰者/冥想術/隱身術/魂體轉換這類 `sk.hpCost` 技能施放時自己扣血 → 下一幀被判成受擊;受擊權重(4)又高過施法(3)/攻擊(2),於是把該播的動作整個蓋掉、且因技能連發而卡在受傷姿勢。**解法:施放成功後呼叫 `_pmAbsorbSelfHpCost()` 把這次 HP-delta 吸收掉**(castSkill / manualCast 兩個包裝都要)。原版(`D:\otherPersonRepos\idle-lineage-class`)同樣沒處理,是上游共有的坑。**判準:新增「會自己扣玩家 HP/觸發 HP 變化」的技能或機制 → 想一下 sprite 會不會誤判受擊。**
-- **「揮武器/擲武器」型的技能不該播施法動作**:`_PM_ATTACK_SKILLS`(玩家端·技能 id)/`_PM_ATTACK_SKILL_NAMES`(傭兵端·技能名)列出這類技能,改播攻擊動畫;有 `hits` 的(屠宰者/三重矢)連播 hits 次(burst),沒有 `hits` 的(戰斧投擲)播單次、不進 burst(免擋掉緊接著的普攻動畫)。新增同性質技能記得加進去。
+- **雙桶分離**:程式桶 `code-v1`(固定桶名;js/css/index/manifest/圖示;導覽 network-first、資源 cache-first 帶 `?v=`)+圖桶 `img-v3`(固定桶名;assets 全部,純 on-demand)。失效走**對帳**不整桶倒:程式桶 reconcileCode(DOM 現行引用清單)、圖桶逐張(assets-manifest 的 blob sha)、動畫逐怪(anim-manifest)。
+- **🚨 SW 不可對圖桶 `cache.keys()`**——筆數多會拋 `Operation too large` 整支對帳靜默掛掉;列舉不到時什麼都別做;清之前先確認記錄寫得進去。程式桶(數十筆)可以。
+- **`cache.put` 條件一律 `res.status === 200`(不是 `res.ok`,206 會 reject)且永遠掛 catch**;音檔(bgm/sfx)fetch 不攔截。
+- **install 刻意不 `skipWaiting`**(常駐請求會讓交接死鎖、首頁卡半分鐘);activate 只留 claim。搬家/清理不可寫在 activate。
+- **改任何程式檔後 push 前 `node scripts/stamp-sw-version.mjs`**(讓 sw.js 位元組變→PWA 偵測更新;`CODE_VERSION` 只當觸發器不當桶名)。**動 assets 後 `node scripts/gen-manifests.mjs`**(+動畫另有 `node tools/gen-anim-manifest.js`,sync 腳本都會跑)。判準:凡「URL 含 `/assets/`、會被圖桶快取」的圖必須在某份對帳清單裡,否則換圖卡舊。
+- afk-diag 取證:欄位各自包錯(一個 API 炸不可帶走整份)、唯讀硬性要求、產物自帶版本號;`CODE_VERSION` 不含 sw.js 自己——改 sw.js 版本號不變,判 SW 新舊靠新欄位/`reg.waiting`。
 
-### 🪟 戰鬥中自動觸發的流程,不可順手做「玩家層級的 UI 副作用」(關彈窗/切分頁)
+## 📚 小百科/掉落查詢維護(更新內容跑 `/update-wiki`)
 
-- **判準**:某個函式被「玩家點擊」與「戰鬥/tick/離線補跑」**兩種來源**呼叫時,先問「它有沒有做只有『玩家剛按下按鈕』才該做的事?」——`closeModal`、`switchTab`、捲動、播動畫、跳 toast 都算。有就加旗標,由自動路徑關掉。(同類:`state.ff` 補跑要靜音音效/特效。)玩家端症狀多半是「視窗/畫面隔一陣子自己跳掉」,原因是 `consumeArrow` 自動補箭、`autoActions` 自動瞬移這種**靜默呼叫**了玩家層級的函式。
-- **旗標一詞多義就是坑**:`silent` 在 `useItem` 兼職判斷「要不要引動戒指強制遇 BOSS / 寫日誌」,想順手拿它來擋 `closeModal` 會連帶關掉別的行為 → 要關視窗就加獨立的 `keepModal` 參數,別複用 `silent`。
-- **找這類 bug 的方法**:別讀 code 猜。無頭開真實戰鬥,把 `DOMTokenList.prototype.add/toggle`、`className` setter、`removeChild` 包起來,有人對目標元素加 `hidden` 就印呼叫堆疊——一次指到兇手那行。**模擬要涵蓋觸發條件**(測試地圖不會出 BOSS、身上沒戒指就抓不到)。
+資料變動來源=同步上游。同步後跑 `/update-wiki`:以上游 BASE..TARGET 逐檔 diff、照「檔→頁」對照表歸位、render 實測、推進 `wiki-checkpoint.json`。鐵則(使用者明訂、別再犯):
+- **逐檔讀完整 diff,機制改動(`-`/`+` 成對)也要讀**,不可只掃新增定義;不可假設「前面做過了」就跳過。
+- **表格優先、有數據用數據**;程式查得到的數字優先「動態讀 DB/呼叫遊戲函式」產表;散文只留機制說明。表格已表達的不要在下面散文重述。
+- **數據以「真正算它的那段 code」為準**,絕不抄遊戲說明文字/註解(常過時);白話零術語(不要 1D4/骰 19);AC 照遊戲顯示負值;寫「現況」不寫改版語氣;不要模糊詞(短時間/有機率)。
+- **渲染內容絕不露英文**——狀態/數值名補對應表(`STATUS_LABEL`/`STAT_LABEL`/`AFK_EXTRA.mapName`);地圖漏翻有 smoke 自動擋。
+- **掉率要把四個倍率一次講完**(席琳×3/瘋狂×5/恩賜×10/經典×1/10;判準=該 roll 有沒有乘 `_dropMult` 系);「不吃倍率」的兩處都補:小百科該頁+dex `SPECIAL_BLOCKS` 的 dropmult 清單。
+- **條件式掉落(`if(...) gainItem`)都要在掉落查詢查得到**(掃 js/05/06 補 `SPECIAL_BLOCKS`);掉落表以 `_auditMobDrops` push 的那組為權威;客製製作結構(`DEMONKING_RECIPES`/`LUMIEL_RECIPES`…)dex+wiki 兩邊都補,**實測查得到才算數**;純兌換/無怪掉的補 `AFK_EXTRA.itemAcquire[id].short`;潘朵拉抽獎不列為取得方式(唯一來源也寫「目前沒有固定取得途徑」)。
+- 裝備顯示一律重用 `buildItemDescHTML`,不自己刻數值格式。
+- 介面:搜尋=統一結果(跨分頁跨職業,黃色高亮);分頁列單排橫捲;手機不加會撐高的標示元素。
 
-### 💾 「A 模組設旗標叫 B 模組別做某事」= 訊號:B 根本沒防重複執行
+## 🚨 push 前檢查清單(→ `/prepush` skill;hook 兜底)
 
-- 關頁時 `visibilitychange(hidden)` / `pagehide` / `beforeunload` 會連續觸發,`saveOnExit` 因此跑三遍。正解是**在 B 自己去重**(js/13:`saveGame()` 記 `_lastSaveMs`,`saveOnExit` 在 `EXIT_SAVE_DEDUPE_MS`(2000ms)內跳過),而不是讓外掛設旗標、核心讀外掛的全域變數擋特例。去重只作用在離開路徑,一般 `saveGame` 呼叫端行為不變。
-- **判準**:看到「A 設旗標叫 B 別做」,先問「B 是不是根本沒防重複?」——修 B 的重複,比讓 B 認識 A 好。
+1. `node scripts/stamp-code-versions.mjs`——**js/css/afk-*.js 的 `?v=` 全部自動對齊內容 sha1**,不要手動 bump、不要只 bump「有印象改到」的。漏 bump 的後果是**新舊混搭**(玩家快取時序決定,低機率無法重現,踩過整晚收益歸零)。
+2. `node scripts/stamp-sw-version.mjs`(PWA 更新偵測)。動過 assets → `gen-manifests.mjs`。
+3. `node scripts/smoke-hooks.mjs` exit 0(外掛掛點;手機限定外掛在第二輪 iPhone context 驗)。
+4. `grep -nE "^<<<<<<< |^>>>>>>> |^=======$" index.html sw.js afk-*.js` 必須為空(sw.js 一定要一起 grep——標記躺在裡面頁面照常渲染、smoke 照過);每支外掛在 index.html 只出現一次。
+5. `apply-core-patches.mjs --check` exit 0(核心補丁都在)。
+6. commit 階段**不** bump/stamp——那是 push/發版流程的事(使用者明訂:功能做完就 commit,等說要 push 才跑 /prepush 一次處理)。
 
-### 📜 移除捲動容器頂端節點時,補償位移一律「絕對設定 scrollTop」
+**push 後要等 GitHub Pages 重建**(~40s-1min)才算上線:輪詢丟背景跑(`run_in_background`,不要同步 sleep 佔住回合),判準=curl 線上 `version.json`/`?v=`(不要只信 pages/builds API,連續 push 時它會落後);BUILT 才通知使用者。
 
-- Chrome 有 scroll anchoring(`overflow-anchor` 預設 `auto`)會自己補一次,`el.scrollTop -= 被裁高度` 這種相對扣減會**補兩次**、視野往回飄;**iOS Safari 不支援 `overflow-anchor`、完全不補**,拿掉補償手機又飄——只有絕對值能同時滿足兩邊。
-- 核心 `_trimLog` 的寫法:裁切前記下「視窗頂端那則訊息」與它距頂的像素差,裁切後 `el.scrollTop = anchor.offsetTop + delta`(冪等)。要驗就在 `overflow-anchor:none` 下也測一次(桌機 Chrome 測不出手機行為)。
+## 暫存 / 測試
 
-### 🤝 傭兵自我 buff(js/06-status-allies.js `allyMaintainBuffs`)的坑
-
-- **判準:傭兵的施放條件只能看 `ally` 自己的狀態**——自我增益要寫進 `ally.buffs` 才會經 `_allyLevelRecompute` 生效在傭兵身上,**隊長的 `player.buffs` 對傭兵零加成**;拿 `player.buffs[sid]>0` 當「不用放了」的判斷 = 隊長一開 buff 傭兵反而永遠裸著。真正全隊共享的(幻覺光環/大地祝福/鋼鐵防護/水之元氣)走 aura 路徑、本來就在 `_isMercSelfBuff` 排除。
-- **`_isMercSelfBuff` 要排除「純玩家端效果」的 buff,否則傭兵白耗 MP(同日踩到)**:有些 buff 沒有 `d:{}` 衍生值,效果寫死成只讀 `player.buffs`——日光術(出怪間隔 `js/03`)、無所遁形術(史巴托現身 `js/03`)、隱身術(`isPlayerStealth` `js/08`)。傭兵放了不會有任何事發生。**偵測法:新增 buff 時問「這支的效果,傭兵端讀得到嗎?」——① 有 `d:{}`(走 recompute)或 ② 有 `ally.buffs.<id>` 的具名讀取(如 `_allyAtkBuffProcs`/`allyStrikeRoll`),兩者皆無 → 加進 `_isMercSelfBuff` 的排除清單。** 用 `grep -oE 'player\.buffs\.[A-Za-z_0-9]+' js/*.js` 列出所有玩家端具名讀取,再比對 ally 端有沒有對應那支。
-
-### 外掛 DOM / CSS 注入的坑(踩過)
-
-> 通用補坑碼一律寫進核心;只有「手機專屬的 CSS/版面覆寫」才留 `afk-mobile.js`。
-> - **⚠️ 手機 CSS 覆寫「版面容器」時,若寫死 `display:… !important`,小心 specificity 蓋過遊戲用來『隱藏』該容器的 `.hidden{display:none!important}` → 畫面關不掉(踩過 2026-07-06)**:遊戲用 `#creation-screen.hidden{display:none!important}`(specificity 1,1,0)隱藏登入/創角畫面;外掛的 `body.m-mobile #creation-screen{display:block!important}` 是 (1,1,1) 更高 → 即使加了 `.hidden` 也被外掛的 `display:block` 壓著不隱藏,載入存檔/建角進遊戲後登入畫面仍蓋在遊戲上,玩家表現=「卡在選角畫面進不去」(且 DOM 上 `.hidden` 有加、`classList.contains('hidden')` 為 true,只有 computed `display` 是 block,極易誤判)。**判準/解法:任何「會被 `.hidden`(或其他隱藏 class)切換顯示」的容器,外掛覆寫它的 `display`/`visibility` 一律加 `:not(.hidden)` 條件**(`body.m-mobile #creation-screen:not(.hidden){…}`)。自我檢查:改到 `#creation-screen`/`#game-screen` 這種「整屏切換」容器的手機 CSS,有沒有無條件 `display:…!important`?有就補 `:not(.hidden)`,並實測「載入存檔→有真的進到遊戲、登入畫面消失」。
-> - **⚠️ 外掛「自建遊戲物件」(如木人場自 spawn 怪)缺欄位會讓整個系統安靜失效**:核心 `getTarget` 改成鎖 `_born`(最早出生)後,木人場自建怪沒這欄位 → 全場鎖不到目標 → 全體不攻擊、DPS 恆 0,**無錯誤無警告**。**判準:改核心「怪物生成」欄位(`spawnMob` 的 `{...}` 內容)時,grep 外掛有沒有自建同型物件(`mapState.mobs[` in afk-*.js),欄位要對齊或核心要容錯。**
-> - **⚠️ 外掛插 DOM 的錨點要錨「穩定的容器 id」(如 `#main-menu`),不要錨標題/包裝層的父子關係**:錨不到時外掛只會安靜 return——**頁面照常、console 無警告、smoke 也驗不到**(首頁跑馬燈就這樣消失過,玩家回報才發現)。改過首頁版面後要人工掃一輪首頁(跑馬燈/加掛版徽章/外掛框都在、樣式沒退化),這些不在 smoke 範圍。
-
-## 🩺 玩家回報類的取證工具(afk-diag):自己一定要帶版本編號,而且要「壞掉時還讀得到」
-
-- **產物一定要自帶版本編號,且放在「內容全炸也看得到」的地方(標題)**:沒編號的話,玩家回傳截圖時**雙方都認不出這是哪一版產生的**——修好推上去、玩家看到一模一樣的畫面,無從判斷是「修的沒生效」還是「他沒重載」,只能猜。編號取自自己 `<script src>` 的 `?v=`,跟著既有 bump 流程走、不必另外維護。
-- **⚠️ `CODE_VERSION` 的雜湊不含 `sw.js` 自己**(不能自己雜湊自己)→ **改了 `sw.js`,`version.json` 的版本號完全不變**,診斷的「版本」那行認不出 SW 換了沒。要分辨 SW 新舊,靠「SW 有沒有回報只有新版才送的欄位」(現行:`reconcile-anim-done` 的 `skipped`),或看 `reg.waiting`(有新版在等待接手 = 現在跑的是舊的)。
-- **任一欄位拋錯不可以把整份帶走**:最需要診斷的那台機器,往往就是「某個 API 會拋錯」的那台(如上面的 `cache.keys()`)——一炸就只剩一行「診斷失敗」,其他全沒了,等於白做。每個欄位各自包錯誤處理,**失敗本身就是線索,要如實印出來**。
-- **抓「資源載入失敗」(img/script/link/audio)要抓元素與網址,不能只印 `e.message`**——資源類的 error 事件**沒有 message**,只印它會得到一行空白的「錯誤:」,看得到有事卻不知道是誰。
-- **唯讀是硬性要求**:診斷只能 read(`localStorage` / `caches` / `storage.estimate`),**絕不 put/delete/setItem**——它常在「懷疑儲存出問題」時被打開,自己再去佔空間或寫壞東西最蠢。改完 grep 一次確認零寫入。
-
-## 📚 小百科(afk-wiki.js)維護準則
-
-> **🛠️ 此 SOP 已包成 `/update-wiki` skill(`.claude/skills/update-wiki/`)。** 使用者說「更新小百科」時**直接跑 `/update-wiki`**——它把「git pull → 讀 checkpoint → 逐檔 diff → 檔→頁對照 → render 實測 → 更新 checkpoint」整套固化好了。本節是同一套 SOP 的詳述背景;**操作層的鐵則(尤其新踩的雷)優先寫進 skill**,本節保留為原理/細則參考。
->
-> 獨立維護後,遊戲資料的變動來源=「我們自己改 `js/*.js`」或「手動合併原版」;改了遊戲資料(掉落/技能/公式/地圖…)就要跑一輪這套 SOP,把小百科/掉落查詢對齊。
->
-> **🔴 鐵則:更新小百科資料前,第一件事一定要先 `git pull`(`git fetch origin && git pull --rebase origin main`)。** 別的 session/裝置可能推過 commit,本機落後就會拿舊的去比、漏掉改版(席琳套裝改版踩過)。沒 pull 不准動手。
-
-小百科是「**多分頁 + 關鍵字搜尋**」。**改它前先讀這節**——以下都是使用者反覆要求過的點,別再犯。
-
-### 「更新小百科內容」SOP
-
-> **🔴 鐵則:絕不可假設「前面幾輪做過了」就跳過 diff——每次都要真的跑 `git diff <reconciledIndexCommit> HEAD -- js/` 把整段逐項勾過(踩過 2026-06-28:我只挑了新檔『裝備收集冊』做、其餘假設 V2.32 已覆蓋就跳過,結果漏掉同期的『瘋狂席琳模式』,被使用者抓到)。** 即使 checkpoint 看起來只差一點、即使覺得自己前面做過,也要把 diff 整段看完、每個改動逐一確認小百科有沒有反映,不可憑印象判斷「應該做過了」。做完才把 checkpoint 推進、並在 note 標「此範圍已逐項對過」。
->
-> **🔴 鐵則 2:diff 不只看「新增的資料定義」,更要看「既有公式／機制被改」——機制改動不會以新 `sk_`/`item` 出現,純掃新增一定漏。** 重點讀 `js/02-stats-recompute`、`js/04-combat-attack`、`js/01-drops-config`、`js/05-kill-progression` 裡**被修改的行(diff 的 `-`/`+` 成對)**:傷害公式、加成範圍、掉率倍率、模式行為、存檔/共用桶規則。踩過 2026-06-28:第一輪只 grep 新增定義,把「統一觸發型武器特效公式」「武器+11最終傷害倍率改吃到特效/技能」「瘋狂席琳(怪傷×3)」「收集冊依模式共用」全漏了——這些都是改既有邏輯、不是新增。**自我檢查:我有沒有把 js/02、js/04 的 diff 一行行讀過,而不只是 grep 新 `sk_`/`set_`/`item`?**
-
-> 這套 SOP 是 **diff 驅動、逐檔逐頁、機械式對照**——核心是「每個有變的檔都讀完整 diff,照固定『檔→頁』對照表歸位」,不靠印象判斷「應該做過了」。
-
-1. **同步遠端 + 取錨點**:先 `git fetch origin && git pull --rebase origin main`;讀 `wiki-checkpoint.json` 的 `reconciledIndexCommit` 當 diff 起點(別用 git log 猜)。
-2. **列出所有變動的檔(不挑)**:`git diff <reconciledIndexCommit> HEAD --stat -- js/ css/`——**清單上每個有變的檔都要讀**,不可只挑「看起來有新東西」的。
-3. **逐檔讀完整 diff,照「檔 → 負責頁」對照表把每個 hunk 歸位**:對每個變動檔跑 `git diff <reconciledIndexCommit> HEAD -- js/<檔>`,**新增的 `+` 行和修改的 `-`/`+` 成對都要讀**,逐一確認對應頁有反映、沒有就補:
-
-   | 改到的檔 | 看什麼 | 對應小百科頁 / dex |
-   |---|---|---|
-   | `00-data` | 新 技能/物品/套裝/武器/地圖 定義 | 職業魔法·裝備(自動) / 套裝 `SETS`(手動) / 掉落查詢 |
-   | `01-drops` | 掉率、世界模式(席琳一般/瘋狂)機制、恩賜 | 席琳 / 掉落查詢 / 戰鬥機制 |
-   | `02-stats` | 屬性/衍生值公式、buff 套用、封頂 | 能力值 / 技能效果(`statDeltaTxt`) |
-   | `03`-`04` combat | 傷害公式、命中、武器特效 proc、強化倍率、異常狀態 | 戰鬥機制 / 武器特性 / 強化 |
-   | `05`-kill | 條件式掉落(`if … gainItem`)、經驗/升級 | 掉落查詢 `SPECIAL_BLOCKS` |
-   | `06`-status-allies | 新異常狀態 `kind`、傭兵、召喚 | 戰鬥機制(異常狀態) / 傭兵 / 帶寵物 |
-   | `07`-`08` | 施法、裝備規則 | 職業魔法 / 裝備 |
-   | `11`-world-map | 地圖/領域 | 地圖 |
-   | `12`-npc-quests | 任務/試煉/兌換 NPC、倉庫、收集冊 `_dexKey` | 任務 / 掉落查詢來源 / 卡片·裝備圖鑑 |
-   | `13`-shop-save | 商店、存檔、**遊戲模式(一般/經典/傳統)行為** | 戰鬥機制(模式對照) / 卡片·裝備圖鑑(共用桶) |
-   | `14`-craft-pandora | 製作配方 | 製作 |
-   | `15`-`16` | 卡片/裝備收集(掉落、積分、共用、加成) | 卡片 / 裝備圖鑑 |
-
-   補內容分兩類:**讀遊戲資料自動同步的**(職業專精`MASTERY_DATA`、職業魔法`DB.skills`、裝備`DB.items`、掉落查詢`DB`+五張掉落表)通常不用改;**本檔手動維護的**(`WEAPON_TRAITS`/`SETS`/`ENHANCE_SECTIONS`/`LOAD_SECTIONS`/`SHERINE_SECTIONS`/`PLEDGE_SECTIONS`/`TOWER_SECTIONS`/`QUEST_BY_CLASS`/`QUEST_COMMON`/`MAGIC_FACT`)才要手動補(例:新增「惡魔套裝」→ 加進 `SETS`;職業魔法的實際數據金框→ 加進 `afk-wiki.js` 的 `MAGIC_FACT`)。**⚠ 跨系統的玩法要在相關頁互相帶到**——例:遊戲模式(一般/經典/傳統)頁要講「卡片/裝備收集冊依模式各自共用(同倉庫規則)」、席琳一般/瘋狂、傭兵同模式限制等,不要只寫在單一分頁。下面 ⭐ 是補內容時的細則:
-   - **⭐ 全域掉落規則 → 補進掉落查詢的「全域特殊掉落規則」面板(`afk-dex.js` 的 `specialPanelHTML`)**:凡是「不綁特定怪、依條件觸發」的掉落(席琳結晶、施法卷軸變祝福/詛咒、賦予祝福卷軸、區域額外掉落、進化果實…這類掃描怪屬性/區域/全域機率的掉落),因為不在任一怪的 `MOB_DROPS` 裡、掉落查詢搜不到,**一律手動加一格到 `SPECIAL_BLOCKS`**(`{id,title,keys,lines}`;關鍵字放 `keys`、搜尋會自動展開)。每次改動全域掉落都要同步補這裡,不要只更新小百科。
-     **🔎 偵測法(別再漏)**:遊戲碼有更新時,grep 掉落結算 code(`js/05-kill-progression.js` 的 `killMob`、`js/06` 等)裡**所有「條件式 `gainItem(...)`」**——`if(...) gainItem(...)` 那種、不是從某張 `*_DROPS` 表 `forEach` 出來的,逐一對照 `SPECIAL_BLOCKS` 有沒有涵蓋,漏的補上。**踩過(2026-06-27):聖地遺物**(`mat_holy_relic`,持「死亡騎士之印記」在拉斯塔巴德區域殺任何怪 0.1%)——它不在任何掉落表、patch note 只當材料一筆帶過,沒掃 killMob 的新條件式掉落,於是漏進 `SPECIAL_BLOCKS`,玩家在掉落查詢搜不到才被發現。**判準:任何 `if(條件) gainItem` 的腳本掉落都要在掉落查詢找得到。**
-   - **⭐ 製作不一定都在 `CRAFT_RECIPES`,有「客製製作」另開資料結構,掉落查詢/製作頁要另外補讀**:掉落查詢物品卡與小百科製作頁的製作資訊只讀 `CRAFT_RECIPES`,但**有些裝備走獨立的客製製作系統、不在 `CRAFT_RECIPES`**——目前已知兩組:①惡魔王武器走 `DEMONKING_RECIPES`+`DEMONKING_MATS`(炎魔之影:消耗 +11 以上指定惡魔武器、繼承其強化/詞綴/席琳套裝);②神聖執行團裝備走 `LUMIEL_RECIPES`(琉米埃爾/海音:消耗 +7 以上「戰士團」頭盔/斗篷、繼承其強化/詞綴/席琳套裝)。症狀=「某件裝備查不到在哪製作、且常常一整批」。**遇到「明明可做卻查不到製作」→ 去 `js/*.js` grep `_RECIPES`/`buildXXXCraftHTML`/該裝備 id**,找到那組客製配方後,**同時補進** `afk-dex.js` 的 `buildCraftIndex`(物品卡)**和** `afk-wiki.js` 的 `renderCraft`(製作頁),兩邊都要(dex 若有 `+N 以上`門檻要在 `craftInfoHTML` 加對應 `plusN` 分支)。
-     - **⚠ 判準:別把這份 CLAUDE.md 的「含 X 結構」清單當成「已接好」的證明**——踩過「文件寫了 `LUMIEL_RECIPES` 已涵蓋、code 其實從沒讀它」,害後續稽核以為做過就跳過。新客製結構進來時,**實測一件走該結構的成品「在掉落查詢/製作頁真的查得到來源」才算數**(見 `/update-wiki` step 5 的 render 實測)。
-   - **⭐ 新掉落物可能不在 `MOB_DROPS`、而在「獨立掉落表」或「純兌換」→ 掉落查詢會查不到,更新小百科時務必一起檢查補上**(龍騎士血之渴望那串踩過):掉落查詢(`afk-dex.js` `buildIndexes`)要與**原作 `_auditMobDrops`(遊戲內「統計→掉落物」用的)讀同一組掉落表**,否則遊戲內統計查得到、我們查不到(戰士印記 `WARRIOR_DROPS` 漏讀踩過)。**判斷哪幾張的權威來源就是 grep `_auditMobDrops` 看它 push 哪些表**,照抄。目前 5 張:**`MOB_DROPS`／`DARK_WEAPON_DROPS`／`DARK_CRYSTAL_DROPS`／`DRAGON_DROPS`／`WARRIOR_DROPS`**。再開**新表**(會加進 `_auditMobDrops`),就把它也加進 `buildIndexes` 的 `raw` 串接(職業限定的任務道具用 `dragonDropNote`/`TRIAL_ITEM_CLASS` 標「🐉僅X」、全職可掉的不附註)。**純兌換/無怪掉的成品**(龍騎士書板·鎖鏈劍·臂甲走「普洛凱爾」兌換、50級試煉獎勵…)沒有任何怪會掉,要在 `afk-extradata.js` 的 `AFK_EXTRA.itemAcquire[id].short` 補「取得方式」;且這類「**非裝備、非商店**」物品(如 `skillbk` 書板)要被收進物品搜尋索引才搜得到名字。**收錄條件(`buildItemIndex`):裝備／在商店(`SHOP_LISTS`)／有 `itemAcquire`／或 `gachaWeight>0`(在潘朵拉抽獎池)** 任一即收。**症狀=玩家在掉落查詢搜某新物品/材料卻查不到**。判準:新增的東西「在 `MOB_DROPS` 裡嗎?」不在 → 去找它在哪張掉落表/哪種兌換,補進掉落查詢,別只更新小百科。
-   - **⭐ 「沒有固定來源」已自動偵測(含寶箱與各種試煉/兌換結構)**:掉落查詢 `hasFixedSource(id)` 統一判斷來源,讀:`DROPPED_SET`(怪掉)＋`_craftIndex`(製作,含 `CRAFT_RECIPES`/`DEMONKING_RECIPES`/`LUMIEL_RECIPES`)＋`_shopIndex`(商店)＋`itemAcquire`(手動)＋`boxTiersOf`(歐西里斯寶箱 `OSIRIS_BOX_*`)＋**`trialSourceOf`(各職業試煉/兌換設定結構:`TRIAL_50_CFG`/`DARK_TRIAL_CFG`/`SHENIEN_EX`/`WARRIOR_EX`/`PROCEL_EX`/`YURIA_REWARDS`)**。這些都**讀遊戲全域、改設定自動跟上,不必逐物品手動補**(瑪那水晶球等 50 級試煉成品、影子裝、幻術士裝、戰士團裝、臂甲都靠 `trialSourceOf` 現身)。**潘朵拉限定物(`gachaWeight>0` 且查無固定來源)→ 自動收進搜尋 + 詳情卡標中性句「目前沒有固定取得途徑」**(依規則不提潘朵拉)。**新增「會發裝備的新結構」時**(grep `rewards:`/`reward:`/`_EX`/`_CFG`),把它加進 `buildTrialBy()` 即可一次涵蓋整批。真正剩的死角只有「`gachaWeight=0`、不在任何結構、又沒怪掉」的廢棄/起始裝(留空合理)。
-   - **⭐ 取得方式只標「可控」的,潘朵拉黑市(轉蛋)是隨機池、不列(使用者決定)**:掉落查詢物品卡的「取得方式」列(`itemDetailHTML`)**只顯示可控取得**——靈魂之球喚回(巴列斯/巴風特魔杖,走 `SOULORB_RESTORE`)、龍騎士普洛凱爾兌換成品(走 `itemAcquire`)等;**潘朵拉的黑市抽獎雖然幾乎什麼都抽得到,但太不可控、列了是雜訊,刻意不顯示**(別把『潘朵拉抽獎』當來源文字寫出來;但用 `gachaWeight>0` 判斷「在抽獎池→可搜尋＋詳情卡標中性句」是另一回事、是 OK 的,見上節 `hasFixedSource`)。**即使潘朵拉是某物的「唯一」來源也一樣不列**——改寫「目前沒有固定取得途徑」這類中性句,不要寫「只能潘朵拉抽」(使用者明確要求:潘朵拉太難取得、不算取得方式)。小百科「技能書怎麼拿」之類的說明同此原則:只寫試煉/製作/商店/掉落等可控來源,潘朵拉一律不提。製作/掉落另由 `craftInfoHTML` 與搜尋鈕呈現。**(舊「傳說裝備」頁 `renderLegend`/`legendAcquire`/`LEGEND_SOULORB` 已隨「裝備」分頁上線移除;裝備頁的取得方式統一走 `AFK_DEX_API.acquireHTML`,喚回類成品靠 `itemAcquire[id].short` 呈現。`itemAcquire` 的 `chain` 欄是舊傳說頁專用、目前無人讀,新增資料只需填 `short`。)** **遇到新的喚回/兌換機制**(grep `soulorb`/`_restore`/`eff:`)→ 結果裝備補進 `SOULORB_RESTORE`(dex 物品卡)與 `itemAcquire[id].short`(裝備頁/掉落查詢共用)。
-4. **每動到一頁就 Playwright 無頭 render 該頁實測**:確認顯示正確(數據對)、無漏翻英文、無 raw key(`sk_`/地圖 id 之類)、無 JS error。改了哪頁測哪頁,別只改不驗。
-5. 補完照「每次 push 前的檢查清單」bump 對應外掛 `?v=`(動到 `afk-dex.js` 也要 bump 它)、無頭瀏覽器測過再推。**並把 `wiki-checkpoint.json` 更新成現在的 HEAD**:`reconciledIndexCommit`＝`git rev-parse HEAD`、`reconciledIndexBlob`＝`git rev-parse HEAD:index.html`、`reconciledAt`＝台灣時間(UTC+8),note 寫「逐檔對過、動了哪些頁」,跟這次小百科改動一起 commit——錨點前進了,下次才不會重複比同一段。
-
-### 內容鐵則(踩過、別再犯)
-
-- **⭐ 表格優先 + 有數據就用數據(使用者明訂的鐵則)**:任何分頁,**能用表格呈現就用表格**(門檻/數值/對照/分段),別用散文堆。**程式裡查得到的數字,一律用程式的實際數據/公式講清楚**——優先「動態讀 DB 或呼叫遊戲函式即時產生表格」(像「能力值」頁逐級表、「負重」頁的懲罰階表/上限公式試算表/腰帶 weightCap 直接讀 DB),這樣改數值會自動跟上、不用手抄也不會過時。**散文只留「機制怎麼運作、怎麼解」這種表格表達不了的**。
-- **⭐ 數據化、簡潔,不要廢話**:小百科是「查數據」的工具,不是讀物。**接任何功能進小百科前,先巡過「真正算它的那段 code」(函式/查表/公式/旗標),用實際邏輯寫**,不要照遊戲說明或註解抄(那些常過時/模糊)。說明文字壓到一兩句、把細節交給表格。寫完自我檢查:這段有沒有「換句話再講一次」「跨項比較」「meta 旁白」這種對查資料沒用的贅字?有就刪。
-- **⭐ 表格已表達的,不要在表格下方再用散文重述一次(使用者明訂・2026-06-27)**:做了對照表/數值表後,**表格本身已經講清楚的東西,不准再在下面用 `m-wiki-desc` 散文「總結/換句話講一次/加感想」**。表格下方**只**保留「表格欄位裝不下的真正補充/例外」(例:「掉寶率 ×1/10 不影響職業試煉道具」這種表格沒涵蓋的例外才留)。自我檢查:這行註解講的東西,表格裡是不是已經有了?有 → 刪。
-- **白話、零術語**:不要骰子寫法(`1D4`→「1~4」)、不要「骰19/20」(→寫機率「約 5%/10%」);ER/MR 一律白話「迴避/魔防」。**防禦(AC)比照遊戲內裝備欄用「負值」呈現**——本作 AC 越低越強,遊戲 `buildItemDescHTML` 顯示成「防禦(AC): -d.ac」(正常防具是負的),故小百科/掉落查詢一律寫「防禦(AC) -n」(`friendly()` 只把「AC」標成「防禦(AC)」、保留原本正負號;不要再反相成正值)。負 ac 的下行向裝(如曼波帽子)顯示「+n」即可。
-- **🔤 渲染給玩家的內容絕不露出英文——一律翻成中文**(2026-06-27 使用者明訂):小百科/掉落查詢畫面只要冒出英文＝漏翻,回去補「對應表」(改對應表→以後同類自動跟上,別逐筆硬寫死)。兩種狀況:
-  - **顯示用的英文詞**(狀態名如 `confuse`/`panic`、數值名如 `magicDmg`、縮寫 `AC`/`ER`/`MR`)→ **先找遊戲有沒有現成中文對應表**(如 `js/06-status-allies.js` 的狀態中文表、`ELE` 元素表),有就比照;**沒有就補進外掛自己的對應表**(`afk-wiki.js` 的 `STATUS_LABEL`/`STAT_LABEL`,或 `AFK_EXTRA`)。⚠ AC 正負要分清楚:**裝備/套裝**的 `d.ac` 已是顯示值(負=好)照原號走 `friendly()`;**技能 buff** 的 `d.ac` 是「要降的量、以 `d.ac -= 值` 套用」(正值=降AC=變強),故 `statDeltaTxt` 顯示「實際 AC 變化＝−v」、別照原號(否則鋼鐵防護/狂暴術正負全反,踩過)。
-  - **英文 key**(地圖 id 如 `elder_room`、物品/技能 id)→ **去遊戲 code 找它的中文**(新地圖查 `MAP_REGIONS`/`MAP_CATEGORIES` 的 `t`、`DB.towns.n`、`HIDDEN_AREA_NAMES`;一律集中走 `AFK_EXTRA.mapName`,別各自寫)。
-  - **判準**:渲染結果出現連續英文字母(HP/MP/BOSS/Lv 這種通用縮寫除外)就是漏翻 → 回去找對應中文、補對應表。
-  - **⭐ 地圖名漏翻已有 smoke 自動防護(2026-06-29 加)**:`scripts/smoke-hooks.mjs` 會把 `DB.maps` 全部 key 過一次 `AFK_EXTRA.mapName`,只要有 key 解析後 `name===id`(原樣回傳)或仍含英文字母就 `exit 1`。新增「不在 `MAP_CATEGORIES`/`MAP_REGIONS`/`DB.towns`/`HIDDEN_AREA_NAMES` 的地圖結構」→ push 前的 smoke(`/prepush` 內含)會擋下,**這時去 `afk-extradata.js` 的 `mapName` 補上該 id→中文(優先讀遊戲的表,沒有才硬寫)**。這是「掉落查詢地圖漏英文」的根治法,不必逐次靠人眼抓。
-- **不要改版說明的語氣**:小百科是寫「現況」給玩家看,不是 changelog。別用「現在/原本是/已改成/不再/不會再…了」這種帶時間感、像更新公告的句子——直接陳述現在的事實(例:寫「屬性/遠古無法靠打怪取得,只能用碧恩的卷軸」,**不要**寫「屬性/遠古『現在』不會隨機掉了」)。
-- **要精確數據、不要模糊**:不准「短時間/有機率/提升/依等級」這種沒數字的;去 code 查實際數值/公式補。真的是看等級差/隨智力浮動沒固定值的,**照公式寫**、別硬編一個百分比。
-- **🔑 數據一律以「程式碼的實際邏輯」為準,絕不直接抄遊戲內的說明文字或註解**:遊戲裡的物品/技能說明(`d:`/`item.d`/技能 `msg`)與 code 註解,是寫給玩家看的白話、常常**模糊、過時、或與實際公式不符**。寫小百科數據時**一定要追到真正算它的那段 code**(函式/查表/公式/常數),用那裡的實際值。例:擊殺回 MP 去查 `getWisMpOnKill(wis)` 的分段表;掉率去查 `MOB_DROPS`/掉落判定式而非道具描述。**自我檢查:我這個數字是「從負責計算的 code」拿的,還是「從一段給玩家看的文字/註解」抄的?** 後者一律不可信,回去找 code。
-- **不要塞沒用的 () 補充**:括號只放「對玩家有用的事實/數據」(等級、機率、需求屬性、地點…)。<b>跨職業比較(「與燃燒鬥志同效」)、meta 註解(「刻意設計」)、把詞換句話再講一次 這種旁註一律不要</b>——它們不是玩家要的資訊,只是雜訊。能用一句乾淨的話講完就別硬加括號。
-- **掉率/機率:依「怪等/類型」分段的要逐段列、且換算倍率別抄錯(席琳結晶踩過)**:code 裡常是 `if 怪等>=21 ... >=31 ... >=41` 或「BOSS/三大龍/夢幻之島各一個值」這種**分段**機率,小百科要**把每一段都列出來**,不要用「約萬分之一級距」這種一句話帶過(既模糊、又往往錯)。換算成百分比時**小心位數**:code 的小數 ×100 才是 %——`0.00001`=**0.001%**(十萬分之一),不是「萬分之一」;抄錯一位就差 10 倍。寫完自己反算一次:`%數 ÷ 100` 要等於 code 裡那個小數。另注意「不吃掉落倍率」這種旁註(席琳結晶機率固定、不受席琳世界 ×3 影響)也要寫進去。
-- **⭐ 寫任何一條掉率,一定要把「吃不吃倍率」四個倍率一次講完(席琳×3／瘋狂×5／恩賜怪×10／經典×1/10),不能只提其中一個(踩過 2026-07-09:三階卡片)**:判準去 code 看該次 roll 的機率有沒有乘 `_dropMult`/`_dropBase`/`classicDropMult()`——沒乘就是「固定機率、四個倍率全不吃」,要在小百科明講「不受任何掉落倍率影響」,別只寫「不受經典模式影響」害玩家以為席琳有加成(`rollCardDrops` 的三階卡片正是固定機率,原本小百科只寫了經典那半句)。**且要兩邊同步**:凡是「不吃倍率」的掉落,除了小百科該頁,還要出現在**掉落查詢 `afk-dex.js` `SPECIAL_BLOCKS` 的 `dropmult` 區塊「固定、不受倍率影響的例外」清單**裡(那份清單就是玩家查倍率時看的單一真相);新增這類掉落 → 兩處都補。
-- **時間單位**:技能 `dur`(buff/狀態)是**秒**;HoT 的 `hot.interval` 是 **tick(÷10 才是秒)**;顯示用「X 分 Y 秒 / X 小時 Y 分」(`fmtDur`),**不要跑出「5.3 分鐘」這種小數**。
-- **能讀遊戲資料就讀,少硬寫**:會變動的(套裝效果/技能/掉落/地圖名)優先動態讀 DB/遊戲常數,讀不到才用本檔備援(如 `SHERINE_SET_FALLBACK`)。**很多 `gainItem(...false,false)` 旁的舊註解已過時**——動手前去 code 確認,別照舊註解(例:黑市直接購買「即所見、不附詞綴」**不是詞綴來源**;屬性/遠古只能靠碧恩賦予祝福卷軸,不會隨機掉)。
-- **分類對齊原版、不要同一個東西每職業重複跳**:法師魔法(1~10 階)是共用本職法術→**只列一次**,標「可學:法師x/妖精y/騎士z/黑暗妖精w」;妖精/黑暗妖精/騎士的專屬魔法分開列。判類:有 `reqM`=法師魔法;否則 `reqE`/`reqD`/`reqK` 歸專屬。黑暗妖精固定可學 1/2 階(Lv12/24)、妖精高階法師魔法標「需魔導精通」。
-
-### 介面/排版鐵則
-
-- **搜尋=「統一結果」**:打字就收起分頁列與職業列,跨「全部分頁+全部職業」一次列出命中區塊、依來源分組、關鍵字黃色高亮;**不要做成「切職業整頁消失」**(踩過)。職業相關分頁(專精/任務)搜尋時逐職業各搜;魔法是分類制故單次搜。
-- **分頁列單排可左右捲動**(`flex-nowrap + overflow-x:auto`),不要換行兩排。
-- **職業魔法分頁有「職業篩選」**(全部/法師/妖精/騎士/黑暗妖精):「全部」=分類總覽(法師魔法按階+各專屬);選某職業=只看「該職業學得到的魔法」(含可學的法師魔法,標該職業可學等級)。
-- **手機**:不要為了標示加會被內容撐高的元素——席琳世界用「狀態列染紅」標示;怪物卡固定高 + 名稱兩行截斷(別隨怪/名稱長短抖動)。
-
-## 🚨 每次 push 前的檢查清單
-
-> **🛠️ 這份清單已包成 `/prepush` skill(`.claude/skills/prepush/`):自動偵測改動的外掛→bump `?v=`→`stamp-sw-version`→smoke→掃衝突標記。準備 push 時跑 `/prepush` 即可。另有 `.claude/` 兩個 hook 兜底:`git push` 前自動擋衝突標記/漏引用/sw 版本過時(prepush-guard)、改 `afk-*.js` 後提醒 bump(bump-reminder)。** 下面是清單本體(skill/hook 即據此):
-
-1. **確認所有外掛 JS 都已在 `index.html` 有 `<script>` 引用**(在 `</body>` 前;目前 20 支,清單見上方外掛表,以 index.html 現況為準)。
-   - 新增外掛時,**務必同時**加上對應的 `<script>` 行;**有 DOM 掛點的**再加進 `scripts/smoke-hooks.mjs` 的 `need`(像 `afk-sw.js` 這種純註冊、無 DOM 掛點的就不必),否則功能不會生效、或掛點壞了沒人擋。
-   - **⚠️ 判準:掛點「只在某條件下才建立」的外掛(只在手機尺寸/裝置才 init 之類),smoke 必須在該條件下驗它,否則是假性失效**(桌機那輪永遠印不出它的 hooks OK)。smoke 已有第二輪手機 context(`devices['iPhone 13']` + `needMobileOnly`)專驗這類,新增同性質外掛就掛進去。
-2. **smoke 沒有任何自動排程在跑(自動同步已停),一律 push 前本機跑**:`node scripts/smoke-hooks.mjs` → exit 0 才推(`/prepush` 內含)。紅了代表某外掛 hook 失效,回報是哪支。
-3. **改了任何外掛 JS / 遊戲 JS / CSS → `?v=` 一律靠 `node scripts/stamp-code-versions.mjs` 自動對齊,不要手動 bump**(GitHub Pages / 瀏覽器會死命快取 JS;URL 一樣就給舊快取)。**2026-07-18 起 afk-*.js 也納入這支自動化**(改用內容 sha1 前 10 碼,與 js/css 同機制)——在此之前 afk-*.js 是手動 date 版本(`20260717a`),反覆漏 bump:今天 afk-wiki 改了內容卻沒換號,已載入舊版的玩家吃快取、看不到新功能(整個 session 被 `/prepush` 抓到兩次、還漏一次才根治)。**現在動任何 afk-*.js 都不必也不要手動改 `?v=`,交給腳本。**
-
-   ### 🚨🚨 `js/*.js` / `css/*.css` / `afk-*.js` 的 `?v=` 一律用 `node scripts/stamp-code-versions.mjs` 對齊,不要靠人記得
-
-   **漏 bump 的真正後果不是「載到舊檔」,而是「新舊混搭」**:A 檔加了新函式、B 檔呼叫它,只有 B 的 `?v=` 變 → 玩家載到「新 B + 快取裡的舊 A」→ `ReferenceError`。**取決於各玩家的快取時序 ⇒ 低機率、無法重現、log 看不到**(踩過:例外炸在離線結算迴圈被 catch 吞掉,玩家整晚收益歸零,查很久)。
-
-   - **判準:凡動過 `js/*.js` / `css/*.css` / `afk-*.js`,push 前一律跑 `node scripts/stamp-code-versions.mjs`**(把 `?v=` 對齊內容 sha1 前 10 碼),再 `--check` 確認 exit 0。`/prepush` 已內含。
-   - **絕不可只 bump「自己有印象改到」的那幾支**——大型移植一次動十幾個檔,人一定漏。腳本掃全部,沒有例外。
-   - **改完任何程式檔,push 前再跑一次 `node scripts/stamp-sw-version.mjs`**——重算 `sw.js` 的 `CODE_VERSION`,PWA 才偵測得到更新。漏跑的話「已安裝的 app」不會跳更新。
-   - **新增/更換/刪除 `assets/`、`public/assets/` 的圖 → 跑 `node scripts/gen-manifests.mjs`** 重產對帳清單並一起 commit(否則 PWA 玩家卡舊圖/離線 404)。
-4. 確認沒有把 `.scratch/`、`node_modules/` 等暫存物混進 commit(見下)。
-5. 載入遊戲後開 console,確認看到各外掛的 `[AFK*] hooks OK`,沒有缺掛點的警告。
-
-## 暫存檔 / 測試
-
-### 🎯 `.testdata/` 有使用者提供的「真實存檔」——測玩家回報時先用它,不要用新角色
-
-- **為什麼**:新角色 = 空背包、空倉庫、Lv1 技能、沒有傭兵 → **玩家回報的問題有一大半在新角色上「重現不出來」**,而「重現不出來」很容易被誤讀成「沒問題/已修好」。踩過很多次(卡頓、大背包、離線結算、倉庫版面全都是)。
-- **判準:玩家回報的問題只要跟「資料量、等級、裝備、倉庫、離線」有關,一律先載入 `.testdata/` 的存檔測**;真的要驗「全新玩家路徑」時才開新角色。
-- 用法:讀檔內容 → `_saveUnwrap` 取 payload → `_lzSet('lineage_idle_save_1', _saveWrap(...))` 灌進某格 → `loadGame()`。倉庫是獨立桶(`whKey(...)`),存檔 blob 內的 `wh`/`pets` 要另外拆出來寫(見 `js/13` 的匯入流程)。
-- **`.testdata/` 已在 `.gitignore`(裡面是使用者的角色資料,絕不可進版控)。與 `.scratch/` 的差別:`.scratch` 用完即丟、session 結束清掉;`.testdata/` 是長期測試素材,不要清。**
-
-- 一次性測試腳本、Playwright、截圖等一律放 `.scratch/`,且已被 `.gitignore` 擋掉,不進 git。
-- 驗證手段:用 Playwright(`playwright-core` 指向本機快取 Chromium)無頭跑 `index.html`,截圖或讀 DOM 驗證。
-- **Playwright 一律 headless(無頭),不可彈出可見瀏覽器視窗干擾使用者螢幕。** 不管用 `playwright-core` 腳本還是 MCP 瀏覽器工具都一樣:腳本用 `chromium.launch({ headless: true })`;MCP 瀏覽器若預設會開可見視窗,就改回腳本式無頭驗證,不要在使用者畫面上彈窗。截圖一律走無頭截圖。
-- **🚨 會「動到玩家存檔(寫入/覆蓋 localStorage)」的功能,上線前一定要測「真實角色 → 操作 → 確認存檔沒被改壞」這條路,不能只用合成資料測機制。**(踩過:存檔轉移用「塞假存檔到第 2 格、只驗第 2 格還在」測過就上線,結果漏掉「`saveGame()` 蓋掉的是 currentSlot=第 1 格」,把玩家角色弄成 Lv.1 null。)鐵則:
-  - **測試要涵蓋真實觸發狀態**——存檔功能多半從**主選單(未載入角色)**觸發,就要在「未載入角色」狀態測,別只在「已載入」狀態測。
-  - **斷言要看得到災情**:操作前後**比對「使用者實際會用的那一格 / 全部相關鍵」的內容有沒有被非預期改寫**,而不是只檢查自己有興趣的那格。
-  - 動到存檔前,先想清楚「這個操作會不會在某狀態下覆蓋既有存檔、有沒有備份能救」;沒備份的覆蓋風險 = 上線前必須用真角色實測到放心為止。
-
-### 量測效能時:每跑一輪前「重新整理頁面」,不要用 `loadGame()` 在原地重置(會漏記憶體污染數字)
-
-實測過:在「同一個分頁、不重整」的情況下重複呼叫 `loadGame()`(載入存檔)來重置角色,第二次起記憶體會從 ~17MB 暴漲到 ~97MB、每個 tick 從 ~0.1ms 變 ~0.9ms(慢 9 倍)。原因是 `loadGame()` 連帶啟動的計時器/事件監聽/DOM 每次都「再掛一份」、舊的沒拆掉,連續載入就一直疊。**正解:每次量測前重新導航到網址(整個 JS 環境倒掉重來),不要在原地 `loadGame()` 重置**,否則 A/B 比較的後半段數字全被污染。
-- 對一般玩家正常不影響(開遊戲只載入一次)。**待查疑點**:遊戲內「不重整就切存檔位/匯入存檔/回主選單再進」若底層直接再 `loadGame()` 而沒先清乾淨,連續切幾次可能變鈍——尚未驗證,先當備忘。
-
-## 🗺️ 離線掛機原則:等同「在線上掛機照跑」+ 非選單地圖(攀登/遺忘之島)的續掛寫法
-
-> **🏠 2026-07-10 起離線掛機是核心模組 `js/offline.js`(外掛 afk-offline.js 以 git mv 移入、已退役)**。要點:
-> - **檔名刻意不用數字開頭**(使用者明訂):日後手動合併原版可能新增 js/21-*.js 等編號檔,避免衝突。index.html 的 `<script>` 排在 js/20 之後、所有 afk-*.js 外掛之前。
-> - **對外相容不變**:localStorage 鍵(`afk_ts_/afk_map_/afk_pride_/afk_obl_/afk_hist_<slot>`)、`window.__afk` 介面(afk-mobile 用 `stamp`、afk-slotinfo 用 `mapName/capHours`、afk-history 用 `histKey`)、`[AFK] hooks OK` 開機訊息(smoke 認這個)全沿用——玩家更新前累積的離線時間照結算。
-> - **掛點=核心直呼,不再 monkey-patch**:js/13 `loadGame` 開頭 `offlinePreLoad()`(必須在回村甦醒覆寫錨點前擷取;**「離線前狀態」一律在這裡讀,連 afk_map 缺值時的「後備讀存檔 blob」也是**——回村甦醒會觸發存檔(`mercBankAlliesAtTown` 傭兵入庫 saveGame)把 blob 所在地圖蓋成村莊,晚讀=誤判在村莊而跳過整段結算,2026-07-10 踩過)→ 成功載入尾端 `offlineAfterLoad(pre)`;js/13 `saveGame`/js/11 `changeMap` 尾端 `offlineStamp()`;js/05 `killMob`/js/08 `gainItem` 經 `window.__afkKillTally/__afkGainTally` 計數(平時 null 零開銷)。
-> - **💾 分段檢查點(2026-07-10 修「結算中斷=整晚蒸發」)**:結算每 ~5 秒真實時間 `saveGame`+把錨點推進到「closeTs+已結算拍數」(絕不是「現在」),並 upsert 同 closeTs 的離線紀錄;`stamp()` 在 `catchingUp` 期間一律跳過(心跳/存檔/落點 changeMap 都蓋不了錨點)。中斷後下次載入只補剩餘。**判準:任何新程式碼想在結算期間蓋 afk_ts,都是 bug。**
-> - **其餘同日修正**:略過結算(村莊/攻城/排名/裂痕/木人場/非標準圖)會用 `skipNote` 寫一句白話進系統日誌(先前只寫 console,玩家看不到原因);`runCatchup` 全程 try/finally 包死 `catchingUp` 旗標(先前前段丟例外會讓同頁面之後所有角色都靜默不結算);afk_map 缺值的後備讀存檔改走 `_lzGet`+`_saveUnwrap`(存檔已壓縮+簽章,先前直接 JSON.parse 必失敗)。
-
-核心原則:**離線掛機 = 把「在線上會發生的掛機」照跑一遍**,行為盡量與在線一致(同圖續掛、撞死即停結算到死前、存活回原地)。新增/修改離線行為前先對齊這條,不要自己發明特例。
-
-### 🛑 「離線」的定義＝**關閉遊戲**;分頁切到背景**不算**離線(使用者明訂・2026-07-11,不要再改)
-
-- **分頁切到背景時,遊戲照常在背景繼續跑**(主迴圈不停、心跳照蓋錨點)。玩家的共識就是「**要關掉遊戲才開始算掛機**」,所以背景那段時間不該進入離線結算。
-- **不要再做「背景即釘住離線起點 / 停主迴圈」那套**(v1.6.3 做過 → 已於 v1.6.4 整包 `git revert`)。它會把分頁一切走就判定成離線,連帶讓**傳送控制戒指自動找 BOSS 失效**(該功能只在前景即時逐拍時啟用,補跑/離線 `state.ff` 期間不套用——這是使用者要求的設計),而且玩家設的瀏覽器「不休眠白名單」也等於白設(主迴圈變成遊戲自己停的)。
-- 因此「背景頁面的心跳會把離線錨點推到現在」**不是 bug,是預期行為**(背景仍在遊玩)。看到這個現象不要「順手修」。
-- 📌 真正害玩家「離線 0 分鐘、收益歸零」的是**別的原因**(js/css `?v=` 漏 bump → 新舊程式碼混搭 → 離線結算迴圈拋 `ReferenceError` 被 catch 吞掉),見上方「每次 push 前的檢查清單」第 3 點。**別再把這個症狀誤診成背景心跳問題**(2026-07-11 誤診過一整輪)。
-
-### ⚡ 混合快速結算(2026-07-06 上線;2026-07-10 改「事件驅動」):一般圖長離線不再逐拍模擬
-
-- **流程(2026-07-10 事件驅動版)**:先真模擬取樣 5 分鐘(殺數 <60 自動延長至 15 分鐘)量出「平均每殺的**純戰鬥**拍數 svcPerKill(=取樣『場上有怪』的拍數÷殺數;出怪等待不混進殺速)+消耗品每拍耗率+最低血量」→ 安全(門檻見下)就把剩餘時間改成「事件驅動逐殺」:**出怪走核心 `maybeSpawnMobs()`(js/03,自 tick() 原樣抽出、與線上同一份排程)——出怪延遲/長老之室 BOSS 節流/後排格/席琳與日光加速全照原作,時間直接跳到「下一隻出怪/殺完這隻」的事件點**;殺「全場最早出生」那隻(=原作 getTarget 鎖定序)走 `killMob→settleDeadMobs` 真實獎勵管線,**掉落擲骰/經驗/任務/卡片/收集冊/誘捕/傭兵經驗每殺獨立 RNG、與線上完全一致**。
-  - **⏱ 殺完要「立刻」`maybeSpawnMobs()` 再推進時間**:重生計時起點=怪死當下(與線上一致);等下一輪(時間已推進)才排,每殺晚一拍 → 出怪率被系統性壓低(spawn-limited 圖對這個順序很敏感)。
-  - **⚡ 批次擊殺(AOE 保真)**:取樣多量「死亡事件數」(同一拍多殺=1 事件)→ `batchPerEvent`=平均每事件同時死幾隻、`svcPerEvent`=每事件純戰鬥拍數;快速段一個事件殺一批、時間按「實際殺數÷batch」比例推進(場上不夠殺滿一批只付對應比例)。**「一次殺一隻」的串行模型會把 AOE 角色清場速度壓低、出怪跟不上 → 高出怪圖(龍之谷/火龍窟)收益 -30~40%(2026-07-10 真實存檔實測踩過)。** 單體角色 batch≈1 行為不變。
-  - **🐲 BOSS 秒殺的順序鐵則:「先補小怪 → 推進視窗時間 → 最後才殺 BOSS」——對打視窗期間 BOSS 必須留在場上**:補殺與視窗內的出怪抽選經過核心 spawnMob 的「同名限一隻/`allowMultiBoss`(=backSlotsActive,5格圖可多BOSS共存)/長老節流」時要看得到它。先殺後補的話,單一 BOSS 種的圖(傲慢樓層)會在視窗內又抽出同名 BOSS → BOSS 率超發 +30%(踩過);反之補殺抽到「異名 BOSS」要留在場上待後續事件處理(可共存圖的視窗內本來就會出下一種 BOSS),直接丟棄會把 BOSS 率砍近半(也踩過)。
-  - **🐲 BOSS 抽驗+移動平均(`BOSS_REVERIFY_P`=5%)**:每 ~20 隻「已驗證安全」的同名 BOSS 抽 1 隻真打,實測耗時/同場小怪數與舊值各半混合——單一首打樣本變異極大(同 BOSS 兩輪量到 27 vs 316 拍),外推整晚會嚴重失真。
-  - **🧪 快速段要維持「線上會自動續」的 buff(`maintainedBuffSet`)**:有勾自動喝/自動施放的 buff,秒數扣到 1 停住不歸零——快速段不跑 autoActions,沒人續的話加速類一掉,出怪延遲從 ~20 拍變 ~33 拍,spawn-limited 圖收益被砍 2~3 成(踩過:龍之谷 -24% 的主因)。藥水消耗量本就由取樣耗率扣帳,不會少扣。**判準:凡「影響出怪延遲/殺速、且線上由 autoActions 週期性維持」的狀態,快速段都要想辦法維持或等效補償。**
-  - **🚨 判準:快速段的任何改動,都不可讓「場上某格位的怪」有機會永遠不被處理**(舊的單格引擎就是這樣讓殘留 BOSS 卡住 `bossInBattle`、整晚不再出 BOSS)。事件驅動殺「最早出生」、任何格位都會被消化。
-  - **收益校準現況**:與全模擬 A/B,單 BOSS 種的圖幾乎持平;AOE+高出怪圖(火龍窟/龍之谷/長老之室)快速段**偏高 +10~14%**——方向是多給玩家,**使用者已裁定可接受**。**判準:再往下調要動視窗端場補償,複雜度高、先不動。**
-- **🐲 BOSS 懶驗證(2026-07-06 使用者要求)**:BOSS 不吃小怪均速——每「種」BOSS(按名字)**第一次遇到 → 切回逐拍真模擬打到倒下**(打輸=撞死即停照舊、打不動=照實耗完時間),記錄「實測耗時+對打全程最低血量+對戰期間同場小怪殺數」;之後同名 BOSS:安全的 → 即殺但**時間按該 BOSS 實測耗時推進**,對打時血量掉太深的 → 每次都真打。純 BOSS 圖(龍窟類)因此自然接近全真模擬。實測:24h 強制出 228 隻德雷克,只有第 1 隻真打(1631 拍),其餘按實測耗時快轉。
-  - **⚡ BOSS 秒殺要補回「同場小怪」收益(2026-07-08)**:秒殺同名 BOSS 只殺 BOSS 本體、卻推進了「該 BOSS 實測耗時」(可能上千拍),但那段時間內旁邊小怪本會被 AOE/傭兵/寵物清掉——不補的話這批小怪收益整段憑空消失(使用者抓到)。修法:首次真打該 BOSS 時記下「對戰期間同場小怪殺數」(`bossStats[名].minor`=對戰總殺數−BOSS本身1),秒殺時 `fastKillMinors(minor)` 按實測數量補殺小怪(只走 killMob/settleDeadMobs 拿真實掉落經驗,**不重複推進時間、不重複扣消耗品**——時間與消耗已由 `fastAdvance(_bs.ticks)` 一次涵蓋;抽到 BOSS 跳過)。用「該 BOSS 實測小怪數」而非全圖均速→純 BOSS 圖對戰無小怪自動補 0。**判準:任何「秒殺/快轉跳過一段時間」的優化,都要問這段時間內還有什麼收益來源(同場小怪、週期掉落…)被一起跳過了。**
-- **一律退回全模擬 / 血量門檻線性歸 0(2026-07-08)**:攀登/遺忘之島「途中」/軍王之室(fastEligible 排除;**遺忘之島「本島」2026-07-10 起納入快速**——本島是無限刷怪圖、無後續推進,「途中」因有傳送門 BOSS 進度門檻且怪組與本島不同維持全模擬)、殺數太少。
-  - **⚔ 軍王之室「實測後決定」維持全模擬(2026-07-10,曾做完整實作+A/B 後退回)**:王房內容=BOSS 對打本身,快速模式的首打+5% 抽驗全是真打 → **結算耗時幾乎沒變快**(魔獸軍王 6h:快速 20s vs 全模擬 19s),收益反而失真(魔獸軍王 +23%——抽驗以滿 MP 開打 vs 全模擬持續耗魔穩態;底比斯 -16%)。全模擬跑王房本來就快(24h ≈ 75 秒)。事件迴圈保留 `_kbRespawnAt` 時間軸與 `kingLeftRoom` 偵測,重啟只需拿掉 fastEligible 的 `!isKing`。**判準:「內容=BOSS 真打」的圖,快速模式無利可圖,別硬收。**
-  - **🩸 血量門檻 `hpFloorNow()` 隨存活時間線性歸 0**:`70% × (1 − done/HP_FLOOR_ZERO_TICKS)`,即時用真模擬存活拍數 `done` 算,取樣與 BOSS safe 共用同一條;**存活滿 20 分鐘(12000 拍)門檻歸 0**,之後一律切快速、BOSS 首遇打得贏就 safe。設計原因(使用者要求):固定門檻下,密集 BOSS 圖(龍窟/長老之室)血量常掉破線→永遠 unsafe→整晚全逐拍,是拖慢的主因;「撐過 20 分鐘=打得過」就放行。代價是撞死即停在 20 分鐘後對快速段失效,兜底=每種 BOSS 首遇仍真打一次(那次死照樣停)。**判準:改門檻/加保護前,先分清拖慢主因是「取樣門檻(一般小怪)」還是「BOSS safe(密集 BOSS 圖)」,後者才是重災區。**
-  - **🧪 消耗品斷貨(箭/藥/卷軸/肉,白名單制)且自動購買補不上 → 不永久退出**:改「重新取樣+**固定** 70% 門檻」評估沒藥/沒箭的新戰局(戰局質變後,「撐過 20 分鐘」的信任基礎不成立,不能再隨時間放寬)——撐得穩回快速,撐不穩維持真模擬(保住撞死即停)。**質變後量到的統計不寫入快取**(簽章不含消耗品庫存,補貨後會拿沒藥的殺速亂算)。升級 → 殺速變了 → 退回真模擬重取樣(`FAST_RESAMPLE_TICKS`)。
-  - **⚖️ 判準:快速段永遠不要自己刻出怪規則**——出怪一律呼叫核心 `maybeSpawnMobs()`,節流/機率/格位規則跟核心走(自己刻的話「場上最多 2 隻、第 2 隻等 3 分鐘」這種節流會失真,BOSS 出得比線上密)。BOSS 佔場期間 kill+advance 要原子化(對應線上 `bossInBattle` 擋新 BOSS)。
-- **💾 結算統計快取(2026-07-10)**:量到的統計(svcPerKill/每種 BOSS 實測/消耗率)存進存檔 `player._offStats` 帶簽章(引擎版+地圖+等級+席琳/瘋狂/經典/傳統+全裝備 id+強化),下次**同簽章直接進快速段——跳過 5 分鐘取樣與每種 BOSS 首打**,「進圖就關」的玩家第一天照舊、之後每天秒收(真實存檔驗證:快取命中收益差 0.7%)。失效條件:簽章不符(升級/換裝/換圖/換模式)、超過 72h(防平衡改版後舊統計久留)、**結算中撞死時清除**(那套配置會死,統計不可信)。快取由 evalSample/BOSS 首打倒下時更新(`saveOffStats`),隨檢查點/結算尾 saveGame 固化。sanitizeState 只夾既有欄位,`_offStats` 不受影響。
-- **消耗品**:箭走原作 `consumeArrow()`(自動換裝/自動買箭/沙哈不扣,1:1);治癒/增益藥水斷貨照 `autoActions` 的自動購買條件仿買;肉/魔法屏障卷軸呼叫 `window.__afkAutobuyCheck`(afk-autobuy 暴露)。HP/MP 軌跡不模擬——結算存活本就補滿。自動賣廢品照原 `state._junkSellAt` 排程跑(免 24h 掉落塞爆背包)。
-- **快速段會推進 `state.ticks`**(每殺 +round(拍/殺)),召喚/buff 的 endTick、賣廢品排程才不會凍結。**⚠ 快速段不跑 `tick()`,凡「靠 tick() 逐拍/每秒遞減」的玩家狀態都會凍結——與「絕對 tick 時間點」的狀態脫鉤就是 bug**(踩過 2026-07-07:`player.buffs` 秒數凍結、召喚物 endTick 照走 → 掛機回來精靈被移除但 buff 仍正,自動施放不重召。已在 `fastAdvance` 同步扣 buff 秒數,歸零後回線上 autoActions 自動重施)。判準:遊戲新增「每 tick 遞減的計時器」且會影響離線行為 → 檢查 fastAdvance 要不要同步推進。`logSys` 在 ff 靜音 → 快速段的買箭/買藥訊息本來就不會出現,**debug 時別誤判成「沒買」**(判準:快速段沒印「退回全模擬」=補貨正常)。
-- **⚠ 快速段繞過 `tick()`→也繞過 `autoActions()`,凡「只寫在 autoActions 的自動行為」在快速段都不會自己發生,要在快速段各自補上(踩過 2026-07-08:遇 BOSS 自動瞬移逃離)**:自動瞬移、自動施法、自動購買、自動換裝這類都掛在 `autoActions()`(由 `tick()` 每拍呼叫),而快速段是 `spawnMob→killMob→settleDeadMobs`、不跑 `tick()`,所以這些自動行為在快速段一律不觸發。判準:遊戲在 `autoActions` 加了新的「戰鬥中自動反應」且會影響離線收益 → 檢查 `fastKillOnce`/`fastAdvance` 要不要補。**⭐ 補的時候鐵則:要「模擬某個原作自動行為」時,直接呼叫原作那支函式(如瞬移就 `useItem(scroll.uid, true)`),不要自己刻它的前置守衛/地圖清單**——`useItem` 的 teleport_scroll 分支內部已依序擋掉「行動限制狀態／軍王之室(`KING_ROOMS`)／`prideTeleportBlocked()`(時空裂痕·排名·傲慢之塔11F+無支配符)／遺忘之島(`state.oblivion`)」且被擋下不消耗卷軸;自己在外掛重列一份「哪些地圖能瞬移」必漏(第一版只擋了 siege/純BOSS房,漏了傲慢之塔11F+無符→會白扣卷軸還硬瞬移,使用者抓到)。重用原作函式 = 永遠與原作規則同步、不分歧。
-- **⚠ 補跑(ff)期間「戰鬥路徑直接呼叫的渲染函式」會洩漏到畫面+白費效能——render* 要嘛在呼叫點包 `!state.ff`、要嘛函式內自帶 `if(state.ff)return`(踩過 2026-07-08:傭兵倒地動畫)**:離線/背景補跑時 `state.ff=true`,`tick()` 尾端的 `updateUI()`/`renderMobs()` 都包在 `if(!state.ff){…}` 裡不會動畫面;但戰鬥子路徑常「直接」呼叫某個 render(傭兵倒地/復活/升級 → `renderSquadPanel()`;`js/04`/`js/06`/`js/05` 多處),這種**繞過 tick 尾端那層守衛**,補跑時照樣整塊 `innerHTML` 重建 → 畫面閃倒地動畫、還很吃效能。已在 `renderSquadPanel` 開頭加 `if(state.ff)return`(一處擋全部呼叫點,補跑結束後由正常 `updateUI` 再畫一次最終狀態)。判準:任何「戰鬥/傭兵/掉落等 tick 期間會跑到的路徑」若**直接** call `render*`/改 DOM,grep 它有沒有被 `!state.ff` 包住或函式內早退;沒有就是 ff 洩漏(症狀=離線掛機回來看到戰鬥動畫/面板在跳)。`renderMobs` 是逐呼叫點包、`renderSquadPanel`/`_updateUIImpl` 是函式內早退,兩種都行、擇一即可。**同類但更貴:`saveGame()` 這種「重副作用」也算(踩過 2026-07-10:殺王自動存檔 `js/05` 沒擋 ff → 傲慢之塔 6h 離線殺 77 王=77 次序列化+壓縮存檔,佔整個結算耗時 8 成;加 `!state.ff` 後 6h 結算 3.6s→0.6s、24h 2s)**。補跑期間的存檔保護由離線模組「每 5 秒檢查點」統一負責,戰鬥路徑不必也不該逐事件存檔。判準補充:grep 戰鬥路徑的 `saveGame()` 呼叫點,凡「事件驅動、離線一晚會觸發數十次以上」的都要 `!state.ff`(`kbRoomRespawn` 的既有寫法就是範本)。
-  - **⭐ 洩漏的不只「戰鬥路徑呼叫 render」,「自己跑的 timer」同樣會漏(2026-07-16 又中一次:離線結算時玩家/傭兵站在凍結畫面上狂播受擊)**:`js/09` 檔尾那支 8fps sprite ticker 只看 `document.hidden`/`__animOff`、不看 `state.ff`,而補跑是**分片**執行的,片與片之間 timer 照常觸發 → `_playerMorphApply`/`_allySpritesApply` 繼續推進幀;受擊動作又是 HP-delta 驅動(補跑每拍都在扣血)→ 整片畫面凍結、只有人物一直播受傷。**判準:想 ff 守衛時不能只問「誰會呼叫我」,還要問「有沒有 `setInterval`/`requestAnimationFrame` 自己在跑」**——grep 這兩個,凡是會改 DOM / 推進動畫的,都要問一句「補跑期間它還在跑嗎?」。**守衛一律用 `state.ff && !state.ffSmall`**:小補跑(前景 GC/存檔造成的 ≤2 秒卡頓)要放行,否則正常遊玩偶爾會 sprite 停格——與 `js/09:664` 死亡幀同一條判準。
-- **⚠ 「遊戲邏輯的時間判斷」要用遊戲時鐘 `state.ticks`,不要用牆鐘 `Date.now()`——否則離線補跑(壓縮時間)會失真(踩過 2026-07-08:長老之室 BOSS 3 分鐘節流)**:離線補跑把 24h 遊戲時間壓進幾秒跑完,`Date.now()`(真實時間)只走幾秒 → 任何用 `Date.now()` 做「經過多久」判斷的遊戲邏輯,在補跑期間都幾乎凍住。踩過:長老之室「第 1 隻 BOSS 活滿 3 分鐘才出第 2 隻」原本用 `Date.now()-_bornMs>=180000`,離線時 3 分鐘牆鐘湊不到 → 第 2 隻永遠不出 → 離線比線上少一隻 BOSS、危險度失真。已改成 `state.ticks-_bornTick>=1800`(3 分鐘=1800 拍)。遊戲裡絕大多數時間邏輯(出怪排程 `spawnAt`、軍王復活 `_kbRespawnAt`、buff `endTick`)本來就用 `state.ticks`,補跑會正確推進它;偶爾走偏用 `Date.now()` 的才要抓回來。**判準:一個 `Date.now()` 該不該換 `state.ticks`,問「這段時間玩家離線時該不該繼續流逝?」**——① 該繼續流逝(攻城冷卻/盟主祝福這種「關遊戲也要倒數」的,`js/01:443` 有註解;魔物追蹤刻意做成離線全程有效,js/offline.js 另有 `until` 撐長處理)→ **留牆鐘**;② 該跟「玩家在遊戲裡實際經過多久」走(怪存活時間、技能節流)→ **改 `state.ticks`**。新增時間相關機制時照這條選時鐘。
-- **debug**:`window.__afk.forceCatchup(分鐘數, noFast)`——第二參數 true 強制全模擬(A/B 比對用);**此入口會帶當前地圖**(2026-07-06 修:原本沒帶 → `gotoMap(undefined)` 空轉零收益,測試時誤判成功能壞掉)。
-
-**特別坑:有些「狩獵地點」不是地圖選單裡的地圖**(攀登 `pride_fN`、遺忘之島 `oblivion_travel`/`oblivion_island`)——它們**不在 `DB.maps`/`MAP_CATEGORIES`**,而且原作**不存檔**這類「旅程/攀登狀態」(`state.prideClimb…`/`state.oblivion`),重載一律回村。對這種地圖做離線續掛,規則:
-
-- **不能用 `gotoMap()`/`changeMap()`(選單路徑)**把人帶回去——選單沒有這個 option,`setMapSelectors`/`sel.value` 設不上 → `mapState.current` 變空字串 → 補跑在空地圖空轉 → **收益歸零**(2026-06-21 遺忘之島就是這樣壞的,修前還會跳「離線掛機 0 分鐘…無收益」的怪訊息)。
-- **正解**:外掛**自存一份旅程狀態**(攀登 `afk_pride_<slot>`、遺忘之島 `afk_obl_<slot>`),登入時在「原 loadGame 之前」擷取;補跑時**還原 `state.xxx` 旗標 + 呼叫原作專屬進場函式**(攀登 `enterPrideFloor(n)`、遺忘之島 `enterOblivionMap(mapKey)`)進場,絕不走選單。
-- **落點比照在線**:存活→補滿 HP/MP、留在原地續掛(state 旗標維持,saveGame 後由 `stamp()` 續記);撞死→清掉旅程旗標、`gotoMap(homeTown())` 回村(比照原作 `revive()` 的塔中/島中死亡回城)。
-- **遺忘之島「本島」走快速結算(2026-07-10)**:進場仍走 `enterOblivionMap`(還原 `state.oblivion`),但 fastEligible 對 `phase==='island'` 放行——本島=無限刷怪圖,與一般圖同等待遇;島上禁傳送等規則因快速段重用原作函式(useItem/maybeSpawnMobs)自動成立。「途中」維持全模擬(傳送門 BOSS 進度門檻、怪組與本島不同)。
-- **階段自動推進交給原作**:如遺忘之島「途中擊敗傳送門→進本島」是原作 `settleDeadMobs()` 內 `state._oblivionAdvance` 流程處理的,補跑時照呼叫 `settleDeadMobs()` 即可,不要自己重寫推進邏輯。
-- 新增這類地圖時,記得 `mapName()` 也補上它的中文名(這些 id 不在 `MAP_CATEGORIES`,否則摘要會印出原始 id)。
-
-### 例外:「時間排名挑戰」類的特殊 run → 離線一律「不續、不結算」(不是續掛)
-
-非選單地圖不全都要續掛。**排名/計時挑戰**(原作 `state.riftRun` 的「時空裂痕」`rift_battle`、攀登的「排名挑戰」`prideRanked`)的設計是「停留越久排名/獎勵越高、撐到被打死」,**離線自動續＝刷排名/刷獎勵 exploit**;且原作這類 state 不存檔(transient `state` 物件)、重載一律回村(等同「中途離開＝該次作廢」)。所以離線模組對這類**明確早退、完全不模擬**(`js/offline.js` `maybeCatchup` 裡:排名攀登看 `prePride.ranked`、時空裂痕看 `savedMap === 'rift_battle'`)。判準:**這張圖的收益/排名是不是「靠線上停留時間累積」?是 → 離線不能幫他跑**(不然就是掛機刷榜)。一般狩獵圖(含底比斯、魔族/暗影神殿等選單地圖)才照「在線掛機照跑」續結算。
-
-## 🐌 全模擬路徑很慢是「戰鬥模擬本身」,不是掃描/記憶體——別再往那邊優化
-
-一般圖已走快速結算(上一節);這節只針對**全模擬 fallback**(危險/特殊地圖)。實測過的死路,別重走:
-
-- **不是背包掃描**:反事實測試把背包從 258 筆砍到 203 筆,每 tick 幾乎沒變(311→302µs)。**「離線時清廢品來加速」無效,不要做**(另補測過強制賣廢品的各種頻率,差距只在「弱角色+肥背包」才顯著,真實重戰鬥角色 <1~2%、體感不出來 → 不必加回)。
-- **不是記憶體/log 累積**:結算全程記憶體穩定 13~20MB;`state.ff` 時 `logCombat`/`logSys` 第一行就 return。
-- **真正成本 = 逐拍模擬戰鬥,且 RNG 變異極大**:同角色同圖,每 tick 可能 0.11ms 也可能 1~2ms(場面越大越吃運算)。慢不是 bug。
-- 參考:`TICK_MS=100`,24h = 864,000 tick。`js/offline.js` 的 `SLICE_MIN_MS/SLICE_MAX_MS` 只是時間切片預算(讓畫面喘),不影響純運算那條底。
-- **方法備忘:懷疑效能回歸就 A/B + CDP profile,別用猜的。**
+- **`.testdata/` 有使用者真實存檔(gitignore,不進版控、不要清)**——玩家回報跟「資料量/等級/裝備/倉庫/離線」有關就先用它測,新角色重現不出來會誤判「沒問題」。灌法:`_lzSet('lineage_idle_save_1', ...)` 後 `loadGame()`(倉庫另拆)。
+- 一次性腳本/截圖放 `.scratch/`(gitignore)。Playwright 一律 headless。
+- **會寫玩家存檔的功能,上線前必測「真實角色→操作→比對相關 key 沒被改壞」**,且要涵蓋真實觸發狀態(如主選單=未載入角色)。
+- 量效能每輪**重新導航**,不要原地重複 `loadGame()`(計時器/監聽疊加,記憶體 17→97MB、tick 慢 9 倍,數字全污染)。
+- Tailwind 是預建置 css:JS 動態拼「沒出現過的 class」會安靜失效——先 grep `css/tailwind-built.css` 有沒有,沒有就寫自己的具名 class。
 
 ## Git / GitHub
 
-- commit / push 時**不要**帶上 Claude 作者資訊或 `Co-Authored-By` 標記(沿用全域規則)。
-- GitHub Pages 站台:`https://pp771007.github.io/idle-lineage-class/`(本 fork,非原作者 shines871)。
-- **🔀 commit / push 節奏(使用者明訂・2026-07-07)**:一個功能做完(含自測)就 commit 一個,**不要主動 push、也不要在 commit 階段 bump `?v=` 或跑 stamp-sw-version**——版本號 bump 與 stamp 屬於「push / 發版」流程,等使用者說要 push 或發版時才跑 `/prepush` 一次處理(那時把這段期間所有改過的檔一次 bump)。「每次 push 前的檢查清單」照舊,只是觸發點是 push、不是 commit。
+- commit 不帶 Claude 署名(全域規則);訊息純變更描述。
+- **commit 節奏**:一個功能一個 commit;不主動 push;bump/stamp 留給 push 時的 /prepush。
+- `git pull --rebase` 衝突:產生檔(`sw.js`/`version.json`/manifest)衝突→手動刪標記留一版→重跑 stamp 腳本→continue;**stamp 不會清衝突標記也不會碰 index.html**,盲目 `git add -A` 會把標記 commit 進去(踩過兩次,sw.js 壞了肉眼看不出)。收尾一定 grep 衝突標記(見檢查清單 4)。
+- 台灣時間戳:git-bash 的 `TZ=` 不生效,用 `date -u -d '+8 hours' +%Y%m%d-%H%M`。
+- 版本/發版:`version.json` 的 `app` 是加掛版 semver(發版才 bump;stamp 會保留該欄位);發版跑 `/release` skill,更新說明只寫玩家有感的、白話。
 
-### 🔴 `git pull --rebase` 出現衝突時:不可盲目 `git add -A && rebase --continue`(會把衝突標記 commit 進去)
+## 🔁 修完 bug 要不要記進本檔:三題都「是」才寫,寫前先給使用者看草稿
 
-自動同步停了之後衝突變少,但多 session/多裝置同時動 repo 仍可能撞。教訓照舊:
-- **只有 `sw.js` / `version.json`(產生檔)衝突**:**先手動刪衝突標記留單一版本**,再重跑 `node scripts/stamp-sw-version.mjs` → `git add -A` → `git rebase --continue`。**⚠ stamp 只會 regex 換掉 `CODE_VERSION` 值、不會清 `<<<<<<< / ======= / >>>>>>>` 標記**——標記留在 `sw.js` 裡=語法錯誤 → Service Worker 裝不起來 → **PWA 離線快取整組失效,但頁面照常渲染、smoke 照過、肉眼看不出來**(踩過 2026-07-05:一段衝突標記在 sw.js 裡躺了好幾個 commit 才被抓到)。
-- **`index.html` 也衝突**:**stamp 不會碰 index.html**,盲目 `git add -A` 會把標記原封不動 commit 進去 → 推上去**整頁壞掉**(踩過 2026-06-28)。**正解:先 `git diff --name-only --diff-filter=U` 看有哪些衝突檔;index.html 要手動開來解**,再 stamp、`git add -A`、`rebase --continue`。
-- **收尾自我檢查(push 前)**:`grep -rnE "^<<<<<<< |^>>>>>>> |^=======$" index.html sw.js afk-*.js` 必須是空的(**sw.js 一定要一起 grep**);`grep -c afk-<某外掛>.js index.html` 每支應為 1(沒有重複 script)。**不能只靠 smoke,一定要 grep 衝突標記**(瀏覽器把標記當文字、script 照載;sw.js 壞了頁面也照跑)。(注意 `=======$` 要錨定行尾,否則會誤中 sw.js 註解裡的 `======` 裝飾線。)
-
-### push 後要等 GitHub Pages 重建完成才算交付,並主動通知使用者
-
-每次 push 到此 repo 後,**不要 push 完就回報「上線了」**——GitHub Pages 要重建(通常 push 後約 40 秒~1 分鐘)才會真的生效。流程:
-
-1. **🚨 輪詢一律丟「背景任務」跑(`run_in_background`),不要在主回合同步 `sleep` 等**——同步等會讓那 1~2 分鐘完全不能回使用者訊息(使用者明確抱怨過)。push 完就把下面這支輪詢丟背景、自己繼續待命/接話,背景跑完會通知,再回報「上線了」。
-2. **判準以「curl 抓線上實際版本號」為權威,不要只信 `gh api pages/builds/latest`**——build API 在連續多次 push 時會回報延遲的 commit(踩過:API 還停在前一個 commit,但 curl 線上版本其實已是最新)。背景輪詢直接比對線上外掛 `?v=`(或 `version.json` 的 `build`):
-   ```bash
-   # 背景輪詢:直到線上 index.html 的外掛版本 = 剛 bump 的版本(或直接 grep 你改的那支)
-   for i in $(seq 1 14); do
-     v=$(curl -s --ssl-no-revoke "https://pp771007.github.io/idle-lineage-class/index.html?cb=$(date +%s)" | grep -oE 'afk-wiki\.js\?v=[0-9a-z]+')
-     echo "[$i] $v"; [ "$v" = "afk-wiki.js?v=<剛 bump 的版本>" ] && { echo BUILT; break; }; sleep 15
-   done
-   ```
-   (`gh api repos/pp771007/idle-lineage-class/pages/builds/latest --jq '{status,commit}'` 可當輔助參考,但不要當唯一判準。)
-3. 背景輪詢回報「BUILT」後**才**通知使用者「已上線、可重整看到新版」(訊息從 Telegram 來就用 `reply`)。
+1. 還會再發生嗎(成因仍在、可推廣)?2. 自動檢查擋不掉嗎(smoke/hook/stamp 已擋的去補檢查不補文件)?3. 下次真的想不起來嗎?
+寫法:標題一句話結論,內文只寫「為什麼會中+判準/怎麼避」,不寫案發經過;能併進現有條目就別開新段。

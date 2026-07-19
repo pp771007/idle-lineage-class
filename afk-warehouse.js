@@ -60,17 +60,18 @@
         if (!inp) return;   // 倉庫面板不在畫面上
         var goldRow = inp.parentElement;
         if (goldRow && !document.getElementById('afk-wh-allin')) {
-            var mk = function (id, txt, dir, style) {
+            var mk = function (id, txt, tip, dir, style) {
                 var b = document.createElement('button');
                 b.id = id; b.type = 'button'; b.textContent = txt;
-                b.className = 'btn px-3 text-sm font-bold h-8 inline-flex items-center justify-center';
+                b.title = tip; b.setAttribute('aria-label', tip);
+                b.className = 'btn px-2 text-sm font-bold h-8 inline-flex items-center justify-center';
                 b.setAttribute('style', style);
                 b.addEventListener('click', function () { window.__afkWhGoldAll(dir); });
                 return b;
             };
-            // 沿用核心存入/取出鈕的配色,一眼看得出同組
-            goldRow.appendChild(mk('afk-wh-allin', '全部存入', 'in', 'background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;'));
-            goldRow.appendChild(mk('afk-wh-allout', '全部取出', 'out', 'background: linear-gradient(135deg, #6b2a10 0%, #b3490e 28%, #5a230e 52%, #9a3e0c 76%, #4a1d0c 100%); color: #fed7aa; border-color: #c2410c;'));
+            // 圖示鈕(文字太佔位);沿用核心存入/取出鈕的配色,一眼看得出同組
+            goldRow.appendChild(mk('afk-wh-allin', '📥', '金幣全部存入', 'in', 'background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;'));
+            goldRow.appendChild(mk('afk-wh-allout', '📤', '金幣全部取出', 'out', 'background: linear-gradient(135deg, #6b2a10 0%, #b3490e 28%, #5a230e 52%, #9a3e0c 76%, #4a1d0c 100%); color: #fed7aa; border-color: #c2410c;'));
         }
         // 主分類下拉補 遺物/席琳遺骸(核心每次重繪都重建 select → 每次補)
         var sel = document.querySelector('select[onchange*="whSetFilter"]');

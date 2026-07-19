@@ -1204,7 +1204,7 @@ const TICK_MS = 100;                 // 一個邏輯 tick 代表的真實時間
 const JUNK_AUTOSELL_TICKS = 100;    // 🗑️ 廢品自動賣出間隔：10 秒（100 tick × 100ms·2026-07-01 由 1800/3分鐘改快）；玩家手動標示廢品會把倒數重置為此值（標完 10 秒無新動作才賣）。⚠️自動賣出這條路徑不 saveGame(見 autoSellJunk)，靠其他既有存檔點落地
 const MERC_EXP_SHARE = 0.5;          // ⚠️v3.0.86 已停用：傭兵經驗改「主玩家＋未倒地傭兵」4 人均分制（見 js/05 partyExpShareCount／killMob）；常數保留避免外部殘留引用報錯
 // 🤝 Phase4：設為「全體」的怪物攻擊技能名（依 mag.skn 比對·同名全部生效）→ 同時打玩家＋全部非倒地傭兵。其餘怪物傷害/狀態魔法仍可依仇恨權重隨機打單一目標(玩家或某傭兵)。
-const MOB_PARTY_AOE_SKILLS = new Set(['闇黑波動','毒霧','鐮刀波動','火焰之舞','燃燒的火球','火焰之陣','地面震裂','跳躍波動','冰雪暴','震裂術','火焰噴吐','流星雨','火牢','寒冰噴吐','巨水炮','大地怒吼','毒氣風暴','閃電風暴','火焰雨','寒冰吐息','地獄犬噴吐','火風暴','龍捲風','爆炎的火球','噴火','漩渦','防身電擊','震裂踏擊','火焰放射','黑霧','火焰氣息','黑暗流星雨','放射斬','迴旋鞭打','衝擊波動','千刃破軍','靈魂波動','火焰爆發','迴旋斬','龍的一擊','地獄火','黑魔法力場','鐮刀劍氣斬','腐蝕之血','冰錐流星雨','水氣爆裂','集體衝暈','巨石爆裂','地面障礙','邪靈之氣','血夜月彎刀','夜魔飛襲','幻象光線','集體相消','劇毒龍捲風','麻痺蜘蛛網','雷霆風暴','沙塵暴','震裂重擊','冰雪颶風','衝擊之暈','岩漿流星雨','火焰散落','鎌鼬旋風','寒冰氣息','妖狐之火','牛鬼突進','大地崩裂','幽魂怨念','枯竭詛咒']);   // 🐍 提卡爾杰弗雷庫雙BOSS 全體技能；🌑 v3.3.33 聖地；🌅 枯竭詛咒對每位玩家/傭兵各自以 MR 判定藥水霜化
+const MOB_PARTY_AOE_SKILLS = new Set(['闇黑波動','毒霧','鐮刀波動','火焰之舞','燃燒的火球','火焰之陣','地面震裂','跳躍波動','冰雪暴','震裂術','咆哮','燃燒立方','火焰噴吐','流星雨','火牢','寒冰噴吐','巨水炮','大地怒吼','毒氣風暴','閃電風暴','火焰雨','寒冰吐息','地獄犬噴吐','火風暴','龍捲風','爆炎的火球','噴火','漩渦','防身電擊','震裂踏擊','火焰放射','黑霧','火焰氣息','黑暗流星雨','放射斬','迴旋鞭打','衝擊波動','千刃破軍','靈魂波動','火焰爆發','迴旋斬','龍的一擊','地獄火','黑魔法力場','鐮刀劍氣斬','腐蝕之血','冰錐流星雨','水氣爆裂','集體衝暈','巨石爆裂','地面障礙','邪靈之氣','血夜月彎刀','夜魔飛襲','幻象光線','集體相消','劇毒龍捲風','麻痺蜘蛛網','雷霆風暴','沙塵暴','震裂重擊','冰雪颶風','衝擊之暈','岩漿流星雨','火焰散落','鎌鼬旋風','寒冰氣息','妖狐之火','牛鬼突進','大地崩裂','幽魂怨念','枯竭詛咒']);   // 🐍 提卡爾杰弗雷庫雙BOSS 全體技能；🌑 v3.3.33 聖地；🌅 枯竭詛咒對每位玩家/傭兵各自以 MR 判定藥水霜化
 const MAX_CATCHUP_MS = 5 * 60 * 1000; // 單次最多補算 5 分鐘，避免長時間離開後一次模擬過久
 let _loopLast = null;                // 上次主迴圈時間戳 (performance.now)
 let _tickDebt = 0;                   // 尚未換算成 tick 的累積時間 (ms)
@@ -1258,7 +1258,7 @@ function flushAwaySummary() {
 }
 
 let player = {
-    cls: null, name: null, lv: 1, exp: 0, gold: 1000, hp: 0, mhp: 0, mp: 0, mmp: 0, blessings: {}, blessingAuto: {},
+    cls: null, name: null, lv: 1, exp: 0, gold: 1000, hp: 0, mhp: 0, mp: 0, mmp: 0, blessings: {}, blessingAuto: {}, alignmentValue: 0, pvpOn: false, pvpRevengeList: [],
     base: { str:0, dex:0, con:0, int:0, wis:0, cha:8 }, bonus: 0, alloc: { str:0, dex:0, con:0, int:0, wis:0, cha:0 }, panacea: { str:0, dex:0, con:0, int:0, wis:0, cha:0 }, panaceaUsed: 0, junkPrefs: {}, bloodPledge: null, magicShieldCd: 0, lastMapByCat: {}, tracking: null, ismaelAccUsed: false, sherineWorld: false, masteryQuest: null, mastery: null, masteryChangeCnt: 0, siege: { active:false, gateKilled:false, towerKilled:false, endTime:0, kills:0, result:null, cooldownUntil:0, rewardPending:false, victoryUntil:0, accCdUntil:0 },
     inv: [], eq: { wpn: null, arrow: null, helm: null, armor: null, shin: null, shield: null, cloak: null, tshirt: null, gloves: null, boots: null, ring1: null, ring2: null, ring3: null, ring4: null, amulet: null, ear1: null, ear2: null, belt: null, pet: null, doll: null },
     skills: [], buffs: { haste: 0, brave: 0, blue: 0, cautious: 0, elfcookie: 0, poly: 0, shield: 0, sk_magic_shield: 0 }, poly: null, allies: [],

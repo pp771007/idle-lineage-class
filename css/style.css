@@ -2115,6 +2115,7 @@ button.classic-skill-cell { cursor:pointer; }
     }
     #load-action-panel button { width: 100%; height: 48px; font-size: 14px; }
     #load-btn-enter,
+    #load-btn-export,
     #load-btn-delete { grid-column: 1 / -1; }
     #load-btn-back { grid-column: 1 / -1; }
 
@@ -2772,6 +2773,31 @@ button.classic-skill-cell { cursor:pointer; }
     background: rgba(183, 146, 62, .18);
     color: #f4df9e;
 }
+/* 📌 v3.5.77 NPC 叫賣釘選列（#sys-log-pins·index.html 位於 #sys-log 上方）：
+   最多兩條常駐在「系統與物品日誌」頂端不被推走；被互動(吵死了/馬上到/開對話/成交)或離場後自動換下一位。
+   ⚠️ 用 :empty 收起整條（不用 Tailwind .hidden：ID 選擇器權重會壓過 class，切換會失效）。 */
+#sys-log-pins {
+    flex: none;
+    padding: 6px 14px 7px;
+    border-bottom: 1px solid rgba(183, 146, 62, .34);
+    background: rgba(74, 60, 30, .26);
+    font-size: 15px;
+    line-height: 1.5;
+}
+#sys-log-pins:empty { display: none; }
+#sys-log-pins .wander-pin { display: flex; align-items: baseline; gap: 6px; }
+#sys-log-pins .wander-pin + .wander-pin { margin-top: 4px; border-top: 1px dashed rgba(183, 146, 62, .22); padding-top: 4px; }
+#sys-log-pins .wander-pin-tag {
+    flex: none;
+    padding: 0 5px;
+    border: 1px solid rgba(183, 146, 62, .55);
+    border-radius: 3px;
+    background: rgba(183, 146, 62, .16);
+    color: #ead39c;
+    font-size: 11px;
+    font-weight: 700;
+}
+#sys-log-pins .wander-pin-body { min-width: 0; flex: 1; }
 .wander-chat-out { color: #d3cec6; }
 .wander-chat-arrow { color: #bdb7ac; font-weight: 700; }
 .wander-chat-target { color: #d8c79e; font-weight: 700; }

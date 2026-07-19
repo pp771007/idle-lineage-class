@@ -496,6 +496,7 @@ function equipSkillDmgMult(sk, skId, who) {
 function procFreeMagicSkill(t, skId, en, areaHit, sourceItem, illusionRecoverMp) {
     let sk = DB.skills[skId];
     if (!sk || !t || t.curHp <= 0) return;
+    if (sk.reqJustice && typeof pvpIsJustice === 'function' && !pvpIsJustice()) return;   // 💙 v3.5.75 究極光裂術：限正義性向（免費 proc 施放亦擋·靜默）
     if (sk.target === 'all' && !areaHit) {
         let uids = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead).map(m => m.uid);
         uids.forEach((uid, i) => {
@@ -846,7 +847,7 @@ function _enemyPhysicalAttackInner(mob, idx, stunChance = 0, atkDmg = null, atkD
     // 🔧 暗隱術：100% 迴避一次物理攻擊（迴避後失效並進入 5 秒冷卻）；否則依 ER 有效迴避率判定
     let _stealthDodge = !!(player.buffs && player.buffs.sk_dark_stealth > 0);
     let _titanEr = (player.skills.includes('sk_warrior_titan_bullet') && player.hp < player.mhp * titanThreshold()) ? 50 : 0;   // ⚔️ 泰坦：子彈：HP<40%(反彈精通 80%) 時 ER+50（即時判定，不入 recomputeStats）
-    if (!_asleep && !(player.d && player.d.noEvade && !_stealthDodge) && (_stealthDodge || roll(1, 100) <= effResistPct(player.d.er + _titanEr))) {   // 🏺 笨重的鋼鐵石盾 noEvade：無法迴避（暗隱術 100% 迴避不受限）
+    if (!mob.magicMelee && !_asleep && !(player.d && player.d.noEvade && !_stealthDodge) && (_stealthDodge || roll(1, 100) <= effResistPct(player.d.er + _titanEr))) {   // 😤 magicMelee(白目幻術士)：一般攻擊視為魔法·必定命中不可迴避   // 🏺 笨重的鋼鐵石盾 noEvade：無法迴避（暗隱術 100% 迴避不受限）
         logCombat(`${player.name || '你'} 成功迴避攻擊。`, 'evade');
         if (hasMastery('d_evade')) { let _s = player._darkEvadeStack || 0; player._darkEvadeStack = 0; if (player.d) player.d.er -= _s; player._darkEvadeSure = true; player._darkEvadeCrit = true; }   // 🔧 迴避精通：清空累積ER，下次一般攻擊必中且必爆
         if (player._setShadow3) { player.hp = Math.min(player.mhp, player.hp + Math.floor(player.mhp * 0.02)); }   // 🔧 暗影 3/5：觸發迴避恢復 2% HP
@@ -1274,9 +1275,56 @@ function enemyAttackAlly(mob, ally) {
     if (ally.curHp <= 0) { ally.curHp = 0; ally._downed = true; ally._reviveCd = 150; logCombat(`<span class="text-amber-400 font-bold">協力傭兵 ${ally._allyName} 倒下了！（可用返生術立即復活，或 15 秒後自動使用復活卷軸，或回村免費復活）</span>`, 'enemy', 'enemy'); try { renderSquadPanel(); } catch (e) {} }
 }
 
+function pvpChaoticDeathItemLoss() {
+    if (!player || !player.eq || !Array.isArray(player.inv)) return;
+    if (typeof pvpClampAlignment === 'function' && pvpClampAlignment(player.alignmentValue) >= -10000) return;
+    if (typeof pvpClampAlignment !== 'function' && (Number(player.alignmentValue) || 0) >= -10000) return;
+    if (Math.random() >= 0.01) return;
+    let candidates = [];
+    for (let slot in player.eq) {
+        let it = player.eq[slot];
+        if (it && it.id && DB.items[it.id]) candidates.push({ kind: 'eq', slot: slot, item: it });
+    }
+    player.inv.forEach((it, index) => {
+        if (it && it.id && DB.items[it.id]) candidates.push({ kind: 'inv', index: index, item: it });
+    });
+    if (!candidates.length) return;
+    let pick = candidates[Math.floor(Math.random() * candidates.length)];
+    let name = (typeof getItemFullName === 'function') ? getItemFullName(pick.item) : (DB.items[pick.item.id] ? DB.items[pick.item.id].n : pick.item.id);
+    // 🗃️ v3.5.74 遺失紀錄（用戶拍板）：系統背後保存完整物品快照 player.pvpLostItems（含強化/詞綴/屬性·上限 50 筆·目前無 UI·供未來復原機制使用）
+    try {
+        if (!Array.isArray(player.pvpLostItems)) player.pvpLostItems = [];
+        player.pvpLostItems.push({ t: Date.now(), from: pick.kind, slot: pick.kind === 'eq' ? pick.slot : null, item: JSON.parse(JSON.stringify(Object.assign({}, pick.item, { cnt: 1 }))) });
+        if (player.pvpLostItems.length > 50) player.pvpLostItems = player.pvpLostItems.slice(-50);
+    } catch (e) {}
+    if (pick.kind === 'eq') {
+        if ((pick.item.cnt || 1) > 1) pick.item.cnt -= 1;
+        else player.eq[pick.slot] = null;
+    } else {
+        let live = player.inv[pick.index];
+        if (!live || live !== pick.item) live = player.inv.find(it => it === pick.item || (pick.item.uid && it && it.uid === pick.item.uid));
+        if (live) {
+            if ((live.cnt || 1) > 1) live.cnt -= 1;
+            else player.inv = player.inv.filter(it => it !== live);
+        }
+    }
+    logSys(`<span class="text-red-400 font-bold">邪惡值過低，死亡時遺失了 ${name}。</span>`);
+    try { calcStats(); renderTabs(true); updateUI(); } catch (e) {}
+}
+
 function killPlayer() {
     player.hp = 0;
     player.dead = true; // 保持死亡狀態，停止遊戲計時
+    let _pvpKillers = mapState.mobs.filter(m => m && m.trollPlayer);
+    if (_pvpKillers.length && typeof pvpOnPlayerDeath === 'function') pvpOnPlayerDeath(_pvpKillers);
+    if (player.trollPlayers && player.trollPlayers.length) {   // 😤 被白目玩家擊殺(場上有白目即視為其戰果)：仇恨解除·離場；🐛 v3.5.74 稽核修#3：付費復仇追殺(pvpRevenge/noExpire)不因死亡解除（10 萬不蒸發·之後仍會遭遇）
+        let _tn = mapState.mobs.filter(m => m && m.trollPlayer).map(m => m.n);
+        if (_tn.length) {
+            let _n0 = player.trollPlayers.length;
+            player.trollPlayers = player.trollPlayers.filter(t => t && (t.pvpRevenge || t.noExpire || !_tn.includes(t.n)));
+            if (player.trollPlayers.length !== _n0) logSys("<span class=\"text-rose-300\">白目玩家心滿意足地離開了……</span>");
+        }
+    }
     // 死亡時清除所有召喚物與召喚 buff（迷魅術/造屍術/召喚屬性精靈/召喚強力屬性精靈一致處理），
     // 與復活流程同步，避免狀態殘留；復活後由自動施放重新召喚。
     player.summon = null;
@@ -1303,6 +1351,7 @@ function killPlayer() {
         saveGame();
         return;
     }
+    pvpChaoticDeathItemLoss();
     // 🔧 盟主祝福不再因死亡清空：只有時間到才會消失（亦不受攻城影響）
     let msg = "你的角色已經死亡。（死亡不損失經驗值。）";
     // 🎮 經典模式：死亡損失「該等級最大經驗」的 5%（v3.0.15 由 10% 調降·per-level 進度，最多扣到該等級 0% → 不會降等）
@@ -1613,6 +1662,16 @@ function _applyMobMagicInner(mob, sk) {
         player.statuses.evilAura = (sk.dur || 6) * 10;
         calcStats();   // 立即套用 AC/ER 變化
         logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放 ${sk.skn || '邪靈之氣'}，邪氣纏身！（AC+${sk.acUp || 10}、ER−${sk.erDown || 10}，持續 ${sk.dur || 6} 秒）`, 'enemy');
+        return;
+    }
+    // 😤 v3.5.59 初級治癒術（白目玩家·王族）：恢復自身 healDice HP（滿血不施放）
+    if(sk.type === 'self_heal') {
+        if (mob.curHp >= mob.hp) return;
+        let _min = sk.healDice ? sk.healDice[0] : 30, _max = sk.healDice ? sk.healDice[1] : 60;
+        let _h = _min + Math.floor(Math.random() * (_max - _min + 1));   // healDice=[最小,最大] 均勻取值（勿用 roll＝N顆骰）
+        mob.curHp = Math.min(mob.hp, mob.curHp + _h);
+        logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放 ${sk.skn || "初級治癒術"}，恢復了 ${_h} 點 HP。`, "enemy");
+        renderMobs();
         return;
     }
     // 生命的祝福：場上所有血盟怪物（含自己）每 interval 秒回復 healDice + 等級/3 HP，持續 dur 秒
@@ -2015,8 +2074,8 @@ function rollPledgeDropEnhance(safe) {
 }
 
 // 野外+血盟敵人擊殺掉寶：1% 機率獲得 1 件物品（抽法同潘朵拉黑市權重 getWeightedGachaResult；詞綴走新制——只可能獲得「祝福的」1%，屬性/遠古改由象牙塔『碧恩』取得；仍依安定值附帶強化等級）
-function pledgeBonusDrop(mob) {
-    if (Math.random() >= 0.01 * classicDropMult()) return;   // 1% 機率（🎮 經典模式：×1/10）
+function pledgeBonusDrop(mob, rate) {
+    if (Math.random() >= (rate || 0.01) * classicDropMult()) return;   // 預設 1% 機率（😤 白目玩家傳 0.10＝10%；🎮 經典模式：×1/10）
     let id = getWeightedGachaResult(true);   // 🔧 血盟野外＋攻城敵人：權重 1 以外的物品以 2 倍權重抽取（權重100→200）
     let d0 = DB.items[id];
     if (!d0) return;

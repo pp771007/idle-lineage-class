@@ -239,6 +239,7 @@ function manualCast(skId) {
     if(!sk || !player.skills.includes(skId)) return;
     if(inAbsBarrier()) { logSys('絕對屏障期間與世界隔絕，無法行動。'); return; }   // 🛡️ 屏障中不得手動施放任何技能（含本技能再施放）
     if(player.statuses && (player.statuses.silence > 0 || player.statuses.magicseal > 0)) { logSys('你被沉默／魔法封印，無法施放魔法。'); return; }   // 🤐 v3.1.77 稽核中#10：手動施放補沉默/魔法封印閘（castSkillInner 有、原手動沒有→沉默中可傳送逃脫）
+    if(sk.reqJustice && typeof pvpIsJustice === 'function' && !pvpIsJustice()) { logSys(`<span class="text-sky-300">${sk.n} 需要正義性向（性向值 ≥ 1000）才能施放。</span>`); return; }   // 💙 v3.5.75 究極光裂術：限正義性向
     // 傳送術：行動限制狀態（石化／麻痺／冰凍／暈眩）無法手動施放
     if(sk.mEff === 'teleport' && player.statuses &&
        (player.statuses.stone > 0 || player.statuses.paralyze > 0 || player.statuses.freeze > 0 || player.statuses.stun > 0 || player.statuses.sleep > 0)) {
@@ -361,7 +362,11 @@ function castSkillInner(skId) {
     if(inAbsBarrier()) return false;   // 🛡️ 絕對屏障：無法施法（自動/手動皆擋）
     if(skId === 'sk_sunlight' && KING_ROOMS[mapState.current]) { logSys('<span class="text-red-400">此區域中，日光術無法生效。</span>'); return false; }   // 🔧 軍王之室／底比斯祭壇：日光術無效
     if(skId === 'sk_magic_shield' && (player.magicShieldCd || 0) > 0) return false;   // 魔法屏障抵擋技能後冷卻中，無法施放
-    
+    if(sk.reqJustice && typeof pvpIsJustice === 'function' && !pvpIsJustice()) {   // 💙 v3.5.75 究極光裂術：限正義性向（性向值 ≥ 1000）·自動施放節流提示防洗頻
+        _logSilenceOnce(`<span class="text-sky-300">${sk.n} 需要正義性向才能施放。</span>`);
+        return false;
+    }
+
     if(player.statuses.silence > 0) {   // 🔧 沉默：所有魔法皆無法施放（含魔法相消術——只有沉默/魔法封印能擋下相消術）
         _logSilenceOnce(`沉默狀態中，無法施展魔法。`);   // ⏱️ 節流：最多每秒 1 次，避免自動施法洗頻
         return false;
@@ -937,7 +942,7 @@ function autoActions() {
     // 瞬間移動卷軸：戰鬥中出現 BOSS 時自動使用（自動使用必定為未裝備傳送控制戒指的傳送術效果）
     {
         let tChk = document.getElementById('set-teleport');
-        let _huntBoss = !!(window.AFK_BOSSRING && window.AFK_BOSSRING.huntActive && window.AFK_BOSSRING.huntActive());   // 🐲 外掛「自動找BOSS」進行中→抑制逃離(否則剛召來的王立刻被瞬移走);外掛未載入=false 照常
+        let _huntBoss = !!(window.AFK_BOSSRING && window.AFK_BOSSRING.huntActive && window.AFK_BOSSRING.huntActive());   // 🔌 加掛版補丁:外掛「自動找BOSS」進行中→抑制逃離(否則剛召來的王立刻被瞬移走);外掛未載入=false 照常
         if (tChk && tChk.checked && !_huntBoss && mapState.mobs.some(m => m && m.boss && !m.noAutoTeleport) && !isSiegeArea(mapState.current) && !PURE_BOSS_MAPS.includes(mapState.current) && !state.prideClimb && !state.oblivion && !state.riftRun && (state._manualTpUntil == null || (state.ticks || 0) >= state._manualTpUntil)) {   // 🕒 手動瞬移後 5 秒內不自動瞬移/自動購買；攻城區與純BOSS房(安塔瑞斯/法利昂/巴拉卡斯)：BOSS為目標，不自動瞬移；🔧 卡瑞(noAutoTeleport)不觸發自動瞬移；🗼 傲慢之塔攀登中不自動瞬移；🌀 時空裂痕不自動瞬移逃離頭目
             let item = player.inv.find(i => i.id === 'scroll_teleport');
             if (!item) {

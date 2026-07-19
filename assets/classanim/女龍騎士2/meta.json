@@ -1566,6 +1566,516 @@
     }
    ]
   },
+  "gauntlet_attack": {
+   "src": "gauntlet_attack.spr",
+   "frames": 7,
+   "palette": "truecolor",
+   "blocks": 61,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 573,
+     "bbox": [
+      59,
+      45,
+      82,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 499,
+     "bbox": [
+      59,
+      54,
+      84,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 491,
+     "bbox": [
+      59,
+      55,
+      84,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 486,
+     "bbox": [
+      57,
+      55,
+      82,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 759,
+     "bbox": [
+      27,
+      46,
+      79,
+      91
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 736,
+     "bbox": [
+      33,
+      50,
+      80,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 704,
+     "bbox": [
+      43,
+      44,
+      82,
+      92
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "gauntlet_attack_s": {
+   "src": "gauntlet_attack_s.spr",
+   "frames": 7,
+   "palette": "truecolor",
+   "blocks": 25,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 180,
+     "bbox": [
+      55,
+      81,
+      80,
+      93
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 184,
+     "bbox": [
+      59,
+      83,
+      80,
+      95
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 202,
+     "bbox": [
+      58,
+      83,
+      80,
+      96
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 223,
+     "bbox": [
+      53,
+      80,
+      80,
+      94
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 366,
+     "bbox": [
+      21,
+      68,
+      79,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 345,
+     "bbox": [
+      28,
+      74,
+      80,
+      93
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 279,
+     "bbox": [
+      38,
+      77,
+      80,
+      93
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "gauntlet_hurt": {
+   "src": "gauntlet_hurt.spr",
+   "frames": 2,
+   "palette": "truecolor",
+   "blocks": 20,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 577,
+     "bbox": [
+      57,
+      51,
+      85,
+      93
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 596,
+     "bbox": [
+      52,
+      49,
+      86,
+      93
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "gauntlet_hurt_s": {
+   "src": "gauntlet_hurt_s.spr",
+   "frames": 2,
+   "palette": "truecolor",
+   "blocks": 8,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 303,
+     "bbox": [
+      51,
+      83,
+      84,
+      98
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 280,
+     "bbox": [
+      51,
+      84,
+      84,
+      98
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "gauntlet_idle": {
+   "src": "gauntlet_idle.spr",
+   "frames": 12,
+   "palette": "truecolor",
+   "blocks": 120,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 587,
+     "bbox": [
+      55,
+      39,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 583,
+     "bbox": [
+      55,
+      39,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 579,
+     "bbox": [
+      55,
+      39,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 579,
+     "bbox": [
+      55,
+      40,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 585,
+     "bbox": [
+      55,
+      40,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 589,
+     "bbox": [
+      55,
+      40,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 589,
+     "bbox": [
+      55,
+      40,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 7,
+     "px": 585,
+     "bbox": [
+      55,
+      40,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 8,
+     "px": 587,
+     "bbox": [
+      55,
+      40,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 9,
+     "px": 586,
+     "bbox": [
+      55,
+      40,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 10,
+     "px": 583,
+     "bbox": [
+      55,
+      40,
+      79,
+      89
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 11,
+     "px": 585,
+     "bbox": [
+      55,
+      39,
+      79,
+      89
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
+  "gauntlet_idle_s": {
+   "src": "gauntlet_idle_s.spr",
+   "frames": 12,
+   "palette": "truecolor",
+   "blocks": 36,
+   "frameMeta": [
+    {
+     "frame": 0,
+     "px": 141,
+     "bbox": [
+      53,
+      81,
+      75,
+      90
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 1,
+     "px": 142,
+     "bbox": [
+      53,
+      81,
+      75,
+      91
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 2,
+     "px": 146,
+     "bbox": [
+      52,
+      81,
+      75,
+      91
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 3,
+     "px": 153,
+     "bbox": [
+      52,
+      81,
+      75,
+      91
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 4,
+     "px": 157,
+     "bbox": [
+      52,
+      81,
+      75,
+      91
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 5,
+     "px": 159,
+     "bbox": [
+      52,
+      81,
+      75,
+      91
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 6,
+     "px": 159,
+     "bbox": [
+      52,
+      81,
+      75,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 7,
+     "px": 157,
+     "bbox": [
+      53,
+      81,
+      75,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 8,
+     "px": 151,
+     "bbox": [
+      53,
+      81,
+      75,
+      93
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 9,
+     "px": 147,
+     "bbox": [
+      53,
+      81,
+      75,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 10,
+     "px": 148,
+     "bbox": [
+      53,
+      81,
+      75,
+      92
+     ],
+     "hdrOK": true
+    },
+    {
+     "frame": 11,
+     "px": 143,
+     "bbox": [
+      53,
+      81,
+      75,
+      91
+     ],
+     "hdrOK": true
+    }
+   ]
+  },
   "skill": {
    "src": "skill.spr",
    "frames": 11,

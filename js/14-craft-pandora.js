@@ -1194,15 +1194,63 @@ function pandoraPrice(id) {
     return Math.max(1, Math.round(base * mult));
 }
 
+const PANDORA_BUY_EQUIP_SLOTS = new Set(['helm', 'armor', 'cloak', 'gloves', 'boots', 'tshirt', 'shield', 'ring', 'amulet', 'belt']);
+
+function pandoraIsEarring(id, d) {
+    let n = String((d && d.n) || '');
+    let slot = String((d && d.slot) || '');
+    return slot === 'ear' || slot === 'ear1' || slot === 'ear2' || /^acc_.*ear/.test(String(id || '')) || n.includes('耳環');
+}
+
+function pandoraIsPlayerWearableEquip(id, d) {
+    if (!d || d.relic || d.remains || d.doll || d.isArrow) return false;
+    if (d.slot === 'petwpn' || d.slot === 'petarm') return false;
+    if (d.type === 'wpn') return true;
+    if (d.type === 'arm') return PANDORA_BUY_EQUIP_SLOTS.has(String(d.slot || ''));
+    if (d.type === 'acc') return PANDORA_BUY_EQUIP_SLOTS.has(String(d.slot || '')) && !pandoraIsEarring(id, d);
+    return false;
+}
+
+function pandoraBuyOrderAllowed(id) {
+    let d = DB.items[id];
+    if (!d || !d.n || d.relic || d.remains || d.doll) return false;
+    if (pandoraIsEarring(id, d)) return false;
+    if (/^item_pride_dom_/.test(String(id || '')) || String(d.n || '').includes('支配符')) return false;
+    if (d.type === 'skillbk') return true;
+    if (d.eff === 'panacea') return true;   // 💊 v3.5.67 萬能藥（六屬性）開放喊價收購：唯一獲准的消耗品例外
+    return pandoraIsPlayerWearableEquip(id, d);
+}
+
+function pandoraBuyOrderPriceProfile(id) {
+    let d = DB.items[id] || {};
+    let premium = d.type === 'skillbk' || (d.legend && pandoraIsPlayerWearableEquip(id, d));
+    let minMult = premium ? 100 : 10;
+    let maxMult = premium ? 2000 : 1000;
+    let base = Math.max(0, Number(d.p) || 0);
+    if (base <= 0 && pandoraIsPlayerWearableEquip(id, d)) base = 100000;
+    if (base <= 0) base = 1000;
+    return {
+        base: base,
+        minMult: minMult,
+        maxMult: maxMult
+    };
+}
+
+function pandoraBuyOrderPrice(id) {
+    let r = pandoraBuyOrderPriceProfile(id);
+    let mult = r.minMult + Math.floor(Math.random() * (r.maxMult - r.minMult + 1));
+    return Math.max(1, Math.round(r.base * mult));
+}
+
 // 上架一件新商品：若有收購單，先替指定物品擲一次市場價；市場價不高於喊價才命中，
 // 並以玩家喊價上架。失敗時不影響收購單，改走正常權重抽選。
 function _pandoraStock(nowT, market) {
     let order = market && market.buyOrder;
-    if (order && DB.items[order.id] && (DB.items[order.id].gachaWeight || 0) > 0 && Number.isSafeInteger(order.price) && order.price > 0) {
-        let rolledPrice = pandoraPrice(order.id);
+    if (order && pandoraBuyOrderAllowed(order.id) && Number.isSafeInteger(order.price) && order.price > 0) {
+        let rolledPrice = pandoraBuyOrderPrice(order.id);
         if (rolledPrice <= order.price) {
             let od = DB.items[order.id];
-            let hit = { id: order.id, price: order.price, weight: od.gachaWeight || 100, setTick: nowT, sold: false, buyOrder: true };
+            let hit = { id: order.id, price: order.price, weight: od.gachaWeight || (od.legend ? 1 : 100), setTick: nowT, sold: false, buyOrder: true };
             market.buyOrder = null;   // 單一收購單命中即完成，不再重複上架
             market.notice = { type: 'success', text: `玩家收購物品上架了：${od.n}（${order.price.toLocaleString()} 金幣）` };
             return hit;
@@ -1228,7 +1276,7 @@ function _pandoraNoticeHTML(m) {
     return `<span class="${c}">${_pandoraEsc(n.text)}</span>`;
 }
 
-// 收購名稱自動提示：輸入至少 2 個連續字元後，以名稱片段搜尋實際可進潘朵拉市場的物品。
+// 收購名稱自動提示：輸入至少 2 個連續字元後，搜尋可指定收購的魔法書、一般穿著裝備與萬能藥。
 function pandoraSuggestBuyItems(value) {
     let box = document.getElementById('pandora-buy-suggestions');
     if (!box) return;
@@ -1247,19 +1295,20 @@ function pandoraSuggestBuyItems(value) {
         }
     } catch (e) {}
     let seen = new Set();
-    let names = Object.keys(DB.items).map(id => DB.items[id]).filter(d => {
-        if (!d || !d.n || (d.gachaWeight || 0) <= 0 || !d.n.includes(q) || seen.has(d.n)) return false;
-        seen.add(d.n); return true;
-    }).map(d => d.n).sort((a, b) => {
-        let ap = a.startsWith(q) ? 0 : 1, bp = b.startsWith(q) ? 0 : 1;
-        return ap - bp || a.length - b.length || a.localeCompare(b, 'zh-Hant');
+    let suggestions = Object.keys(DB.items).reduce((arr, id) => {
+        let d = DB.items[id];
+        if (!d || !d.n || !pandoraBuyOrderAllowed(id) || !d.n.includes(q) || seen.has(d.n)) return arr;
+        seen.add(d.n); arr.push({ id: id, n: d.n }); return arr;
+    }, []).sort((a, b) => {
+        let ap = a.n.startsWith(q) ? 0 : 1, bp = b.n.startsWith(q) ? 0 : 1;
+        return ap - bp || a.n.length - b.n.length || a.n.localeCompare(b.n, 'zh-Hant');
     }).slice(0, 8);
-    if (!names.length) {
-        box.innerHTML = '<div class="pandora-buy-suggestion-empty">沒有可販售的相符物品</div>';
+    if (!suggestions.length) {
+        box.innerHTML = '<div class="pandora-buy-suggestion-empty">沒有可指定收購的相符物品</div>';
     } else {
-        box.innerHTML = names.map(n =>
-            `<button type="button" class="pandora-buy-suggestion" data-name="${encodeURIComponent(n)}"
-                onclick="pandoraChooseBuyItem(decodeURIComponent(this.dataset.name))">${_pandoraEsc(n)}</button>`
+        box.innerHTML = suggestions.map(it =>
+            `<button type="button" class="pandora-buy-suggestion" data-name="${encodeURIComponent(it.n)}"
+                onclick="pandoraChooseBuyItem(decodeURIComponent(this.dataset.name))"><span class="${getItemColor({ id: it.id })}">${_pandoraEsc(it.n)}</span></button>`
         ).join('');
     }
     box.classList.remove('hidden');
@@ -1273,7 +1322,7 @@ function pandoraChooseBuyItem(name) {
     if (box) { box.innerHTML = ''; box.classList.add('hidden'); }
 }
 
-// 設定單一收購單：物品名稱必須完全吻合，且必須屬於潘朵拉會販售的權重池。
+// 設定單一收購單：物品名稱必須完全吻合，且僅限魔法書、耳環以外的一般穿著裝備與萬能藥。
 function pandoraSetBuyOrder() {
     let m = player && player.pandoraMarket2;
     if (!m) return;
@@ -1289,13 +1338,13 @@ function pandoraSetBuyOrder() {
     if (!name || !matches.length) {
         _pandoraSetNotice(m, 'error', '無此物品，請輸入完整且正確的物品名稱。');
     } else {
-        let sellable = matches.filter(id => (DB.items[id].gachaWeight || 0) > 0);
-        if (!sellable.length) {
-            _pandoraSetNotice(m, 'error', '目前沒人販售此物品。');
+        let orderable = matches.filter(id => pandoraBuyOrderAllowed(id));
+        if (!orderable.length) {
+            _pandoraSetNotice(m, 'error', '此物品不可指定收購；耳環、材料、支配符與萬能藥以外的消耗品無法指定。');
         } else if (!Number.isSafeInteger(price) || price <= 0) {
             _pandoraSetNotice(m, 'error', '請輸入正確的正整數收購價格。');
         } else {
-            let id = sellable[0];
+            let id = orderable[0];
             m.buyOrder = { id: id, price: price, setTick: (typeof state !== 'undefined' && state) ? (state.ticks || 0) : 0 };
             _pandoraSetNotice(m, 'info', `已登記收購：${DB.items[id].n}，最高 ${price.toLocaleString()} 金幣。`);
             try { saveGame(); } catch (e) {}
@@ -1507,7 +1556,7 @@ function pandoraRenderMarket(div) {
                 <button class="btn pandora-buy-submit font-bold" onclick="pandoraSetBuyOrder()">確認收購</button>
             </div>
             <div class="pandora-buy-status">
-                <span>${orderItem ? `<b class="text-amber-200">${_pandoraEsc(buyerName)}</b>：<b class="text-yellow-300">${order.price.toLocaleString()}</b> 金幣收 <b class="${getItemColor({ id: order.id })}">${_pandoraEsc(orderItem.n)}</b>，意者自行上架` : '目前沒有收購單；輸入完整物品名稱與最高收購價。'}</span>
+                <span>${orderItem ? `<b class="text-amber-200">${_pandoraEsc(buyerName)}</b>：<b class="text-yellow-300">${order.price.toLocaleString()}</b> 金幣收 <b class="${getItemColor({ id: order.id })}">${_pandoraEsc(orderItem.n)}</b>，意者自行上架` : '目前沒有收購單；可指定魔法書與耳環以外的穿著裝備，未指定仍依原黑市池上架。'}</span>
                 ${orderItem ? '<button class="pandora-buy-cancel" onclick="pandoraCancelBuyOrder()">取消收購</button>' : ''}
             </div>
         </div>
@@ -1612,6 +1661,8 @@ window.onload = () => {
         else if(sk.classicHeal) { let ch=sk.classicHeal; eff.push((sk.groupHeal?'全隊':'單體')+'治療 ('+ch.baseDice+'＋INT治癒加成)d'+ch.sides+' ×2'+(ch.mult&&ch.mult!==1?(' ×'+ch.mult):'')); }
         else if(sk.healBase || sk.healDice) eff.push('治療 '+(sk.healBase||0)+(sk.healDice?('＋'+sk.healDice[0]+'d'+sk.healDice[1]):''));
         if(sk.healCooldownTicks) eff.push('冷卻 '+(sk.healCooldownTicks/10)+' 秒');
+        if(sk.justiceHeal) eff.push('受施法者性向影響：正義值越高恢復量越高（滿正義 +20%・中立/邪惡無提升）');   // 💙 v3.5.75 正義治癒加成
+        if(sk.reqJustice) eff.push('限正義性向施放（性向值 ≥ 1000）');   // 💙 v3.5.75 究極光裂術門檻
         if(sk.lifesteal) eff.push('吸取生命');
         if(sk.instakill) eff.push('即死（不死系）');
         // 🛡️ v2.6.69 審計#15：補渲染 reqWpn/skillAddDmg/stun(Chance)——衝擊之暈等技能的機制原本在唯一說明面完全隱形

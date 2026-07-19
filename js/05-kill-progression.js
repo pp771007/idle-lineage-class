@@ -8,6 +8,69 @@ function saveAuditWatch() { try { localStorage.setItem(AUDIT_WATCH_KEY, JSON.str
         if (Array.isArray(arr)) { _audit.watch = arr.filter(x => typeof x === 'string'); _audit.watch.forEach(t => { _audit.watchCnt[t] = 0; }); }
     } catch(e) {}
 })();
+const TROLL_DEFEAT_ENDINGS = [
+    '對方悻悻然地下線了。',
+    '對方抱頭鼠竄地躲回村。',
+    '對方怒拔線，畫面直接斷線了。',
+    '對方開始對你客氣，連買藥水都先問好。',
+    '對方默默把剛剛的狠話全刪了。',
+    '對方裝作沒事，轉身就按了回卷。',
+    '對方在頻道打到一半突然安靜了。',
+    '對方說剛剛只是測試你的傷害。',
+    '對方改口說大家都是朋友。',
+    '對方的氣勢當場掉到負重超過 100%。',
+    '對方把 PK 宣言收回倉庫了。',
+    '對方嘴上說還好，腳步已經往村莊跑。',
+    '對方開始研究和平相處的可能性。',
+    '對方承認今天鍵盤比較滑。',
+    '對方一邊退後一邊說有話好說。',
+    '對方突然想起自己還有村莊任務要解。',
+    '對方把你加入了「先不要惹」名單。',
+    '對方的狠話被你的最後一擊打散了。',
+    '對方假裝剛剛不是本人操作。',
+    '對方說網路延遲，但大家都看見了。',
+    '對方立刻改名想重新做人。',
+    '對方開始檢討為什麼要嘴那麼快。',
+    '對方回村後默默補滿紅水。',
+    '對方從此學會先看裝備再說話。',
+    '對方輸到開始稱讚你的操作。',
+    '對方表示剛剛只是友情切磋。',
+    '對方嘴硬三秒後選擇沉默。',
+    '對方的戰意被打成未鑑定狀態。',
+    '對方把剛剛的挑釁當成誤會。',
+    '對方開始用敬語跟你講話。',
+    '對方說下次一定，但先回村整理背包。',
+    '對方的勇氣藥水效果像是提前結束了。',
+    '對方在地上留下了一句「我只是路過」。',
+    '對方很快學會什麼叫頻道禮貌。',
+    '對方的自信被你打到需要修理。',
+    '對方表示今天手感不好，明天再兇。',
+    '對方開始懷疑剛剛是不是不該那麼嗆。',
+    '對方回村後把廣播音量調小了。',
+    '對方說要叫人，結果先叫了傳送師。',
+    '對方的嘴砲冷卻時間被延長了。',
+    '對方把「來 PK」改成「先不要」。',
+    '對方裝忙，說剛好要下線吃飯。',
+    '對方從戰鬥頻道消失得非常自然。',
+    '對方的囂張被打成稀有掉落。',
+    '對方開始覺得安靜也是一種美德。',
+    '對方說剛剛那句不是對你講的。',
+    '對方回村後站在倉庫前思考人生。',
+    '對方把你尊稱為大哥，語氣非常真誠。',
+    '對方的下一句垃圾話卡在輸入框裡。',
+    '對方決定暫時當個有禮貌的玩家。',
+    '對方留下敗者的背影，消失在傳送光裡。'
+];
+function _killLogEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+function _trollDefeatNameHtml(mob) {
+    if (typeof pvpNameHtml === 'function') return pvpNameHtml(mob.n, mob._pvpAlignment || 0, 'font-bold');
+    return `<span class="font-bold">${_killLogEsc(mob && mob.n)}</span>`;
+}
+function _trollDefeatEnding() {
+    return TROLL_DEFEAT_ENDINGS[Math.floor(Math.random() * TROLL_DEFEAT_ENDINGS.length)] || '對方悻悻然地下線了。';
+}
 function auditReset() {
     _audit.start = Date.now();
     _audit.gold0 = (typeof player !== 'undefined' && player) ? (player.gold || 0) : 0;
@@ -244,6 +307,7 @@ function killMob(idx) {
     //   傷害於呼叫端已結算）。finally 還原原來源，避免污染呼叫端後續（如寵物/召喚 tick 的 _dps 歸屬）。
     let _svKillSrc = _combatSrc; _combatSrc = 'player';
     try {
+    if (typeof pvpOnKillMob === 'function') pvpOnKillMob(mob);
     if(typeof auditTrackKill === 'function') auditTrackKill(mob);   // 統計：累計經驗/擊殺
     // 🔧 轉場建築（往上層的樓梯 / 遺忘之島傳送門）：擊敗即進入下一層/島，不顯示「擊敗了…」戰鬥訊息（race 建築且 noAutoTeleport，排除攻城塔/城門）
     let _hideKillMsg = (mob.race === '建築' && mob.noAutoTeleport);
@@ -294,13 +358,13 @@ function killMob(idx) {
     // 🐾 v3.2.17 誘捕捕捉：身上有對應誘捕狀態且擊殺對應動物 → 寵物保管獲得基本等級寵物並失去該狀態
     //   （舊「肉→taming→項圈」與「屬性怪掉舊進化果實」已隨項圈系統移除；新進化果實改由亞丁諾斯製作）
     if (typeof petCaptureOnKill === 'function') petCaptureOnKill(mob);
-    // 🗡️ 吉爾塔斯之劍：任意擊殺後獲得額外傷害+10，持續10秒（刷新制·持劍者各自計時；傷害端＝js/03 getPhysicalDmg／js/06 傭兵普攻）
+    // 🗡️ 吉爾塔斯之劍：任意擊殺後 10 秒內依主玩家邪惡值取得額外傷害（滿邪惡 +10；傷害端＝js/03 getPhysicalDmg／js/06 傭兵普攻）
     if (player.eq && player.eq.wpn && player.eq.wpn.id === 'wpn_giltas_sword') player._giltasFuryUntil = state.ticks + 100;
     if (player.allies && player.allies.length) player.allies.forEach(a => { if (a && !a._downed && a.eq && a.eq.wpn && a.eq.wpn.id === 'wpn_giltas_sword') a._giltasFuryUntil = state.ticks + 100; });
     // 🏺 v3.5.27 食屍鬼的啃食面容：擊殺敵人時恢復 30 HP（玩家與傭兵各自看自己的頭盔·比照吉爾塔斯之劍擊殺掛點）
     if (player.eq && player.eq.helm && (DB.items[player.eq.helm.id] || {}).killHealHp && !player.dead && player.hp > 0) player.hp = Math.min(player.mhp, player.hp + DB.items[player.eq.helm.id].killHealHp);
     if (player.allies && player.allies.length) player.allies.forEach(a => { if (a && !a._downed && a.eq && a.eq.helm && (DB.items[a.eq.helm.id] || {}).killHealHp) a.curHp = Math.min(a.mhp || 1, (a.curHp || 0) + DB.items[a.eq.helm.id].killHealHp); });
-    // 🪄 吉爾塔斯魔杖：任意擊殺後額外魔法點數+20，持續10秒；再次擊殺刷新時間。
+    // 🪄 吉爾塔斯魔杖：任意擊殺後 10 秒內依主玩家邪惡值取得額外魔法點數（滿邪惡 +20）；再次擊殺刷新時間。
     let _giltasWandTriggered = [];
     if (player.eq && player.eq.wpn && player.eq.wpn.id === 'wpn_giltas_wand') { player._giltasWandFuryUntil = state.ticks + 100; _giltasWandTriggered.push(player); }
     if (player.allies && player.allies.length) player.allies.forEach(a => { if (a && !a._downed && a.eq && a.eq.wpn && a.eq.wpn.id === 'wpn_giltas_wand') { a._giltasWandFuryUntil = state.ticks + 100; _giltasWandTriggered.push(a); } });
@@ -347,6 +411,11 @@ function killMob(idx) {
 
     // === 野外＋血盟敵人：1% 機率額外掉落一件「攜帶物」（抽法同潘朵拉，裝備可能已強化）===
     if ((mob.wild && mob.race === '血盟') || mob.siegeEnemy) pledgeBonusDrop(mob);   // 野外血盟 或 攻城敵人：擊殺特殊掉寶
+    if (mob.trollPlayer) {   // 😤 v3.5.59 白目玩家：擊殺→仇恨解除；10% 裝備掉落（同血盟掉寶池·王族搜索狀 gachaWeight 0 不會出·經驗/金幣 0）
+        if (player.trollPlayers) player.trollPlayers = player.trollPlayers.filter(t => t && t.n !== mob.n);
+        logSys(`<span class="text-amber-300 font-bold">你擊敗了 ${_trollDefeatNameHtml(mob)}，${_trollDefeatEnding()}</span>`);
+        pledgeBonusDrop(mob, 0.10);
+    }
 
     // === 🐉 三大龍：擊敗必得「頑皮幼龍蛋」（身上已有一枚則不再掉落，100%・不受經典掉率影響）===
     if (['安塔瑞斯', '法利昂', '巴拉卡斯'].includes(mob.n) && !player.inv.some(i => i.id === 'item_dragon_egg')) {

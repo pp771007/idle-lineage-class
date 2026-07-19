@@ -7,51 +7,68 @@
     const STORE_KEY = 'fb5_pandora_relic_market_v1';
     const LOCK_KEY = STORE_KEY + '_lock';
     const STORE_VERSION = 2;
-    const CHECK_MS = (TEST_BUILD ? 3 : 10) * 60 * 1000;
+    const CHECK_MS = 10 * 60 * 1000;
     const WANDERER_LIFE_MS = 2 * 60 * 60 * 1000;
     const BROADCAST_MS = 3 * 60 * 1000;
+    const BROADCAST_PIN_MAX = 2;   // 📌 v3.5.77 叫賣訊息常駐在「系統與物品日誌」頂端的最大條數（超出者排隊，前面的人被互動/離場後自動遞補）
     const BOARD_COOLDOWN_MS = 24 * 60 * 60 * 1000;
     const RELIC_SEARCH_COST = 100;
-    const WANDERER_CHANCE = TEST_BUILD ? 1 : 0.05;
+    const WANDERER_CHANCE = 0.50;
 
+    // 🚫 v3.5.53 出沒排除（用戶拍板）：攻城三城（限持城者進入·NPC 形同碰不到）＋炎魔謁見所＋席琳神殿；
+    //    其餘安全區皆可出沒（含 傲慢之塔入口/時空裂痕入口/沉默洞穴/長老會議廳/希培利亞村莊/貝希摩斯）。
     const EXCLUDED_TOWNS = new Set([
-        'town_silent',          // 拉斯塔巴德／沉默洞穴系安全區
-        'town_elder_council',   // 拉斯塔巴德長老會議廳
-        'town_pride',           // 傲慢之塔
-        'town_rift',            // 時空裂痕
-        'town_sherine'          // 席琳神殿
+        'town_sherine',           // 席琳神殿
+        'town_kent_castle',       // 肯特城（攻城據點）
+        'town_heine_castle',      // 海音城（攻城據點）
+        'town_windwood_castle',   // 風木城（攻城據點）
+        'town_flame_audience'     // 炎魔謁見所
     ]);
-    const EXCLUDED_TOWN_NAMES = ['拉斯塔巴德', '傲慢之塔', '時空裂痕', '席琳神殿'];
+    const EXCLUDED_TOWN_NAMES = ['席琳神殿'];
 
     const PLAYER_AVATARS = [
         '王子', '公主', '男騎士', '女騎士', '男法師', '女法師', '男妖精', '女妖精',
         '男黑暗妖精', '女黑暗妖精', '男幻術士', '女幻術士', '男龍騎士', '女龍騎士', '男戰士', '女戰士'
     ];
-    const NAME_PREFIX = ['蒼', '緋', '玄', '墨', '銀', '白', '青', '赤', '紫', '碧', '幽', '夜', '月', '星', '霜', '雪', '風', '雲', '雷', '炎', '燼', '影', '夢', '幻', '孤', '醉', '逆', '零'];
+    const NAME_PREFIX = ['蒼', '緋', '玄', '墨', '銀', '白', '青', '赤', '紫', '碧', '幽', '夜', '月', '星', '霜', '雪', '風', '雲', '雷', '炎', '燼', '影', '夢', '幻', '孤', '醉', '逆', '零',
+        '煞氣ㄟ', '最愛', '闇の', '覚醒', '邪王', '漆黑', '魔眼', '天上天下', '超高校級', '無敵', '爆裂', '狂氣', '破滅', '終焉', '孤高', '霸氣', 'ㄎㄧㄤ爆', 'ㄅㄧㄤˋ', '神ってる', '真祖',
+        '野獸', '仲夏夜'];
     const NAME_IMAGE = ['狼', '狐', '龍', '羽', '刃', '劍', '弦', '花', '葉', '海', '川', '山', '嵐', '歌', '月', '星', '塵', '魂', '心', '影', '光', '痕'];
-    const NAME_TITLE = ['行者', '旅人', '浪客', '劍士', '術士', '獵人', '守望者', '歸人', '逐風者', '追月者', '無眠', '未央', '長歌', '無雙'];
+    const NAME_TITLE = ['行者', '旅人', '浪客', '劍士', '術士', '獵人', '守望者', '歸人', '逐風者', '追月者', '無眠', '未央', '長歌', '無雙',
+        '公主', '王子', '魔王', '霸主', '大人', 'さま', '先輩', '総長', '天才', '救世主', '煞星', '狂戰士', '龍傲天', '夜神', '封弊者', '中二王', 'ㄉㄧㄠ炸天', 'ㄎㄧㄤ王', '本命', '偶像',
+        '前輩', '之夢'];
     const NAME_SURNAME = ['南宮', '上官', '司徒', '慕容', '東方', '北辰', '長孫', '令狐', '歐陽', '夏侯'];
     const NAME_GIVEN = ['無月', '長歌', '聽雪', '清風', '流雲', '暮雨', '星河', '青鋒', '白夜', '未央', '若水', '凌霜'];
     const NAME_CASUAL = ['小隊長', '老玩家', '別打我', '路過', '掛機中', '求組隊', '練功中', '只收不賣', '佛系玩家'];
     const SILENCE_COMPLAINTS = [
         '吵死了', '安靜一點', '別再喊了', '不要一直廣播', '別洗了', '可以停一下嗎', '別再洗頻了', '安靜啦',
-        '不要重複喊', '我已經看到了', '別一直刷訊息', '可以閉嘴了', '讓日誌安靜一下', '不要再洗版', '停一下好嗎', '夠了喔',
+        '不要重複喊', '我已經看到了', '別一直刷訊息', '可以閉嘴了', '讓頻道安靜一下', '不要再洗版', '停一下好嗎', '夠了喔',
         '別喊個不停', '大家都看見了', '不要一直刷存在感', '休息一下吧', '請停止廣播', '耳朵都要聾了', '真的很吵', '不要再重複了',
-        '訊息看到了別再喊', '安靜三分鐘好嗎', '別一直佔日誌', '讓別人說話啦', '不要再刷頻', '已經知道你要收了', '先停一下', '別吵了',
-        '能不能小聲一點', '請你安靜', '廣播到此為止', '不用再提醒了', '別再大聲宣傳', '日誌都被你洗掉了', '不要每次都喊', '收購訊息看到了',
-        '可以不要洗畫面嗎', '安靜做生意吧', '別再吵大家', '讓頻道休息一下', '不用一直宣傳', '停手吧廣播王', '別把日誌當你家', '少喊兩句',
+        '訊息看到了別再喊', '安靜三分鐘好嗎', '別一直佔頻道', '讓別人說話啦', '不要再刷頻', '已經知道你要收了', '先停一下', '別吵了',
+        '能不能小聲一點', '請你安靜', '廣播到此為止', '不用再提醒了', '別再大聲宣傳', '頻道都被你洗掉了', '不要每次都喊', '收購訊息看到了',
+        '可以不要洗畫面嗎', '安靜做生意吧', '別再吵大家', '讓頻道休息一下', '不用一直宣傳', '停手吧廣播王', '別把頻道當你家', '少喊兩句',
         '這裡不是廣播台', '請停止洗頻行為', '別再連續宣傳', '你的收購大家知道了', '先安靜做生意', '不要再佔版面', '可以收聲了', '別一直洗同一句',
         '拜託安靜一下', '不要再廣播收購了', '讓我看其他訊息', '你的廣播太密集了', '別再吵人了', '到此為止吧', '停止重播', '請把廣播關掉'
     ];
     const SILENCE_APOLOGIES = [
         '對不起', '抱歉', '打擾了', '不好意思', '真的很抱歉', '我會安靜的', '對不起我不喊了', '抱歉打擾大家',
         '知道了，我會停下來', '不好意思，我收聲', '抱歉，我沒注意到', '對不起，造成困擾了', '我這就停止廣播', '抱歉讓你覺得吵', '不好意思，打擾你了', '收到，我不再喊了',
-        '對不起，我安靜做生意', '抱歉，是我喊太多次了', '我明白了，對不起', '不好意思，我會克制', '抱歉佔用日誌了', '對不起，已經關掉廣播', '我不再重複了，抱歉', '抱歉影響你看訊息',
+        '對不起，我安靜做生意', '抱歉，是我喊太多次了', '我明白了，對不起', '不好意思，我會克制', '抱歉佔用頻道了', '對不起，已經關掉廣播', '我不再重複了，抱歉', '抱歉影響你看訊息',
         '不好意思，馬上停止', '對不起，讓大家困擾了', '抱歉，我會保持安靜', '了解，我不廣播了', '是我太吵了，對不起', '抱歉，我只是急著收東西', '不好意思，我會小聲點', '收到，我停止宣傳',
-        '對不起，不會再洗頻了', '抱歉，我這就閉麥', '不好意思，造成打擾', '了解，接下來我會安靜', '對不起，我不再刷訊息', '抱歉，讓你的日誌被洗掉了', '我會停手，真的抱歉', '不好意思，是我太心急',
+        '對不起，不會再洗頻了', '抱歉，我這就閉麥', '不好意思，造成打擾', '了解，接下來我會安靜', '對不起，我不再刷訊息', '抱歉，讓你的頻道被洗掉了', '我會停手，真的抱歉', '不好意思，是我太心急',
         '對不起，我沒有惡意', '抱歉，我馬上關掉廣播', '收到，之後不再打擾', '不好意思，我安靜等人來', '抱歉，我會耐心一點', '對不起，辛苦你提醒了', '好，我不喊了，抱歉', '不好意思，廣播已停止',
         '抱歉，我會注意頻率', '對不起，讓你不舒服了', '了解，謝謝提醒', '不好意思，我不再佔版面', '抱歉，接下來保持安靜', '收到，我會乖乖等', '對不起，我已經停止重播', '抱歉，是我宣傳過頭了',
         '不好意思，我不再吵大家', '了解，廣播到此為止', '對不起，我會改進', '抱歉，給你添麻煩了', '不好意思，我這就停', '收到，請別生氣', '對不起，打擾到你了', '抱歉，我會安靜等候'
+    ];
+    const SILENCE_SPICY_REPLIES = [
+        '叫三小？', '來 PK 啊', '你算老幾？', '你很大聲欸', '不爽來奇岩外面', '少在那邊指揮', '我收東西礙到你喔', '有種報座標',
+        '別哭啦', '安靜的是你吧', '你誰啦', '不要一副 GM 樣', '打字很兇喔', '來啊，單挑', '笑死，玻璃心喔', '我就喊，怎樣',
+        '先問你等級多少', '別躲安全區嘴', '菜味很重喔', '懂不懂市場行情', '這頻道你開的？', '我喊我的，你練你的', '想管我先打贏', '你這麼急幹嘛',
+        '怕吵可以關頻道', '看不爽就來', '喔是喔真的假的', '你先排隊啦', '講那麼多，不服來戰', '別在那邊裝大哥', '小聲點？你先啦', '已讀不回也要管？',
+        '笑死，講得你好像很強', '你的存在感比掉寶率還低', '先把裝備穿好再嘴', '你那戰力也敢出聲喔', '喊你一下就破防？', '你很勇嘛，報名牌啊', '別急著丟臉', '你先去練等啦',
+        '嘴很快，手速有跟上嗎', '別只會在安全區當高手', '你這氣勢只夠買紅水', '講那麼大聲，錢夠嗎', '你是不是沒人理才來管我', '我還以為是哪位大人物呢', '這麼兇，結果只會按抱怨', '別把自尊拿來拍賣',
+        '你的意見我放倉庫了', '收到，完全不想聽', '再吵我加價收給你看', '你管天管地管不到我喊價', '先贏一場再教我安靜', '你這發言很有 Lv.1 的美感', '別鬧，市場不是給你哭的', '笑到我忘記要收什麼',
+        '你這句話傷害大概 1 點', '你是不是把勇氣喝到嘴上了', '來啊，我站著等你', '你喊破喉嚨也不會變強', '嘴砲有安定值嗎', '你這氣勢連卷軸都點不亮', '別演了，大家都看著呢', '先存夠傳送費再兇'
     ];
 
     const RELIC_CATEGORIES = {
@@ -108,6 +125,10 @@
             if (seenTown.has(w.townId) || seenId.has(w.id)) return false;
             seenTown.add(w.townId);
             seenId.add(w.id);
+            let spawnedAt = Math.max(0, Math.floor(Number(w.spawnedAt) || 0));
+            let expiresAt = Math.max(0, Math.floor(Number(w.expiresAt) || 0));
+            if (spawnedAt) w.expiresAt = Math.min(expiresAt || (spawnedAt + WANDERER_LIFE_MS), spawnedAt + WANDERER_LIFE_MS);
+            w.alignmentValue = _normalizeAlignmentValue(w.alignmentValue);
             w.broadcastStopped = !!w.broadcastStopped;
             w.quietAt = Math.max(0, Math.floor(Number(w.quietAt) || 0));
             return true;
@@ -181,6 +202,34 @@
     function _pick(st, list, tag) {
         if (!list || !list.length) return null;
         return list[Math.floor(_rand(st, tag) * list.length) % list.length];
+    }
+
+    function _pickSilenceReply(forceSpicy) {
+        let spicy = !!forceSpicy || Math.random() < 0.8;
+        let list = spicy ? SILENCE_SPICY_REPLIES : SILENCE_APOLOGIES;
+        return { text: list[Math.floor(Math.random() * list.length)], spicy: spicy };
+    }
+
+    function _normalizeAlignmentValue(v) {
+        if (typeof pvpClampAlignment === 'function') return pvpClampAlignment(v);
+        v = Math.round(Number(v) || 0);
+        return Math.max(-32767, Math.min(32767, v));
+    }
+
+    function _isEvilAlignmentValue(v) {
+        let a = _normalizeAlignmentValue(v);
+        let evilLine = (typeof PVP_ALIGN_EVIL !== 'undefined') ? PVP_ALIGN_EVIL : -1000;
+        return a <= evilLine;
+    }
+
+    function _makeAlignmentValue(st) {
+        return _normalizeAlignmentValue(Math.floor(-32767 + _rand(st, 'wander-alignment') * 65535));
+    }
+
+    function _wandererNameHtml(w) {
+        let a = _normalizeAlignmentValue(w && w.alignmentValue);
+        let n = w && w.name ? w.name : '';
+        return (typeof pvpNameHtml === 'function') ? pvpNameHtml(n, a, 'font-bold') : `<span class="font-bold">${_esc(n)}</span>`;
     }
 
     function _isEquipmentDef(d) {
@@ -267,6 +316,7 @@
             townId: townId,
             name: _makeName(st),
             avatar: _pick(st, PLAYER_AVATARS, 'wander-avatar'),
+            alignmentValue: _makeAlignmentValue(st),
             itemId: itemId,
             en: en,
             weight: weight,
@@ -309,14 +359,64 @@
         let spawnedAt = Math.max(0, Number(w.spawnedAt) || Date.now());
         let cycle = Math.max(0, Math.floor((Date.now() - spawnedAt) / BROADCAST_MS));
         if (_lastBroadcastCycles[w.id] === cycle) return;
+        // 📌 v3.5.77 已釘在日誌頂端者不再重複廣播（訊息本來就一直看得到，重播只會洗版）；
+        //    首次到場的喊話仍照舊進日誌，排隊中（第 3 位以後）也維持原本每 3 分鐘的廣播，才不會完全看不到。
+        if (cycle > 0 && _pinnedWandererIds().has(w.id)) { _lastBroadcastCycles[w.id] = cycle; return; }
         _lastBroadcastCycles[w.id] = cycle;
         // 名稱可點擊；選擇「吵死了」後只會停止這名玩家後續的廣播。
-        logSys(
-            `<button type="button" class="wander-broadcast-name" ` +
-            `onclick="openWanderingShoutMenu('${_esc(w.id)}',event)">${_esc(w.name)}</button>` +
+        logSys(_broadcastLineHTML(w));
+    }
+
+    // ===== 📌 v3.5.77 叫賣訊息釘選列（用戶指定）=====
+    // 目前正在叫賣（未被喊停、未離場）的 NPC；依到場先後排序＝釘選位固定，前面的人離開才輪到後面的人。
+    function _activeBroadcasters(st) {
+        let now = Date.now();
+        let list = (st && Array.isArray(st.wanderers)) ? st.wanderers : [];
+        return list
+            .filter(w => w && w.id && !w.broadcastStopped && Number(w.expiresAt) > now)
+            .sort((a, b) => ((Number(a.spawnedAt) || 0) - (Number(b.spawnedAt) || 0)) || String(a.id).localeCompare(String(b.id)));
+    }
+
+    function _pinnedWanderers(st) {
+        return _activeBroadcasters(st || _readState()).slice(0, BROADCAST_PIN_MAX);
+    }
+
+    // 目前釘選中的 id 快取：由 renderWanderBroadcastPins 更新（廣播前一定先重畫），供 _announceWanderer 判斷免重播。
+    let _pinnedIdSet = new Set();
+    function _pinnedWandererIds() { return _pinnedIdSet; }
+
+    // 釘選中最早的離場時間：讓 1 秒定時器只在「真的有人到期」的那一刻重畫（免每秒解壓讀共用狀態），
+    // 否則離場遞補要等最多 30 秒的 wanderingBuyerSystemTick，中間會顯示已經不在的人。
+    let _pinExpiryDue = 0;
+    function _pinExpiryWatch() {
+        if (!_pinExpiryDue || Date.now() < _pinExpiryDue) return;
+        _pinExpiryDue = 0;
+        renderWanderBroadcastPins();
+    }
+
+    function _broadcastLineHTML(w) {
+        return `<button type="button" class="wander-broadcast-name" ` +
+            `onclick="openWanderingShoutMenu('${_esc(w.id)}',event)">${_wandererNameHtml(w)}</button>` +
             `<span class="wander-broadcast-text">：收 ${_esc(_requirementText(w.itemId, w.en))}，人在 ` +
-            `<span class="text-amber-200">${_esc(_townName(w.townId))}</span>，意者密</span>`
-        );
+            `<span class="text-amber-200">${_esc(_townName(w.townId))}</span>，意者密</span>`;
+    }
+
+    // 重畫釘選列：最多 BROADCAST_PIN_MAX 條常駐在日誌頂端；空的時候 CSS :empty 會自動收起整條。
+    // 簽章 early-return＝每 30 秒的 tick 不會無謂重建 DOM（重建會弄掉滑鼠停留/選單狀態）。
+    function renderWanderBroadcastPins(st) {
+        let list = _pinnedWanderers(st);
+        let el = (typeof document !== 'undefined') ? document.getElementById('sys-log-pins') : null;
+        // ⚠️ 沒有釘選列的頁面（例如舊版 HTML）：快取要清空，否則「被當成已釘選→免廣播」而釘選列又不存在＝這兩位徹底消失
+        _pinnedIdSet = el ? new Set(list.map(w => w.id)) : new Set();
+        _pinExpiryDue = el && list.length ? Math.min.apply(null, list.map(w => Number(w.expiresAt) || 0)) : 0;
+        if (!el) return;
+        let sig = list.map(w => [w.id, w.itemId, w.en, w.townId].join('|')).join('||');
+        if (el._pinSig === sig) return;
+        el._pinSig = sig;
+        el.innerHTML = list.map(w =>
+            `<div class="wander-pin"><span class="wander-pin-tag">收購</span>` +
+            `<span class="wander-pin-body">${_broadcastLineHTML(w)}</span></div>`
+        ).join('');
     }
 
     function _refreshTownMapIfNeeded(signature) {
@@ -359,6 +459,7 @@
         let latest = result.state || _readState();
         let sig = _activeSignature(latest.wanderers);
         if (sig !== beforeSig || sig !== _lastMapSignature) _refreshTownMapIfNeeded(sig);
+        renderWanderBroadcastPins(latest);   // 📌 v3.5.77 先更新釘選列（新到場/離場遞補），_announceWanderer 才知道誰已釘選不必重播
         latest.wanderers
             .filter(w => w && Number(w.expiresAt) > now)
             .forEach(_announceWanderer);
@@ -372,7 +473,11 @@
     }
 
     function wanderingBuyerSpriteData(w) {
-        let folder = String((w && w.avatar) || '男騎士') + 'F';
+        // 🎲 v3.5.52 三方向隨機 idle：依 wanderer id 雜湊決定論選 右('')/正面('F')/左('2') classanim 資料夾——同一位 NPC 重繪/跨分頁方向固定，不同 NPC 隨機
+        let _dirs = ['', 'F', '2'];
+        let _sid = String((w && w.id) || ''), _h = 0;
+        for (let i = 0; i < _sid.length; i++) _h = (_h * 31 + _sid.charCodeAt(i)) >>> 0;
+        let folder = String((w && w.avatar) || '男騎士') + _dirs[_h % 3];
         let key = folder + '|idle';
         if (!_classFrameCache[key]) {
             let base = 'assets/classanim/' + folder;
@@ -497,7 +602,12 @@
         _closeWanderingShoutMenu();
         let st = _readState();
         let w = _findWanderer(st, wandererId);
-        if (!w || w.broadcastStopped || Number(w.expiresAt) <= Date.now()) return;
+        if (!w || w.broadcastStopped || Number(w.expiresAt) <= Date.now()) {
+            // 📌 v3.5.77 點到「已離場但還沒被下一次 tick 清掉」的釘選列：給明確回覆並立刻重畫（否則按了完全沒反應，像壞掉）
+            if (typeof logSys === 'function') logSys('<span class="text-slate-400">這名玩家已經離開。</span>');
+            renderWanderBroadcastPins(st);
+            return;
+        }
 
         let menu = document.createElement('div');
         menu.id = 'wandering-shout-menu';
@@ -522,7 +632,7 @@
     }
 
     function _stopWanderingBroadcast(wandererId) {
-        return _withStateLock(st => {
+        let result = _withStateLock(st => {
             let w = _findWanderer(st, wandererId);
             if (!w || Number(w.expiresAt) <= Date.now()) {
                 return { commit: false, error: '這名玩家已經離開。' };
@@ -532,6 +642,8 @@
             w.quietAt = Date.now();
             return { name: w.name };
         });
+        renderWanderBroadcastPins(result && result.state);   // 📌 v3.5.77 玩家與這位互動後空出釘選位 → 立刻補上下一位排隊中的叫賣（沿用鎖內已讀好的狀態，免再解壓一次）
+        return result;
     }
 
     function silenceWanderingBuyer(wandererId) {
@@ -541,8 +653,10 @@
             _closeWanderingShoutMenu();
             return;
         }
+        let forceSpicy = _isEvilAlignmentValue(w.alignmentValue);
         let complaint = SILENCE_COMPLAINTS[Math.floor(Math.random() * SILENCE_COMPLAINTS.length)];
-        let apology = SILENCE_APOLOGIES[Math.floor(Math.random() * SILENCE_APOLOGIES.length)];
+        let _reply = _pickSilenceReply(forceSpicy);
+        let apology = _reply.text;
         let result = _stopWanderingBroadcast(w.id);
         _closeWanderingShoutMenu();
         if (!result.ok) return;
@@ -551,12 +665,20 @@
         if (typeof logSys === 'function') {
             logSys(
                 `<span class="wander-chat-out"><span class="wander-chat-arrow">-&gt;</span> ` +
-                `<span class="wander-chat-target">[${_esc(w.name)}]</span> ${_esc(complaint)}</span>`
+                `<span class="wander-chat-target">[${_wandererNameHtml(w)}]</span> ${_esc(complaint)}</span>`
             );
             logSys(
-                `<span class="wander-chat-in"><span class="wander-chat-speaker">[${_esc(w.name)}]</span> ` +
+                `<span class="wander-chat-in"><span class="wander-chat-speaker">[${_wandererNameHtml(w)}]</span> ` +
                 `${_esc(apology)}</span>`
             );
+        }
+        // 😤 白目玩家系統：NPC 嗆聲回覆→正式版 20% 記仇；若叫賣者是紅名，玩家選「吵死了」必定反嗆並追殺。
+        if (_reply.spicy && (forceSpicy || TEST_BUILD || Math.random() < 0.2) && typeof player !== "undefined" && player && player.cls) {   // 🧪 TEST版：回嗆必定記仇（正式版 20%；紅名 100%）
+            if (!player.trollPlayers) player.trollPlayers = [];
+            player.trollPlayers = player.trollPlayers.filter(t => t && t.n !== w.name);
+            player.trollPlayers.push({ n: w.name, avatar: w.avatar || "男戰士", alignmentValue: _normalizeAlignmentValue(w.alignmentValue), until: Date.now() + 2 * 60 * 60 * 1000 });
+            if (typeof logSys === "function") logSys(`<span class="text-rose-400 font-bold">[${_wandererNameHtml(w)}] 惡狠狠地記住了你……</span>`);
+            try { if (typeof saveGame === "function") saveGame(); } catch (e) {}
         }
     }
 
@@ -584,7 +706,7 @@
         if (typeof logSys === 'function') {
             logSys(
                 `<span class="wander-chat-out"><span class="wander-chat-arrow">-&gt;</span> ` +
-                `<span class="wander-chat-target">[${_esc(w.name)}]</span> 馬上到</span>`
+                `<span class="wander-chat-target">[${_wandererNameHtml(w)}]</span> 馬上到</span>`
             );
         }
 
@@ -649,7 +771,7 @@
                 <div class="wandering-buyer-head">
                     <div class="wandering-buyer-avatar">${_esc(w.avatar || '')}</div>
                     <div>
-                        <div class="wandering-buyer-line">${_esc(w.name)}：收 <b>${_esc(_requirementText(w.itemId, w.en))}</b></div>
+                        <div class="wandering-buyer-line">${_wandererNameHtml(w)}：收 <b>${_esc(_requirementText(w.itemId, w.en))}</b></div>
                         <div class="wandering-buyer-meta">位於 ${_esc(_townName(w.townId))}・剩餘 ${_remainingText(w.expiresAt - Date.now())}</div>
                     </div>
                 </div>
@@ -708,10 +830,12 @@
         try { saveGame(); } catch (e) {}
         try { updateUI(); renderTabs(); } catch (e) {}
         if (typeof logSys === 'function') {
-            logSys(`<span class="text-amber-300">完成 ${_esc(w.name)} 的收購，獲得 <b>龍之鑽石 × ${w.reward}</b>。</span>`);
+            logSys(`<span class="text-amber-300">完成 ${_wandererNameHtml(w)} 的收購，獲得 <b>龍之鑽石 × ${w.reward}</b>。</span>`);
         }
         _lastMapSignature = '__force__';
-        _refreshTownMapIfNeeded(_activeSignature((result.state || _readState()).wanderers));
+        let _after = result.state || _readState();
+        _refreshTownMapIfNeeded(_activeSignature(_after.wanderers));
+        renderWanderBroadcastPins(_after);   // 📌 v3.5.77 成交後這位離場 → 釘選位讓給下一位叫賣者
         try { closeNpcInteraction(); } catch (e) {}
     }
 
@@ -1065,6 +1189,7 @@
     }
 
     window.wanderingBuyerSystemTick = wanderingBuyerSystemTick;
+    window.renderWanderBroadcastPins = renderWanderBroadcastPins;
     window.getWanderingBuyerForTown = getWanderingBuyerForTown;
     window.wanderingBuyerSpriteData = wanderingBuyerSpriteData;
     window.openWanderingBuyerDialog = openWanderingBuyerDialog;
@@ -1090,11 +1215,13 @@
     setTimeout(wanderingBuyerSystemTick, 1500);
     setInterval(wanderingBuyerSystemTick, 30000);
     setInterval(pandoraRelicBindBoardCountdowns, 1000);
+    setInterval(_pinExpiryWatch, 1000);   // 📌 v3.5.77 釘選中的叫賣者一到期就換下一位（只比對兩個數字·到期那一刻才真的重畫）
     try {
         window.addEventListener('storage', e => {
             if (e && e.key === STORE_KEY) {
                 let st = _readState();
                 _refreshTownMapIfNeeded(_activeSignature(st.wanderers));
+                renderWanderBroadcastPins(st);   // 📌 v3.5.77 多開同步：另一個分頁互動/成交後，本頁釘選列一起遞補
                 st.wanderers.forEach(_announceWanderer);
             }
         });

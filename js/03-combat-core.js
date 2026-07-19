@@ -71,6 +71,13 @@ function healingSpellCasterMult(sk, caster) {
 function rollHealingSpell(sk, dStats, caster, target) {
     if (!sk) return 0;
     if (sk.fullRestore) return Math.max(0, healingSpellTargetMhp(target) - healingSpellTargetHp(target));
+    // 💙 v3.5.75 正義治癒加成：justiceHeal 旗標技能→依「施法者」正義值提升最終恢復量（滿正義+20%·中立/邪惡不變·不看被治療者）。
+    //   v3.5.76 傭兵適用：caster=傭兵時改用其招募時記錄的來源存檔性向值（ally.alignmentValue）。
+    let _jm = 1;
+    if (sk.justiceHeal && typeof pvpJusticeHealMultValue === 'function') {
+        if (typeof player !== 'undefined' && caster === player) _jm = pvpJusticeHealMult();
+        else if (caster && (typeof player === 'undefined' || caster !== player) && caster.alignmentValue != null) _jm = pvpJusticeHealMultValue(caster.alignmentValue);
+    }
     if (sk.classicHeal) {
         let c = sk.classicHeal;
         let count = Math.max(1, Math.floor(Number(c.baseDice) || 0) + classicHealMagicBonus(dStats));
@@ -78,11 +85,11 @@ function rollHealingSpell(sk, dStats, caster, target) {
         let rolled = 0;
         for (let i = 0; i < count; i++) rolled += roll(1, sides);
         let mult = 2 * Math.max(0, Number(c.mult) || 1) * healingSpellCasterMult(sk, caster);
-        return Math.max(1, Math.floor(rolled * mult));
+        return Math.max(1, Math.floor(rolled * mult * _jm));
     }
     // 尚未轉換的治癒來源保留舊資料相容性。
-    if (sk.healDice) return Math.max(1, Math.floor((rollDice(sk.healDice[0], sk.healDice[1]) + (sk.healBase || 0)) * (1 + 3 * (Number(dStats && dStats.magicDmg) || 0) / 32)));
-    if (sk.valDice) return Math.max(1, (sk.valBase || 0) + roll(sk.valDice[0], sk.valDice[1]) + (Number(dStats && dStats.magicDmg) || 0));
+    if (sk.healDice) return Math.max(1, Math.floor((rollDice(sk.healDice[0], sk.healDice[1]) + (sk.healBase || 0)) * (1 + 3 * (Number(dStats && dStats.magicDmg) || 0) / 32) * _jm));
+    if (sk.valDice) return Math.max(1, Math.floor(((sk.valBase || 0) + roll(sk.valDice[0], sk.valDice[1]) + (Number(dStats && dStats.magicDmg) || 0)) * _jm));
     return 0;
 }
 // 魔法型武器特效／奇古獸普攻依潘朵拉權重換算法術階級；傳說與遺物固定視為 5 階。
@@ -775,6 +782,222 @@ function applySiegeEnemyScaling(mob) {
     if (s.er) mob.er = s.er;
 }
 
+
+// 😤 v3.5.59 白目玩家：叫賣NPC 頭像→白目怪 id；等級=玩家+5(上限100)·常駐回血 40/60 每2秒(王族 regenFix 60)·經驗/金幣 0
+const TROLL_CLASS_BY_AVATAR = { "王子": "troll_royal", "公主": "troll_royal", "男騎士": "troll_knight", "女騎士": "troll_knight", "男妖精": "troll_elf", "女妖精": "troll_elf", "男法師": "troll_mage", "女法師": "troll_mage", "男黑暗妖精": "troll_dark", "女黑暗妖精": "troll_dark", "男幻術士": "troll_illusion", "女幻術士": "troll_illusion", "男龍騎士": "troll_dragon", "女龍騎士": "troll_dragon", "男戰士": "troll_warrior", "女戰士": "troll_warrior" };
+const PVP_ALIGN_MIN = -32767;
+const PVP_ALIGN_MAX = 32767;
+const PVP_ALIGN_EVIL = -1000;
+const PVP_ALIGN_JUSTICE = 1000;
+const PVP_REVENGE_COST = 100000;
+const PVP_REVENGE_MAX = 20;
+const PVP_WILD_CHANCE = 0.01;
+const PVP_AVATARS = Object.keys(TROLL_CLASS_BY_AVATAR);
+const PVP_NAME_HEAD = ['煞氣ㄟ', '最愛', '闇の', '破滅', '終焉', '霸氣', '覺醒', '無敵', '爆裂', '狂氣', '孤高', '夜月', '紅名', '藍名', '天堂', '亞丁', '奇岩', '海音', '肯特', '風木', '沉默', '法書', '祝武', '祝防', '掛網', '回卷', '勇水', '白水'];
+const PVP_NAME_CORE = ['刀神', '法皇', '妖弓', '黑妖', '龍騎', '戰王', '王子', '公主', '盟主', '騎士', '補師', '歐洲人', '倉庫王', '紅水仔', '打寶哥', '奇岩王', '海音霸主', '肯特劍魂', '風木狂人', '傲塔住民', '古魯丁路霸', '說島老手'];
+const PVP_NAME_TAIL = ['前輩', '之夢', '公主', '王子', '大人', 'さま', '先輩', '總長', '煞星', '魔王', '本尊', '分身', '不回卷', '專殺掛機', '只打紅人', '單挑啦', '包場中', '撿骨人', '補刀王', '掉寶王', '盟倉守護者', '安定值零'];
+function pvpClampAlignment(v) {
+    v = Math.round(Number(v) || 0);
+    return Math.max(PVP_ALIGN_MIN, Math.min(PVP_ALIGN_MAX, v));
+}
+function pvpEnsureState() {
+    if (!player || !player.cls) return;
+    player.alignmentValue = pvpClampAlignment(player.alignmentValue);
+    if (player.pvpOn === undefined) player.pvpOn = false;
+    if (!Array.isArray(player.pvpRevengeList)) player.pvpRevengeList = [];
+    player.pvpRevengeList = player.pvpRevengeList.filter(r => r && r.n).slice(0, PVP_REVENGE_MAX).map(r => ({
+        n: String(r.n).slice(0, 24),
+        avatar: TROLL_CLASS_BY_AVATAR[r.avatar] ? r.avatar : '男戰士',
+        alignmentValue: pvpClampAlignment(r.alignmentValue),
+        deaths: Math.max(1, Number(r.deaths) || 1),
+        t: Number(r.t) || Date.now()
+    }));
+}
+function pvpAlignmentKind(v) {
+    v = pvpClampAlignment(v);
+    if (v >= PVP_ALIGN_JUSTICE) return 'justice';
+    if (v <= PVP_ALIGN_EVIL) return 'evil';
+    return 'neutral';
+}
+function pvpAlignmentLabel(v) {
+    let k = pvpAlignmentKind(v);
+    return k === 'justice' ? '正義' : (k === 'evil' ? '邪惡' : '中立');
+}
+function _pvpMix(a, b, t) {
+    let ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
+    let ar = (ah >> 16) & 255, ag = (ah >> 8) & 255, ab = ah & 255;
+    let br = (bh >> 16) & 255, bg = (bh >> 8) & 255, bb = bh & 255;
+    let rr = Math.round(ar + (br - ar) * t), rg = Math.round(ag + (bg - ag) * t), rb = Math.round(ab + (bb - ab) * t);
+    return '#' + [rr, rg, rb].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function pvpAlignmentColor(v) {
+    v = pvpClampAlignment(v);
+    if (v >= PVP_ALIGN_JUSTICE) return _pvpMix('#ffffff', '#3b82f6', (v - PVP_ALIGN_JUSTICE) / (PVP_ALIGN_MAX - PVP_ALIGN_JUSTICE));
+    if (v <= PVP_ALIGN_EVIL) return _pvpMix('#ffffff', '#ff4d4d', (Math.abs(v) - Math.abs(PVP_ALIGN_EVIL)) / (PVP_ALIGN_MAX - Math.abs(PVP_ALIGN_EVIL)));
+    return '#ffffff';
+}
+function pvpNameStyleByValue(v) {
+    let c = pvpAlignmentColor(v);
+    return `color:${c}!important;text-shadow:1px 1px 0 #000,-1px 1px 0 #000,1px -1px 0 #000,-1px -1px 0 #000,0 0 5px ${c}!important;`;
+}
+function pvpNameStyle(m) {
+    if (!m || !m.trollPlayer) return '';
+    return ` style="${pvpNameStyleByValue(m._pvpAlignment || 0)}"`;
+}
+function pvpNameHtml(name, align, cls) {
+    return `<span class="${cls || 'font-bold'}" style="${pvpNameStyleByValue(align)}">${_trollEncounterEsc(name)}</span>`;
+}
+function pvpEvilBonus(max) {
+    if (!player) return 0;
+    return Math.floor((max || 0) * Math.max(0, -pvpClampAlignment(player.alignmentValue)) / Math.abs(PVP_ALIGN_MIN));
+}
+// 💙 v3.5.75 正義性向法術：主玩家是否為正義（性向值 ≥ 1000）——究極光裂術施放門檻用
+function pvpIsJustice() {
+    if (typeof player === 'undefined' || !player) return false;
+    return pvpClampAlignment(player.alignmentValue) >= PVP_ALIGN_JUSTICE;
+}
+// 💙 v3.5.75 正義治癒加成倍率：正義門檻(1000)起隨性向值線性提升最終恢復量·滿正義(32767)＝+20%·中立/邪惡＝1（無提升）。
+//   適用＝justiceHeal 旗標技能（初/中/高級治癒術·體力回復術·全部治癒術·生命的祝福·治癒魔法頭盔兩式）·rollHealingSpell 接線。
+//   💙 v3.5.76 傭兵亦適用：判定「施法者自己」的性向值——主玩家=player.alignmentValue·傭兵=招募時記錄的來源存檔性向值(ally.alignmentValue·buildAlly 快照+載入掃描同步)。
+function pvpJusticeHealMultValue(a) {
+    a = pvpClampAlignment(a);
+    if (a < PVP_ALIGN_JUSTICE) return 1;
+    return 1 + 0.2 * (a - PVP_ALIGN_JUSTICE) / (PVP_ALIGN_MAX - PVP_ALIGN_JUSTICE);
+}
+function pvpJusticeHealMult() {
+    if (typeof player === 'undefined' || !player || !player.cls) return 1;
+    return pvpJusticeHealMultValue(player.alignmentValue);
+}
+function pvpChangeAlignment(delta) {
+    pvpEnsureState();
+    if (!player || !player.cls || !delta) return 0;
+    let before = pvpClampAlignment(player.alignmentValue);
+    player.alignmentValue = pvpClampAlignment(before + delta);
+    return player.alignmentValue - before;
+}
+function pvpRandomName() {
+    let h = PVP_NAME_HEAD[Math.floor(Math.random() * PVP_NAME_HEAD.length)];
+    let c = PVP_NAME_CORE[Math.floor(Math.random() * PVP_NAME_CORE.length)];
+    let t = PVP_NAME_TAIL[Math.floor(Math.random() * PVP_NAME_TAIL.length)];
+    let style = Math.floor(Math.random() * 4);
+    if (style === 0) return `${h}${c}`;
+    if (style === 1) return `${c}${t}`;
+    if (style === 2) return `${h}${c}${t}`;
+    return `${c}oO${h}`;
+}
+function pvpRandomAlignment() {
+    return pvpClampAlignment(Math.floor(PVP_ALIGN_MIN + Math.random() * (PVP_ALIGN_MAX - PVP_ALIGN_MIN + 1)));
+}
+function pvpCreateRandomOpponent(onFieldNames) {
+    let tries = 0, n = '';
+    do { n = pvpRandomName(); tries++; } while (onFieldNames && onFieldNames.includes(n) && tries < 8);
+    return {
+        n: n,
+        avatar: PVP_AVATARS[Math.floor(Math.random() * PVP_AVATARS.length)] || '男戰士',
+        alignmentValue: pvpRandomAlignment(),
+        pvpRandom: true
+    };
+}
+function pvpMarkForChase(entry) {
+    if (!entry || !entry.n) return;
+    pvpEnsureState();
+    if (!Array.isArray(player.trollPlayers)) player.trollPlayers = [];
+    let rec = {
+        n: String(entry.n).slice(0, 24),
+        avatar: TROLL_CLASS_BY_AVATAR[entry.avatar] ? entry.avatar : '男戰士',
+        alignmentValue: pvpClampAlignment(entry.alignmentValue),
+        pvpRevenge: true,
+        noExpire: true,
+        until: Date.now() + 3650 * 24 * 60 * 60 * 1000
+    };
+    player.trollPlayers = player.trollPlayers.filter(t => t && t.n !== rec.n);
+    player.trollPlayers.push(rec);
+}
+function pvpAddRevengeFromMob(mob) {
+    if (!mob || !mob.trollPlayer || !mob.n) return;
+    pvpEnsureState();
+    let align = pvpClampAlignment(mob._pvpAlignment || 0);
+    if (pvpClampAlignment(player.alignmentValue) > PVP_ALIGN_EVIL) align = Math.min(align, -12000);
+    let avatar = mob._pvpAvatar || '男戰士';
+    let list = player.pvpRevengeList || [];
+    let old = list.find(r => r && r.n === mob.n);
+    if (old) {
+        old.avatar = avatar;
+        old.alignmentValue = align;
+        old.deaths = (old.deaths || 1) + 1;
+        old.t = Date.now();
+    } else {
+        list.unshift({ n: mob.n, avatar: avatar, alignmentValue: align, deaths: 1, t: Date.now() });
+    }
+    player.pvpRevengeList = list.slice(0, PVP_REVENGE_MAX);
+}
+function pvpOnPlayerDeath(killers) {
+    if (!Array.isArray(killers) || !killers.length) return;
+    killers.forEach(m => pvpAddRevengeFromMob(m));
+    try { if (typeof renderPvpTab === 'function') renderPvpTab(); } catch (e) {}
+}
+function pvpOnKillMob(mob) {
+    if (!mob || !player || !player.cls) return;
+    pvpEnsureState();
+    if (mob.pledgeEnemy || mob.siegeEnemy || mob.race === '血盟') return;
+    if (mob.trollPlayer) {
+        let a = pvpClampAlignment(mob._pvpAlignment || 0);
+        if (a >= PVP_ALIGN_JUSTICE) pvpChangeAlignment(-3000);
+        else if (a > PVP_ALIGN_EVIL) pvpChangeAlignment(-500);
+        if (player.pvpRevengeList && player.pvpRevengeList.length) {
+            let _n0 = player.pvpRevengeList.length;
+            player.pvpRevengeList = player.pvpRevengeList.filter(r => r && r.n !== mob.n);
+            if (player.pvpRevengeList.length !== _n0) { try { if (typeof renderPvpTab === 'function') renderPvpTab(); } catch (e) {} }   // 🐛 v3.5.74 稽核修#2：名單移除即重繪分頁（防開著分頁時列位移點錯目標）
+        }
+        return;
+    }
+    pvpChangeAlignment(1);
+}
+const TROLL_ENCOUNTER_PLAYER_TAUNTS = [
+    '剛剛不是很會喊？出來講啊', '別躲安全區，現在換我找你', '你不是要 PK？我到門口了', '座標不用報，我自己來了', '剛剛嘴很快，手有跟上嗎', '少裝路過，看到你了',
+    '你的廣播比掉寶還煩', '不是很嗆？紅水帶夠沒', '你先別飛，打完再說', '來，讓我看看你幾等', '剛剛那句再講一次', '安全區外還這麼大聲嗎',
+    '你買裝很派，打架會不會', '別光會洗頻，動手啊', '我傳卷都撕了，你別跑', '今天不清你不回村', '你那張嘴比武器還亮', '補機在嗎？等等別哭',
+    '你剛喊價喊很秋嘛', '來單挑，別叫盟友', '你那名字我記住了', '先把祝順拿出來吧', '別急著回卷，先躺一下', '天堂不是只有市場啦',
+    '你是不是只會在村裡大聲', '我看你比怪還欠打', '打完再讓你廣播', '來啊，奇岩外面那套拿出來'
+];
+const TROLL_ENCOUNTER_NPC_TAUNTS = [
+    '來啊，補紅水別哭', '你算哪根蔥，也敢找我', '笑死，剛出村就想當英雄', '先看清楚我幾等再嘴', '你這裝備也敢出來巡田水', '不服就貼上來',
+    '少廢話，按攻擊啦', '我站著讓你砍三刀啦', '你盟徽看起來很會躺', '打輸不要密我道歉', '有種別按回卷', '你剛剛不是很派？',
+    '紅水帶夠沒，等等噴到沒重量', '別叫補機，我怕你丟臉', '我收購只是副業，清人是興趣', '你這命中打得到嗎', '別只會嘴，刀拿穩',
+    '來 PK 啊，誰飛誰孬', '你先想好墓碑要寫什麼', '你的勇水喝到膽子上了？', '這區我包了，你旁邊蹲', '笑你不敢貼身', '你那傷害像沒點蠟燭',
+    '別演強者了，大家都在看', '我在這等你掉經驗', '你回村路線我都幫你排好了', '打我之前先買保險', '你這套話術我昨天殺過'
+];
+function _trollEncounterPick(list) {
+    return list[Math.floor(Math.random() * list.length)] || '';
+}
+function _trollEncounterEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
+}
+function logTrollEncounterTrashTalk(name) {
+    if (typeof logSys !== 'function' || !name) return;
+    let _name = _trollEncounterEsc(name);
+    logSys(`<span class="wander-chat-out"><span class="wander-chat-arrow">-&gt;</span> <span class="wander-chat-target">[${_name}]</span> ${_trollEncounterEsc(_trollEncounterPick(TROLL_ENCOUNTER_PLAYER_TAUNTS))}</span>`);
+    logSys(`<span class="wander-chat-in"><span class="wander-chat-speaker">[${_name}]</span> ${_trollEncounterEsc(_trollEncounterPick(TROLL_ENCOUNTER_NPC_TAUNTS))}</span>`);
+}
+function applyTrollScaling(mob) {
+    let L = Math.min(100, Math.max(1, player.lv + 5));
+    let s = mob.scale || {};
+    mob.lv = L;
+    mob.hp = (s.hpC || 12) * L; mob.curHp = mob.hp;
+    mob.ac = (s.acBase !== undefined ? s.acBase : -10) - Math.floor(L / (s.acDiv || 4));
+    mob.mr = (s.mrBase || 0) + Math.floor(L / (s.mrDiv || 5));
+    mob.exp = 0; mob.goldMin = 0; mob.goldMax = 0;
+    mob.dmg = [1, s.dmgSides || 10];
+    mob.db = (s.dbHalf ? Math.floor(L / 2) : L) + (s.dbPlus || 0);
+    mob.hit = (s.hitBase || 0) + Math.floor(L / 2);
+    mob.atkSpd = s.atkSpd || 0.67;
+    mob.regenHp = mob.regenFix || ((L >= 50) ? 60 : 40);
+    mob.regenEvery = 20;
+    if (s.er) mob.er = s.er;
+}
+
 function applyPledgeEnemyScaling(mob) {
     let L = Math.max(1, player.lv);
     let s = mob.scale || {};
@@ -883,6 +1106,30 @@ function spawnMob(idx) {
             });
             if(candidates.length > 0) mobId = candidates[Math.floor(Math.random() * candidates.length)];
         }
+        // PVP：玩家開啟後，野外一般出怪有 1% 機率遭遇隨機玩家 NPC；血盟敵人不列入此規則。
+        if (typeof pvpEnsureState === 'function') pvpEnsureState();
+        if (player.pvpOn && typeof MAP_CATEGORIES !== 'undefined' && MAP_CATEGORIES.wild
+            && MAP_CATEGORIES.wild.some(m => m.v === mapState.current)
+            && !PURE_BOSS_MAPS.includes(mapState.current) && !isSiegeArea(mapState.current)
+            && Math.random() < PVP_WILD_CHANCE) {
+            let _onF = mapState.mobs.filter(m => m).map(m => m.n);
+            let _pvp = pvpCreateRandomOpponent(_onF);
+            if (_pvp && !_onF.includes(_pvp.n)) {
+                mobId = TROLL_CLASS_BY_AVATAR[_pvp.avatar] || "troll_warrior";
+                mapState._trollSpawn = _pvp;
+            }
+        }
+        // 😤 v3.5.59 白目玩家：被記仇(player.trollPlayers·js/24 嗆聲觸發)→野外(非BOSS房/非攻城)重生 5% 機率遭遇；同名不同時出現；逾期(2小時)自動移除
+        if (player.trollPlayers && player.trollPlayers.length) {
+            let _now = Date.now();
+            let _tl = player.trollPlayers.filter(t => t && (t.noExpire || t.pvpRevenge || t.until > _now));
+            if (_tl.length !== player.trollPlayers.length) player.trollPlayers = _tl;
+            if (_tl.length && !PURE_BOSS_MAPS.includes(mapState.current) && !isSiegeArea(mapState.current) && Math.random() < ((typeof window !== 'undefined' && window.__FB5_TEST_BUILD) ? 1 : 0.05)) {   // 🧪 TEST版：野外重生必定遭遇（正式版 5%）
+                let _onF = mapState.mobs.filter(m => m).map(m => m.n);
+                let _cand = _tl.filter(t => !_onF.includes(t.n));
+                if (_cand.length) { let _t = _cand[Math.floor(Math.random() * _cand.length)]; mobId = TROLL_CLASS_BY_AVATAR[_t.avatar] || "troll_warrior"; mapState._trollSpawn = _t; }
+            }
+        }
     }
     
     // 魔物追蹤：在追蹤地圖且追蹤有效期間，每次出怪 50% 固定機率改為被追蹤的怪物（🏺 v3.2.17 裝備 小獵犬的追蹤鼻 → 70%）
@@ -918,6 +1165,7 @@ function spawnMob(idx) {
         && Math.random() < 0.01) {
         mobId = 'lindvior';
     }
+    if (mapState._trollSpawn && (!DB.mobs[mobId] || !DB.mobs[mobId].trollPlayer)) delete mapState._trollSpawn;
     let base = DB.mobs[mobId];
     if(!base) return;
     mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _born: ++_mobBornSeq, _magCd: {}, justHit: false, st: newMobStatus(), _bornMs: Date.now() };   // 🏛️ _bornMs：生成時間（長老之室 BOSS 3 分鐘節流用）；_born：出生序（鎖定最早出生用）
@@ -926,6 +1174,29 @@ function spawnMob(idx) {
         mapState.mobs[idx].beh = '被動';   // 頭目除外，維持主動
     }
     if(base.pledgeEnemy) applyPledgeEnemyScaling(mapState.mobs[idx]);   // 血盟敵人：依玩家等級縮放
+    if(base.trollPlayer) {   // 😤 白目玩家：等級縮放＋名稱=叫賣NPC本人＋戰鬥動態=玩家職業動畫（v3.5.64·assets/anim/玩家<avatar>·從職業動畫產出·idle/attack/hurt/death/skill＋_s 影子全套·動態註冊 MOB_ANIM_ALIAS 真共用）
+        applyTrollScaling(mapState.mobs[idx]);
+        let _t = mapState._trollSpawn;
+        if (_t) {
+            mapState.mobs[idx].n = _t.n;
+            mapState.mobs[idx]._pvpAlignment = pvpClampAlignment(_t.alignmentValue);
+            mapState.mobs[idx]._pvpAvatar = TROLL_CLASS_BY_AVATAR[_t.avatar] ? _t.avatar : "男戰士";
+            mapState.mobs[idx]._pvpRandom = !!_t.pvpRandom;
+            mapState.mobs[idx]._pvpRevenge = !!_t.pvpRevenge;
+            mapState.mobs[idx].img = "assets/classanim/" + (mapState.mobs[idx]._pvpAvatar || "男戰士") + "F/unarmed_idle_0.png";   // 動畫缺檔時的靜態後備
+            if (typeof MOB_ANIM_NAMES !== "undefined" && typeof MOB_ANIM_ALIAS !== "undefined") {
+                let _dir = "玩家" + (mapState.mobs[idx]._pvpAvatar || "男戰士");
+                if (MOB_ANIM_ALIAS[_t.n] !== _dir) {   // 首次註冊或同名 NPC 換頭像→更新 alias 並清舊幀快取（cache keyed by 名）
+                    MOB_ANIM_ALIAS[_t.n] = _dir;
+                    if (typeof _mobAnimCache !== "undefined") delete _mobAnimCache[_t.n];
+                }
+                MOB_ANIM_NAMES.add(_t.n);
+                if (typeof MOB_ANIM_SPRITE_SHADOW !== "undefined") MOB_ANIM_SPRITE_SHADOW.add(_t.n);   // 16 職業資料夾皆含 _s 影子層
+            }
+            logTrollEncounterTrashTalk(_t.n);
+        }
+        delete mapState._trollSpawn;
+    }
     if(base.siegeEnemy) applySiegeEnemyScaling(mapState.mobs[idx]);   // 攻城敵人：依玩家等級縮放
     applySherineBuff(idx);   // 🔮 席琳的世界強化＋_sherine（與時空裂痕共用 applySherineBuff）
     if(mapState.mobs[idx].hard) initHardSkin(mapState.mobs[idx]);   // 🔧 硬皮：依等級/頭目/席琳世界初始化硬皮值（須在席琳 _sherine 標記之後）
@@ -1104,8 +1375,8 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     }
     // 🏺 v3.1.80 傑克的彈弓：對「巨人」種族加成 +1D20（與 unBonus 同模型·獨立於不死/狼人加成·裝箭矢時亦生效）
     if (wpn && wpn.giantBonus && target.race === '巨人') fixed += roll(1, 20);
-    // 🗡️ v3.4.0 吉爾塔斯之劍：擊殺敵人後 10 秒內額外傷害 +10（killMob 寫 _giltasFuryUntil·刷新制）
-    if (player._giltasFuryUntil > state.ticks && _swingId === 'wpn_giltas_sword') fixed += 10;
+    // 🗡️ 吉爾塔斯之劍：擊殺後 10 秒內，依主玩家邪惡值比例提高額外傷害（滿邪惡 +10）。
+    if (player._giltasFuryUntil > state.ticks && _swingId === 'wpn_giltas_sword') fixed += (typeof pvpEvilBonus === 'function' ? pvpEvilBonus(10) : 0);
 
     let _outDmg = inner + fixed;
     if (graze) _outDmg = Math.max(1, Math.floor(_outDmg * 0.5));   // 擦傷：最終傷害剩 50%

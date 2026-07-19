@@ -1268,7 +1268,7 @@ function _renderMobsImpl() {
             let _weaponLayer2 = _weaponFx2 ? `<img class="mob-anim-weapon2 w-24 h-24 p-1 object-contain pointer-events-none" src="assets/anim/${_animDir(m.n)}/idle_w2_0.png" alt="" aria-hidden="true" onload="this.style.display='';this.style.visibility=''" onerror="this.style.visibility='hidden'">` : '';
             _slotHtmls[_k] = `<div class="mob-target ${act}${_rageNow ? ' mob-raging' : ''}${_rowCls}${BOSS_BIG_MAPS.includes(mapState.current) ? ' boss-slot' : (m.boss ? ' boss-zoom' : '')}${_sfCls}" data-uid="${m.uid}"${_scat}>
                         <div class="flex justify-center items-center text-sm mb-1 mob-name">
-                            <span class="${getMobNameClass(m)}" title="${m.n}">${m.n}</span>${(_showMobEleFlag && m.e && m.e !== 'none') ? ` <span class="text-[11px] font-bold" style="margin-left:3px;color:${(typeof RELIC_ELE_COLOR !== 'undefined' && RELIC_ELE_COLOR[m.e]) || '#cbd5e1'};" title="敵人屬性（巨大螞蟻的複眼）">[${(typeof RELIC_ELE_LABEL !== 'undefined' && RELIC_ELE_LABEL[m.e]) || ''}]</span>` : ''}
+                            <span class="${getMobNameClass(m)}" title="${m.n}"${(typeof pvpNameStyle === 'function') ? pvpNameStyle(m) : ''}>${m.n}</span>${(_showMobEleFlag && m.e && m.e !== 'none') ? ` <span class="text-[11px] font-bold" style="margin-left:3px;color:${(typeof RELIC_ELE_COLOR !== 'undefined' && RELIC_ELE_COLOR[m.e]) || '#cbd5e1'};" title="敵人屬性（巨大螞蟻的複眼）">[${(typeof RELIC_ELE_LABEL !== 'undefined' && RELIC_ELE_LABEL[m.e]) || ''}]</span>` : ''}
                         </div>
                         ${badges}
                         <div class="flex justify-center mb-1 mob-img-wrap">
@@ -1519,7 +1519,14 @@ function _mobImgErr(img) {
 }
 // 🔗 v3.0.7 動畫資料夾共用(alias)：自身無可用 spr 的怪→借用另一隻已部署怪的 assets/anim/<目標>/ 幀(URL 層 redirect·_mobAnimCache 仍以自身名為 key)。
 //   ⚠️ 目標怪須已部署且在 MOB_ANIM_NAMES；共用怪自身也要加進 MOB_ANIM_NAMES(+SPRITE_SHADOW 若目標有 _s)。目標更新→共用怪自動跟著(真共用非複製)。
-const MOB_ANIM_ALIAS = { '老虎': '虎男' };   // 🔗 動畫資料夾共用 alias(名→目標名)·🐾 v3.2.17 老虎共用虎男素材（真共用非複製）
+const MOB_ANIM_ALIAS = { '老虎': '虎男',   // 🔗 動畫資料夾共用 alias(名→目標名)·🐾 v3.2.17 老虎共用虎男素材（真共用非複製）
+    // 👥 v3.5.64 血盟敵人戰鬥動態改「玩家職業動畫」：assets/anim/玩家<avatar>（由 assets/classanim/<avatar>2 左前向依各職業代表武器產出·部署器 scratchpad/deploy_player_anim.js）。
+    //   14 名皆原本就在 MOB_ANIM_NAMES＋SPRITE_SHADOW（新資料夾含 _s 影子）·不在 WEAPON_FX/8DIR→只需 alias；白目玩家（js/03）動態註冊共用同一批資料夾。
+    '阿頓': '玩家男騎士', '鋼鐵阿頓': '玩家男騎士', '依詩蒂': '玩家女騎士',
+    '特羅斯王子': '玩家王子', '依詩蒂公主': '玩家公主',
+    '朱利安': '玩家男妖精', '月光朱利安': '玩家男妖精', '歐薇': '玩家女妖精', '月之精靈歐薇': '玩家女妖精',
+    '喬': '玩家男法師', '魔法師喬': '玩家男法師', '賽尼斯': '玩家女法師', '魔女賽尼斯': '玩家女法師',
+    '闇影格立特': '玩家男黑暗妖精' };
 function _animDir(name) { return (typeof MOB_ANIM_ALIAS !== 'undefined' && MOB_ANIM_ALIAS[name]) ? MOB_ANIM_ALIAS[name] : name; }
 // 🚀 v3.4.37 幀探測平行化（滑動窗口）：取代「載完第 N 張才載第 N+1 張」的串行鏈——一次最多 6 張在途，
 //   高延遲環境（GitHub Pages RTT ~100ms）首次動畫就緒時間 ≈ 原本 1/6（法利昂 death 27 幀：27 次往返→5 次）。

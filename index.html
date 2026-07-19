@@ -31,7 +31,7 @@
     <title>放置天堂 - 日出之國</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <link rel="stylesheet" href="css/style.css?v=c2c7231fab.5.36-ally-aura-icon">
+    <link rel="stylesheet" href="css/style.css?v=e421d1e3ce.5.77-syslog-pin">
     <link rel="stylesheet" href="css/floating-ui.css?v=cba749438b-weight-colors">
     <link rel="stylesheet" href="css/tailwind-built.css?v=c0926cfba4"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
@@ -99,6 +99,7 @@
                 <button onclick="loadCreateSelected()" id="load-btn-create" type="button">創新角色</button>
                 <button onclick="loadImportSelected()" id="load-btn-import" type="button">匯入進度</button>
                 <button onclick="loadEnterSelected()" id="load-btn-enter" type="button" class="hidden">進入遊戲</button>
+                <button onclick="loadExportSelected()" id="load-btn-export" type="button" class="hidden">匯出進度</button>
                 <button onclick="loadDeleteSelected()" id="load-btn-delete" type="button" class="hidden" style="color:#e7a09a;border-color:rgba(151,61,52,.82);">刪除角色</button>
                 <button onclick="loadBackToMenu()" id="load-btn-back" type="button">返回</button>
             </div>
@@ -302,6 +303,8 @@
                     <span class="shrink-0">系統與物品日誌</span>
                     <span id="syslog-pandora" class="text-sm font-normal truncate text-right min-w-0"></span>
                 </div>
+                <!-- 📌 v3.5.77 NPC 叫賣釘選列：最多兩條常駐於日誌頂端，不會被其他訊息推走；空的時候由 CSS :empty 自動收起 -->
+                <div id="sys-log-pins"></div>
                 <div id="sys-log" class="flex-1 p-4 overflow-y-auto log-bg rounded-b-xl shadow-inner text-base"></div>
                 <!-- 🔒 系統與物品日誌捲動鎖定提示（同戰鬥日誌：向上捲動鎖定刷新、捲回底部自動解除） -->
                 <button id="sys-log-unlock" onclick="sysLogToBottom()" class="hidden absolute left-1/2 -translate-x-1/2 bottom-2 z-10 px-3 py-1 text-xs font-bold rounded-full shadow-lg bg-amber-700/90 hover:bg-amber-600 border border-amber-400 text-amber-50">🔒 已鎖定捲動 ▾ 回到最新</button>
@@ -319,11 +322,11 @@
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('armors', this)">防具</button>
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('items', this)">道具</button>
                 <!-- 第三排：統計 / 收藏 / 一鍵賣出 -->
-                <button class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #565d68 0%, #6b7280 26%, #3f4651 48%, #5a6270 72%, #313740 100%); color: #f1f5f9; border-color: #6b7280;" onclick="switchTab('audit', this)">統計</button>
+                <button class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #28350f 0%, #6b8e23 26%, #202b0c 48%, #566f1f 72%, #151d08 100%); color: #ecfccb; border-color: #84cc16;" onclick="switchTab('audit', this)">統計</button>
                 <button id="btn-collection" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #4a2f0c 0%, #b3850e 28%, #3f2a0c 52%, #9a720c 76%, #2e2008 100%); color: #fde68a; border-color: #d4a017;" onclick="openCollectionPanel()">收藏</button>
-                <button id="btn-autosell" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #4a2c0a 0%, #c2620e 28%, #3f2608 52%, #a8550c 76%, #2e1c06 100%); color: #fed7aa; border-color: #ea580c;" onclick="openAutoSellRules()">自動販賣</button>
-                <!-- 第四排：匯出 / 存檔 / 自動化設定（🔧 v2.6.73 一鍵排列改獲得物品自動觸發·此鈕改開自動化設定浮動視窗） -->
-                <button class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #312e81 0%, #4f46e5 28%, #28236b 52%, #4338ca 76%, #1e1b4b 100%); color: #c7d2fe; border-color: #6366f1;" onclick="exportSave()">匯出</button>
+                <button id="btn-autosell" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #2e1065 0%, #6d28d9 28%, #1e1b4b 52%, #7c3aed 76%, #1e133f 100%); color: #ddd6fe; border-color: #8b5cf6;" onclick="openAutoSellRules()">自動販賣</button>
+                <!-- 第四排：PVP / 存檔 / 自動化設定 -->
+                <button id="btn-pvp" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #565d68 0%, #6b7280 26%, #3f4651 48%, #5a6270 72%, #313740 100%); color: #f1f5f9; border-color: #6b7280; box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.22), 0 1px 2px rgba(0,0,0,.35);" onclick="switchTab('pvp', this)">PVP</button>
                 <button class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #064e3b 0%, #059669 28%, #053f30 52%, #047857 76%, #042f24 100%); color: #a7f3d0; border-color: #10b981;" onclick="saveGame()">存檔</button>
                 <button id="btn-automation" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" onclick="switchTab('automation', this)" title="自動化設定（獲得物品時自動排列背包·每10秒最多一次·與自動販賣同一開關）">自動化設定</button>
             </div>
@@ -392,6 +395,7 @@
                 <div id="tab-weapons" class="p-3 overflow-y-auto h-full hidden flex-col gap-2"></div>
                 <div id="tab-armors" class="p-3 overflow-y-auto h-full hidden flex-col gap-2"></div>
                 <div id="tab-audit" class="p-3 overflow-y-auto h-full hidden flex-col gap-2"></div>
+                <div id="tab-pvp" class="p-3 overflow-y-auto h-full hidden flex-col gap-2"></div>
                 <!-- 🔧 v2.6.74 自動化設定改「分頁內嵌」（原 v2.6.73 浮動視窗取消）：與 能力/技能 同框架，switchTab(automation) 切換；set-* 控制項恆在 DOM 供 saveGame/自動化讀取 -->
                 <div id="tab-automation" class="p-4 text-base overflow-y-auto h-full hidden">
                     <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
@@ -545,23 +549,23 @@
     })();
     </script>
 
-    <script src="js/anim-manifest.js?v=287b483cbf.5.25-gongzhu-idle"></script>
-    <script src="js/00-data.js?v=627fc71842.5.49-ticket-item-purge"></script>
-<script src="js/01-drops-config.js?v=b869177ee8.5.27-relic-batch18"></script>
-<script src="js/02-stats-recompute.js?v=29bfc60f15.5.47-save-worker-guard"></script>
-    <script src="js/03-combat-core.js?v=899cd7383b.5.27-relic-batch18"></script>
-    <script src="js/04-combat-attack.js?v=960a0ddacc.5.49-ticket-item-purge"></script>
-<script src="js/05-kill-progression.js?v=4f40dd1b5e.5.27-relic-batch18"></script>
-    <script src="js/06-status-allies.js?v=6d38292689.5.46-merc-support-hp-cost"></script>
-    <script src="js/07-skills-cast.js?v=66274a1941.5.42-dash-move-speed"></script>
-<script src="js/08-items-equip.js?v=a21b8af7d0.5.36-ally-aura-icon"></script>
-<script src="js/09-vfx-render.js?v=1961678f46.5.48-deadcode-purge"></script>
-<script src="js/10-ui-tabs.js?v=3ec5881cf4.5.42-dash-move-speed"></script>
-<script src="js/11-world-map.js?v=5db8d591c8.5.28-pandora-relic-market"></script>
+    <script src="js/anim-manifest.js?v=e26c13c912.5.64-player-class-anim"></script>
+    <script src="js/00-data.js?v=3446645993.5.77-syslog-pin"></script>
+<script src="js/01-drops-config.js?v=00b3740a05.5.69-pvp-alignment"></script>
+<script src="js/02-stats-recompute.js?v=1e06e8ede3.5.69-pvp-alignment"></script>
+    <script src="js/03-combat-core.js?v=907956c919.5.76-merc-alignment"></script>
+    <script src="js/04-combat-attack.js?v=70d153d511.5.75-justice-spells"></script>
+<script src="js/05-kill-progression.js?v=5f8aa1bb08.5.78-troll-red-endings"></script>
+    <script src="js/06-status-allies.js?v=f8e593c127.5.76-merc-alignment"></script>
+    <script src="js/07-skills-cast.js?v=406ffdd30e.5.75-justice-spells"></script>
+<script src="js/08-items-equip.js?v=4cf170ae4b.5.80-doll-batch-snapshot"></script>
+<script src="js/09-vfx-render.js?v=6d60bea540.5.69-pvp-alignment"></script>
+<script src="js/10-ui-tabs.js?v=40bdfec0f7.5.77-pvp-stat-tone"></script>
+<script src="js/11-world-map.js?v=dd701e5ded.5.79-kent-npc-spread"></script>
 <script src="js/12-npc-quests.js?v=fc571f628c.5.49-ticket-item-purge"></script>
-<script src="js/13-shop-save.js?v=aee6fc09bf.5.47-save-worker-guard"></script>
-<script src="js/14-craft-pandora.js?v=0611f494c9.5.48-deadcode-purge"></script>
-<script src="js/15-cards.js?v=1d2297376c.5.35-lindvior-card"></script>
+<script src="js/13-shop-save.js?v=f3f8d56126.5.77-portable-save"></script>
+<script src="js/14-craft-pandora.js?v=5afa95dbc9.5.75-justice-spells"></script>
+<script src="js/15-cards.js?v=163656f8f8.5.80-doll-batch-snapshot"></script>
 <script src="js/16-equip-book.js?v=6c32b06d21.2.37-petgear"></script>
 <script src="js/18-misc-book.js?v=392130d3a6.2.13-bless-cleanup"></script>
 <script src="js/17-audio.js?v=858566f985.5.18-morphfx-fix"></script>
@@ -569,12 +573,12 @@
 <script src="js/20-warehouse-window.js?v=49cce2807d"></script>
 <script src="js/21-relic-book.js?v=b894737c8c.1.7"></script>
     <script src="js/23-summons.js?v=0db6af39b6.4.101-terror-types"></script>
-    <script src="js/22-pets.js?v=05f5ae251e.5.2-party-debuffs"></script>
-    <script src="js/24-pandora-relic-market.js?v=0edb5d6ed3.5.38-relic-requirement-pools"></script>
-
+    <script src="js/22-pets.js?v=6a482f02ac.5.2-party-debuffs"></script>
+    <script src="js/24-pandora-relic-market.js?v=00dcad2acf.5.79-wanderer-schedule"></script>
     <!-- ═══════════ 加掛版外掛層（核心永遠是原作者原版；我們的功能全部是外掛疊上去） ═══════════ -->
+    <!-- 此區塊由 scripts/sync-upstream.mjs 於「拉上游 index.html 後」自動注入到 </body> 之前。?v= 由 stamp-code-versions 補。 -->
     <!-- afk-toggles 必須最先載入：外掛開關中樞（逃生門，自己不可被關；某支外掛壞掉時玩家關掉它就能用原版繼續玩） -->
-    <script src="afk-toggles.js?v=b1343130e7"></script>
+    <script src="afk-toggles.js?v=77e670a018"></script>
     <!-- 共用基礎：自製彈窗/確認、dex/wiki 共用資料表（其他外掛依賴，排前面） -->
     <script src="afk-ui.js?v=344756fa77"></script>
     <script src="afk-extradata.js?v=db353a2a12"></script>
@@ -597,24 +601,24 @@
     <script src="afk-statpts.js?v=be235e7079"></script>
     <script src="afk-autobuy.js?v=96f652ea83"></script>
     <script src="afk-training.js?v=0fa40294a4"></script>
-    <script src="afk-bossring.js?v=7f20148379"></script>
-    <script src="afk-itemsearch.js?v=6b2facd76f"></script>
+    <script src="afk-bossring.js?v=23613a426f"></script>
+    <script src="afk-itemsearch.js?v=dfa93a0ddc"></script>
     <script src="afk-invlist.js?v=2abe72bad5"></script>
-    <script src="afk-eqlist.js?v=0"></script>
-    <script src="afk-npclist.js?v=0"></script>
+    <script src="afk-eqlist.js?v=7a7533b7ce"></script>
+    <script src="afk-npclist.js?v=dbec35a997"></script>
     <script src="afk-mobname.js?v=6639e73e2a"></script>
     <script src="afk-toast.js?v=347d724895"></script>
     <!-- 傳統模式(偽)/自動衝裝：需搭配 scripts/apply-core-patches.mjs 的 gainItem _tEn 鉤子 -->
     <script src="afk-traditional.js?v=778a10b92b"></script>
-    <!-- 迷你遊戲（我方自製） -->
     <script src="afk-warehouse.js?v=abcb3adff2"></script>
-    <script src="afk-dograce.js?v=ab6021fa60"></script>
+    <!-- 迷你遊戲（我方自製） -->
+    <script src="afk-dograce.js?v=39472f6d78"></script>
     <!-- PWA / SW / 統計 / 品牌（skin 固定排最後） -->
     <script src="afk-pwa.js?v=b0e1373291"></script>
     <script src="afk-sw.js?v=0c1440decf"></script>
     <script src="afk-syncinfo.js?v=c85244d8fc"></script>
     <script src="afk-analytics.js?v=d5317e2531"></script>
-    <script src="afk-skin.js?v=bf61b2daff"></script>
-    <!-- ⏳ rearch 進行中：afk-offline.js（離線結算·還原中）、afk-traditional.js（傳統模式·新建中）尚未載入 -->
+    <script src="afk-skin.js?v=441055bc1a"></script>
+    <!-- ═══════════ 加掛版外掛層 END ═══════════ -->
 </body>
 </html>

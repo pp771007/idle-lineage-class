@@ -245,7 +245,7 @@ function recomputeStats() {
         if(w.mhp) p.mhp += w.mhp;   // 🏛️ 武器 HP 上限加成（古代黑暗妖精之劍 HP+50；同步修正深紅長矛既有 HP+50 失效）
         if(w.mmp) p.mmp += w.mmp;   // 🏛️ 武器 MP 上限加成（聖晶魔杖 MP+50；防具/飾品 mmp 走另一迴圈·武器需此處）
         if(w.extraMp) d.extraMp += w.extraMp;   // 🏺 武器固定額外魔法點數（遺物 殭屍的小腿骨 +7；防具/飾品 extraMp 走另一迴圈·武器需此處）
-        if(p.eq.wpn.id === 'wpn_giltas_wand' && p._giltasWandFuryUntil > state.ticks) d.extraMp += 20;   // 🪄 吉爾塔斯魔杖：任意擊殺後 10 秒內額外魔法點數 +20（玩家／傭兵共用重算管線）
+        if(p.eq.wpn.id === 'wpn_giltas_wand' && p._giltasWandFuryUntil > state.ticks) d.extraMp += (typeof pvpEvilBonus === 'function' ? pvpEvilBonus(20) : 0);   // 🪄 吉爾塔斯魔杖：任意擊殺後 10 秒內依主玩家邪惡值提高額外魔法點數（滿邪惡 +20）
         if(w.dr) d.dr += w.dr;   // 🏺 武器固定傷害減免（遺物 有彈性的肋骨 +2；防具/飾品 dr 走另一迴圈·武器需此處）
         if(w.extraDmg) d.extraDmg += w.extraDmg;   // 🏺 武器固定傷害（遺物 鼠人的烤肉叉/水靈的琴弦 固定傷害+N；防具/飾品 extraDmg 走另一迴圈·武器需此處）
         if(w.mcrit) d.meleeCrit += w.mcrit;   // 🏺 武器近距離爆擊率加成（遺物 蟹人的巨鉗 +5%）

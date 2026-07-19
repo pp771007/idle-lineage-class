@@ -449,30 +449,61 @@ function slotBackToMenu(){
 }
 
 // ===== 存檔 匯出 / 匯入 =====
+// 單一角色匯出不攜帶跨角色的出戰歸屬：傭兵由其他存檔位衍生，寵物名冊則保留但全部回到保管。
+function portablePetRoster(list){
+    let stamp = () => (typeof _petNowStamp === 'function') ? _petNowStamp() : (Date.now() * 1024);
+    return (Array.isArray(list) ? list : []).filter(p => p && typeof p === 'object').map(p => {
+        let clean = JSON.parse(JSON.stringify(p));
+        clean.outOwner = null;
+        clean.outSlot = null;
+        clean.outV = stamp();
+        delete clean.out;
+        return clean;
+    });
+}
 // 匯出：先儲存當前進度，再把該角色存檔寫成 .json 檔。優先用檔案系統 API（可自選資料夾），
 //       不支援時退回瀏覽器下載（落在預設下載資料夾）。
-async function exportSave(){
-    saveGame();   // 先儲存，確保匯出的是最新進度
-    let data = _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot)).payload;   // 💾 解壓並解簽 → 取出明文 JSON payload
+async function exportSave(slot){
+    let slotNo = Math.max(1, Math.floor(Number(slot || currentSlot) || 1));
+    if (slotNo === currentSlot && player && player.cls) {
+        let saved = false;
+        try { saved = saveGame() === true; } catch(e){}
+        if(!saved){ alert('匯出已取消：目前角色或寵物資料未能成功儲存，請先排除儲存空間問題。'); return; }
+    }
+    let stored = _saveUnwrap(_lzGet('lineage_idle_save_' + slotNo));
+    if(stored.signed && !stored.ok){ alert('匯出失敗：角色存檔完整性校驗未通過。'); return; }
+    let data = stored.payload;   // 💾 解壓並解簽 → 取出明文 JSON payload
     if(!data){ alert('目前沒有可匯出的存檔。'); return; }
     // 🔧 一併收錄共用倉庫（依角色的經典/非經典模式取對應倉庫）；匯入時可選擇是否還原
     try {
         let _obj = JSON.parse(data);
-        let _whRaw = _lzGet(whKey());   // 🎮 目前角色（經典/非經典）對應的倉庫（💾 解壓成明文）
-        if(_whRaw) _obj.wh = JSON.parse(_whRaw);
-        // 🐾 v3.2.75 一併收錄共用寵物名冊（依角色模式取對應桶·匯入時可選還原）。桶內為 _saveWrap 簽章格式→先解簽取出陣列存明文。saveGame() 已於上方 flush petRosterSave→桶為最新。
-        try {
-            if (typeof _petBucketKey === 'function') {
-                let _petRaw = _lzGet(_petBucketKey());
-                if (_petRaw != null) { let _pu = _saveUnwrap(_petRaw); if (_pu && _pu.ok) { let _arr = JSON.parse(_pu.payload); if (Array.isArray(_arr)) _obj.pets = _arr; } }
-            }
-        } catch(e){}
+        if(!_obj || typeof _obj !== 'object' || !_obj.p || typeof _obj.p !== 'object') throw new Error('invalid player save');
+        let _p = _obj.p;
+        _obj.p.allies = [];   // 🤝 傭兵引用其他存檔位；單角色備份一律不攜帶，避免幽靈傭兵
+        let _whRaw = _lzGet(whKey(_p));   // 🎮 指定角色（經典/非經典）對應的倉庫（💾 解壓成明文）
+        let _wh = (_whRaw == null) ? { items: [], gold: 0 } : JSON.parse(_whRaw);
+        if(!_wh || typeof _wh !== 'object' || !Array.isArray(_wh.items || [])) throw new Error('invalid warehouse');
+        _obj.wh = { items: _wh.items || [], gold: Number.isFinite(Number(_wh.gold)) ? Math.max(0, Math.floor(Number(_wh.gold))) : 0 };
+        // 🐾 一併收錄模式共用寵物名冊，但匯出副本全部設為未出戰，避免其他角色歸屬在新環境永久卡住。
+        let _petKey = (typeof PET_ROSTER_KEY !== 'undefined' ? PET_ROSTER_KEY : 'fb5_pet_roster') + (typeof modeSuffix === 'function' ? modeSuffix(!!(_p && _p.classicMode), false) : '');
+        let _petRaw = _lzGet(_petKey), _arr = [];
+        if(_petRaw != null){
+            let _pu = _saveUnwrap(_petRaw);
+            if(!_pu || !_pu.ok) throw new Error('invalid pet roster signature');
+            _arr = JSON.parse(_pu.payload);
+            if(!Array.isArray(_arr)) throw new Error('invalid pet roster');
+        }
+        _obj.pets = portablePetRoster(_arr);
         data = JSON.stringify(_obj);
-    } catch(e){}
+    } catch(e){
+        try { console.error('[exportSave] failed', e); } catch(_e){}
+        alert('匯出失敗：角色、倉庫或寵物資料無法正確讀取，未產生匯出檔。');
+        return;
+    }
     data = _saveWrap(data);   // 🛡️ 匯出檔加完整性簽章（前綴 'SIG1:'，匯入時驗章；payload 仍為明文 JSON）
-    let sum = slotSummary(currentSlot);
-    let cname = (sum && sum.name) ? sum.name : ('slot' + currentSlot);   // 未命名 → 用 slotN 當檔名
-    let fname = `fable5_save_${currentSlot}_${cname}.json`;
+    let sum = slotSummary(slotNo);
+    let cname = (sum && sum.name) ? sum.name : ('slot' + slotNo);   // 未命名 → 用 slotN 當檔名
+    let fname = `fable5_save_${slotNo}_${cname}.json`;
     if(window.showSaveFilePicker){
         try {
             let handle = await window.showSaveFilePicker({
@@ -524,36 +555,90 @@ function importSave(n){
             }
             let existing = slotSummary(n);
             if(existing){ alert(`存檔 ${n} 已有角色，請先刪除角色後再匯入。`); return; }
+            // 同一角色不可複製到另一存檔格：寵物以 enSeed 判斷主人，重複身分會讓兩個角色共用出戰權。
+            let importSeed = d.p.enSeed || ('es' + _seedHash((d.p.name || '') + '|' + (d.p.cls || '') + '|lz').toString(36));
+            for(let slotN = 1; slotN <= 8; slotN++){
+                if(String(slotN) === String(n)) continue;
+                let other = _roleReadSavePlayer(slotN);
+                if(!other || !other.cls) continue;
+                let otherSeed = other.enSeed || ('es' + _seedHash((other.name || '') + '|' + (other.cls || '') + '|lz').toString(36));
+                if(otherSeed === importSeed){
+                    alert(`匯入失敗：相同角色已存在於存檔 ${slotN}。請先刪除原角色後再還原備份，避免角色與寵物身分重複。`);
+                    return;
+                }
+            }
+            d.p.enSeed = importSeed;
             d.p._roleEpoch = _roleEpoch();   // 匯入視為新的角色世代，已刪角色的舊分頁不能覆蓋這份匯入檔
+            d.p.allies = [];   // 🤝 舊匯出檔也強制移除傭兵；來源角色未一併匯入時不可保留快照
             // 🔧 抽出倉庫資料（若匯入檔含 wh）；🐾 v3.2.75 也抽出寵物名冊（pets）；寫入存檔位時不保留 wh/pets 欄位（它們是共用桶·不進角色存檔）
             let whData = d.wh;
             let petData = d.pets;
+            if(whData !== undefined){
+                if(!whData || typeof whData !== 'object' || !Array.isArray(whData.items || [])){ alert('匯入失敗：倉庫資料格式不正確。'); return; }
+                whData = { items: whData.items || [], gold: Number.isFinite(Number(whData.gold)) ? Math.max(0, Math.floor(Number(whData.gold))) : 0 };
+            }
+            if(petData !== undefined){
+                if(!Array.isArray(petData)){ alert('匯入失敗：寵物名冊格式不正確。'); return; }
+                petData = portablePetRoster(petData);   // 🐾 舊檔可能仍帶出戰歸屬；匯入端再次清理
+            }
             let saveText = JSON.stringify(d);
             if(whData !== undefined || petData !== undefined){ let _c = {}; for(let k in d){ if(k !== 'wh' && k !== 'pets') _c[k] = d[k]; } saveText = JSON.stringify(_c); }
-            _lzSet('lineage_idle_save_' + n, _saveWrap(saveText));   // 💾 匯入 → 以本機簽章重新封裝後壓縮存入（之後讀檔即可驗章）
             // 🔧 詢問是否一併還原共用倉庫（會覆蓋現有倉庫，四個存檔位共用）
-            let whMsg = '';
+            let whMsg = '', restoreWh = false;
             if(whData !== undefined){
                 let _cnt = (whData.items && whData.items.length) || 0;
                 let _gold = whData.gold || 0;
                 if(confirm(`此匯入檔包含倉庫資料（物品 ${_cnt} 項、金幣 ${_gold.toLocaleString()}）。\n是否一併還原倉庫？\n⚠ 會覆蓋該角色所屬模式（${(d.p && d.p.classicMode) ? '經典' : '非經典'}）的共用倉庫。`)){
-                    _lzSet(whKey(d.p), JSON.stringify({ items: whData.items || [], gold: whData.gold || 0 }));   // 🎮 依匯入角色的經典/非經典模式寫入對應倉庫（💾 壓縮）
+                    restoreWh = true;
                     whMsg = '\n倉庫已一併還原。';
                 } else {
                     whMsg = '\n（倉庫維持原狀，未還原）';
                 }
             }
             // 🐾 v3.2.75 詢問是否一併還原共用寵物名冊（會覆蓋該模式現有名冊·同模式角色共用·比照倉庫）。桶存 _saveWrap 簽章格式。
-            let petMsg = '';
-            if(petData !== undefined && Array.isArray(petData) && petData.length){
-                if(confirm(`此匯入檔包含寵物名冊（${petData.length} 隻）。\n是否一併還原寵物？\n⚠ 會覆蓋該角色所屬模式（${(d.p && d.p.classicMode) ? '經典' : '非經典'}）的共用寵物名冊。`)){
-                    let _petKey = (typeof PET_ROSTER_KEY !== 'undefined' ? PET_ROSTER_KEY : 'fb5_pet_roster') + (typeof modeSuffix === 'function' ? modeSuffix(!!(d.p && d.p.classicMode), false) : '');
-                    _lzSet(_petKey, _saveWrap(JSON.stringify(petData)));   // 💾 依匯入角色模式寫入對應桶（_saveWrap 簽章＋壓縮）
-                    try { if (typeof _petRosterKey !== 'undefined') _petRosterKey = null; } catch(e){}   // 失效記憶體快取→下次 petRoster() 從新桶重載
-                    petMsg = '\n寵物名冊已一併還原。';
+            let petMsg = '', restorePets = false;
+            if(petData !== undefined){
+                if(confirm(`此匯入檔包含寵物名冊（${petData.length} 隻，匯入後全部為未出戰）。\n是否一併還原寵物？\n⚠ 會覆蓋該角色所屬模式（${(d.p && d.p.classicMode) ? '經典' : '非經典'}）的共用寵物名冊。`)){
+                    restorePets = true;
+                    petMsg = '\n寵物名冊已一併還原，所有寵物均為未出戰。';
                 } else {
                     petMsg = '\n（寵物名冊維持原狀，未還原）';
                 }
+            }
+            // 💾 角色／倉庫／寵物視為同一批匯入：每次寫入都檢查；失敗時回復匯入前的原始位元組。
+            let roleKey = 'lineage_idle_save_' + n;
+            let whRestoreKey = restoreWh ? whKey(d.p) : '';
+            let petRestoreKey = restorePets ? ((typeof PET_ROSTER_KEY !== 'undefined' ? PET_ROSTER_KEY : 'fb5_pet_roster') + (typeof modeSuffix === 'function' ? modeSuffix(!!(d.p && d.p.classicMode), false) : '')) : '';
+            let writes = [{ key: roleKey, value: _saveWrap(saveText) }];
+            if(restoreWh){
+                writes.push({ key: whRestoreKey, value: JSON.stringify(whData) });
+                writes.push({ key: whRestoreKey + '_rm', value: '{}' });   // 🪦 清除舊領出墓碑，否則備份物品會再次被隱藏
+            }
+            if(restorePets){
+                writes.push({ key: petRestoreKey, value: _saveWrap(JSON.stringify(petData)) });
+                writes.push({ key: petRestoreKey + '_rm', value: _saveWrap('{}') });   // 🪦 清除舊放生墓碑，允許備份寵物合法還原
+            }
+            let before = writes.map(w => ({ key: w.key, raw: _lsGet(w.key) }));
+            let writeOk = true;
+            for(let w of writes){ if(!_lzSet(w.key, w.value)){ writeOk = false; break; } }
+            if(!writeOk){
+                for(let i = before.length - 1; i >= 0; i--){
+                    if(before[i].raw == null) _lzRemoveStored(before[i].key);
+                    else _lzSetStoredRaw(before[i].key, before[i].raw);
+                }
+                alert('匯入失敗：儲存空間不足或寫入異常，已嘗試還原匯入前資料。');
+                return;
+            }
+            if(restoreWh){
+                try { if(typeof _whLoadUids !== 'undefined') _whLoadUids = null; if(typeof _whLoadOk !== 'undefined') _whLoadOk = true; } catch(e){}
+            }
+            if(restorePets){
+                try {
+                    if(typeof _petRoster !== 'undefined') _petRoster = [];
+                    if(typeof _petRosterKey !== 'undefined') _petRosterKey = null;
+                    if(typeof _petRosterDirty !== 'undefined') _petRosterDirty = false;
+                    if(typeof _petReleasedUids !== 'undefined') _petReleasedUids = {};
+                } catch(e){}
             }
             if(_slotMode === 'load-grid') renderLoadSelect();
             else openSlotSelect(_slotMode);   // 重新整理存檔位清單（更新名稱/等級與可載入狀態）
@@ -702,10 +787,12 @@ function updateLoadInfo(){
     const create = document.getElementById('load-btn-create');
     const importBtn = document.getElementById('load-btn-import');
     const enter = document.getElementById('load-btn-enter');
+    const exportBtn = document.getElementById('load-btn-export');
     const del = document.getElementById('load-btn-delete');
     if(create) create.classList.toggle('hidden', !empty);
     if(importBtn) importBtn.classList.toggle('hidden', !empty);
     if(enter) enter.classList.toggle('hidden', empty);
+    if(exportBtn) exportBtn.classList.toggle('hidden', empty);
     if(del) del.classList.toggle('hidden', empty);
 }
 function loadSelectSlot(n){
@@ -738,6 +825,7 @@ function loadEnterSelected(){
     loadGame();
 }
 function loadImportSelected(){ importSave(_loadSelectedSlot); }
+function loadExportSelected(){ exportSave(_loadSelectedSlot); }
 function loadRestoreSelected(){ restoreBackup(_loadSelectedSlot); }
 function loadDeleteSelected(){
     const slot = _loadSelectedSlot, sum = slotSummary(slot);

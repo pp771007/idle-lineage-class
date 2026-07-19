@@ -2147,14 +2147,127 @@ function sellItem(uid, count, unitPrice) {
 }
 
 function closeModal() { document.getElementById('item-modal').classList.add('hidden'); }
+function _pvpTabEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
+}
+function _pvpTabMix(a, b, t) {
+    t = Math.max(0, Math.min(1, Number(t) || 0));
+    let pa = [parseInt(a.slice(1,3),16), parseInt(a.slice(3,5),16), parseInt(a.slice(5,7),16)];
+    let pb = [parseInt(b.slice(1,3),16), parseInt(b.slice(3,5),16), parseInt(b.slice(5,7),16)];
+    return '#' + pa.map((x, i) => Math.round(x + (pb[i] - x) * t).toString(16).padStart(2, '0')).join('');
+}
+function updatePvpButtonTone() {
+    let btn = document.getElementById('btn-pvp');
+    if (!btn) return;
+    let align = (typeof pvpClampAlignment === 'function') ? pvpClampAlignment(player && player.alignmentValue) : Math.max(-32767, Math.min(32767, Math.round(Number(player && player.alignmentValue) || 0)));
+    let kind = (typeof pvpAlignmentKind === 'function') ? pvpAlignmentKind(align) : (align >= 1000 ? 'justice' : (align <= -1000 ? 'evil' : 'neutral'));
+    let bg = '#4b5563', border = '#6b7280', fg = '#f1f5f9';
+    if (kind === 'justice') {
+        let t = Math.max(0, Math.min(1, (align - 1000) / (32767 - 1000)));
+        bg = _pvpTabMix('#1e3a8a', '#3b82f6', t);
+        border = _pvpTabMix('#2563eb', '#93c5fd', t);
+        fg = '#eff6ff';
+    } else if (kind === 'evil') {
+        let t = Math.max(0, Math.min(1, (Math.abs(align) - 1000) / (32767 - 1000)));
+        bg = _pvpTabMix('#7f1d1d', '#ef4444', t);
+        border = _pvpTabMix('#b91c1c', '#fecaca', t);
+        fg = '#fff1f2';
+    }
+    let top = _pvpTabMix(bg, '#e2e8f0', 0.14);
+    let shine = _pvpTabMix(bg, '#f8fafc', 0.24);
+    let notch = _pvpTabMix(bg, '#020617', 0.26);
+    let lower = _pvpTabMix(bg, '#f8fafc', 0.10);
+    let bottom = _pvpTabMix(bg, '#020617', 0.34);
+    btn.style.background = (kind === 'neutral')
+        ? 'linear-gradient(135deg, #565d68 0%, #6b7280 26%, #3f4651 48%, #5a6270 72%, #313740 100%)'
+        : `linear-gradient(135deg, ${top} 0%, ${shine} 26%, ${notch} 48%, ${lower} 72%, ${bottom} 100%)`;
+    btn.style.color = fg;
+    btn.style.borderColor = border;
+    btn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.22), 0 1px 2px rgba(0,0,0,.35)';
+}
+function renderPvpTab() {
+    let div = document.getElementById('tab-pvp');
+    if (!div || !player || !player.cls) return;
+    if (typeof pvpEnsureState === 'function') pvpEnsureState();
+    updatePvpButtonTone();
+    let align = (typeof pvpClampAlignment === 'function') ? pvpClampAlignment(player.alignmentValue) : (Number(player.alignmentValue) || 0);
+    let color = (typeof pvpAlignmentColor === 'function') ? pvpAlignmentColor(align) : '#fff';
+    let label = (typeof pvpAlignmentLabel === 'function') ? pvpAlignmentLabel(align) : '中立';
+    let cost = (typeof PVP_REVENGE_COST !== 'undefined') ? PVP_REVENGE_COST : 100000;
+    let pvpOn = !!player.pvpOn;
+    let pvpBoxCls = pvpOn ? 'bg-red-950/70 border-red-600' : 'bg-slate-900/80 border-slate-700';
+    let pvpTextCls = pvpOn ? 'text-red-300' : 'text-slate-100';
+    let pvpHintCls = pvpOn ? 'text-red-200' : 'text-slate-400';
+    let rows = (player.pvpRevengeList || []).map((r, i) => {
+        let a = (typeof pvpClampAlignment === 'function') ? pvpClampAlignment(r.alignmentValue) : (Number(r.alignmentValue) || 0);
+        let n = (typeof pvpNameHtml === 'function') ? pvpNameHtml(r.n, a, 'font-bold') : `<span class="font-bold">${_pvpTabEsc(r.n)}</span>`;
+        let chasing = player.trollPlayers && player.trollPlayers.some(t => t && t.n === r.n && (t.pvpRevenge || t.noExpire));
+        let disabled = (chasing || player.gold < cost) ? 'disabled' : '';   // 🐛 v3.5.74 稽核修#1：追殺中一併鎖定按鈕（原只擋金幣不足→重按每次白扣 10 萬）
+        let _nArg = encodeURIComponent(r.n).replace(/'/g, '%27');   // 🐛 v3.5.74 稽核修#2：onclick 改帶名字（名單於戰鬥中可能移除位移·index 會指錯人）
+        return `<div class="bg-slate-900/80 border border-slate-700 rounded p-3 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <div class="truncate">${n}</div>
+                <div class="text-xs text-slate-500 mt-1">${_pvpTabEsc(r.avatar || '男戰士')}・死亡紀錄 ${Math.max(1, Number(r.deaths) || 1)}${chasing ? '・追殺中' : ''}</div>
+            </div>
+            <button class="btn shrink-0 px-3 py-2 text-sm font-bold ${disabled ? 'opacity-50' : 'bg-red-900 hover:bg-red-800 border-red-600 text-red-100'}" ${disabled} onclick="pvpRevenge(decodeURIComponent('${_nArg}'))">${chasing ? '追殺中' : '復仇 100,000'}</button>
+        </div>`;
+    }).join('');
+    div.innerHTML = `
+        <div class="flex flex-col gap-3">
+            <div class="bg-slate-900/80 border border-slate-700 rounded p-3">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <div class="text-slate-400 text-xs">性向值</div>
+                        <div class="text-lg font-bold" style="color:${color};text-shadow:0 0 8px rgba(0,0,0,.75);">${label} ${align.toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="${pvpBoxCls} border rounded p-3">
+                <label class="flex items-center justify-between gap-3 cursor-pointer">
+                    <span class="font-bold ${pvpTextCls}">是否開啟 PVP</span>
+                    <input type="checkbox" class="w-5 h-5 accent-red-600" ${pvpOn ? 'checked' : ''} onchange="setPvpMode(this.checked)">
+                </label>
+                <div class="text-xs ${pvpHintCls} mt-2">開啟後，野外戰鬥有 1% 機率遭遇玩家 NPC。</div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div class="font-bold text-amber-200">復仇名單</div>
+                <div class="text-xs text-slate-500">${(player.pvpRevengeList || []).length} / 20</div>
+            </div>
+            ${rows || '<div class="text-slate-500 text-sm bg-slate-900/60 border border-slate-800 rounded p-4 text-center">目前沒有復仇目標。</div>'}
+        </div>`;
+}
+function setPvpMode(on) {
+    if (typeof pvpEnsureState === 'function') pvpEnsureState();
+    player.pvpOn = !!on;
+    saveGame();
+    renderPvpTab();
+}
+function pvpRevenge(i) {
+    if (typeof pvpEnsureState === 'function') pvpEnsureState();
+    let list = player.pvpRevengeList || [];
+    let r = (typeof i === 'string') ? list.find(x => x && x.n === i) : list[i];   // 🐛 v3.5.74 稽核修#2：以名字定位（index 僅舊呼叫相容）
+    let cost = (typeof PVP_REVENGE_COST !== 'undefined') ? PVP_REVENGE_COST : 100000;
+    if (!r || player.gold < cost) return;
+    if (player.trollPlayers && player.trollPlayers.some(t => t && t.n === r.n && (t.pvpRevenge || t.noExpire))) { renderPvpTab(); return; }   // 🐛 v3.5.74 稽核修#1：追殺中不重複扣款（雙保險·UI 已 disable）
+    player.gold -= cost;
+    if (typeof pvpMarkForChase === 'function') pvpMarkForChase(r);
+    if (typeof logTrollEncounterTrashTalk === 'function') logTrollEncounterTrashTalk(r.n);
+    logSys(`<span class="text-red-300 font-bold">你花費 ${cost.toLocaleString()} 金幣，對 ${_pvpTabEsc(r.n)} 發起復仇追殺。</span>`);
+    saveGame();
+    updateUI();
+    renderPvpTab();
+}
 function switchTab(t, btn) {
     Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     // 👇 更新陣列名單
-    ['stats', 'equip', 'weapons', 'skill', 'armors', 'items', 'audit', 'automation'].forEach(id => { let _e = document.getElementById(`tab-${id}`); if(_e) _e.classList.add('hidden'); });   // 🔧 v2.6.74 自動化設定改分頁內嵌（tab-automation）
+    ['stats', 'equip', 'weapons', 'skill', 'armors', 'items', 'audit', 'pvp', 'automation'].forEach(id => { let _e = document.getElementById(`tab-${id}`); if(_e) _e.classList.add('hidden'); });   // 🔧 v2.6.74 自動化設定改分頁內嵌（tab-automation）
     document.getElementById(`tab-${t}`).classList.remove('hidden');
     if(typeof setEquipmentPanelEmbedded === 'function') setEquipmentPanelEmbedded(t === 'equip');
     if(t === 'audit' && typeof renderAuditTab === 'function') renderAuditTab();
+    if(t === 'pvp' && typeof renderPvpTab === 'function') renderPvpTab();
 }
 
 // ===== 🤝 協力傭兵隊伍面板（Phase 1：顯示血/魔/經驗條＋每傭兵攻擊技能/治癒魔法設定）=====

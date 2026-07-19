@@ -1901,7 +1901,10 @@ const TOWN_NPC_SPOTS = {
     // 時空裂痕入口：入口告示=中央圓形石紋
     town_rift: [[48, 58], [30, 50], [66, 46]],
     // 🏰 v3.3.9 三攻城城堡（用戶新補背景圖·依圖避開牆壁/水池/柱子/王座/側房家具）
-    town_kent_castle: [[44, 40], [56, 40], [42, 48], [58, 48], [47, 54], [55, 54], [45, 60], [57, 60]],   // 🏰 v3.3.10 王座在頂端中央→NPC 上移聚集近王座(盟主另由 override 釘王座前地毯)·避兩側房/立柱
+    // 🏰 v3.5.78 肯特城重排（用戶要求「站位增加距離·不站牆壁/物件」）：原 8 點擠在 x42-58/y40-60（最近間距僅4%）且 [47,54]貼(44,60)石柱、[58,48]貼(60.5,52)石柱→改王座大廳環狀站位（最近間距≥8%·多數≥10%）。
+    //   格線實測：台基 x47-62/y22-33·藍毯縱段 x50-56.5/y33-68 後折向左下·石柱 (37.5,52)/(44,60)/(41,70)/(60.5,52)/(68.5,44)/(75.5,40)·右下書房牆沿 (60,70)→(78,52)——全點落在空曠石地/地毯，避柱避牆避燈架。
+    //   對位：尼奇=台基左下石地｜巴歐=台基右下石地｜傭兵公會=左中石地(柱間)｜伊賽馬利=右中石地｜潘朵拉=地毯轉折處｜守衛隊長=右下石地(書房牆前)｜第7/8格=地毯中段(無盟主時奧貝勒站前者·有盟主時奧貝勒站後者·盟主本身走 override 釘 [50,35])
+    town_kent_castle: [[42, 37], [65, 36], [43, 52], [66, 54], [48, 67], [61, 61], [53, 45], [55, 55]],
     town_windwood_castle: [[40, 42], [56, 42], [43, 50], [55, 50], [48, 48]],   // 🏰 v3.3.10 祭壇在頂端中央→NPC 上移近祭壇(中央十字綠毯上緣)
     town_heine_castle: [[55, 40], [63, 39], [54, 49], [62, 48], [50, 44], [67, 44]]   // 🏰 v3.3.10 王座在頂端中央(反射水池後)→NPC 上移聚集近王座·守在水渠右側石地(避水池/水渠·盟主 override 釘階台前)
 };
@@ -2000,7 +2003,7 @@ function renderTownNPCMap(townId) {
     vis.forEach((npc, i) => {
         let ov = ovr[npc.id];
         let p = ov ? { x: ov[0], y: ov[1] } : (pos[i] || { x: 50, y: 60 });
-        // 玩家 NPC 使用 classanim 的無武器正面 idle，本體與影子各自同步播放。
+        // 玩家 NPC 使用 classanim 的無武器 idle（三方向隨機·由 wanderingBuyerSpriteData 依 id 決定），本體與影子各自同步播放。
         if (npc._wanderer && typeof wanderingBuyerSpriteData === 'function') {
             let spr = wanderingBuyerSpriteData(npc);
             let body0 = spr.frames && spr.frames[0] ? spr.frames[0].src : '';
@@ -2008,8 +2011,10 @@ function renderTownNPCMap(townId) {
             let el = document.createElement('div');
             el.className = 'town-npc wandering-player';
             el.style.left = p.x + '%'; el.style.top = p.y + '%'; el.style.zIndex = Math.round(p.y * 10);
+            let align = (typeof pvpClampAlignment === 'function') ? pvpClampAlignment(npc.alignmentValue) : Math.max(-32767, Math.min(32767, Math.round(Number(npc.alignmentValue) || 0)));
+            let nameHtml = (typeof pvpNameHtml === 'function') ? pvpNameHtml(npc.n, align, 'tn-name') : '<span class="tn-name">' + npc.n + '</span>';
             el.innerHTML =
-                '<div class="tn-label"><span class="tn-name">' + npc.n + '</span><span class="tn-title">[玩家收購]</span></div>' +
+                '<div class="tn-label">' + nameHtml + '<span class="tn-title">[玩家收購]</span></div>' +
                 '<img class="tn-shadow" src="' + shadow0 + '" alt="" onload="this.parentElement.classList.add(\'has-tn-shadow\')" onerror="this.remove()">' +
                 '<img class="tn-body" src="' + body0 + '" alt="">';
             el.onclick = () => openWanderingBuyerDialog(npc.id);

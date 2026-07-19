@@ -1,4 +1,4 @@
-function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
+function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false, deferUi=false) {
     // 卷軸變祝福／詛咒機率：各 1%（互斥）
     if (!forceNormal && (id === 'scroll_weapon' || id === 'scroll_armor')) {
         let _r = lootRng('scrollvar');   // 🎲 committed RNG（防 SL 重抽卷軸祝福/詛咒變體）
@@ -62,12 +62,12 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
             logSys(`<span class="sys-item-gain">獲得物品: <span class="font-bold">${getItemFullName(itemInfo)}</span></span>`);
         }
     }
-    renderTabs();
+    if (!deferUi) renderTabs();
     if(DB.items[id] && DB.items[id].grantSkills) { calcStats(); renderSkillSelects(); }   // 取得授予技能的頭盔：立即生效
     
     if(typeof auditTrackGain === 'function') auditTrackGain(itemInfo);   // 統計：掉落計數
     try { if (_vfxLootCtx && d && d.gachaWeight === 1 && typeof vfxRareDrop === 'function') vfxRareDrop(d.n); } catch(e){}   // ✨ VFX：潘朵拉權重=1 的稀有掉落金色閃光
-    try { if (typeof autoSortInventory === 'function') autoSortInventory(); } catch (e) {}   // 🔧 v2.6.73 獲得物品時自動排列背包（每 10 秒最多 1 次·節流在函式內）
+    try { if (!deferUi && typeof autoSortInventory === 'function') autoSortInventory(); } catch (e) {}   // 🔧 v2.6.73 獲得物品時自動排列背包（每 10 秒最多 1 次·節流在函式內）；批次發放可延後至交易完成再統一重繪
     return itemInfo; // 👈 讓拉霸機可以讀取最終產生的物品
 }
 
@@ -282,8 +282,34 @@ function batchUseItem(u) {
     let item = player.inv.find(i => i.uid === u);
     if (!item) return;
     let d = DB.items[item.id];
-    if (!d || !d.batchUse || d.eff !== 'expsoul') return;
+    if (!d || !d.batchUse) return;
     if (player.dead) { logSys(`死亡狀態無法使用道具，請先復活。`); return; }
+    // 💊 v3.5.50 萬能藥批量使用：一次輸入數量，自動夾限「持有數／60 瓶總額度／該屬性距上限 60」三者取小
+    if (d.eff === 'panacea') {
+        const STAT_CN = { str:'力量', dex:'敏捷', con:'體質', int:'智力', wis:'精神', cha:'魅力' };
+        let st = d.pstat, cap = 60;
+        let remainQuota = 60 - (player.panaceaUsed || 0);
+        let remainStat = cap - naturalStat(st);
+        if (remainQuota <= 0) { logSys(`萬能藥最多只能使用 60 瓶，使用回憶蠟燭後可重新使用。`); return; }
+        if (remainStat <= 0) { logSys(`${STAT_CN[st]}已達上限（${cap}），無法再使用 ${d.n}。`); return; }
+        let maxN = Math.min(item.cnt, remainQuota, remainStat);
+        let rawP = prompt(`要使用幾瓶 ${d.n}？（持有 ${item.cnt} 瓶·${STAT_CN[st]}距上限 ${remainStat}·萬能藥剩餘額度 ${remainQuota} 瓶·本次最多 ${maxN} 瓶）`, maxN);
+        if (rawP === null) return;
+        let nP = Math.floor(Number(rawP));
+        if (!nP || nP <= 0) { logSys('已取消批量使用。'); return; }
+        nP = Math.min(nP, maxN);
+        if (!player.panacea) player.panacea = { str:0, dex:0, con:0, int:0, wis:0, cha:0 };
+        player.panacea[st] = (player.panacea[st] || 0) + nP;
+        player.panaceaUsed = (player.panaceaUsed || 0) + nP;
+        item.cnt -= nP;
+        if (item.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== item.uid);
+        calcStats();
+        logSys(`使用了 <span class="${d.c || 'text-pink-300'} font-bold">${d.n}</span> ×${nP}，${STAT_CN[st]} 永久 +${nP}！（萬能藥已使用 ${player.panaceaUsed}/60）`);
+        renderTabs(); updateUI(); saveGame();
+        if (!document.getElementById('item-modal').classList.contains('hidden')) closeModal();
+        return;
+    }
+    if (d.eff !== 'expsoul') return;
     let raw = prompt(`要使用幾個 ${d.n}？（持有 ${item.cnt} 個·每個 +${(d.expGain || 1000000).toLocaleString()} 經驗）`, item.cnt);
     if (raw === null) return;
     let n = Math.floor(Number(raw));
@@ -298,7 +324,7 @@ function batchUseItem(u) {
     renderTabs(); updateUI(); saveGame();
     if (!document.getElementById('item-modal').classList.contains('hidden')) closeModal();
 }
-function useItem(u, silent = false, keepModal = false) {   // keepModal:自動觸發(如外掛自動瞬移)非 silent 使用時,不關玩家開著的物品視窗
+function useItem(u, silent = false, keepModal = false) {   // 🔌 加掛版補丁 keepModal:自動觸發(如外掛自動瞬移)非 silent 使用時,不關玩家開著的物品視窗
     let item = player.inv.find(i => i.uid === u);
     if (!item) return;
     if (player.dead) { if (!silent) logSys(`死亡狀態無法使用道具，請先復活。`); return; }   // 死亡(未復活前)鎖住手動使用
@@ -1166,6 +1192,7 @@ function _updateUIImpl() {
     if(state.ff) return; // 補跑期間不刷新畫面
     updatePrideFloorIndicator();   // 🗼 攀登中右上角顯示目前樓層（背景補跑後回到前景時同步）
     try { renderPandoraBanner(); } catch (e) {}   // 🔧 潘朵拉黑市稀有商品公告橫幅
+    try { if (typeof updatePvpButtonTone === 'function') updatePvpButtonTone(); } catch (e) {}
     try { renderSyslogPandora(); } catch (e) {}   // 🔧 系統日誌標題列右側：黑市拍賣中商品
     document.getElementById('st-lv').innerText = player.lv;
     { let _inTown = mapState.current.startsWith('town_');   // 🔧 村莊→藍色「出發」一鍵回上一張戰鬥地圖；戰鬥地圖→綠色回村/回城
@@ -1193,7 +1220,14 @@ function _updateUIImpl() {
     else if (player.cls === 'warrior') clsDisplayName = '戰士';   // ⚔️ 戰士職業名
     else if (player.cls === 'royal') clsDisplayName = '王族';   // 👑 王族職業名
     if(document.getElementById('st-classname')) document.getElementById('st-classname').innerText = clsDisplayName;   // 🏅 精通徽記已移除，僅顯示職業名
-    if(!window._editingName) document.getElementById('st-class').innerText = (player.name || '');   // 未取名則不顯示任何文字（仍可點擊命名）
+    let _nameEl = document.getElementById('st-class');
+    if(_nameEl) {
+        if(!window._editingName) _nameEl.innerText = (player.name || '');   // 未取名則不顯示任何文字（仍可點擊命名）
+        if (typeof pvpAlignmentColor === 'function') {
+            _nameEl.style.color = pvpAlignmentColor(player.alignmentValue);
+            _nameEl.style.textShadow = '0 0 6px rgba(0,0,0,.75)';
+        }
+    }
 
     // 處理背景圖片：全部職業／性別頭像統一使用 assets/character 對應的 PNG。
     let bgImageName = player.avatar || clsDisplayName;

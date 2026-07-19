@@ -38,13 +38,16 @@ function nowTaipeiFull() {
 
 export function stampSwVersion() {
   if (!existsSync(SW_FILE)) { console.warn('[stamp] 找不到 sw.js，略過'); return null; }
+  // ⚠ 先把 CRLF 正規化成 LF 再雜湊(與 stamp-code-versions 同理):Windows autocrlf checkout 的工作樹
+  //   是 CRLF、CI 是 LF,直接對位元組算會讓同一 commit 在兩邊得出不同 CODE_VERSION。
+  const norm = (p) => Buffer.from(readFileSync(p, 'utf8').replace(/\r\n/g, '\n'));
   const parts = [];
-  if (existsSync('index.html')) parts.push(readFileSync('index.html'));
-  if (existsSync('manifest.webmanifest')) parts.push(readFileSync('manifest.webmanifest'));
-  for (const f of readdirSync('.').filter((n) => /^afk-.*\.js$/.test(n)).sort()) parts.push(readFileSync(f));
+  if (existsSync('index.html')) parts.push(norm('index.html'));
+  if (existsSync('manifest.webmanifest')) parts.push(norm('manifest.webmanifest'));
+  for (const f of readdirSync('.').filter((n) => /^afk-.*\.js$/.test(n)).sort()) parts.push(norm(f));
   // 作者外部遊戲程式碼/樣式 js/*.js 與 css/*.css 也納入:作者改任何一支 → hash 變 → CODE_VERSION 變 → PWA 偵測得到更新(不會只更新外掛、漏掉遊戲本體/樣式)
   for (const dir of ['js', 'css']) {
-    if (existsSync(dir)) for (const f of readdirSync(dir).filter((n) => /\.(js|css)$/.test(n)).sort()) parts.push(readFileSync(dir + '/' + f));
+    if (existsSync(dir)) for (const f of readdirSync(dir).filter((n) => /\.(js|css)$/.test(n)).sort()) parts.push(norm(dir + '/' + f));
   }
   const hash = createHash('sha1').update(Buffer.concat(parts)).digest('hex').slice(0, 12);
   const version = 'code-' + hash;

@@ -20,7 +20,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const INDEX = join(ROOT, 'index.html');
 const CHECK_ONLY = process.argv.includes('--check');
 
-const hashOf = (rel) => createHash('sha1').update(readFileSync(join(ROOT, rel))).digest('hex').slice(0, 10);
+// ⚠ 先把 CRLF 正規化成 LF 再雜湊:Windows autocrlf checkout 會把工作樹換行改成 CRLF,
+//   對「磁碟位元組」直接算 → 同一 commit 在 Windows / CI(LF) 算出不同 ?v=,永遠打架。
+const hashOf = (rel) => createHash('sha1').update(readFileSync(join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n')).digest('hex').slice(0, 10);
 
 let html = readFileSync(INDEX, 'utf8');
 const stale = [];

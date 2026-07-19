@@ -54,12 +54,16 @@ for (const f of readdirSync(ROOT).filter((n) => /^afk-.*\.js$/.test(n))) {
 // ── 3. sw.js CODE_VERSION 是否最新(複製 stamp-sw-version.mjs 的算法)──
 try {
   const parts = [];
-  if (existsSync(resolve(ROOT, 'index.html'))) parts.push(readFileSync(resolve(ROOT, 'index.html')));
-  if (existsSync(resolve(ROOT, 'manifest.webmanifest'))) parts.push(readFileSync(resolve(ROOT, 'manifest.webmanifest')));
-  for (const f of readdirSync(ROOT).filter((n) => /^afk-.*\.js$/.test(n)).sort()) parts.push(readFileSync(resolve(ROOT, f)));
+  // ⚠ CRLF 正規化再雜湊,與 stamp-sw-version.mjs 同步(Windows 工作樹 CRLF vs CI LF)
+  const norm = (p) => Buffer.from(readFileSync(p, 'utf8').replace(/
+/g, '
+'));
+  if (existsSync(resolve(ROOT, 'index.html'))) parts.push(norm(resolve(ROOT, 'index.html')));
+  if (existsSync(resolve(ROOT, 'manifest.webmanifest'))) parts.push(norm(resolve(ROOT, 'manifest.webmanifest')));
+  for (const f of readdirSync(ROOT).filter((n) => /^afk-.*\.js$/.test(n)).sort()) parts.push(norm(resolve(ROOT, f)));
   for (const dir of ['js', 'css']) {
     const d = resolve(ROOT, dir);
-    if (existsSync(d)) for (const f of readdirSync(d).filter((n) => /\.(js|css)$/.test(n)).sort()) parts.push(readFileSync(resolve(d, f)));
+    if (existsSync(d)) for (const f of readdirSync(d).filter((n) => /\.(js|css)$/.test(n)).sort()) parts.push(norm(resolve(d, f)));
   }
   const want = 'code-' + createHash('sha1').update(Buffer.concat(parts)).digest('hex').slice(0, 12);
   const m = rd('sw.js').match(/const CODE_VERSION = '([^']*)';/);

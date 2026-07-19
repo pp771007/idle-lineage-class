@@ -8,8 +8,8 @@
  *        不捲動 → 入口全展開會擠爆、溢出被裁。故桌機收成「一顆 🔌 外掛工具 按鈕」,
  *        點了用 Modal 攤開全部入口(Modal 掛在 #main-menu 內,保留 `#main-menu …`
  *        scoped 樣式;桌機祖先無 transform,position:fixed 對齊 viewport 正常)。
- *      - 手機:首頁是可捲動單欄,入口自然往下排、不擠 → 維持原本「🔌 外掛」半透明
- *        外框(afk-plugin-frame),不改(手機版型現況良好,勿動)。
+ *      - 手機:首頁是可捲動單欄,入口自然往下排、不擠 → 不包外框,入口直接以
+ *        #main-menu 直接子元素依序排列,只套原版按鈕皮(使用者要求與原版同樣式)。
  *   3. 外掛入口按鈕套用原版首頁按鈕的皮(深藍漸層+金邊,抄 css/style.css 的
  *      #main-menu > button),讓外掛鈕與作者的按鈕風格一致。
  *
@@ -46,17 +46,6 @@
     'body:not(.m-mobile) #afk-brand-badge{position:static;left:auto;bottom:auto;transform:none;display:block;margin:6px auto 0;text-align:center;}',
     /* 手機(body.m-mobile;此版用 viewport=1180 縮放,純寬度 media query 失效,故靠 m-mobile class)：字略縮一點 */
     'body.m-mobile #afk-brand-badge .afk-brand-text{font-size:13px;letter-spacing:1px;}',
-
-    /* 外掛區外框(半透明、像遊戲內面板) */
-    '#afk-plugin-frame{position:relative;width:100%;max-width:20rem;margin:8px auto 0;padding:20px 14px 16px;',
-      'border:1px solid rgba(148,163,184,.30);border-radius:16px;background:rgba(15,23,42,.22);',
-      'box-shadow:inset 0 0 24px rgba(148,163,184,.05),0 4px 18px rgba(0,0,0,.20);',
-      'display:flex;flex-direction:column;gap:14px;align-items:center;}',
-    /* 框上的「外掛」標籤,坐在上緣(像 fieldset 標題) */
-    '#afk-plugin-frame .afk-frame-label{position:absolute;top:-12px;left:50%;transform:translateX(-50%);',
-      'padding:2px 14px;font-size:12.5px;font-weight:700;letter-spacing:2px;color:#cbd5e1;',
-      'background:linear-gradient(180deg,rgba(40,52,72,.96),rgba(28,38,56,.96));',
-      'border:1px solid rgba(148,163,184,.4);border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.4);white-space:nowrap;}',
 
     /* 外掛入口按鈕套原版皮:作者新登入頁的按鈕樣式只吃 #main-menu 的「直接子」button
        (css/style.css 的 #main-menu > button),我們的按鈕包在 row/外框裡吃不到 → 在這裡抄同一組
@@ -154,29 +143,18 @@
     menu.insertBefore(mq, menu.firstChild);
   }
 
-  // ---- 手機:外掛外框(inline,現況良好、勿動)------------------------------
+  // ---- 手機:入口直接排在 #main-menu(不包外框,與原版按鈕同樣式)-----------
   var _busy = false;
-  // 找某 selector 的元素(可能已在外框內、或還在 #main-menu 直接子層)
-  function findEl(menu, sel) {
-    return document.querySelector('#afk-plugin-frame > ' + sel) || menu.querySelector(':scope > ' + sel);
-  }
-  function ensureFrame() {
-    var menu = document.getElementById('main-menu'); if (!menu) return;
+  function ensureInline(menu) {
     var els = [];
-    FRAME_ORDER.forEach(function (s) { var el = findEl(menu, s); if (el) els.push(el); });
+    FRAME_ORDER.forEach(function (s) { var el = menu.querySelector(':scope > ' + s); if (el) els.push(el); });
     if (!els.length) return;   // 外掛元素都還沒 append 進來
-    var frame = document.getElementById('afk-plugin-frame');
-    if (!frame) {
-      frame = document.createElement('div'); frame.id = 'afk-plugin-frame';
-      var label = document.createElement('div'); label.className = 'afk-frame-label'; label.textContent = '🔌 外掛';
-      frame.appendChild(label);
-      // 外框插在「#main-menu 內最早出現的那個外掛元素」位置(=作者按鈕/說明之後)
-      var firstInMenu = null;
-      FRAME_ORDER.forEach(function (s) { if (!firstInMenu) { var el = menu.querySelector(':scope > ' + s); if (el) firstInMenu = el; } });
-      menu.insertBefore(frame, firstInMenu);
+    // 已照 FRAME_ORDER 排好就不動 → appendChild 不空轉,MutationObserver 不迴圈
+    var sorted = true;
+    for (var i = 1; i < els.length; i++) {
+      if (!(els[i - 1].compareDocumentPosition(els[i]) & Node.DOCUMENT_POSITION_FOLLOWING)) { sorted = false; break; }
     }
-    // 依 FRAME_ORDER 重新 append → 框內順序固定(把散在 #main-menu 的也一起收進來;idempotent)
-    els.forEach(function (el) { frame.appendChild(el); });
+    if (!sorted) els.forEach(function (el) { menu.appendChild(el); });
   }
 
   // ---- 桌機:一顆按鈕 + Modal 收納外掛入口 ---------------------------------
@@ -215,9 +193,6 @@
     var body = document.getElementById('afk-plugin-modal-body');
     // 把散在 #main-menu 各處的外掛入口依 FRAME_ORDER 收進 Modal(idempotent;移動不動 menu 直接子→不觸發 observer 迴圈)
     FRAME_ORDER.forEach(function (s) { var el = menu.querySelector(s); if (el) body.appendChild(el); });
-    // 清掉手機外框(切窄視窗回桌機的殘留)
-    var frame = document.getElementById('afk-plugin-frame');
-    if (frame) { while (frame.firstChild) { if (frame.firstChild.className === 'afk-frame-label') frame.removeChild(frame.firstChild); else body.appendChild(frame.firstChild); } frame.remove(); }
   }
 
   // 切回手機:把 Modal 拆掉、入口還原成 #main-menu 直接子,交還給 ensureFrame
@@ -234,7 +209,7 @@
       injectCss();   // 🚫 「加掛版」雲朵徽章與公告跑馬燈已移除(使用者要求)——只留外掛外框收納
       var menu = document.getElementById('main-menu');
       if (menu) {
-        if (isMobileNow()) { teardownModalUI(menu); ensureFrame(); }
+        if (isMobileNow()) { teardownModalUI(menu); ensureInline(menu); }
         else ensureModalUI(menu);
       }
     } catch (e) { /* 視覺外掛,出錯不影響遊戲 */ }

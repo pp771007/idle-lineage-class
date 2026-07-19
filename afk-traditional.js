@@ -72,52 +72,51 @@
     // ── 對外 API ──────────────────────────────────────────────
     window.AFK_TRAD = { isOn: isOn, setOn: setOn, roll: rollEnhance };
 
-    // ── UI ──（遊戲內小開關已移除；改由首頁「⚙ 其他功能 → 傳統模式(偽) 設定」逐存檔位設定）
-    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-
-    // 首頁「⚙ 其他功能」設定選單註冊一個「各角色設定」面板（可在未載入時逐存檔位設定）
-    window.AFK_SETTINGS = window.AFK_SETTINGS || { _items: [], add: function (it) { this._items.push(it); } };
-    AFK_SETTINGS.add({ label: '🏛️ 傳統模式(偽) 設定', onClick: openSlotPanel });
-    function openSlotPanel() {
-        if (document.getElementById('afk-trad-overlay')) return;
-        var ov = document.createElement('div');
-        ov.id = 'afk-trad-overlay';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:calc(var(--orig-bar-h,0px) + 14px) 12px 12px;';
-        if (window.AFK_TOGGLES && AFK_TOGGLES.applyBannerPad) AFK_TOGGLES.applyBannerPad(ov);   // 開啟當下實測橫幅高度覆寫 padding-top
-        var card = document.createElement('div');
-        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:480px;width:100%;max-height:calc(100vh - var(--orig-bar-h,0px) - 30px);overflow:auto;';
-        var max = (typeof SAVE_SLOT_MAX !== 'undefined') ? SAVE_SLOT_MAX : 8;
-        var rows = '';
-        for (var s = 1; s <= max; s++) {
-            var nm = slotName(s);
-            var on = isOn(s);
-            rows += '<label style="display:flex;align-items:center;gap:12px;padding:9px 10px;border:1px solid #1e293b;border-radius:10px;margin-bottom:6px;cursor:pointer;background:#0b1222;">'
-                + '<input type="checkbox" data-slot="' + s + '" ' + (on ? 'checked' : '') + ' style="width:18px;height:18px;flex:none;accent-color:#a78bfa;">'
-                + '<span style="flex:1;">存檔 ' + s + (nm ? '　<span style="color:#94a3b8;">' + esc(nm) + '</span>' : '<span style="color:#475569;">（空）</span>') + '</span></label>';
+    // ── UI：選角卡片右上角「傳統」checkbox ──────────────────────
+    //   卡片每次 renderLoadSelect 都 innerHTML 重建 → wrap 後每次重繪重注入（同 afk-slotinfo 手法）。
+    //   只掛「有角色」的卡；點擊 stopPropagation，免得觸發選卡/雙擊進入。
+    function decorateCards() {
+        var grid = document.getElementById('load-slot-grid');
+        if (!grid) return;
+        var cards = grid.querySelectorAll('.load-slot-card.filled');
+        for (var i = 0; i < cards.length; i++) {
+            (function (card) {
+                var old = card.querySelector('.afk-trad-cb'); if (old) old.remove();
+                var slot = parseInt(card.getAttribute('data-slot'), 10);
+                if (!slot) return;
+                try { if (getComputedStyle(card).position === 'static') card.style.position = 'relative'; } catch (e) {}
+                var lab = document.createElement('span');
+                lab.className = 'afk-trad-cb';
+                lab.title = '傳統模式(偽)：開啟的角色，打到／製作／潘朵拉來的裝備自帶隨機強化值（商店買的維持 +0）。隨時可改，只影響之後拿到的裝備。';
+                // 位置用百分比:神龕邊框圖(#load-select-overlay,z-index 同層但 DOM 較後)會蓋住卡片外緣,要落在拱門開口內
+                lab.style.cssText = 'position:absolute;top:9%;right:10%;z-index:4;display:flex;align-items:center;gap:3px;padding:2px 5px;border-radius:7px;background:rgba(2,6,23,.78);font-size:.62rem;font-weight:700;color:#e2e8f0;cursor:pointer;text-shadow:0 1px 2px #000;';
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = isOn(slot);
+                cb.style.cssText = 'width:13px;height:13px;flex:none;accent-color:#a78bfa;cursor:pointer;margin:0;';
+                var txt = document.createElement('span');
+                txt.textContent = '傳統';
+                lab.appendChild(cb); lab.appendChild(txt);
+                // 阻斷冒泡：不讓點擊變成「選卡/雙擊進入」；點文字也切換
+                lab.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (e.target !== cb) { cb.checked = !cb.checked; }
+                    setOn(slot, cb.checked);
+                });
+                lab.addEventListener('dblclick', function (e) { e.stopPropagation(); });
+                card.appendChild(lab);
+            })(cards[i]);
         }
-        card.innerHTML = '<div style="padding:16px 18px;border-bottom:1px solid #1e293b;">'
-            + '<div style="font-size:17px;font-weight:700;">🏛️ 傳統模式(偽)</div>'
-            + '<div style="font-size:12px;color:#94a3b8;margin-top:3px;line-height:1.5;">開啟的角色，打到／製作／潘朵拉來的裝備會自帶隨機強化值（商店買的維持 +0），手動強化照常可用。隨時可改，只影響之後拿到的裝備。</div></div>'
-            + '<div style="padding:10px 14px;">' + rows + '</div>'
-            + '<div style="padding:12px 16px;border-top:1px solid #1e293b;text-align:right;"><button id="afk-trad-close" style="background:#0ea5e9;border:none;color:#04263a;font-weight:700;border-radius:8px;padding:8px 16px;cursor:pointer;">完成</button></div>';
-        ov.appendChild(card);
-        document.body.appendChild(ov);
-        function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
-        ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
-        card.querySelector('#afk-trad-close').addEventListener('click', close);
-        card.querySelectorAll('input[data-slot]').forEach(function (cb) {
-            cb.addEventListener('change', function () {
-                setOn(parseInt(cb.getAttribute('data-slot'), 10), cb.checked);
-            });
-        });
     }
-    // 讀某存檔位角色名（唯讀，不動存檔）；沿用核心 slotSummary 若有，否則留空
-    function slotName(s) {
-        try {
-            if (typeof slotSummary === 'function') { var sm = slotSummary(s); return sm && sm.name ? sm.name : (sm && sm.cls ? sm.cls : ''); }
-        } catch (e) {}
-        return '';
+    function wrapRenderLoad() {
+        if (typeof window.renderLoadSelect !== 'function' || window.renderLoadSelect.__afkTrad) return false;
+        var orig = window.renderLoadSelect;
+        var wrapped = function () { orig.apply(this, arguments); try { decorateCards(); } catch (e) {} };
+        wrapped.__afkTrad = true;
+        window.renderLoadSelect = wrapped;
+        return true;
     }
+    var okUi = wrapRenderLoad();
 
-    try { console.log('[AFK-traditional] hooks OK — 傳統模式(偽)/自動衝裝已就緒（核心鉤子 __afkTradRollEn）。'); } catch (e) {}
+    try { console.log('[AFK-traditional] hooks OK — 傳統模式(偽)/自動衝裝已就緒（核心鉤子 __afkTradRollEn；選角卡 checkbox ' + (okUi ? '✓' : '✗') + '）。'); } catch (e) {}
 })();

@@ -954,6 +954,7 @@
     { k: 'kingroom', n: '軍王之室' },
     { k: 'pledge', n: '血盟' },
     { k: 'relicmarket', n: '遺物市場' },
+    { k: 'pvp', n: 'PVP／性向值' },
     { k: 'mode', n: '遊戲模式' },
     { k: 'npc', n: 'NPC總覽' }
   ];
@@ -1130,6 +1131,7 @@
     if (key === 'load') return renderLoad();
     if (key === 'pledge') return renderPledge();
     if (key === 'relicmarket') return renderRelicMarket();
+    if (key === 'pvp') return renderPvp();
     return '';
   }
 
@@ -1186,6 +1188,7 @@
     { key: 'kingroom', cls: false, label: '軍王之室' },
     { key: 'pledge', cls: false, label: '血盟' },
     { key: 'relicmarket', cls: false, label: '遺物市場' },
+    { key: 'pvp', cls: false, label: 'PVP／性向值' },
     { key: 'mode', cls: false, label: '遊戲模式' },
     { key: 'npc', cls: false, label: 'NPC總覽' }
   ];
@@ -2897,6 +2900,66 @@
       ]) +
       wDesc('委託的材料<b>不指定強化值</b>，道具欄或倉庫都能交。交齊就直接拿到那件遺物。') +
       wDesc('所以遺物有<b>兩種</b>取得途徑：打怪 0.0001% 的專屬掉落，或是用這個布告欄「指定要一件沒有的」。'));
+
+    return out;
+  }
+
+  // PVP / 性向值(本檔手動維護;上游 js/03 pvp* 系列 + js/04 playerNpc* + js/10 renderPvpTab)。
+  //   何時要更新:上游改 PVP_ALIGN_* / PVP_REVENGE_* 常數、噴裝率分段表、或性向加成公式時。
+  function renderPvp() {
+    var AMIN = (typeof PVP_ALIGN_MIN !== 'undefined') ? PVP_ALIGN_MIN : -32767;
+    var AMAX = (typeof PVP_ALIGN_MAX !== 'undefined') ? PVP_ALIGN_MAX : 32767;
+    var EVIL = (typeof PVP_ALIGN_EVIL !== 'undefined') ? PVP_ALIGN_EVIL : -1000;
+    var JUST = (typeof PVP_ALIGN_JUSTICE !== 'undefined') ? PVP_ALIGN_JUSTICE : 1000;
+    var RCOST = (typeof PVP_REVENGE_COST !== 'undefined') ? PVP_REVENGE_COST : 100000;
+    var RMAX = (typeof PVP_REVENGE_MAX !== 'undefined') ? PVP_REVENGE_MAX : 20;
+
+    var out = '<div class="m-wiki-note">遊戲裡會出現<b>由電腦扮演的「玩家」</b>（頭上有名字、看起來像其他玩家的人形怪）。你打他們、他們打你，這就是 PVP。每個角色有一個<b>性向值</b>，決定你是<b>正義</b>還是<b>邪惡（紅名）</b>，會影響治癒效果、部分武器威力、死亡懲罰，還有你能不能放某些魔法。</div>';
+
+    out += wCard('⚖️ 性向值（善惡值）',
+      wTbl(['範圍', '狀態', '判定'], [
+        ['<b>+' + JUST.toLocaleString() + ' ～ +' + AMAX.toLocaleString() + '</b>', '<b>正義</b>', '名字顯示為正義色'],
+        ['−' + (Math.abs(EVIL) - 1).toLocaleString() + ' ～ +' + (JUST - 1).toLocaleString(), '中立', '一般'],
+        ['<b>' + AMIN.toLocaleString() + ' ～ ' + EVIL.toLocaleString() + '</b>', '<b>邪惡（紅名）</b>', '名字變紅']
+      ]) +
+      wDesc('<b>怎麼變動</b>：打<b>一般怪物</b>每隻 <b>+1</b>；<b>殺掉正義的玩家 −6,000</b>、<b>殺掉中立的玩家 −3,000</b>（殺已經是紅名的玩家不扣）。血盟敵人、攻城區內的擊殺都<b>不影響</b>性向值。'));
+
+    out += wCard('🎁 正義的好處 / 邪惡的代價',
+      wTbl(['性向', '影響', '細節'], [
+        ['<b>正義</b>', '治癒效果變強', '各級治癒術、體力回復術、全部治癒術、生命的祝福、治癒頭盔——恢復量最多 <b>+20%</b>（從 +' + JUST.toLocaleString() + ' 開始線性上升，滿正義 +' + AMAX.toLocaleString() + ' 才是滿的 +20%）'],
+        ['<b>正義</b>', '解鎖魔法', '<b>究極光裂術</b>需要性向值 <b>≥ +' + JUST.toLocaleString() + '</b> 才放得出來（傭兵看的是招募當下來源存檔的性向值，不足就改用普攻）'],
+        ['<b>邪惡</b>', '特定武器變強', '<b>吉爾塔斯之劍／魔杖</b>擊殺後的加成<b>依邪惡程度按比例給</b>——滿邪惡才拿得到劍 +10 傷害／魔杖 +20 魔法點數，中立與正義幾乎是 0'],
+        ['<b>邪惡</b>', '死亡會掉東西', '性向值 <b>低於 −10,000</b> 時，死亡有 <b>1% 機率遺失 1 件物品</b>（鎖定的、不可販賣的、攻城區內死亡都不會）']
+      ]));
+
+    out += wCard('🔴 PVP 開關與遭遇',
+      wDesc('在遊戲的「PVP」分頁可以自己開關。<b>開啟後，野外戰鬥有 1% 機率遭遇玩家 NPC</b>。') +
+      wDesc('另一個遭遇來源是<b>被叫賣玩家記仇</b>：嗆過對方之後的 2 小時內，野外／地監每次出怪有 <b>5% 機率</b>被他追殺（詳見「遺物市場」分頁）。') +
+      wTbl(['項目', '內容'], [
+        ['等級', '你的等級 ±10（被記仇追殺時每次再 +3，<b>沒有 100 級上限</b>）'],
+        ['經驗 / 金幣', '<b>都是 0</b>——打玩家 NPC 不會有經驗也不會掉金幣'],
+        ['你的收穫', '看下面的噴裝表'],
+        ['復仇名單', '被殺後會記進名單（最多 ' + RMAX + ' 筆），花 <b>' + RCOST.toLocaleString() + ' 金幣</b>可以指定找他報仇']
+      ]));
+
+    out += wCard('💀 打贏玩家 NPC 會掉什麼',
+      wDesc('<b>噴裝機率看對方的性向值——越邪惡的人身上越有搞頭</b>：') +
+      wTbl(['對方性向值', '噴裝機率'], [
+        ['−30,000 以下', '<b>10%</b>'],
+        ['−20,000 ～ −29,999', '9%'],
+        ['−10,000 ～ −19,999', '8%'],
+        ['0 ～ −9,999', '7%'],
+        ['+1 ～ +9,999', '6%'],
+        ['+10,000 ～ +19,999', '5%'],
+        ['+20,000 ～ +29,999', '4%'],
+        ['+30,000 以上', '<b>3%</b>']
+      ]) +
+      wDesc('另外還有<b>完全獨立的一次判定</b>：<b>0.001% 機率掉一件遺物</b>，而且是<b>從全部遺物裡等機率抽</b>（不看稀有度）——幸運暴走兔腳讓這個機率翻倍。這跟上面的噴裝<b>互不排擠</b>，可能同時中。') +
+      wDesc('⚠️ <b>攻城區內擊殺一律不掉任何東西</b>。'));
+
+    out += wCard('🗡️ 他們有多難打',
+      wDesc('玩家 NPC 有 8 種職業各 2 套模板，打法跟真人玩家一樣會放技能。普攻傷害是曲線值再乘倍率：<b>第一套 ×2.0、第二套 ×2.5</b>（<b>法師兩套都不乘</b>）。') +
+      wDesc('部分模板帶特殊招式：<b>反擊屏障</b>（騎士第二套：擋下一次直擊並<b>立刻反打一次</b>；持續傷害、寵物、召喚不會觸發）、<b>破壞盔甲加強版</b>（黑暗妖精第二套：讓你受到的一般攻擊傷害 <b>+58%</b>）、<b>汙濁之水</b>（妖精模板：你受到的治癒<b>全部減半</b>）。'));
 
     return out;
   }

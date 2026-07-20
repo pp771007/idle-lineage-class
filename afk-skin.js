@@ -25,7 +25,17 @@
   //   原作者+正版最後同步(#afk-syncinfo)置頂,接掉落查詢/小百科,再巴哈/Line(#afk-syncinfo-links),最後設定。
   var FRAME_ORDER = ['#afk-syncinfo', '.m-dex-entry-row', '.m-wiki-entry-row', '#afk-syncinfo-links', '#afk-stg-wrap'];
 
-  function isMobileNow() { return document.body.classList.contains('m-mobile'); }
+  // 🚨 不可只看 body.m-mobile：那個 class 由 afk-mobile 掛，而 afk-mobile 可以被玩家關掉
+  //    → 在手機上關掉「手機版面」就會被判成桌機，入口全被收進 Modal；而 Modal 用 position:fixed，
+  //      手機的祖先有 transform（縮放 viewport）會讓 fixed 失準 → 玩家看不到任何入口（回報過）。
+  //    afk-mobile 在時以它為準（它另有 UA/實測判斷），不在時用同一組規則自己判。
+  function isMobileNow() {
+    if (document.body.classList.contains('m-mobile')) return true;
+    try {
+      if (window.__afkm && typeof window.__afkm.isMobile === 'boolean') return window.__afkm.isMobile;
+      return (window.matchMedia && matchMedia('(pointer:coarse)').matches) || (window.innerWidth || 9999) <= 820;
+    } catch (e) { return false; }
+  }
 
   // ---- CSS ----------------------------------------------------------------
   var CSS = [

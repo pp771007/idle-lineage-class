@@ -148,15 +148,30 @@
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
     // ── 永遠可達的入口（逃生門）：左上角固定小按鈕（首頁 + 遊戲內都在；本按鈕不可被關）──
-    //   位置讓開非官方橫幅（--orig-bar-h，由 afk-mobile 量測；無橫幅則為 0）。
+    //   🚨 位置不可只靠 --orig-bar-h：那個變數是 afk-mobile 設的，而 afk-mobile 是「可以被玩家關掉」的外掛
+    //      → 關掉後變數留在 0，本按鈕就縮到橫幅底下完全點不到（逃生門失效＝玩家再也開不了開關面板）。
+    //      本函式自己量一次橫幅當保底，並持續跟著橫幅高度變化調整。
+    function bannerBottom() {
+        try {
+            var bar = document.getElementById('_orig_pbar');
+            if (bar) { var h = bar.getBoundingClientRect().height; if (h > 0) return Math.ceil(h) + 6; }
+        } catch (e) {}
+        return 0;
+    }
+    function syncEntryTop() {
+        var btn = document.getElementById('afk-toggles-entry'); if (!btn) return;
+        var varPx = 0;
+        try { varPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--orig-bar-h')) || 0; } catch (e) {}
+        btn.style.top = (Math.max(varPx, bannerBottom()) + 6) + 'px';   // 取兩者較大者：誰量到都不會被蓋
+    }
     function injectEntry() {
         if (document.getElementById('afk-toggles-entry')) return true;
         if (!document.body) return false;
         var btn = document.createElement('button');
         btn.id = 'afk-toggles-entry';
-        btn.textContent = '🎚️';
+        btn.textContent = '🎚️ 外掛';   // 只放 emoji 時玩家認不出是按鈕（回報過「左上角找不到」），補上文字
         btn.title = '外掛開關';
-        btn.style.cssText = 'position:fixed;left:6px;top:calc(var(--orig-bar-h,0px) + 6px);z-index:100001;background:rgba(15,23,42,.82);border:1px solid #334155;color:#cbd5e1;border-radius:8px;padding:4px 8px;font-size:17px;line-height:1;cursor:pointer;';
+        btn.style.cssText = 'position:fixed;left:6px;top:calc(var(--orig-bar-h,0px) + 6px);z-index:100001;background:rgba(15,23,42,.92);border:1px solid #64748b;color:#e2e8f0;border-radius:8px;padding:4px 9px;font-size:14px;font-weight:700;line-height:1.35;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.5);';
         // 再點一次=關閉(toggle):面板開著就收掉,沒開才開。
         btn.addEventListener('click', function () {
             var ov = document.getElementById('afk-toggles-overlay');
@@ -175,6 +190,7 @@
         var gs = document.getElementById('game-screen');
         var inGame = gs && !gs.classList.contains('hidden');
         btn.style.display = inGame ? 'none' : '';
+        syncEntryTop();   // 橫幅由遊戲 loop 晚注入、高度也會變（換行）→ 每秒跟著校正一次
     }
     syncEntryVisibility();
     setInterval(syncEntryVisibility, 1000);

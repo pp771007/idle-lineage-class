@@ -149,12 +149,15 @@
   };
   // 異常狀態中文：以遊戲自己的 STATUS_NAME 為主(新增狀態自動跟上、不會漏翻成 raw key)，本檔只留遊戲沒有或用詞更白話的覆寫。
   var STATUS_LABEL_OVERRIDE = {
-    blind: '盲目', broken: '破壞(易碎)', vacuum: '封印', magicseal: '封印',
+    broken: '破壞(易碎)', vacuum: '封印', magicseal: '封印',
     mrhalf: '魔防減半', armorbreak: '盔甲破壞'
   };
+  // 兩份來源都要讀:STATUS_NAME=怪身上的狀態、PLAYER_DEBUFF_NAME=玩家/傭兵會中的
+  //   (藥水霜化 potionFrost、汙濁之水 foulWater 只在後者,漏讀會在畫面上露英文 key)
   var STATUS_LABEL = (function () {
     var m = {};
     try { if (typeof STATUS_NAME !== 'undefined' && STATUS_NAME) Object.keys(STATUS_NAME).forEach(function (k) { m[k] = STATUS_NAME[k]; }); } catch (e) {}
+    try { if (typeof PLAYER_DEBUFF_NAME !== 'undefined' && PLAYER_DEBUFF_NAME) Object.keys(PLAYER_DEBUFF_NAME).forEach(function (k) { m[k] = PLAYER_DEBUFF_NAME[k]; }); } catch (e) {}
     Object.keys(STATUS_LABEL_OVERRIDE).forEach(function (k) { m[k] = STATUS_LABEL_OVERRIDE[k]; });
     return m;
   })();
@@ -951,6 +954,7 @@
     { k: 'tower', n: '傲慢之塔' },
     { k: 'oblivion', n: '遺忘之島' },
     { k: 'rift', n: '時空裂痕' },
+    { k: 'sunrise', n: '日出之國' },
     { k: 'kingroom', n: '軍王之室' },
     { k: 'pledge', n: '血盟' },
     { k: 'relicmarket', n: '遺物市場' },
@@ -1127,6 +1131,7 @@
     if (key === 'tower') return renderTower();
     if (key === 'oblivion') return renderOblivion();
     if (key === 'rift') return renderRift();
+    if (key === 'sunrise') return renderSunrise();
     if (key === 'kingroom') return renderKingroom();
     if (key === 'load') return renderLoad();
     if (key === 'pledge') return renderPledge();
@@ -1185,6 +1190,7 @@
     { key: 'tower', cls: false, label: '傲慢之塔' },
     { key: 'oblivion', cls: false, label: '遺忘之島' },
     { key: 'rift', cls: false, label: '時空裂痕' },
+    { key: 'sunrise', cls: false, label: '日出之國' },
     { key: 'kingroom', cls: false, label: '軍王之室' },
     { key: 'pledge', cls: false, label: '血盟' },
     { key: 'relicmarket', cls: false, label: '遺物市場' },
@@ -2960,6 +2966,51 @@
     out += wCard('🗡️ 他們有多難打',
       wDesc('玩家 NPC 有 8 種職業各 2 套模板，打法跟真人玩家一樣會放技能。普攻傷害是曲線值再乘倍率：<b>第一套 ×2.0、第二套 ×2.5</b>（<b>法師兩套都不乘</b>）。') +
       wDesc('部分模板帶特殊招式：<b>反擊屏障</b>（騎士第二套：擋下一次直擊並<b>立刻反打一次</b>；持續傷害、寵物、召喚不會觸發）、<b>破壞盔甲加強版</b>（黑暗妖精第二套：讓你受到的一般攻擊傷害 <b>+58%</b>）、<b>汙濁之水</b>（妖精模板：你受到的治癒<b>全部減半</b>）。'));
+
+    return out;
+  }
+
+  // 日出之國(本檔手動維護;上游 v3.5 起的時空裂痕第三區)。地圖與怪表由「地圖」「掉落查詢」自動列出,
+  //   這頁只寫「自動列不出來的機制」:變身鏈、妖魂用途、頭目特殊招式。
+  //   何時要更新:上游改 sr_* 怪的 transformHpPct / 妖魂配方 / 新增日出之國地圖時。
+  function renderSunrise() {
+    function mobLv(id) { try { return (DB.mobs[id] && DB.mobs[id].lv) || '?'; } catch (e) { return '?'; } }
+    function mobHp(id) { try { return ((DB.mobs[id] && DB.mobs[id].hp) || 0).toLocaleString(); } catch (e) { return '?'; } }
+    function mobNm(id) { try { return (DB.mobs[id] && DB.mobs[id].n) || id; } catch (e) { return id; } }
+    function pct(id) { try { return Math.round((DB.mobs[id].transformHpPct || 0.5) * 100) + '%'; } catch (e) { return '50%'; } }
+
+    var out = '<div class="m-wiki-note">「日出之國」是<b>時空裂痕</b>領域下的第三塊區域，共 <b>4 張地圖</b>，住的全是<b>妖怪</b>。<b>不需要鑰匙、也沒有進場條件</b>，從地圖選單直接去。完整怪表與掉落請用「掉落查詢」搜地圖名。</div>';
+
+    out += wCard('🗺️ 四張地圖',
+      wTbl(['地圖', '大致內容'], [
+        ['<b>日出之國城墎</b>', '入口區，等級最低的妖怪'],
+        ['<b>日出之國東之地</b>', '中段；頭目<b>' + mobNm('sr_tamamo') + '</b>（Lv.' + mobLv('sr_tamamo') + '）'],
+        ['<b>日出之國西之地</b>', '中後段；頭目<b>' + mobNm('sr_ushioni') + '</b>（Lv.' + mobLv('sr_ushioni') + '、HP ' + mobHp('sr_ushioni') + '）'],
+        ['<b>日出之國北之地</b>', '最深處；頭目<b>' + mobNm('sr_gashadokuro') + '</b>（Lv.' + mobLv('sr_gashadokuro') + '、HP ' + mobHp('sr_gashadokuro') + '）']
+      ]));
+
+    out += wCard('🦊 三段變身頭目：' + mobNm('sr_tamamo'),
+      wDesc('東之地的頭目<b>會變身兩次</b>，是同一場戰鬥的三個階段——<b>中間兩階打到 0 不會死，只會強制變成下一階並回滿血</b>。') +
+      wTbl(['階段', '等級', 'HP', '變身時機'], [
+        ['① ' + mobNm('sr_tamamo'), 'Lv.' + mobLv('sr_tamamo'), mobHp('sr_tamamo'), 'HP 低於 <b>' + pct('sr_tamamo') + '</b> 時變身'],
+        ['② ' + mobNm('sr_kyuubi'), 'Lv.' + mobLv('sr_kyuubi'), mobHp('sr_kyuubi'), 'HP 低於 <b>' + pct('sr_kyuubi') + '</b> 時變身'],
+        ['③ ' + mobNm('sr_sessyoseki'), 'Lv.' + mobLv('sr_sessyoseki'), mobHp('sr_sessyoseki'), '最終型態，打倒就結束']
+      ]) +
+      wDesc('⚠️ <b>前兩階完全沒有獎勵</b>：不給經驗、不掉金幣、不掉東西、也不掉卡片。<b>所有掉落都掛在第三階（殺生石）身上</b>，要一路打到最後才拿得到。') +
+      wDesc('卡片也一樣：<b>只有打倒最終階才有機會掉</b>，而且是從這條鏈的三張卡<b>隨機給一張</b>（普通／銀／金三個等級各自獨立判定）。') +
+      wDesc('逃跑或重新出怪都會<b>回到第一階</b>。在「掉落查詢」搜這三隻的任一個名字，看到的都是整條鏈合起來的掉落表。'));
+
+    out += wCard('👹 另外兩隻大頭目',
+      wDesc('<b>' + mobNm('sr_ushioni') + '</b>（西之地，Lv.' + mobLv('sr_ushioni') + '、HP ' + mobHp('sr_ushioni') + '）：<b>普通攻擊就會讓你中毒</b>（不是靠施法），中毒後每 3 秒扣一次血。') +
+      wDesc('<b>' + mobNm('sr_gashadokuro') + '</b>（北之地，Lv.' + mobLv('sr_gashadokuro') + '、HP ' + mobHp('sr_gashadokuro') + '、魔防 300）：招式<b>恐怖的面貌</b>會讓牠<b>隨機免疫「近距離／遠距離／魔法」其中一種傷害約 10 秒</b>——被免疫的那類傷害<b>完全打不進去</b>（含觸發法術、雙擊、副手、連射、共鳴、寵物與召喚，連致命的那一擊也會被擋掉）。<b>中毒、灼燒、出血這類持續傷害不受影響，照樣扣血</b>，所以牠開這招時可以先靠 DoT 磨。另有「<b>枯竭詛咒</b>」讓你中<b>藥水霜化</b>（喝藥回復量減半）。'));
+
+    out += wCard('🔮 妖魂：日出之國的專屬產出',
+      wTbl(['道具', '怎麼拿', '用途'], [
+        ['<b>' + (function(){try{return DB.items.mat_youkai_soul.n;}catch(e){return '封印的妖怪之魂';}})() + '</b>', '一般妖怪 <b>1%</b>、頭目 <b>5%</b>（牛鬼之子只有 0.1%）', '拿 <b>100 個</b>找希培利亞的<b>巴特爾</b>凝鍊成下面那個'],
+        ['<b>' + (function(){try{return DB.items.mat_gasha_soul.n;}catch(e){return '巨大骷髏的妖魂';}})() + '</b>', '巴特爾製作，或巨大骷髏 <b>1%</b> 直接掉', '使用後獲得 <b>' + (function(){try{return (DB.items.mat_gasha_soul.expGain||1000000).toLocaleString();}catch(e){return '1,000,000';}})() + ' 點經驗</b>（可一次用掉多個）']
+      ]) +
+      wDesc('妖魂的掉率<b>會吃掉落倍率</b>（席琳的世界 ×3、瘋狂的席琳世界 ×5、恩賜怪 ×10）。') +
+      wDesc('這一區的每隻妖怪也都有<b>自己的專屬遺物</b>，機率一樣是 <b>0.0001%</b>；想知道哪隻掉哪件，搜「掉落查詢」的怪物名。'));
 
     return out;
   }

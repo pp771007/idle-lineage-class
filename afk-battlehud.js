@@ -52,10 +52,13 @@
   function fitTop() {
     var gs = document.getElementById('game-screen'), strip = document.getElementById('m-status');
     if (!gs || !strip) return;
-    var bar = findBanner(), top = 0;
-    if (bar) top = Math.max(0, Math.ceil(bar.getBoundingClientRect().bottom - gs.getBoundingClientRect().top));
+    var bar = findBanner(), barBottom = bar ? Math.max(0, Math.ceil(bar.getBoundingClientRect().bottom)) : 0;
+    // 狀態列是 sticky in #game-screen → 要的是「橫幅底緣超出容器頂端多少」(容器已被讓位時為 0)
+    var top = Math.max(0, barBottom - Math.round(gs.getBoundingClientRect().top));
     var v = top + 'px';
     if (strip.style.top !== v) strip.style.top = v;
+    // 角色資訊彈窗是 fixed 貼視窗 → 要的是橫幅在視窗內的絕對底緣
+    document.documentElement.style.setProperty('--afk-hud-bar-h', barBottom + 'px');
   }
 
   function txt(id) { var e = document.getElementById(id); return e ? e.textContent.trim() : ''; }
@@ -79,9 +82,53 @@
         '<div class="ms-bar ms-mp"><i class="ms-bar-fill" id="ms-mp-bar"></i><span class="ms-bar-txt"><b>MP</b> <span id="ms-mp">--</span></span></div>' +
         // 🔮 席琳標記放血條右邊(＝分家版王冠的位置);血條是 flex:1 自動讓出這一格的寬度
         '<span class="ms-seg ms-sherine" id="ms-sherine" style="display:none"></span>' +
+        '<span class="ms-seg ms-info" title="點狀態列看完整角色資訊">ⓘ</span>' +
       '</div>' +
       '<div id="ms-exp"></div>';
     return d;
+  }
+
+  // --- 角色資訊彈窗 -----------------------------------------------------------
+  // 點狀態列 → 把桌機的 #status-panel「移進」彈窗(移動而非複製,值才會即時更新;名字也還能點 st-class
+  //   用原生 startEditName 改)。關閉時放回原位。
+  // 為什麼手機需要這個:afk-mobile 的底部導覽一次只顯示一欄,在「戰鬥」那欄看不到左欄的 #status-panel,
+  //   完整能力值就沒地方看了。上游單欄堆疊時它本來就在下面 → 這個彈窗只是多一條捷徑,不衝突。
+  var _statLayer = null;
+  var _spHome = null;   // #status-panel 的原位:{parent, next};不假設它在哪一欄,原地記原地放
+  function buildStatModal() {
+    var m = document.createElement('div');
+    m.id = 'm-stat-modal';
+    m.innerHTML = '<div id="m-stat-card"><div id="m-stat-bar"><button type="button" id="m-stat-close" title="關閉">✕</button></div><div id="m-stat-body"></div></div>';
+    m.addEventListener('click', function (e) { if (e.target === m) closeStatModal(); });   // 點背景關閉
+    m.querySelector('#m-stat-close').addEventListener('click', function (e) { e.stopPropagation(); closeStatModal(); });
+    document.body.appendChild(m);
+    return m;
+  }
+  function openStatModal() {
+    if (document.body.classList.contains('m-stat-open')) return;
+    var sp = document.getElementById('status-panel');
+    var m = document.getElementById('m-stat-modal') || buildStatModal();
+    var body = m.querySelector('#m-stat-body');
+    if (!sp || !body) return;
+    if (!_spHome) _spHome = { parent: sp.parentNode, next: sp.nextSibling };
+    body.appendChild(sp);
+    document.body.classList.add('m-stat-open');
+    // 壓一層 → 手機實體返回鍵 / ESC 關得掉(與其他自製彈窗同一套管理器)
+    _statLayer = (window.AFK_UI && AFK_UI.openLayer) ? AFK_UI.openLayer(dismissStatModal) : null;
+  }
+  function closeStatModal() {
+    if (_statLayer && window.AFK_UI && AFK_UI.closeLayer) AFK_UI.closeLayer(_statLayer);
+    else dismissStatModal();
+  }
+  // 實際收起(也會被 AFK_UI 在返回鍵 / ESC 時呼叫;自己不動歷史)
+  function dismissStatModal() {
+    _statLayer = null;
+    document.body.classList.remove('m-stat-open');
+    var sp = document.getElementById('status-panel');
+    if (!sp || !_spHome || !_spHome.parent) return;
+    // next 可能已被別處移走 → 只有它「還是同一個父層的小孩」才拿來當插入點,否則接回尾端
+    var next = (_spHome.next && _spHome.next.parentNode === _spHome.parent) ? _spHome.next : null;
+    _spHome.parent.insertBefore(sp, next);
   }
 
   function injectCSS() {
@@ -89,7 +136,7 @@
     var s = document.createElement('style');
     s.id = 'afk-battlehud-style';
     s.textContent = [
-      '#m-status{display:none;}',   /* 桌機:本外掛完全不出現(桌機有完整的狀態面板) */
+      '#m-status,#m-stat-modal{display:none;}',   /* 桌機:本外掛完全不出現(桌機有完整的狀態面板) */
       '@media ' + MOBILE_MQ + '{',
       /* 上游那條只有血條的狀態列讓位給本外掛(關掉本外掛就會自動回來) */
       '#mobile-vitals{display:none !important;}',
@@ -107,6 +154,18 @@
       /* 🔮 席琳標記靠右;只換字色不換整條底色 */
       '#m-status .ms-sherine{flex:0 0 auto;font-weight:bold;font-size:14px;color:#c4b5fd;text-shadow:0 0 6px rgba(196,181,253,.85);}',
       '#m-status .ms-sherine.ms-sherine-mad{color:#fca5a5;text-shadow:0 0 7px rgba(248,113,113,.9);}',
+      '#m-status .ms-info{flex:0 0 auto;color:#b3a893;font-size:13px;}',
+      '#m-status{cursor:pointer;touch-action:manipulation;}',
+      '#m-status:active{filter:brightness(1.18);}',
+      /* 角色資訊彈窗:頂端讓開橫幅(用本外掛自己量的高度)、底部讓開手機導覽列(沒有就是 0) */
+      'body.m-stat-open #m-stat-modal{display:flex;position:fixed;left:0;right:0;bottom:0;top:var(--afk-hud-bar-h,0px);z-index:80;align-items:center;justify-content:center;background:rgba(2,6,23,.72);padding:16px 16px calc(16px + var(--m-nav-h,0px));}',
+      '#m-stat-card{position:relative;width:min(92vw,420px);max-height:100%;overflow-y:auto;}',
+      '#m-stat-bar{display:flex;justify-content:flex-end;margin-bottom:6px;}',
+      '#m-stat-close{width:36px;height:36px;border:1px solid #5f5148;border-radius:8px;background:rgba(40,38,46,.95);color:#e8e2d6;font-size:17px;font-family:inherit;cursor:pointer;touch-action:manipulation;}',
+      '#m-stat-close:active{background:rgba(72,66,80,.95);}',
+      '#m-stat-body{width:100%;}',
+      /* 這個面板在手機被核心藏起來,移進彈窗要強制顯示 */
+      '#m-stat-body #status-panel{display:flex !important;width:100% !important;margin:0 !important;}',
       '#m-status .ms-row2{gap:8px;}',
       '#m-status .ms-bar{position:relative;flex:1 1 0;min-width:0;height:20px;overflow:hidden;border:1px solid #5f5148;border-radius:2px;background:#15151b;}',
       '#m-status .ms-bar-fill{position:absolute;left:0;top:0;bottom:0;width:0%;transition:width .25s;}',
@@ -184,6 +243,7 @@
     injectCSS();
     var strip = buildStrip();
     gs.insertBefore(strip, gs.firstChild);
+    strip.addEventListener('click', openStatModal);   // 點整條 → 開角色資訊彈窗
     cache(strip);
     mirror();
     setInterval(mirror, MIRROR_MS);

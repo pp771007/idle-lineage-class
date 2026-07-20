@@ -86,13 +86,23 @@
         _lpTip = el;
         return el;
     }
-    function _lpHide() { try { if (_lpTip) _lpTip.style.display = 'none'; } catch (e) {} }
+    function _lpHide() {
+        try { if (_lpTip) _lpTip.style.display = 'none'; } catch (e) {}
+        try { document.body.classList.remove('afk-wh-lp'); } catch (e) {}
+    }
 
-    // iOS Safari 長按可點元素會跳原生「拷貝/查詢」callout 蓋住自製資料框,關掉它與文字選取
     function _lpInjectCSS() {
         if (!_isTouch || document.getElementById('afk-wh-lp-style')) return;
         var s = document.createElement('style'); s.id = 'afk-wh-lp-style';
-        s.textContent = '#wh-inv-list [data-tip-uid],#wh-store-list [data-tip-uid]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}';
+        s.textContent = [
+            // iOS Safari 長按可點元素會跳原生「拷貝/查詢」callout 蓋住自製資料框,關掉它與文字選取
+            '#wh-inv-list [data-tip-uid],#wh-store-list [data-tip-uid]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}',
+            // 本框顯示時蓋掉核心的 hover 提示框:Android Chrome 會在手指放開後補送假滑鼠事件,
+            //   核心那顆(只綁 mousemove)照樣跳出來 → 同一件物品出現兩個一模一樣的框(玩家回報)。
+            //   iOS 對 <button> 不補這組事件,核心那顆跳不出來,所以自製這顆仍要留著。
+            //   ⚠ 必須 !important:核心是用 inline style 開關它,沒有 !important 蓋不過。
+            'body.afk-wh-lp .game-tooltip{display:none !important;}'
+        ].join('\n');
         (document.head || document.documentElement).appendChild(s);
     }
 
@@ -124,6 +134,7 @@
         if (top + h > window.innerHeight - 6) top = window.innerHeight - 6 - h;
         el.style.left = Math.max(4, left) + 'px';
         el.style.top = Math.max(4, top) + 'px';
+        try { document.body.classList.add('afk-wh-lp'); } catch (e) {}   // 同時蓋掉核心的 hover 提示框(見 _lpInjectCSS)
         _lpGuardUntil = Date.now() + LP_CLICK_GUARD_MS;
     }
 

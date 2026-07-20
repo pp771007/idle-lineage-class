@@ -21,15 +21,25 @@
     st.id = 'afk-npclist-css';
     st.textContent = [
         'body.afk-npclist #town-npc-map{display:none!important;}',
-        '#afk-npclist{width:100%;flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-bottom:12px;}',
-        '.afk-npcl-row{display:flex;align-items:center;gap:10px;min-height:46px;padding:6px 10px;border:1px solid #334155;border-radius:8px;background:rgba(15,23,42,.55);color:#e2e8f0;text-align:left;cursor:pointer;width:100%;font-size:14px;}',
+        '#afk-npclist{width:100%;flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:5px;padding-bottom:12px;}',
+        // 🚨 flex:0 0 auto 不可拿掉:列表是 flex column,列預設 flex-shrink:1 → 列數一多就被容器高度「壓扁」,
+        //    壓到 min-height 後兩行介紹的字直接被裁掉(看起來像字太擠)。要的是「列各自撐開、整份用捲的」。
+        '.afk-npcl-row{flex:0 0 auto;display:flex;align-items:center;gap:10px;min-height:46px;padding:9px 12px;border:1px solid #334155;border-radius:8px;background:rgba(15,23,42,.55);color:#e2e8f0;text-align:left;cursor:pointer;width:100%;font-size:14px;}',
         '.afk-npcl-row:hover{background:rgba(30,41,59,.85);}',
         '.afk-npcl-ico{flex:0 0 40px;width:40px;height:40px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;}',
         '.afk-npcl-ico img{max-width:100%;max-height:100%;object-fit:contain;}',
-        '.afk-npcl-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px;}',
+        '.afk-npcl-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;}',
         '.afk-npcl-name{font-weight:700;}',
         '.afk-npcl-title{color:#94a3b8;font-size:12px;font-weight:400;margin-left:6px;}',
-        '.afk-npcl-desc{color:#64748b;font-size:12px;line-height:1.4;overflow-wrap:anywhere;}'
+        '.afk-npcl-desc{color:#94a3b8;font-size:12.5px;line-height:1.55;overflow-wrap:anywhere;}',
+        // 📐 核心給 #town-view 的 16:9 是為了「800×450 的地圖圖片」;地圖已被換成列表 → 這個比例只會把
+        //    列表壓成一小條、下面留一大片空白。改成吃滿剩餘高度(整條鏈都要放行,否則某一層 flex:0 0 auto 就卡住)。
+        //    只在手機動:桌機 800×450 本來就夠放,不需要改版面。
+        '@media (max-width: 768px), (max-height: 520px) and (pointer: coarse){',
+        'body.afk-npclist #game-screen:has(#town-view:not(.hidden)) #col-center{flex:1 1 auto !important;min-height:0;}',
+        'body.afk-npclist #col-center:has(#town-view:not(.hidden)) #map-view-panel{flex:1 1 auto !important;min-height:0;}',
+        'body.afk-npclist #town-view:not(.hidden){aspect-ratio:auto !important;height:auto !important;flex:1 1 auto !important;min-height:200px;}',
+        '}'
     ].join('\n');
     (document.head || document.documentElement).appendChild(st);
     document.body.classList.add('afk-npclist');

@@ -3552,7 +3552,7 @@
       '#m-wiki-close:active{background:#334155;}',
       '#m-wiki-searchrow{display:flex;gap:8px;align-items:center;padding:12px 12px 4px;flex:0 0 auto;}',
       '#m-wiki-inwrap{position:relative;flex:1 1 auto;min-width:0;display:flex;}',
-      '#m-wiki-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:9px 34px 9px 12px;font-size:14px;outline:none;font-family:inherit;}',
+      '#m-wiki-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:9px 34px 9px 12px;font-size:16px;outline:none;font-family:inherit;}',   /* 📱 ≥16px:iOS 對更小的輸入框聚焦時會自動放大整頁且縮不回來 */
       '#m-wiki-input:focus{border-color:#6366f1;}',
       '#m-wiki-clear{display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);width:24px;height:24px;border:none;background:#475569;color:#e2e8f0;border-radius:50%;font-size:11px;line-height:1;cursor:pointer;padding:0;}',
       '#m-wiki-clear.show{display:block;}',

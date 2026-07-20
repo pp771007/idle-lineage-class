@@ -13,8 +13,11 @@
     if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('invlist')) return;   // 🎚️ 外掛開關
 
     var CSS = [
-        // 外殼：拆掉藝術背景圖與固定比例，變普通滿高容器
-        'body.afk-invlist .classic-inventory-shell{aspect-ratio:auto !important;background:none !important;height:100% !important;min-height:220px;max-width:100% !important;}',
+        // 外殼：拆掉藝術背景圖與固定比例，改成「吃掉分頁剩餘高度」的彈性容器。
+        //   ⚠ 不可用 height:100%：分頁是直向 flex，外殼上面還有「快速操作」工具列(約 55px)，
+        //     100% 是對「分頁全高」算的 → 外殼比剩餘空間高一截、底部被 overflow:hidden 裁掉又捲不到
+        //     (桌機看不到背包最後幾列、也找不到地方拉·玩家回報)。flex:1+min-height:0 才是扣掉工具列後的剩餘高。
+        'body.afk-invlist .classic-inventory-shell{aspect-ratio:auto !important;background:none !important;flex:1 1 auto !important;height:auto !important;min-height:0 !important;max-width:100% !important;}',
         // 視窗：絕對定位的 4 欄 grid → 靜態單欄直向清單，正常捲動
         //   ⚠ iOS 觸控捲動：溢出量小時（如武器只多幾件）沒有 -webkit-overflow-scrolling:touch 會滑不動、
         //     觸控被外層 #game-screen 吃掉（防具/道具溢出大反而滑得動）。補齊 iOS 觸控三件套。

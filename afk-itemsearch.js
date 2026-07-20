@@ -24,7 +24,7 @@
     st.textContent = [
       '#afk-isearch{flex:none;padding:6px 10px 4px;background:#1e293b;display:none;}',
       '#afk-isearch.is-on{display:block;}',
-      '#afk-isearch input{width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#e2e8f0;padding:6px 10px;font-size:13px;font-family:inherit;outline:none;}',
+      '#afk-isearch input{width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#e2e8f0;padding:6px 10px;font-size:16px;font-family:inherit;outline:none;}',   /* 📱 字級一定要 ≥16px:iOS Safari 對更小的輸入框會在聚焦時自動放大整頁、且不會自己縮回來(玩家回報「搜尋會自動放大」) */
       '#afk-isearch input:focus{border-color:#b89243;}',
       '#afk-isearch input::placeholder{color:#64748b;}'
     ].join('\n');

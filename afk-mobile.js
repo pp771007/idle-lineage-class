@@ -96,14 +96,20 @@
             + 'body.m-mobile #tab-content-panel:not(.equipment-panel-host) .classic-inventory-viewport{ height: auto !important; overflow: visible !important; overscroll-behavior: auto !important; touch-action: auto !important; }\n'
             //   ⑥ 內層捲動區的 iOS 觸控三件套：溢出量小時沒有這組會「滑不動」(觸控被外層吃掉·afk-invlist 踩過同一雷)；
             //      overscroll-behavior:contain 同時擋「捲到底把後面的遊戲畫面一起帶著捲」的連鎖(雙層捲軸打架)。
-            + 'body.m-mobile :is(.classic-skill-grid-scroll, #warehouse-window-content, #interaction-content, .as-box, #combat-log, #sys-log, #card-book-body, #equip-book-body, #misc-book-body, #relic-book-body, #modal-compare, #item-modal > div:not(#modal-compare)){ -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }\n'
+            + 'body.m-mobile :is(.classic-skill-grid-scroll, #warehouse-window-content, #interaction-content, .as-box, #combat-log, #sys-log, #card-book-body, #equip-book-body, #misc-book-body, #relic-book-body, #modal-compare, #item-modal > div:not(#modal-compare)){ -webkit-overflow-scrolling: touch; touch-action: pan-y pinch-zoom; overscroll-behavior: contain; }\n'
+            //      ⚠ 一定要帶 pinch-zoom:只寫 pan-y 會連「兩指捏合縮放」一起關掉(捏合被算在 touch-action 的許可清單裡),
+            //        玩家在倉庫/裝備比對裡放大不了(回報過)。要擋的只是單指原生捲動打架,不是縮放。
             //   ⑥b 道具視窗說明文字:卡片是 .panel(flex 直欄),上游手機 CSS 給 #modal-item-desc 設 min-height:0
             //      = 允許縮到比內容矮 → 文字被壓扁溢出畫在按鈕底下(裝備比對開啟時最明顯)。鎖 flex-shrink,
             //      內容撐開改由外層卡片(上游 overflow-y:auto)捲動。寫這裡不動上游 css,同步原版也不會丟。
             + 'body.m-mobile #modal-item-desc{ flex: 0 0 auto !important; }\n'
             //   ⑦ 嵌入式裝備視窗:body 層級 fixed 圖層,原生捲動鏈走 DOM 祖先碰不到 #game-screen(手指拖 12 格區=划不動)。
             //      touch-action:none 關掉原生捲動(免 iOS 對 body 橡皮筋),垂直拖曳由 bindEquipTouchScroll 轉發給 #game-screen。
-            + 'body.m-mobile #equipment-window.equipment-window-embedded:not(.hidden){ touch-action: none; }\n'
+            + 'body.m-mobile #equipment-window.equipment-window-embedded:not(.hidden){ touch-action: pinch-zoom; }\n'
+            //   ⑦b 上游 floating-ui.css 給裝備框/倉庫框寫死 touch-action:none(桌機用來讓滑鼠拖曳視窗不被瀏覽器搶手勢)。
+            //      祖先只要有一層不允許捏合,整個子樹就縮放不了 → 手機在倉庫裡怎麼捏都沒反應。改成 pinch-zoom:
+            //      單指原生捲動照舊關著(拖曳視窗邏輯不受影響),只把兩指縮放放行。
+            + 'body.m-mobile :is(.equipment-window-frame, .warehouse-window-frame){ touch-action: pinch-zoom !important; }\n'
             // 登入頁：上游用「絕對定位藝術舞台」——#main-menu(top:31%) 與 #login-meta-layer(版權·pin bottom:4%) 各自絕對定位。
             //   我方往 #main-menu 注入了掉落查詢/小百科/外掛框後它變很高 → 蓋到底部版權層(文字重疊·使用者回報)。
             //   手機改成「流式堆疊」(DOM 序 title→menu→meta 自然由上而下排)，不再重疊；藝術背景圖 absolute inset:0 照樣鋪滿。

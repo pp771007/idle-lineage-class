@@ -976,7 +976,7 @@
       '#m-dex-modal[data-standalone] #m-dex-itempop-card{max-height:calc(100dvh - var(--orig-bar-h,0px) - 110px);}',
       '#m-dex-head{display:flex;gap:8px;padding:12px;border-bottom:1px solid #1e293b;flex:0 0 auto;}',
       '#m-dex-inwrap{position:relative;flex:1 1 auto;min-width:0;display:flex;}',
-      '#m-dex-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:10px 40px 10px 12px;font-size:15px;outline:none;font-family:inherit;}',
+      '#m-dex-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:10px 40px 10px 12px;font-size:16px;outline:none;font-family:inherit;}',   /* 📱 ≥16px:iOS 對更小的輸入框聚焦時會自動放大整頁且縮不回來 */
       '#m-dex-input:focus{border-color:#eab308;}',
       '#m-dex-clear{display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;background:#475569;color:#e2e8f0;border-radius:50%;font-size:12px;line-height:1;cursor:pointer;padding:0;}',
       '#m-dex-clear.show{display:block;}',

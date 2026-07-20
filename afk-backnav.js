@@ -36,7 +36,14 @@
   }
 
   var SUBS = ['load-select-panel', 'creation-panel'];
-  function vis(id) { var e = document.getElementById(id); return !!(e && !e.classList.contains('hidden')); }
+  // ⚠ 不能只看自己有沒有 .hidden:loadGame 進遊戲時只把外層 #creation-screen 藏起來、
+  //   不會去動 #load-select-panel 自己的 class → 只看 class 會誤判「還在選角畫面」→ 攔截層退不掉,
+  //   留在歷史上變孤兒格;登出 reload 後更沒人認領,每輪迴一次就多按一下返回鍵(玩家回報)。
+  //   getClientRects 為空 = 自己或任一祖先被藏起來,才是真的看不到。
+  function vis(id) {
+    var e = document.getElementById(id);
+    return !!(e && !e.classList.contains('hidden') && e.getClientRects().length);
+  }
   function subVisible() { for (var i = 0; i < SUBS.length; i++) if (vis(SUBS[i])) return true; return false; }
 
   var trap = null;   // 目前押著的攔截層(AFK_NAV 的 handle);null = 沒押

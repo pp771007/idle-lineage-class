@@ -18,7 +18,7 @@
  *   遊戲中的「回首頁」另由 afk-mobile 的 🚪登出鈕處理,不在本檔範圍。
  *
  * 優雅降級:抓不到作者函式就輪詢幾次,真的沒有就安靜停用,不影響遊戲。
- * 掛接:在 index.html </body> 前 <script src="afk-backnav.js">(無必須命中的 DOM 掛點,不列入 smoke)。
+ * 掛接:在 index.html </body> 前 <script src="afk-backnav.js">;smoke 以本檔的 hooks OK log 驗它還掛得上。
  * ========================================================================== */
 (function () {
   'use strict';
@@ -116,8 +116,16 @@
     return true;
   }
 
-  if (!install()) {
-    var n = 0, iv = setInterval(function () { if (install() || ++n > 40) { clearInterval(iv); } }, 150);
+  // ⚠ 「hooks OK」只有在真的包上作者函式後才印:smoke 就是靠這行判定本外掛還活著,無條件印會讓
+  //   「上游改了函式名 → 整支安靜停用」照樣測得過(踩過,選角畫面換成 openLoadSelect 後失效沒人發現)。
+  function announce() {
+    console.log('[AFK-backnav] hooks OK — 手機返回鍵/手勢在「角色選擇/創角」回上層已掛上。');
   }
-  console.log('[AFK-backnav] hooks OK — 手機返回鍵/手勢在「選存檔位/創角」回首頁已掛上。');
+  if (install()) announce();
+  else {
+    var n = 0, iv = setInterval(function () {
+      if (install()) { clearInterval(iv); announce(); }
+      else if (++n > 40) { clearInterval(iv); console.warn('[AFK-backnav] 找不到 openLoadSelect(上游可能改了選角畫面的函式名/面板 id),返回鍵處理停用。'); }
+    }, 150);
+  }
 })();

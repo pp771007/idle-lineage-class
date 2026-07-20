@@ -184,6 +184,89 @@
     return out.length ? out.join('\n          ') : '(無)';
   }
 
+  // ── 存檔健康:玩家回報「創血盟失敗 / 寵物不給放生 / 進度不見」時的第一現場 ──────────
+  //   共同根因是核心的 _roleSaveAllowed() 為 false → saveGame() 一律回 false(js/13:1301)。
+  //   血盟建立與寵物放生都會檢查存檔結果並整筆回滾,所以症狀看起來是「功能壞掉」,
+  //   實際上是「這個分頁的所有進度都沒在存」——嚴重度差很多,要一眼看得出來。
+  var GUARD_KEY = (typeof ROLE_DELETED_GUARD_KEY !== 'undefined') ? ROLE_DELETED_GUARD_KEY : 'fb5_deleted_role_guards_v1';
+  function saveHealth() {
+    if (typeof player === 'undefined' || !player || !player.cls) return '(未載入角色,無法判斷)';
+    if (typeof _roleFingerprint !== 'function' || typeof _roleSaveAllowed !== 'function') return '(這版核心沒有存檔世代機制)';
+    var fp = _roleFingerprint(player);
+    var stored = (typeof _roleReadSavePlayer === 'function') ? _roleReadSavePlayer(currentSlot) : null;
+    var storedFp = stored ? _roleFingerprint(stored) : null;
+    var guards = {};
+    try { guards = _roleReadObject(GUARD_KEY) || {}; } catch (e) {}
+    var allowed = _roleSaveAllowed();
+    if (allowed) return '✅ 正常(第' + currentSlot + '格)';
+    var why = guards[fp]
+      ? '此角色在「已刪除名單」內(曾被刪除;名單保留 30 天)'
+      : (storedFp && storedFp !== fp)
+        ? '本分頁的角色世代跟存檔裡的對不上——通常是「同時開了兩個分頁 / PWA 與瀏覽器各一個」,另一邊動過之後這邊就過期了'
+        : '不明(指紋:' + fp + ' / 磁碟:' + (storedFp || '空') + ')';
+    return '❌ 已停止寫入,這個分頁的進度不會被保存!' +
+      '\n          原因: ' + why +
+      '\n          影響: 創血盟會失敗、寵物不給放生、經驗金幣掉落全部不會存下來' +
+      '\n          先做: 關掉這個分頁重開一個(若仍相同,把這份診斷回報)';
+  }
+
+  // 匯入時「相同角色已存在」被誤擋:舊存檔沒有身分碼(enSeed)時,核心用「名字|職業」推導一組。
+  //   沒取過名字的同職業角色會推導出一模一樣的碼 → 明明是不同角色卻被判成同一個。
+  //   這裡把每格的碼列出來並標明是「隨機」還是「推導」,撞號時一眼看得出是不是誤判。
+  function identitySeeds() {
+    if (typeof _seedHash !== 'function') return '(這版核心沒有身分碼機制)';
+    var rows = [], seen = {}, dup = {};
+    for (var s = 1; s <= slotMax(); s++) {
+      var p = (typeof _roleReadSavePlayer === 'function') ? _roleReadSavePlayer(s) : null;
+      if (!p || !p.cls) continue;
+      var derived = 'es' + _seedHash((p.name || '') + '|' + (p.cls || '') + '|lz').toString(36);
+      var seed = p.enSeed || derived;
+      var isDerived = (seed === derived);
+      if (seen[seed]) dup[seed] = true;
+      seen[seed] = (seen[seed] || 0) + 1;
+      rows.push({ s: s, seed: seed, isDerived: isDerived, name: p.name || '(未命名)', cls: p.cls });
+    }
+    if (!rows.length) return '(沒有任何存檔)';
+    var out = rows.map(function (r) {
+      return '第' + r.s + '格: ' + r.seed + (r.isDerived ? ' (舊檔推導)' : ' (隨機)') +
+        (dup[r.seed] ? '  ⚠️ 與其他格撞號' : '');
+    });
+    var dupSeeds = Object.keys(dup);
+    if (dupSeeds.length) {
+      var allDerived = rows.filter(function (r) { return dup[r.seed]; }).every(function (r) { return r.isDerived; });
+      out.push(allDerived
+        ? '→ 撞號的都是「舊檔推導」碼 = 很可能是不同角色被誤判成同一個(匯入會被擋)'
+        : '→ 撞號的含「隨機」碼 = 很可能真的是同一個角色的複本');
+    }
+    return '\n          ' + out.join('\n          ');
+  }
+
+  // 寵物「不給放生 / 不見了」:出戰歸屬記的是 char:<身分碼>(js/22:209)。
+  //   若那組碼已經沒有任何角色持有(換過身分碼),牠會被判成「其他角色出戰中」→ 放生鈕根本不顯示。
+  function petOwnership() {
+    if (typeof _petRosterRead !== 'function' || typeof _petBucketKey !== 'function') return '(這版核心沒有寵物名冊)';
+    var roster = _petRosterRead(_petBucketKey());   // ⚠ 不可用 petRoster():它會設 _petRosterDirty(有副作用),診斷必須全程唯讀
+    if (roster === null) return '⚠️ 寵物名冊讀取失敗(簽章不符)';
+    if (!roster.length) return '(沒有寵物)';
+    var owners = {};
+    for (var s = 1; s <= slotMax(); s++) {
+      var p = (typeof _roleReadSavePlayer === 'function') ? _roleReadSavePlayer(s) : null;
+      if (p && p.enSeed) owners['char:' + p.enSeed] = s;
+    }
+    var orphan = [], locked = 0, out = 0;
+    roster.forEach(function (p) {
+      if (p.locked) locked++;
+      var k = p.outOwner ? String(p.outOwner) : '';
+      if (!k) return;
+      out++;
+      if (!owners[k]) orphan.push((typeof petDisplayName === 'function' ? petDisplayName(p) : p.form) + ' → ' + k);
+    });
+    var s1 = '共 ' + roster.length + ' 隻 / 出戰中 ' + out + ' / 鎖定 ' + locked + '(鎖定的不顯示放生鈕,這是正常的)';
+    if (!orphan.length) return s1;
+    return s1 + '\n          ❌ 下列寵物的主人碼沒有對應到任何角色 → 誰都不能操作/放生:' +
+      '\n          ' + orphan.join('\n          ');
+  }
+
   function collect() {
     var out = {};
     var _jobs = [];
@@ -210,7 +293,10 @@
       return (navigator.connection.effectiveType || '?') +
         (navigator.connection.saveData ? ' / ⚠️ 省流量模式(圖可能抓不下來)' : '');
     });
+    put('存檔健康', saveHealth);   // 擺在角色前面:它是「進度到底有沒有在存」,比其他欄位都急
     put('角色', charSummary);
+    put('角色身分碼', identitySeeds);
+    put('寵物歸屬', petOwnership);
     put('倉庫', warehouseSummary);
     put('離線錨點', offlineAnchors);
 

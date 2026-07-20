@@ -1401,8 +1401,9 @@ function killPlayer() {
     }
     pvpChaoticDeathItemLoss();
     let msg = "你的角色已經死亡。（死亡不損失經驗值。）";
+    let _siegeDeath = (typeof isSiegeArea === 'function' && typeof mapState !== 'undefined' && mapState && isSiegeArea(mapState.current));
     // 🎮 經典模式：死亡損失「該等級最大經驗」的 5%（v3.0.15 由 10% 調降·per-level 進度，最多扣到該等級 0% → 不會降等）
-    if (player.classicMode) {
+    if (player.classicMode && !_siegeDeath) {
         let _lossCap = Math.floor((getExpReq(player.lv) || 0) * 0.05);
         let _before = player.exp;
         player.exp = Math.max(0, player.exp - _lossCap);
@@ -1414,6 +1415,8 @@ function killPlayer() {
             player.deathLog.push({ lv: player.lv, loss: _actualLoss, t: Date.now() });
             while (player.deathLog.length > 10) player.deathLog.shift();
         }
+    } else if (player.classicMode && _siegeDeath) {
+        msg = '你的角色已經死亡。<span class="text-amber-300">（攻城區：死亡不損失經驗值。）</span>';
     }
 
     // 顯示系統與戰鬥日誌

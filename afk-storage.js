@@ -95,6 +95,7 @@
   var _layer = null;
   function openModal() {
     var m = document.getElementById('m-stg-modal'); if (!m) return;
+    if (_layer) return;   // 已開著就別再壓一層歷史(舊 _layer 會被覆寫成孤兒、永遠關不掉)
     document.getElementById('m-stg-body').innerHTML = renderBody();
     m.classList.add('open');
     _layer = window.AFK_UI ? AFK_UI.openLayer(hideModal) : null;   // 手機返回鍵 / ESC 可關

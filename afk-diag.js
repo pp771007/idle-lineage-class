@@ -387,6 +387,7 @@
   }
 
   function openModal() {
+    if (_layer) return;   // 已開著就別再壓一層歷史(舊 _layer 會被覆寫成孤兒、永遠關不掉)
     buildModal();
     var body = document.getElementById('m-diag-body');
     body.textContent = '讀取中…';

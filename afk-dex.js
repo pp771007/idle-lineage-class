@@ -69,7 +69,12 @@
     var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
   }
   // 跨頁切換用:關掉掉落查詢模態(含物品彈窗)並交出一層歷史(不 history.back,避免誤觸小百科 popstate),供對方接手顯示
-  function closeForNav() { var m = document.getElementById('m-dex-modal'); if (m && !m.getAttribute('data-standalone')) m.classList.remove('open'); if (_isPop()) document.getElementById('m-dex-itempop').classList.remove('open'); if (_navDepth > 0) _navDepth--; }
+  function closeForNav() {
+    if (_isPop()) closeItemPop();               // 詳情彈窗自己那層照常退掉
+    var h = _hModal; _hModal = null;
+    _hideModal();
+    if (h && window.AFK_NAV) AFK_NAV.handoff(h);   // 模態那層寄放給對方 claim,整段跨頁切換只佔一格歷史
+  }
   // 獨立頁:把目前搜尋字寫進網址(replaceState,不灌爆上一頁/下一頁),方便複製連結分享給別人
   function syncUrl() {
     if (!isStandalone()) return;
@@ -661,28 +666,24 @@
     document.getElementById('m-dex-itempop-body').innerHTML = itemDetailHTML(id);
     pop.classList.add('open');
     var c = document.getElementById('m-dex-itempop-card'); if (c) c.scrollTop = 0;
-    if (!wasOpen) _pushNav();   // 開啟(非同層換內容)才壓一層歷史 → 手機返回鍵可關
+    if (!wasOpen && window.AFK_NAV) _hPop = AFK_NAV.push(_hidePop);   // 開啟(非同層換內容)才壓一層歷史 → 手機返回鍵可關
   }
-  function closeItemPop() { var pop = document.getElementById('m-dex-itempop'); if (pop) pop.classList.remove('open'); }
+  function closeItemPop() { var h = _hPop; _hPop = null; if (h && window.AFK_NAV) AFK_NAV.pop(h); else _hidePop(); }
 
-  // ----- 手機返回鍵 / ESC 關閉(以 history state 鏡射 modal→物品彈窗 兩層) -----
-  var _navDepth = 0, _suppressPop = false;
+  // ----- 手機返回鍵 / ESC 關閉(modal→物品彈窗 兩層,歷史層統一交給 AFK_NAV) -----
+  //   ⚠ 不自己聽 popstate:popstate 是 window 級的,別人(彈窗/小百科)發的 back 也會通知本檔,
+  //     過去靠 _suppressPop 擋不住 → 誤把別人的 back 當自己的、減了計數卻沒退掉自己那格歷史,
+  //     累積成「返回鍵要按好幾下才離得開」。改由 AFK_NAV 依序號統一回捲。
+  var _hModal = null, _hPop = null;
   function _isPop() { var p = document.getElementById('m-dex-itempop'); return !!(p && p.classList.contains('open')); }
   function _isModalClosable() { var m = document.getElementById('m-dex-modal'); return !!(m && m.classList.contains('open') && !m.getAttribute('data-standalone')); }   // 獨立頁的常駐 modal 不算可關層
-  function _hideTop() {   // 關掉最上層(彈窗優先,其次 modal);有關到回 true
-    if (_isPop()) { document.getElementById('m-dex-itempop').classList.remove('open'); return true; }
-    if (_isModalClosable()) { document.getElementById('m-dex-modal').classList.remove('open'); return true; }
-    return false;
+  function _hidePop() { var p = document.getElementById('m-dex-itempop'); if (p) p.classList.remove('open'); _hPop = null; }
+  function _hideModal() { var m = document.getElementById('m-dex-modal'); if (m && !m.getAttribute('data-standalone')) m.classList.remove('open'); _hModal = null; }
+  function _pushNav() { if (window.AFK_NAV) _hModal = AFK_NAV.push(_hideModal); }
+  function userCloseTop() {   // X鈕 / 點背景 / ESC:關最上層(彈窗優先,其次 modal),歷史層一起退掉
+    if (_isPop()) { var h = _hPop; _hPop = null; if (h && window.AFK_NAV) AFK_NAV.pop(h); else _hidePop(); return; }
+    if (_isModalClosable()) { var m = _hModal; _hModal = null; if (m && window.AFK_NAV) AFK_NAV.pop(m); else _hideModal(); }
   }
-  function _pushNav() { _navDepth++; try { history.pushState({ afkDexNav: _navDepth }, ''); } catch (e) {} }
-  function userCloseTop() {   // X鈕 / 點背景 / ESC:關最上層,並把對應的歷史也退掉(讓返回鍵堆疊一致)
-    if (!_hideTop()) return;
-    if (_navDepth > 0) { _navDepth--; _suppressPop = true; try { history.back(); } catch (e) { _suppressPop = false; } }
-  }
-  window.addEventListener('popstate', function () {
-    if (_suppressPop) { _suppressPop = false; return; }   // 由 userCloseTop 程式觸發的 back,已關過,不重複
-    if (_navDepth > 0) { _navDepth--; _hideTop(); }        // 手機實體返回鍵
-  });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && (_isPop() || _isModalClosable())) { e.preventDefault(); userCloseTop(); }
   });
@@ -952,8 +953,18 @@
       AFK_WIKI_API.goto({ q: w.getAttribute('data-q') || '' });
     });
   }
-  function openModal(adopt) { var m = document.getElementById('m-dex-modal'); if (m) { var wasOpen = m.classList.contains('open'); m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); if (!wasOpen && !m.getAttribute('data-standalone')) { if (adopt === true) { if (_navDepth < 1) _navDepth = 1; } else _pushNav(); } } }   // adopt===true:接手來源模態交出的歷史層、不另壓(跨頁切換用,避免返回鍵殘留)。嚴格比對 true:按鈕 onclick 會把 MouseEvent 當參數傳進來,不可當 adopt
-  function closeModal() { var m = document.getElementById('m-dex-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
+  // adopt===true:接手來源模態(小百科)交出的歷史層、不另壓(跨頁切換用,避免返回鍵殘留)。
+  //   嚴格比對 true:按鈕 onclick 會把 MouseEvent 當參數傳進來,不可當 adopt
+  function openModal(adopt) {
+    var m = document.getElementById('m-dex-modal'); if (!m) return;
+    var wasOpen = m.classList.contains('open');
+    m.classList.add('open');
+    var i = document.getElementById('m-dex-input'); if (i) i.focus();
+    if (wasOpen || m.getAttribute('data-standalone')) return;
+    if (adopt === true && window.AFK_NAV) _hModal = AFK_NAV.claim(_hideModal);
+    if (!_hModal) _pushNav();
+  }
+  function closeModal() { if (_isModalClosable()) userCloseTop(); }   // 一律走 userCloseTop:直接 remove('open') 會留下沒人認領的歷史格
 
   // ----- CSS --------------------------------------------------------------
   function injectCSS() {

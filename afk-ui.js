@@ -14,40 +14,91 @@
  * 純接管 window.alert + 自注 DOM/CSS,無「必須命中的原作者 DOM 掛點」,故不列入 smoke-hooks。
  */
 
-// ── 共用「返回鍵 / ESC 關閉最上層彈窗」管理器(window.AFK_UI) ─────────────────
-//   任何自製 modal 開啟時呼叫 AFK_UI.openLayer(closeFn) 壓一層(同時壓一格瀏覽歷史),
-//   主動關閉(✕ / 點背景 / 按鈕)呼叫 AFK_UI.closeLayer(layer);手機實體返回鍵與 ESC 會自動關掉最上層。
-//   小百科/掉落查詢有自己一套等效實作(且需處理獨立頁常駐 modal),不改它們;本管理器供其餘 modal 共用。
+// ── 全站唯一的瀏覽歷史層管理器(window.AFK_NAV;AFK_UI.openLayer/closeLayer 是它的別名) ──────
+//
+// 為什麼要「唯一」:popstate 是 window 級事件——任何一次 history.back() 都會通知**所有**監聽器。
+//   過去彈窗(afk-ui)、返回鍵(afk-backnav)、掉落查詢、小百科各自管一套「計數器 + 抑制旗標」,
+//   而抑制旗標只擋得住「自己發的 back」,擋不住別人發的 → 在掉落查詢裡跳個提示視窗再關掉,
+//   掉落查詢就會把別人的 back 當成自己的、把計數器減掉卻沒退掉自己那格歷史 → 留下一格沒人認領的
+//   死歷史。每跑一輪多留一格,玩家最後得按好幾下返回鍵才離得開 PWA(而且按下去畫面毫無反應)。
+//
+// 作法:改用「序號對齊」取代計數器+旗標。每壓一層就給一個遞增序號寫進 history.state.afkNav,
+//   popstate 時**只看目前歷史停在第幾號**,把序號比它大的層全部關掉。誰發的 back 都算得對、
+//   重複觸發也冪等,因此不需要任何抑制旗標。
+//
+// 用法:h = AFK_NAV.push(closeFn) 開層;主動關(✕/點背景/按鈕)呼叫 AFK_NAV.pop(h)。
+//   跨頁交接(掉落查詢↔小百科 互相切換,共用同一格歷史):來源 AFK_NAV.handoff(h),目的地 AFK_NAV.claim()。
 (function () {
-  var U = (window.AFK_UI = window.AFK_UI || {});
-  if (U._backInit) return;
-  U._backInit = true;
-  var stack = [];          // LIFO:每層 { close: fn }
-  var suppress = false;    // closeLayer 主動退歷史時,抑制隨之而來的 popstate(避免重複關)
-  U.openLayer = function (closeFn) {
-    var layer = { close: (typeof closeFn === 'function') ? closeFn : function () {} };
-    stack.push(layer);
-    try { history.pushState({ afkLayer: stack.length }, ''); } catch (e) {}
-    return layer;
+  var N = (window.AFK_NAV = window.AFK_NAV || {});
+  if (N._init) return;
+  N._init = true;
+
+  var stack = [];        // LIFO:每層 { seq, close };與「基準點以上的歷史格」一一對應
+  var seq = 0;           // 全站共用的遞增序號(寫進 history.state.afkNav)
+  var parked = null;     // handoff 暫存的層(等對方 claim)
+  var pendingBack = 0, flushing = false;
+
+  function curSeq() { try { return (history.state && history.state.afkNav) || 0; } catch (e) { return 0; } }
+
+  // 把「還沒發出的 back」集中到下一個 task 一次發:同一輪事件裡連關兩層時,
+  //   history.back() 是非同步的,逐次比對歷史位置會誤判(第二次看到的還是舊位置)。
+  function scheduleBack(n) {
+    pendingBack += n;
+    if (flushing) return;
+    flushing = true;
+    setTimeout(function () {
+      var k = pendingBack; pendingBack = 0; flushing = false;
+      if (k > 0) { try { history.go(-k); } catch (e) {} }
+    }, 0);
+  }
+
+  N.push = function (closeFn) {
+    var h = { seq: ++seq, close: (typeof closeFn === 'function') ? closeFn : function () {} };
+    stack.push(h);
+    // 有還沒發出的 back → 一退一進互相抵銷,就地換掉那格的擁有者即可(跨頁切換走這條,不會多留歷史)
+    if (pendingBack > 0) { pendingBack--; try { history.replaceState({ afkNav: h.seq }, ''); } catch (e) {} }
+    else { try { history.pushState({ afkNav: h.seq }, ''); } catch (e) {} }
+    return h;
   };
-  U.closeLayer = function (layer) {
-    var i = stack.indexOf(layer);
+
+  N.pop = function (h) {
+    var i = h ? stack.indexOf(h) : -1;
     if (i < 0) return;
-    stack.splice(i, 1);
-    try { layer.close(); } catch (e) {}
-    suppress = true;
-    try { history.back(); } catch (e) { suppress = false; }   // 退掉開啟時壓的那格歷史
+    var doomed = stack.splice(i);        // 自己與壓在自己上面的層一起收(歷史格是連續的)
+    for (var k = doomed.length - 1; k >= 0; k--) { try { doomed[k].close(); } catch (e) {} }
+    scheduleBack(doomed.length);
   };
+
+  N.top = function () { return stack.length ? stack[stack.length - 1] : null; };
+  N.depth = function () { return stack.length; };
+  // 跨頁交接:來源不關歷史、把層寄放著,目的地 claim 後改指向自己的關閉函式(整段切換只佔一格歷史)
+  N.handoff = function (h) { if (h && stack.indexOf(h) >= 0) parked = h; };
+  N.claim = function (closeFn) {
+    var h = parked; parked = null;
+    if (!h || stack.indexOf(h) < 0) return null;
+    if (typeof closeFn === 'function') h.close = closeFn;
+    return h;
+  };
+
   window.addEventListener('popstate', function () {
-    if (suppress) { suppress = false; return; }   // 主動關自己 history.back() 觸發的,已處理過
-    var layer = stack.pop();                       // 手機實體返回鍵:關掉最上層
-    if (layer) { try { layer.close(); } catch (e) {} }
+    var cur = curSeq();
+    // ⚠ 先把要關的層全部從 stack 摘下來再逐一 close():close() 裡可能又 push 新層
+    //   (如返回鍵從創角退回角色選擇後要重新押一格),邊走邊關會把剛押的那格立刻again關掉。
+    var doomed = [];
+    while (stack.length && stack[stack.length - 1].seq > cur) doomed.push(stack.pop());
+    for (var i = 0; i < doomed.length; i++) { try { doomed[i].close(); } catch (e) {} }
   });
+
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape' || !stack.length) return;
     e.preventDefault();
-    U.closeLayer(stack[stack.length - 1]);
+    N.pop(N.top());
   });
+
+  // 相容既有呼叫端(afk-storage / afk-diag / afk-history / afk-mobname / afk-reissueid / afk-battlehud / afk-pwa)
+  var U = (window.AFK_UI = window.AFK_UI || {});
+  U.openLayer = function (closeFn) { return N.push(closeFn); };
+  U.closeLayer = function (layer) { return N.pop(layer); };
 })();
 
 (function () {

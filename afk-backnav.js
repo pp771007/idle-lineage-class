@@ -4,9 +4,9 @@
  * 需求:在「角色選擇(載入進度 / 新遊戲)」與「創角」這兩個子畫面,按 Android 返回鍵 /
  *   iOS 返回手勢時 → 回到首頁主選單,而不是離開頁面 / 關掉 PWA。
  *
- * 作法(History API,完全不改作者碼,只包住作者的畫面切換函式 + 聽 popstate):
- *   - 每次畫面切換後 syncTrap():「人在子畫面就恰好押一格 history 攔截狀態,回到首頁/進遊戲就退掉那格」。
- *   - 使用者按返回(popstate)且目前在子畫面 → 呼叫作者原生返回(loadBackToMenu / backToMenu)退一層。
+ * 作法(完全不改作者碼,只包住作者的畫面切換函式 + 向 AFK_NAV 押一層歷史):
+ *   - 每次畫面切換後 syncTrap():「人在子畫面就恰好押一格 history 攔截層,回到首頁/進遊戲就退掉那格」。
+ *   - 使用者按返回 → AFK_NAV 回呼本檔的 onBack → 呼叫作者原生返回(loadBackToMenu / backToMenu)退一層。
  *   返回鍵的每一層都對齊畫面上「返回」鈕的行為:創角 →(backToMenu)角色選擇 →(loadBackToMenu)首頁。
  *   ⚠ 因此創角退回角色選擇後「還在子畫面」,必須再押回一格,否則下一次返回就直接關掉 PWA。
  *
@@ -39,17 +39,24 @@
   function vis(id) { var e = document.getElementById(id); return !!(e && !e.classList.contains('hidden')); }
   function subVisible() { for (var i = 0; i < SUBS.length; i++) if (vis(SUBS[i])) return true; return false; }
 
-  var trapped = false;     // 目前是否押著一個 history 攔截狀態
-  var ignorePop = false;   // 下一個 popstate 是我們自己 history.back() 觸發的 → 略過處理
+  var trap = null;   // 目前押著的攔截層(AFK_NAV 的 handle);null = 沒押
 
   function pushTrap() {
-    if (trapped) return;
-    try { history.pushState({ afkBack: 1 }, ''); trapped = true; } catch (e) {}
+    if (trap || !window.AFK_NAV) return;
+    trap = AFK_NAV.push(onBack);
   }
   function consumeTrap() {
-    if (!trapped) return;
-    trapped = false; ignorePop = true;
-    try { history.back(); } catch (e) { ignorePop = false; }
+    if (!trap) return;
+    var h = trap; trap = null;
+    AFK_NAV.pop(h);
+  }
+  // 使用者按了返回鍵 → AFK_NAV 已經把這層摘掉,先清 trap 再退一層畫面,
+  //   退完若還在子畫面(創角→角色選擇)由 syncTrap 重新押一格。
+  function onBack() {
+    trap = null;
+    if (!subVisible()) return;
+    routeBack();
+    syncTrap();
   }
 
   // 人在子畫面就恰好押著一格攔截狀態,否則退掉——每次畫面切換後呼叫,history 永遠跟畫面一致
@@ -64,23 +71,8 @@
     else if (vis('load-select-panel') && typeof window.loadBackToMenu === 'function') window.loadBackToMenu();
   }
 
-  window.addEventListener('popstate', function () {
-    if (ignorePop) { ignorePop = false; return; }
-    if (!isMobile()) return;            // 桌機:維持原生返回行為
-    // ⚠ 別的歷史管理器(afk-ui 接管的 alert 彈窗,用 AFK_UI.openLayer/closeLayer 壓/退一格歷史)在子畫面上方
-    //   開關彈窗時,它自己的 closeLayer 會呼叫 history.back() → 這個「程式化的 back」也會觸發本監聽器。
-    //   若退回後「還停在我們自己的攔截狀態(afkBack)或某個彈窗層(afkLayer)上」→ 表示被 pop 掉的是壓在我們上方的
-    //   彈窗歷史、我們的攔截狀態其實沒被動到,不是「使用者要離開子畫面」→ 不可路由回首頁、也不可清掉 trapped
-    //   (否則匯入後關閉提示彈窗會被誤判成返回→自動跳回首頁,且 trapped 殘留、每匯入一次累積一格歷史。踩過)。
-    var st = history.state;
-    if (st && (st.afkBack || st.afkLayer)) return;
-    if (subVisible()) {
-      trapped = false;                  // 瀏覽器已 pop 掉我們的攔截狀態
-      routeBack();
-      syncTrap();                       // 退一層後若還在子畫面(創角→角色選擇)要再押回去
-    }
-    // 非子畫面(首頁 / 遊戲中):不攔,放行原生行為
-  });
+  // ⚠ 本檔不自己聽 popstate:歷史層統一由 AFK_NAV 管(它會在退到本層下方時呼叫上面的 onBack)。
+  //   各自聽 popstate 正是「返回鍵要按好多下」的成因——別人發的 back 也會通知自己,誤判成使用者要離開。
 
   // 包住「進入子畫面」的函式 → 進去後押上攔截狀態(整個子流程只押一個)
   function wrapEnter(name) {

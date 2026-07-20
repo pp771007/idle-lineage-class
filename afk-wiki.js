@@ -58,7 +58,11 @@
     applyUrlState({ q: opts.q || '', tab: opts.tab || '', cls: opts.cls || '' });
   }
   // 跨頁切換用:關掉小百科模態並交出一層歷史(不呼叫 history.back,避免誤觸掉落查詢的 popstate 連帶誤關),供對方接手顯示
-  function closeForNav() { var m = document.getElementById('m-wiki-modal'); if (m && !m.getAttribute('data-standalone')) m.classList.remove('open'); if (_navDepth > 0) _navDepth--; }
+  function closeForNav() {
+    var h = _hModal; _hModal = null;
+    _hideModal();
+    if (h && window.AFK_NAV) AFK_NAV.handoff(h);   // 寄放歷史層給對方 claim,整段跨頁切換只佔一格
+  }
   window.AFK_WIKI_API = { goto: gotoWiki, close: closeForNav, isOpen: _isModalClosable, searchHits: searchHits };   // goto 通用跨頁前往小百科;close/isOpen 供跨頁切換(關閉來源、接手歷史層);searchHits 供掉落查詢統一搜尋
   // 獨立頁:狀態(搜尋字/分頁/職業)←→ 網址,方便複製連結分享(replaceState,不灌爆瀏覽記錄)
   function _wikiParam(n) { try { return new URLSearchParams(location.search).get(n); } catch (e) { return null; } }
@@ -1094,23 +1098,26 @@
     var wasOpen = m.classList.contains('open');
     m.classList.add('open');
     render();
-    if (!wasOpen && !m.getAttribute('data-standalone')) { if (adopt === true) { if (_navDepth < 1) _navDepth = 1; } else _pushNav(); }   // 開啟壓一層歷史 → 返回鍵可關;adopt===true:接手來源模態交出的層、不另壓(跨頁切換)。嚴格 true:按鈕 onclick 會傳 MouseEvent 進來,不可當 adopt
+    // 開啟壓一層歷史 → 返回鍵可關;adopt===true:接手來源模態交出的層、不另壓(跨頁切換)。嚴格 true:按鈕 onclick 會傳 MouseEvent 進來,不可當 adopt
+    if (!wasOpen && !m.getAttribute('data-standalone')) {
+      if (adopt === true && window.AFK_NAV) _hModal = AFK_NAV.claim(_hideModal);
+      if (!_hModal) _pushNav();
+    }
   }
-  function closeModal() { var m = document.getElementById('m-wiki-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
+  function closeModal() { if (_isModalClosable()) userCloseTop(); }   // 一律走 userCloseTop:直接 remove('open') 會留下沒人認領的歷史格
 
-  // ----- 手機返回鍵 / ESC 關閉(小百科只有 modal 一層) -----
-  var _navDepth = 0, _suppressPop = false;
+  // ----- 手機返回鍵 / ESC 關閉(小百科只有 modal 一層,歷史層統一交給 AFK_NAV) -----
+  //   ⚠ 不自己聽 popstate:popstate 是 window 級的,別人發的 back 也會通知本檔 → 誤判成自己的、
+  //     減了計數卻沒退掉自己那格歷史,累積成「返回鍵要按好幾下才離得開」。見 afk-ui.js 的 AFK_NAV。
+  var _hModal = null;
   function _isModalClosable() { var m = document.getElementById('m-wiki-modal'); return !!(m && m.classList.contains('open') && !m.getAttribute('data-standalone')); }   // 獨立頁常駐 modal 不算可關層
-  function _pushNav() { _navDepth++; try { history.pushState({ afkWikiNav: _navDepth }, ''); } catch (e) {} }
+  function _hideModal() { var m = document.getElementById('m-wiki-modal'); if (m && !m.getAttribute('data-standalone')) m.classList.remove('open'); _hModal = null; }
+  function _pushNav() { if (window.AFK_NAV) _hModal = AFK_NAV.push(_hideModal); }
   function userCloseTop() {   // X鈕 / 點背景 / ESC:關 modal,並退掉對應歷史
     if (!_isModalClosable()) return;
-    document.getElementById('m-wiki-modal').classList.remove('open');
-    if (_navDepth > 0) { _navDepth--; _suppressPop = true; try { history.back(); } catch (e) { _suppressPop = false; } }
+    var h = _hModal; _hModal = null;
+    if (h && window.AFK_NAV) AFK_NAV.pop(h); else _hideModal();
   }
-  window.addEventListener('popstate', function () {
-    if (_suppressPop) { _suppressPop = false; return; }
-    if (_navDepth > 0 && _isModalClosable()) { _navDepth--; document.getElementById('m-wiki-modal').classList.remove('open'); }   // 手機實體返回鍵
-  });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && _isModalClosable()) { e.preventDefault(); userCloseTop(); }
   });

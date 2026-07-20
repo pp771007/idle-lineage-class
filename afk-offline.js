@@ -49,22 +49,14 @@
   var SLICE_MAX_MS     = 250;                   // 長離線:讓出少、結算快
   var SLICE_SHORT_TICK = 3000;                  // ≤5 分鐘(=遮罩門檻)以下一律用最小值(順)
   var SLICE_LONG_TICK  = 36000;                 // ≥1 小時一律用最大值(快);兩者之間線性內插
-  // 手機切片上限收斂:250ms 一段代表整頁只有 ~4fps、觸控最慢要等 250ms 才有反應,
-  //   玩家很容易以為當掉而切走或殺掉 App(切走在 iOS 反而更容易整頁被回收)。
-  //   代價只有讓出開銷從 ~6% 變 ~10%,換來進度條會動、長按放棄按得動。
-  var SLICE_MAX_TOUCH_MS = 160;
-  function sliceMaxMs() {
-    try {
-      var touch = ('ontouchstart' in window) || (window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
-      return touch ? SLICE_MAX_TOUCH_MS : SLICE_MAX_MS;
-    } catch (e) { return SLICE_MAX_MS; }
-  }
+  // ⚠ 別為了「進度條看起來比較順」把手機的切片調小:2026-07-20 曾把手機上限改成 160ms,
+  //   玩家立刻回報「離線結算變慢」——切片小=讓出次數多=多花的都是等影格的時間(250→160 約慢 5%),
+  //   而換來的只是觀感。結算跑得快本身就是玩家最在意的事,維持單一上限。
   function sliceFor(totalTicks) {
-    var maxMs = sliceMaxMs();
     if (totalTicks <= SLICE_SHORT_TICK) return SLICE_MIN_MS;
-    if (totalTicks >= SLICE_LONG_TICK) return maxMs;
+    if (totalTicks >= SLICE_LONG_TICK) return SLICE_MAX_MS;
     var f = (totalTicks - SLICE_SHORT_TICK) / (SLICE_LONG_TICK - SLICE_SHORT_TICK);
-    return Math.round(SLICE_MIN_MS + f * (maxMs - SLICE_MIN_MS));
+    return Math.round(SLICE_MIN_MS + f * (SLICE_MAX_MS - SLICE_MIN_MS));
   }
   // tick 數 → 友善時間字串(進度遮罩顯示「已結算 X / 共 Y」用)
   function fmtCatchupTime(ticks) {

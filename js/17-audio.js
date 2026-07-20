@@ -8,7 +8,10 @@
 const SFX_DEFS = {
     attack:  { file: 'attack',  vol: 0.45, throttle: 70 },   // 玩家普攻命中（連打節流，不洗版）
     crit:    { file: 'crit',    vol: 0.70, throttle: 40 },   // 爆擊／會心一擊
-    kill:    { file: 'kill',    vol: 0.60, throttle: 50 },   // 擊殺怪物
+    // 🔊 v3.5.84 擊殺怪物：原本指向 assets/sfx/kill.*，但該檔從未存在＝三條「退回通用擊殺音」的鏈路實際全是靜音。
+    //    改借用音效庫既有的 57（MOB_KILL_SFX 中最通用的死亡音·37 隻怪共用）當通用擊殺音。
+    //    ⚠️ 若日後補了專屬的 assets/sfx/kill.ogg，把 file 改回 'kill' 即可（其餘程式碼不必動）。
+    kill:    { file: '57',      vol: 0.60, throttle: 50 },   // 擊殺怪物（通用·借用 57）
     magic:   { file: 'magic',   vol: 0.55, throttle: 90 },   // 玩家施放魔法
     hurt:    { file: 'hurt',    vol: 0.50, throttle: 120 },  // 玩家受到傷害
     levelup: { file: 'levelup', vol: 0.85, throttle: 0 },    // 升級

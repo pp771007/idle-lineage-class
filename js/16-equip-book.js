@@ -1,11 +1,6 @@
-// ========== 🗡️ 裝備收集冊（概念同卡片收集冊：獲得即登錄、依部位分類、唯一·無法賣出·無法廢品）==========
-// 收集冊本體：創角預設在背包、唯一、無法賣出、無法標示廢品、不入倉庫。
-DB.items['item_equip_book'] = {
-    n: '裝備收集冊', type: 'misc', eff: 'equipbook', c: 'text-amber-300',
-    img: 'assets/icons/items/裝備收集冊.png', p: 0, gachaWeight: 0,
-    unique: true, noSell: true, noJunk: true, maxHold: 1,
-    d: '記錄你曾獲得過的裝備之證。使用以翻開收集冊。<br>唯一、無法販賣、無法存入倉庫。'
-};
+// ========== 🗡️ 裝備收集冊（概念同卡片收集冊：獲得即登錄、依部位分類）==========
+// 收集冊本體道具已移除：改由「收藏」面板開啟，item_equip_book 無任何取得管道且讀檔時被 ensureEquipBook 濾除
+// →不可達定義刪除（ensureEquipBook 內的字串 id 過濾保留·舊存檔遷移仍需要）。
 
 // ---- 部位分類（顯示順序＝武器 → 防具 → 飾品）----
 const EQUIP_CATEGORIES = [
@@ -205,7 +200,7 @@ let _equipBookOpen = false;
 let _equipBookCat = EQUIP_CATEGORIES[0].key;
 function openEquipBook() {
     if (!player.equipDex) player.equipDex = {};
-    if (typeof mergeSharedIntoPlayer === 'function') mergeSharedIntoPlayer('equip');   // 🔄 多開兜底：開書前先併入其他分頁的裝備進度（裝備冊無加成，免重算）
+    if (typeof mergeSharedIntoPlayer === 'function' && mergeSharedIntoPlayer('equip') && typeof calcStats === 'function') calcStats();   // 🔄 多開兜底：開書前先併入其他分頁的裝備進度。⚠️ 裝備冊「有」加成（EQUIP_CAT_BONUS 28 筆經 equipCollectionBonus 套 HP/MP/dr/mr/AC/負重…），合併後必須重算，否則 UI 立刻顯示「（已啟用）」但衍生值要等下次 calcStats 才生效（比照 js/15 openCardBook）
     if (typeof closeModal === 'function') closeModal();   // 先關物品操作彈窗(z-50)，避免書頁(z-45)開在後方
     _equipBookOpen = true;
     let el = document.getElementById('equip-book'); if (!el) return;

@@ -4,11 +4,7 @@ const TAB_WHEEL_IDLE_MS = 180;
 const CLASSIC_GRID_COLUMNS = 4;
 const CLASSIC_GRID_ROWS = 6;
 const CLASSIC_PAGE_CELLS = CLASSIC_GRID_COLUMNS * CLASSIC_GRID_ROWS;
-function plainInventoryItemName(item) {
-    let tmp = document.createElement('span');
-    tmp.innerHTML = getItemFullName(item);
-    return (tmp.textContent || tmp.innerText || (DB.items[item.id] && DB.items[item.id].n) || item.id).trim();
-}
+// 🗑️ v3.5.83 移除 plainInventoryItemName()：零引用，且與實際使用中的 _autoSellPlainItemName 功能重複。
 function _initTabGuard() {
     let panel = document.getElementById('tab-content-panel');
     if (!panel || panel._tabGuardInit) return;
@@ -170,7 +166,9 @@ function renderTabs(force) {
         let inv = player.inv.map(i => itemSig(i) + '.' + (i.cnt||1) + '.' + (i.lock?1:0) + '.' + (i.junk?1:0)).join(';');   // 🔧 架構#3：改用統一簽章（修正先前祝福/詛咒同被壓成 1 的重繪遺漏）
         let eq = Object.keys(player.eq).map(k => { let e = player.eq[k]; return e ? `${k}:${itemSig(e)}.${e.cnt||0}` : k+':'; }).join(',');   // 🔧 補上先前缺漏的 attr / anc
         let dd = player.d;
-        return `${inv}#${eq}#${(player.skills||[]).join(',')}#${(player.grantedSkills||[]).join(',')}#${player.cls}#${player.lv}#${player.elfEle||''}#${player.mastery||''}#${dd.str+dd.dex+dd.con+dd.int+dd.wis}`;
+        // 🩹 v3.5.87 簽章補實際繪出的衍生值·防 buff 到期顯示卡舊：裝備分頁標頭的負重(weightPct/loadTier)與經典技能視窗的魔法傷害/MR(magicDmg/mr)
+        //    —— 五維總和不變時（如負重強化 buff、龍族覺醒 mr×1.15 到期）這些畫面值仍會變，須納入簽章才會觸發重繪
+        return `${inv}#${eq}#${(player.skills||[]).join(',')}#${(player.grantedSkills||[]).join(',')}#${player.cls}#${player.lv}#${player.elfEle||''}#${player.mastery||''}#${dd.str+dd.dex+dd.con+dd.int+dd.wis}#${dd.weightPct||0}.${dd.loadTier||0}.${Math.round(dd.magicDmg||0)}.${Math.round(dd.mr||0)}`;
     })();
     if(!force && _sig === renderTabs._sig) return;
     renderTabs._sig = _sig;
@@ -181,7 +179,7 @@ function renderTabs(force) {
     let eDiv = document.getElementById('tab-equip'); eDiv.innerHTML = '';
     { let _wd = player.d || {}; let _t = _wd.loadTier || 0; let _hdr = document.createElement('div'); _hdr.className = 'classic-list-toolbar text-center py-0.5 rounded bg-slate-900/60 border border-slate-700 text-sm font-bold leading-tight' + (_t >= 1 ? ' cursor-help' : ''); if (_t >= 1) { _hdr.title = _t === 1 ? '負重50%↑：HP/MP不自然恢復' : (_t === 2 ? '負重82%↑：HP/MP不自然恢復、停自動施法、攻速變慢' : '負重100%↑：HP/MP不自然恢復、停自動施法、攻速大幅變慢'); } _hdr.innerHTML = `<span class="${getLoadColor(_t)}">負重 ${_wd.weightPct||0}%</span>`; eDiv.appendChild(_hdr); }
     const _baseSlots = [{k:'wpn',n:'武器'}, ...((player.cls === 'warrior' && (player.skills.includes('sk_warrior_dualaxe') || player.eq.offwpn)) ? [{k:'offwpn',n:'副手武器'}] : []), {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'shin',n:'脛甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'doll',n:'魔法娃娃'},{k:'arrow',n:'箭矢'}];   // 🦴 v3.3.21 移除已停用的 {k:'pet'} 空格（v3.2.37 玩家 eq.pet 拆除→改亞丁包武保管·此欄恆空）   // ⚔️ offwpn：戰士學會迅猛雙斧後顯示副手武器欄
-    const _remSlots = (typeof SHERINE_REMAINS !== 'undefined') ? SHERINE_REMAINS.map(r => ({ k: r.id, n: '遺骸' + r.n })) : [];   // 🦴 v3.1.68 席琳遺骸 8 格（欄位鍵=物品id·浮動裝備視窗 js/19 PAGE_SLOTS 不含→不顯示）
+    const _remSlots = (typeof SHERINE_REMAINS !== 'undefined') ? SHERINE_REMAINS.map(r => ({ k: r.id, n: '遺骸' + r.n })) : [];   // 🦴 v3.1.68 席琳遺骸 8 格（欄位鍵=物品id）·⚠️ 同一組 8 格也顯示在 js/19 嵌入式裝備面板的第 2 頁（PAGE_SLOTS[1]，js/19 自 v3.5.87 起已無浮動模式）→ 日後新增遺骸種類兩處都要同步
     // 🦴 新版第一頁為 4 欄 × 6 排＝24 格；一般裝備補滿第一頁後，8 格遺骸固定落在第 25~32 格（第二頁前兩排）。
     const _padCells = Math.max(0, CLASSIC_PAGE_CELLS - _baseSlots.length);
     const slots = [..._baseSlots, ...Array.from({ length: _remSlots.length ? _padCells : 0 }, () => ({ filler: true })), ..._remSlots];
@@ -331,12 +329,12 @@ player.inv.forEach(i => {
     // ⚡ 快速強化模式：對應分頁啟用且為可強化裝備（未鎖定）時，右側顯示勾選欄，點整列切換勾選
     let _qeType = (d.type === 'wpn' && !d.isArrow) ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : null);
     let _qjType = (d.type === 'wpn') ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : 'item');   // 🗑️ 快速廢品分頁歸屬（含箭矢→武器分頁、其餘→道具分頁）
-    if (_qeType && quickEnh[_qeType].active && !i.lock) {
+    if (_qeType && quickEnh[_qeType].active && _qeCanSelect(d, i, _qeType)) {   // ⚡ v3.5.87 改用與執行端 _qeEligibleItems 同一 predicate：noEnhance 等不合格物品不再顯示可勾（改走下方一般列分支）
         let _checked = !!quickEnh[_qeType].sel[i.uid];
         el.innerHTML = `<div class="flex items-center justify-between gap-2">${_rowInner}<input type="checkbox" class="pointer-events-none w-4 h-4 mr-1 flex-shrink-0" ${_checked ? 'checked' : ''}></div>`;
         if (_checked) el.className += ' ring-2 ring-blue-500/70';
         el.onclick = () => toggleQuickItem(_qeType, i.uid);
-    } else if (quickJunk[_qjType].active && !i.lock) {
+    } else if (quickJunk[_qjType].active && _qjCanSelect(d, i, _qjType)) {   // 🗑️ v3.5.87 同上：noJunk 物品不再顯示可勾
         let _checked = !!quickJunk[_qjType].sel[i.uid];
         el.innerHTML = `<div class="flex items-center justify-between gap-2">${_rowInner}<input type="checkbox" class="pointer-events-none w-4 h-4 mr-1 flex-shrink-0" ${_checked ? 'checked' : ''}></div>`;
         if (_checked) el.className += ' ring-2 ring-amber-500/70';
@@ -760,7 +758,6 @@ function relicPurposeLabels(d) {
     const skillName = id => (DB.skills[id] && DB.skills[id].n) || '技能';
     const pctText = v => `${Math.round(v * 100)}%`;
 
-    if (d.relicRole) out.push(`用途定位（${d.relicRole}）`);
     if (d.reqAvatar) out.push(`裝備限制（僅限${d.reqAvatar}；其他角色無法裝備）`);
     if (d.petDmgReduce) out.push(`寵物護甲（裝備的寵物受到傷害-${Math.round(d.petDmgReduce * 100)}%）`);
     if (d.petBleed) out.push('寵物出血（一般攻擊命中疊加8秒出血；每層每秒造成該次傷害20%，最多5層）');
@@ -863,10 +860,84 @@ function relicPurposeLabels(d) {
 
     return out;
 }
+function tooltipEscRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Legacy item descriptions often contain old stat/effect tags. Keep the lore, but let the
+// structured tooltip be the single source for mechanics that are still active.
+function tooltipItemDescription(d, itemId) {
+    let desc = String((d && d.d) || '');
+    if (!desc) return '';
+
+    const statPatterns = [];
+    const addValue = (label, value, suffix) => {
+        let n = Math.abs(Number(value));
+        if (!Number.isFinite(n) || n === 0) return;
+        statPatterns.push(`${label}\\s*[+＋\\-－]\\s*${tooltipEscRegExp(n)}${suffix || ''}(?!\\d)`);
+    };
+    addValue('力量', d.str); addValue('敏捷', d.dex); addValue('體質', d.con);
+    addValue('智力', d.int); addValue('精神', d.wis); addValue('魅力', d.cha);
+    addValue('HP\\s*(?:上限)?', d.mhp); addValue('MP\\s*(?:上限)?', d.mmp);
+    addValue('HP\\s*(?:自然)?(?:恢復|回復)(?:量)?', d.hpR);
+    addValue('MP\\s*(?:自然)?(?:恢復|回復)(?:量)?', d.mpR);
+    addValue('魔法傷害', d.mdmg); addValue('魔法命中', d.magicHit);
+    addValue('額外魔法點數', d.extraMp); addValue('額外傷害', d.extraDmg); addValue('額外命中', d.extraHit);
+    addValue('(?:傷害減免|減傷)', d.dr); addValue('(?:迴避|ER)', d.er); addValue('負重(?:上限)?', d.weightCap);
+    addValue('(?:近距離|遠距離)命中', d.hit); addValue('(?:近距離|遠距離)傷害', d.dmgBonus);
+    addValue('近距離命中', d.meleeHit); addValue('遠距離命中', d.rangedHit);
+    addValue('近距離傷害', d.meleeDmg); addValue('遠距離傷害', d.rangedDmg);
+    addValue('(?:MR|魔防|魔法防禦)', d.mr); addValue('(?:AC|防禦)', d.ac);
+    addValue('火屬性抗性', d.resFire); addValue('水屬性抗性', d.resWater);
+    addValue('風屬性抗性', d.resWind); addValue('地屬性抗性', d.resEarth);
+    if (d.potionBonus) statPatterns.push(`(?:藥水|治癒藥水).{0,12}(?:恢復|回復).{0,12}[+＋]\\s*${tooltipEscRegExp(d.potionBonus)}\\s*%`);
+    for (const pattern of statPatterns) desc = desc.replace(new RegExp(pattern, 'g'), '');
+
+    const tags = typeof getWeaponTags === 'function' ? getWeaponTags(itemId) : [];
+    const legacyTags = [];
+    const byEff = { pierce:'穿透', moonburst:'月光爆裂', dice_death:'即死', haste:'加速', crush:'重擊', cleave:'切割', combo:'雙擊', magicstrike:'魔擊', magicburst:'魔爆' };
+    if (byEff[d.eff]) legacyTags.push(byEff[d.eff]);
+    if (d.alsoPierce) legacyTags.push('穿透');
+    if (d.ignHardSkin) legacyTags.push('貫穿');
+    if (d.rapidfire) legacyTags.push('連射(?:\\d+%?)?');
+    if (d.oneHand && d.isBow) legacyTags.push('可單手持握');
+    if (tags.includes('單手劍')) legacyTags.push('反擊');
+    if (tags.includes('武士刀')) legacyTags.push('居合');
+    if (tags.includes('單手鈍器')) legacyTags.push('鉤擊');
+    if (tags.includes('雙刀')) legacyTags.push('雙刃');
+    if (typeof weaponHasBleed === 'function' && weaponHasBleed(itemId)) legacyTags.push('(?:帶)?出血');
+    for (const tag of legacyTags) {
+        desc = desc.replace(new RegExp(`(^|[、；;。])\\s*${tag}(?:（[^）]*）)?(?=[、；;。]|$)`, 'g'), '$1');
+    }
+    if (d.unBonus) desc = desc.replace(/(?:[、；;。]\s*)?對不死\s*[/／]\s*狼人加成(?=[、；;。]|$)/g, '');   // 🧹 v3.5.87 #128：unDice / sp:'elf' 全 DB.items 零定義（恆假死運算元）→ 只留 unBonus
+    if (d.relic && d.armguard) desc = desc.replace(/(?:[、；;。]\s*)?臂甲（裝於副手，可與雙手武器並用）[。；;]?/g, '');
+
+    return desc
+        .replace(/[、，；;]\s*[、，；;]+/g, '、')
+        .replace(/[、，；;]\s*。/g, '。')
+        .replace(/。\s*[。；;、，]+/g, '。')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+}
+
+function dedupeGeneratedTooltipEffects(effects, d, options) {
+    if (d.procPoisonPct) effects = effects.filter(label => !label.startsWith('附毒（一般攻擊命中附加'));
+    if (!options || !options.main) return effects;
+    return effects.filter(label => {
+        if (d.potionBonus && label.startsWith('治癒藥水恢復量+')) return false;
+        if (d.abnormalResist && label.startsWith('異常狀態抵抗+')) return false;
+        if (d.immParalyze && label === '免疫麻痺') return false;
+        if (d.immBurn && label === '免疫燃燒') return false;
+        if (d.immFreeze && label === '免疫冰凍') return false;
+        if (d.resNone && (d.type === 'arm' || d.type === 'acc') && label.startsWith('無屬性魔法抗性+')) return false;
+        return true;
+    });
+}
+
 function buildItemDescHTML(item) {
     let d = DB.items[item.id];
     if(!d) return '';
-    let desc = d.d || "";
+    let desc = tooltipItemDescription(d, item.id);
     // 🔮 席琳套裝效果：寫在資訊欄（綠色標題＋淺綠加成說明），不冠在名稱前
     // ⚠️v3.1.68 套裝效果改由「席琳遺骸」承載：遺骸(d.remains)照常列加成；一般裝備上的舊詞綴補註「不再計入」提示（顯示保留·可由菈克希絲拆分）
     if (item.seteff) {
@@ -973,7 +1044,7 @@ function buildItemDescHTML(item) {
     // 👇 裝備特效標籤：顯示「名稱＋精簡機制說明」，讓玩家不必只靠特效名稱猜用途。涵蓋 武器/防具/飾品。
     if (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') {
         let _eff = [];
-        if (d.unBonus || d.unDice || d.sp === 'elf') _eff.push('不死／狼人加成（額外造成1D20傷害）');
+        if (d.unBonus) _eff.push('不死／狼人加成（額外造成1D20傷害）');   // 🧹 v3.5.87 #128：unDice / sp:'elf' 全 DB.items 零定義（恆假死運算元）→ 只留 unBonus
         if (d.eff === 'pierce')     _eff.push('穿透 ' + (d.pierceChance !== undefined ? d.pierceChance : 100) + '%（命中後追加攻擊另一名敵人）');
         if (d.alsoPierce)           _eff.push('穿透 ' + (d.pierceChance !== undefined ? d.pierceChance : 100) + '%（命中後追加攻擊另一名敵人）');   // 主特效槽被占用時仍可附帶「穿透」；與無視硬皮的「貫穿」不同
         if (d.eff === 'moonburst')  _eff.push('月光爆裂（命中時8%造成1D30＋強化×2風屬性魔法傷害·受魔法傷害公式與MR影響）');
@@ -1033,6 +1104,7 @@ function buildItemDescHTML(item) {
             _eff.push(`${_eleName}附傷${d.onHitEleDmg.rate ? ` ${d.onHitEleDmg.rate}%` : ''}（命中時追加${d.onHitEleDmg.dmg}點傷害）`);
         }
         if (d.freeChill)             _eff.push('施放寒冰氣息不消耗魔力');
+        if (d.windHelm)              _eff.push('施放加速術／強力加速術不消耗魔力（裝備或放在背包皆有效）');   // 🌀 v3.5.87 風之頭盔：實作在 js/08 playerHasWindHelm（背包持有即生效），說明補上實際效果
         if (d.noConsume && d.isArrow) _eff.push('箭矢不會消耗');
         if (d.oneHand && d.isBow)    _eff.push('可單手持握');
         if (d.ele && d.ele !== 'none') {
@@ -1058,7 +1130,7 @@ function buildItemDescHTML(item) {
         if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(item.id)) _eff.push('共鳴（攻擊時依智力免費施放光箭）');
         _eff.push(...weaponPurposeLabels(d));
         if (d.relic) _eff.push(...relicPurposeLabels(d));
-        _eff = [...new Set(_eff)];
+        _eff = dedupeGeneratedTooltipEffects([...new Set(_eff)], d, { main:true });
         _eff = filterClassicEffLabels(_eff, d);   // 🎮 經典模式：移除已停用特效字樣（classicOk 物品不過濾）
         if (_eff.length) desc += `<br><span class="text-rose-300 font-bold">特效：${_eff.join(' / ')}</span>`;
     }
@@ -1140,6 +1212,14 @@ function buildItemDescHTML(item) {
         let eleName = { fire:'火', water:'水', wind:'風', earth:'地' }[_aff.ele];
         let counterName = { fire:'地', water:'火', wind:'水', earth:'風' }[_aff.ele];
         desc += `<br><span class="c-attr-${attrCanon(item.attr)}">${_aff.n}（屬性第${_aff.tier}階）：額外傷害+${_aff.dmg}、額外魔法點數+${_aff.mp}，一般攻擊轉為${eleName}屬性（剋${counterName} ×1.4）。</span>`;   // 🔥 v3.0.77 五階制
+    }
+
+    // 🪄 授予技能（力量／敏捷／治癒魔法頭盔等 grantSkills 裝備）：列出可額外使用的魔法。
+    //    接線在 js/02 recomputeStats：①任何職業「裝備」→ 授予；②騎士／王族／戰士「背包持有」即授予（不需裝備）。
+    if (d.grantSkills && d.grantSkills.length) {
+        let _gsk = d.grantSkills.map(sk => (DB.skills[sk] && DB.skills[sk].n) || sk).join('、');
+        desc += `<br><span class="text-emerald-300 font-bold">可額外使用魔法：${_gsk}</span>`;
+        desc += `<br><span class="text-slate-400 text-xs">騎士／王族／戰士放在背包即可使用；其他職業需裝備。</span>`;
     }
 
     // 🛡️ 適用職業：以職業 logo 顯示可裝備此裝備的職業（騎士/妖精/法師/黑暗妖精/幻術士；黑暗妖精走 darkEquipOk 真實規則）
@@ -1241,7 +1321,7 @@ function openModal(item, isEq, slot) {
     }
 
     // 廢品勾選（所有背包道具：武器/防具/飾品/藥水/卷軸/魔法書/技能書/材料/試煉道具等）：
-    //   勾選後，從「最後一次手動標示」起算 10 分鐘沒有新動作，系統才自動賣出（autoSellJunk·每次手動標示會重置倒數）；鎖定中無法勾選且會自動取消。
+    //   勾選後，從「最後一次手動標示」起算 10 秒（掃描節奏；真正的寬限期是 autoSellRules.delaySec，預設 60 秒）沒有新動作，系統才自動賣出（autoSellJunk·每次手動標示會重置倒數）；鎖定中無法勾選且會自動取消。
     if (!isEq && !(DB.items[item.id] && DB.items[item.id].noJunk)) {   // 🎴 noJunk(收集冊等)：不顯示「標記為廢品」
         let locked = !!item.lock;
         let checked = (item.junk && !locked) ? 'checked' : '';
@@ -1432,7 +1512,7 @@ function executeAutoSafeEnhance(targetUid, isEq, scrollId, goal) {
     }
 
     if (destroyed) {
-        if (isEq) { if (slot) player.eq[slot] = null; }
+        if (isEq) { if (slot) player.eq[slot] = null; if (typeof syncShahaArrow === 'function') syncShahaArrow(); if (typeof syncDualWield === 'function') syncDualWield(); }   // ⚠️ 快速強化爆裝同樣要同步副手／沙哈箭（與 js/08 doEnhance 一致）
         else { player.inv = player.inv.filter(i => i.uid !== target.uid); }
         logSys(`消耗了 ${used} 張 ${scrollName}。<span class="text-red-500 font-bold">${fn0} 強烈的發出銀色的光芒就消失了。</span>`);
     } else if (ranOut) {
@@ -1491,13 +1571,16 @@ function executeCurseDeEnhance(targetUid, isEq, scrollId) {
 // ========== ⚡ 快速強化（批次強化）==========
 // 強化成敗一律走 enhanceRollOutcome（js/01·天堂經典衝裝規則·與 doEnhance/executeAutoSafeEnhance 同一套機率）
 
+// ⚡ v3.5.87 共用資格判定（單一真相）：渲染端（背包列勾選框）與執行端（_qeEligibleItems）都用它，
+//    防止 noEnhance 等不合格物品顯示可勾（藍框）卻在執行時被靜默略過、表頭全選狀態對不上
+function _qeCanSelect(d, i, type) {
+    if (!d || i.lock || d.noEnhance) return false;   // 🪆 無法強化(古老系列/魔法娃娃)不列入快速強化
+    if (type === 'wpn') return d.type === 'wpn' && !d.isArrow;
+    return d.type === 'arm' || d.type === 'acc';
+}
 // 該分頁可被批次強化的背包裝備（未鎖定；武器分頁＝武器(非箭矢)，防具分頁＝防具/飾品）
 function _qeEligibleItems(type) {
-    return player.inv.filter(i => {
-        let d = DB.items[i.id]; if (!d || i.lock || d.noEnhance) return false;   // 🪆 無法強化(古老系列/魔法娃娃)不列入快速強化
-        if (type === 'wpn') return d.type === 'wpn' && !d.isArrow;
-        return d.type === 'arm' || d.type === 'acc';
-    });
+    return player.inv.filter(i => _qeCanSelect(DB.items[i.id], i, type));
 }
 
 // 模擬單一件裝備從 startEn 強化到 goal：每階消耗對應卷軸，安定值前必成功、安定值起依機率，失敗即爆裝。
@@ -1611,14 +1694,20 @@ function runQuickEnhance(type) {
 }
 
 // ========== 🗑️ 快速廢品（批次標記廢品）==========
+// 🗑️ v3.5.87 共用資格判定（單一真相）：渲染端（背包列勾選框）與執行端（_qjEligibleItems）都用它（理由同 _qeCanSelect）
+// ⚠️ noJunk 現況：DB.items 靜態只有 8 筆（席琳遺骸 rem_*·全為 type:'acc'），另由本檔「娃娃硬保護」在載入後
+//    動態補上 50 筆魔法娃娃（doll·同樣是 type:'acc'）→ 兩者都落在防具分頁(arm)。
+//    因此下方 d.noJunk 判定實際只對 arm 分頁生效；道具分頁(item)現無任何 noJunk 資料命中（死條件），
+//    保留供日後出現 type:'misc'/藥水卷軸類的 noJunk 物品使用。
+function _qjCanSelect(d, i, type) {
+    if (!d || i.lock || d.noJunk) return false;   // 🎴 noJunk(收集冊等)不納入快速廢品
+    if (type === 'wpn') return d.type === 'wpn';
+    if (type === 'arm') return d.type === 'arm' || d.type === 'acc';
+    return d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc';
+}
 // 該分頁可批次標記廢品的背包物品（未鎖定）：wpn=武器(含箭矢)、arm=防具/飾品、item=其餘（藥水/卷軸/書/材料等）
 function _qjEligibleItems(type) {
-    return player.inv.filter(i => {
-        let d = DB.items[i.id]; if (!d || i.lock || d.noJunk) return false;   // 🎴 noJunk(收集冊等)不納入快速廢品
-        if (type === 'wpn') return d.type === 'wpn';
-        if (type === 'arm') return d.type === 'arm' || d.type === 'acc';
-        return d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc';
-    });
+    return player.inv.filter(i => _qjCanSelect(DB.items[i.id], i, type));
 }
 // ⚡🗑️ 分頁頂端快速操作表頭：武器/防具＝[快速強化][快速廢品]；道具＝[快速廢品]（強化進行中沿用原強化表頭）
 function buildQuickHeader(type) {
@@ -1679,7 +1768,7 @@ function runQuickJunk(type) {
         if (want) { player.junkPrefs[itemSig(i)] = true; delete i._userKeep; marked++; }
         else { delete player.junkPrefs[itemSig(i)]; unmarked++; if (i._ruleJunk) { i._userKeep = true; i._ruleJunk = false; delete i.junkSince; delete i._autoSellQty; } }   // 🛡️ v2.6.69 審計#10：取消「規則標記」的廢品→記住玩家意圖，自動販賣不再重標（直到重新儲存規則）
     });
-    if (marked > 0) _bumpJunkSellTimer();   // 🗑️ 有新標記廢品→重置自動賣出倒數（標完 10 分鐘才賣）
+    if (marked > 0) _bumpJunkSellTimer();   // 🗑️ 有新標記廢品→重置自動賣出倒數（標完 10 秒（掃描節奏；真正的寬限期是 autoSellRules.delaySec，預設 60 秒）才賣）
     st.active = false; st.sel = {}; st.known = {};
     logSys(`<span class="text-amber-300 font-bold">快速廢品完成：</span>標記 ${marked} 件、取消 ${unmarked} 件。`);
     renderTabs(true);
@@ -1698,7 +1787,7 @@ function getSellPrice(item) {
     return price * mult;
 }
 
-// 🗑️ 玩家手動標示廢品 → 把自動賣出倒數重置為 10 分鐘（標完 10 分鐘沒有新動作才會賣，避免剛標就被賣掉）。
+// 🗑️ 玩家手動標示廢品 → 把自動賣出倒數重置為 10 秒（掃描節奏；真正的寬限期是 autoSellRules.delaySec，預設 60 秒）（標完 10 秒（掃描節奏；真正的寬限期是 autoSellRules.delaySec，預設 60 秒）沒有新動作才會賣，避免剛標就被賣掉）。
 //    ⚠️farming 自動標記（junkPrefs 命中掉落，js/04/js/08 gainItem）刻意不呼叫此函式，否則持續掉落會讓倒數永遠被重置、永不賣出。
 function _bumpJunkSellTimer() {
     if (typeof state !== 'undefined' && state) state._junkSellAt = (state.ticks || 0) + JUNK_AUTOSELL_TICKS;
@@ -1715,87 +1804,16 @@ function toggleJunk(uid) {
     if (d.noJunk) { item.junk = false; delete player.junkPrefs[itemSig(item)]; openModal(item, false); return; }   // 🎴 收集冊等 noJunk：無法標示為廢品
     item.junk = !item.junk;
     // 🔧 記憶廢品勾選（依完整簽章 id＋詞綴）：之後獲得「完全相同詞綴」的同種物品自動標記，直到玩家取消勾選為止
-    if (item.junk) { player.junkPrefs[itemSig(item)] = true; delete item._userKeep; _bumpJunkSellTimer(); }   // 🗑️ 標為廢品→重置自動賣出倒數（標完 10 分鐘才賣）
+    if (item.junk) { player.junkPrefs[itemSig(item)] = true; delete item._userKeep; _bumpJunkSellTimer(); }   // 🗑️ 標為廢品→重置自動賣出倒數（標完 10 秒（掃描節奏；真正的寬限期是 autoSellRules.delaySec，預設 60 秒）才賣）
     else { delete player.junkPrefs[itemSig(item)]; if (item._ruleJunk) { item._userKeep = true; item._ruleJunk = false; delete item.junkSince; delete item._autoSellQty; } }   // 🛡️ v2.6.69 審計#10：取消「規則標記」→ 記住玩家意圖，applyAutoSellRules 不再重標（防呆說明「可取消廢品標記」自此屬實）
     openModal(item, false);
     renderTabs();
 }
 
 // 一鍵排列：依規則重新排序背包（武器 / 防具飾品 / 道具 各自分頁內排序）
-// ===== 🔧 物品排序比較器（背包「一鍵排列」與倉庫「一鍵排列」共用，規則完全相同）=====
-const legacyInvSortCmp = (function () {
-    // 防具/飾品「特效」判定：基底物品具有 AC 以外的加成欄位即視為有特效
-    const MUNDANE = new Set(['n','type','slot','ac','req','safe','p','c','d','img','gachaWeight','unBonus']);
-    let hasArmEffect = (d) => { for (let k in d) { if (!MUNDANE.has(k) && d[k]) return true; } return false; };
-    // 詞綴數量
-    let affCount = (i) => (getAttrAffix(i.attr) ? 1 : 0) + (i.bless ? 1 : 0) + (i.anc ? 1 : 0);
-    // 詞綴類型優先：屬性 > 遠古 > 祝福（負值代表 a 在上）
-    let affixTypeCmp = (a, b) => {
-        let x = (getAttrAffix(a.attr) ? 1 : 0) - (getAttrAffix(b.attr) ? 1 : 0); if (x) return -x;
-        let y = (a.anc ? 1 : 0) - (b.anc ? 1 : 0); if (y) return -y;
-        let z = (a.bless ? 1 : 0) - (b.bless ? 1 : 0); if (z) return -z;
-        return 0;
-    };
-    let catRank = (d) => d.type === 'wpn' ? 0 : ((d.type === 'arm' || d.type === 'acc') ? 1 : 2);
-    // 道具是否可手動使用（點選）
-    let isUsable = (i, d) => {
-        if (d.type === 'pot') return true;
-        if (d.type === 'scroll') return i.id !== 'scroll_revive';   // 復活卷軸無法從道具欄使用
-        if (d.type === 'misc' || d.type === 'etc') return !!d.eff;   // 有效果(回憶蠟燭/🥚頑皮幼龍蛋等)才可使用
-        if (d.type === 'skillbk') {
-            let sk = DB.skills[d.sk]; if (!sk) return false;
-            let cls = skillReqLv(sk, d.sk);   // 🏅 集中化：含魔導精通特例
-            return cls !== undefined && !player.skills.includes(d.sk);   // 可學且未學 → 可點選
-        }
-        return false;
-    };
-    // 道具群組：0 消耗道具、1 魔法書、2 精靈水晶、3 技術書
-    let bkGroup = (d) => {
-        if (d.type !== 'skillbk') return 0;
-        let n = d.n || '';
-        if (n.startsWith('魔法書')) return 1;
-        if (n.startsWith('精靈水晶')) return 2;
-        return 3;
-    };
-    let tierOf = (d) => { let sk = DB.skills[d.sk]; return sk ? (sk.tier || 1) : 0; };
-    let nameCmp = (da, db) => (da.n || '').localeCompare(db.n || '');
-
-    return function (ia, ib) {
-        let da = DB.items[ia.id], db = DB.items[ib.id];
-        if (!da || !db) return 0;
-        let ca = catRank(da), cb = catRank(db);
-        if (ca !== cb) return ca - cb;
-
-        if (ca === 0) { // 武器：🔧 強化值高→上；相同再依 詞綴數量 → 屬性>遠古>祝福 → 攻擊力 → 名稱
-            if ((ib.en || 0) !== (ia.en || 0)) return (ib.en || 0) - (ia.en || 0);   // 強化值高優先
-            let c = affCount(ib) - affCount(ia); if (c) return c;                     // 強化值相同→詞綴數量
-            let t = affixTypeCmp(ia, ib); if (t) return t;                            // →詞綴類型(屬性>遠古>祝福)
-            let pa = (da.dmgS || 0) + (da.dmgL || 0), pb = (db.dmgS || 0) + (db.dmgL || 0);
-            if (pa !== pb) return pb - pa;                                            // →攻擊力高→上
-            return nameCmp(da, db);
-        }
-        if (ca === 1) { // 防具/飾品：🔧 強化值高→上；相同再依 詞綴數量 → 屬性>遠古>祝福 → 有特效 → AC高 → 名稱
-            if ((ib.en || 0) !== (ia.en || 0)) return (ib.en || 0) - (ia.en || 0);   // 強化值高優先
-            let c = affCount(ib) - affCount(ia); if (c) return c;                     // 強化值相同→詞綴數量
-            let t = affixTypeCmp(ia, ib); if (t) return t;                            // →詞綴類型
-            let ea = hasArmEffect(da) ? 1 : 0, eb = hasArmEffect(db) ? 1 : 0;
-            if (ea !== eb) return eb - ea;
-            if ((da.ac || 0) !== (db.ac || 0)) return (db.ac || 0) - (da.ac || 0);
-            return nameCmp(da, db);
-        }
-        // 道具：可點選 → 不可點選；可點選內 消耗道具→魔法書→精靈水晶→技術書，書籍依階級高→低；不可點選依名稱
-        let ua = isUsable(ia, da) ? 0 : 1, ub = isUsable(ib, db) ? 0 : 1;
-        if (ua !== ub) return ua - ub;
-        if (ua === 0) {
-            let ga = bkGroup(da), gb = bkGroup(db);
-            if (ga !== gb) return ga - gb;
-            if (ga === 0) return nameCmp(da, db);          // 消耗道具：名稱
-            let tdiff = tierOf(db) - tierOf(da); if (tdiff) return tdiff;   // 書籍：階級高→上
-            return nameCmp(da, db);
-        }
-        return nameCmp(da, db);                            // 不可點選：名稱
-    };
-})();
+// 🗑️ v3.5.83 移除 legacyInvSortCmp：零呼叫點，且其規則已與現行 invSortCmp 分歧（缺鎖定/廢品優先、
+//    缺分類/品質/名稱排序模式、缺 seteff/legend/cardTier 排名）——留著只會讓排序規則的修改落到永不執行的程式碼。
+//    現行單一真相＝下方的 invSortCmp（背包「一鍵排列」與倉庫共用）。
 
 // 🔧 v2.6.73 一鍵排列改「獲得物品時自動觸發」（gainItem 尾端掛點）：每 10 秒最多 1 次·靜默（不 saveGame·排序結果隨其他存檔點落地）
 // 🔧 v2.6.80 與「啟用自動販賣」合併控制（用戶要求）：player.autoSellOn=false 時自動排列一併停用
@@ -1881,19 +1899,17 @@ function sortInventoryNow() {
 }
 // 🔧 v2.6.74 自動化設定改「分頁內嵌」（#tab-automation·與能力/技能同框架·switchTab 切換）；v2.6.73 的浮動視窗與 toggleAutomationWindow 已移除。
 //    set-* 控制項恆在 DOM（分頁隱藏時仍可 getElementById 讀值）→ saveGame/自動化邏輯完全不受影響。
-function sortInventory() {
-    player.inv.sort(invSortCmp);
-
-    renderTabs();
-    saveGame();
-    logSys('<span class="text-cyan-300 font-bold">背包已重新排列。</span>');
-}
+// 🗑️ v3.5.83 移除 sortInventory()：零呼叫點，現行入口為 sortInventoryNow()。
 
 // 一鍵賣出所有已勾為廢品的武器/防具/飾品（鎖定者不會被賣，因鎖定時已自動取消勾選）
 // ⏲️ 自動賣出廢品：由主迴圈 tick（每 10 秒·JUNK_AUTOSELL_TICKS）呼叫；賣掉所有標示為廢品(且非鎖定/可販售)的物品。無廢品→靜默不洗版。
 //    ⚡ 2026-07-01 效能：自動路徑（manual 未帶）賣出後「不 saveGame」——避免每 10 秒都壓縮整包存檔；賣掉的廢品/金幣靠其他既有存檔點(頭目擊殺/換地圖/裝備/操作/手動存檔)落地，崩潰重載最多回到未賣狀態(廢品仍在→下輪重標再賣·自癒)。手動「一鍵賣出」仍立即 saveGame。
 function autoSellJunk(manual) {   // manual=true → 玩家按「一鍵賣出」立即賣(並存檔)；不帶參數＝主迴圈自動賣(靜默·不存檔)
     if (!player || !Array.isArray(player.inv)) return;
+    // 🛡️ 規則視窗開著（草稿制）時，背景自動賣一律停手。
+    //    setAutoSellOverride/deleteAutoSellOverride 會把「還沒儲存」的草稿寫進 live player.autoSellRules，
+    //    而這個迴圈每 10 秒跑一次 → 玩家還在調規則、按 Close 想撤銷之前，東西就已經被永久賣掉了。
+    if (!manual && _asBackup) return;
     if (!manual && typeof applyAutoSellRules === 'function') applyAutoSellRules();
     let _delayMs = manual ? 0 : ((typeof getAutoSellRules === 'function' ? getAutoSellRules().delaySec : 10) * 1000);
     let _now = Date.now();
@@ -1906,8 +1922,11 @@ function autoSellJunk(manual) {   // manual=true → 玩家按「一鍵賣出」
     let totalGold = 0, totalCount = 0;
     toSell.forEach(i => { let q = Math.min(i.cnt, i._autoSellQty || i.cnt); totalGold += getSellPrice(i) * q; totalCount += q; });
     let _grantSold = toSell.some(i => DB.items[i.id] && DB.items[i.id].grantSkills);
-    toSell.forEach(i => { let q = Math.min(i.cnt, i._autoSellQty || i.cnt); i.cnt -= q; delete i._autoSellQty; if (i.cnt > 0) { i.junk = false; delete i.junkSince; } });
-    player.inv = player.inv.filter(i => i.cnt > 0);
+    // ⚠️ uid 精準移除：舊寫法 player.inv.filter(i => i.cnt > 0) 會把「cnt 為 undefined 的舊存檔物品」
+    //    連同鎖定件、noSell 任務道具一併靜默刪除，而本函式每 10 秒由 gameLoop 自動跑一次＝無人看管的資料流失。
+    let _gone = new Set();
+    toSell.forEach(i => { let q = Math.min(i.cnt, i._autoSellQty || i.cnt); i.cnt -= q; delete i._autoSellQty; if (i.cnt > 0) { i.junk = false; delete i.junkSince; } else _gone.add(i.uid); });
+    if (_gone.size) player.inv = player.inv.filter(i => !_gone.has(i.uid));
     player.gold += totalGold;
     logSys(`<span class="text-amber-300">${manual ? '一鍵賣出' : '系統自動賣出'} ${toSell.length} 件(共 ${totalCount} 個)廢品，獲得 <span class="text-yellow-400 font-bold">${totalGold}</span> 金幣。</span>`);
     renderTabs();
@@ -1916,13 +1935,13 @@ function autoSellJunk(manual) {   // manual=true → 玩家按「一鍵賣出」
     if(manual) saveGame();   // ⚡ 只有手動「一鍵賣出」才立即存檔；自動賣出不 saveGame（避免每 10 秒壓縮整包存檔·靠其他存檔點落地）
 }
 
-// 🗑️ 自動賣出開關（右上角按鈕）：點亮＝開啟自動賣出(每 10 秒)；點一下變暗、文字「停止賣出」並暫停。狀態存 player.autoSellOn(預設開·undefined 視為開)，隨存檔持久化。
-function toggleAutoSell() {
-    if (!player) return;
-    player.autoSellOn = (player.autoSellOn === false);   // false→true(開)；true/undefined→false(停)
-    _renderAutoSellBtn();
-    if (typeof saveGame === 'function') saveGame();
-}
+// 🗑️ 自動賣出狀態指示（右上角按鈕）：亮＝自動賣出開啟(每 10 秒)；暗＋文字「停止賣出」＝已暫停。
+//    狀態存 player.autoSellOn(預設開·undefined 視為開)，隨存檔持久化。
+// 🗑️ v3.5.94 修正註解：這顆按鈕**不是**開關——#btn-autosell 於 index.html 綁的是 openAutoSellRules()，點下去只會開啟規則視窗。
+//    真正的開關是自動販賣視窗內的 as-on 勾選框（由 openAutoSellRules() 內的表單模板字串 inline 產生、讀取於 _readAutoSellForm）；
+//    （🔧 v3.5.95 更正：v3.5.94 這句原本寫「渲染於 _renderAutoSellForm」，該函式全專案不存在。）
+//    _renderAutoSellBtn 只負責把「開/停」狀態畫到按鈕上，不改變狀態。
+// 🗑️ v3.5.83 移除 toggleAutoSell()：零呼叫點（舊的點擊切換行為已不存在）。
 function _renderAutoSellBtn() {
     let b = document.getElementById('btn-autosell'); if (!b) return;
     let on = !player || player.autoSellOn !== false;   // 預設(undefined)＝開
@@ -2253,7 +2272,8 @@ function pvpRevenge(i) {
     if (player.trollPlayers && player.trollPlayers.some(t => t && t.n === r.n && (t.pvpRevenge || t.noExpire))) { renderPvpTab(); return; }   // 🐛 v3.5.74 稽核修#1：追殺中不重複扣款（雙保險·UI 已 disable）
     player.gold -= cost;
     if (typeof pvpMarkForChase === 'function') pvpMarkForChase(r);
-    if (typeof logTrollEncounterTrashTalk === 'function') logTrollEncounterTrashTalk(r.n);
+    if (typeof logPvpRevengeTrashTalk === 'function') logPvpRevengeTrashTalk(r);
+    else if (typeof logTrollEncounterTrashTalk === 'function') logTrollEncounterTrashTalk(r.n);
     logSys(`<span class="text-red-300 font-bold">你花費 ${cost.toLocaleString()} 金幣，對 ${_pvpTabEsc(r.n)} 發起復仇追殺。</span>`);
     saveGame();
     updateUI();
@@ -2263,11 +2283,12 @@ function switchTab(t, btn) {
     Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     // 👇 更新陣列名單
-    ['stats', 'equip', 'weapons', 'skill', 'armors', 'items', 'audit', 'pvp', 'automation'].forEach(id => { let _e = document.getElementById(`tab-${id}`); if(_e) _e.classList.add('hidden'); });   // 🔧 v2.6.74 自動化設定改分頁內嵌（tab-automation）
+    ['stats', 'equip', 'weapons', 'skill', 'armors', 'items', 'audit', 'pvp', 'clan', 'automation'].forEach(id => { let _e = document.getElementById(`tab-${id}`); if(_e) _e.classList.add('hidden'); });   // 🔧 v2.6.74 自動化設定改分頁內嵌（tab-automation）
     document.getElementById(`tab-${t}`).classList.remove('hidden');
     if(typeof setEquipmentPanelEmbedded === 'function') setEquipmentPanelEmbedded(t === 'equip');
     if(t === 'audit' && typeof renderAuditTab === 'function') renderAuditTab();
     if(t === 'pvp' && typeof renderPvpTab === 'function') renderPvpTab();
+    if(t === 'clan' && typeof renderClanTab === 'function') renderClanTab();
 }
 
 // ===== 🤝 協力傭兵隊伍面板（Phase 1：顯示血/魔/經驗條＋每傭兵攻擊技能/治癒魔法設定）=====
@@ -2418,7 +2439,7 @@ function renderSquadPanel() {
         }
         if ((el = document.getElementById('squad-status-' + s))) {   // 🤝 Phase4：傭兵異常狀態小字（無狀態時空白不佔版面）
             let _ss = a.statuses || {}, _out = [];
-            [['stun', '暈眩'], ['freeze', '冰凍'], ['stone', '石化'], ['paralyze', '麻痺'], ['sleep', '沉睡'], ['silence', '沉默'], ['magicseal', '魔封'], ['poison', '中毒'], ['burn', '灼燒'], ['scald', '燙傷'], ['bleed', '出血'], ['slowAtk', '緩速'], ['weaken', '弱化'], ['disease', '疾病'], ['blind', '目盲'], ['potionFrost', '藥水霜化']].forEach(p => { if ((_ss[p[0]] || 0) > 0) _out.push(p[1]); });
+            [['stun', '暈眩'], ['freeze', '冰凍'], ['stone', '石化'], ['paralyze', '麻痺'], ['sleep', '沉睡'], ['silence', '沉默'], ['magicseal', '魔封'], ['poison', '中毒'], ['burn', '灼燒'], ['scald', '燙傷'], ['bleed', '出血'], ['slowAtk', '緩速'], ['weaken', '弱化'], ['disease', '疾病'], ['blind', '目盲'], ['potionFrost', '藥水霜化'], ['foulWater', '汙濁之水']].forEach(p => { if ((_ss[p[0]] || 0) > 0) _out.push(p[1]); });   // 🌊 v3.6.20 含汙濁之水
             el.textContent = _out.length ? ('⚠ ' + _out.join('·')) : '';
         }
     });
@@ -2462,17 +2483,7 @@ function setAllyAutoBuff(slot, sid, on) {
 }
 
 // 自動化設定面板收合（只留標題）：收合時去掉 flex-1 改 0 0 auto，body 隱藏
-function _applyAutomationCollapse(collapsed) {
-    let panel = document.getElementById('automation-panel'), body = document.getElementById('automation-body'), arrow = document.getElementById('automation-collapse-arrow');
-    if (!panel || !body) return;
-    body.classList.toggle('hidden', collapsed);
-    panel.style.flex = collapsed ? '0 0 auto' : '';
-    if (arrow) arrow.textContent = collapsed ? '▶' : '▼';
-}
-function toggleAutomationCollapse() {
-    let body = document.getElementById('automation-body');
-    let collapsed = !(body && body.classList.contains('hidden'));
-    _applyAutomationCollapse(collapsed);
-    try { _lsSet('fb5_automation_collapsed', collapsed ? '1' : '0'); } catch (e) {}
-}
+// 🗑️ v3.5.83 移除 _applyAutomationCollapse／toggleAutomationCollapse：#automation-panel／-body／-collapse-arrow 三個 ID
+//    自 v2.6.74「自動化設定改分頁內嵌」後已不存在於任何 HTML/CSS，兩函式零外部呼叫者，寫入的 fb5_automation_collapsed 亦零讀取端。
+//    （比照 v2.6.76 處理 _applySquadCollapse/toggleSquadCollapse 的先例。）
 // 🔧 v2.6.76 傭兵隊伍面板收合已移除（恆展開·用戶要求）：_applySquadCollapse/toggleSquadCollapse 刪除、index.html 標題列改純標題無箭頭。

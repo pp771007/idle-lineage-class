@@ -1,7 +1,11 @@
 // ========== 🧰 道具收集冊（概念同裝備收集冊：獲得即登錄、依物品類型分類、只列「有獲得管道」的道具）==========
 //   ・由「收藏」面板（道具欄右上角按鈕）→「道具」開啟；資料存 player.miscDex（itemId->true·永久只增不減·共用桶 MISCDEX_KEY）。
 //   ・登錄點：gainItem → registerMiscObtained（js/08）。分類：藥水/卷軸/技能書/材料/其他（miscCatKey）。
-//   ・排除：裝備(wpn/arm/acc·歸裝備冊)、怪物卡片(card_*/eff:card·歸怪物冊)、兩本收集冊本體；以及「無任何獲得管道」的道具(OBTAINABLE_MISC 過濾)。
+//   ・排除：裝備(wpn/arm/acc·歸裝備冊)、怪物卡片(card_*/eff:card·歸怪物冊)；以及「無任何獲得管道」的道具(OBTAINABLE_MISC 過濾)。
+//   ・🗑️ v3.5.87 起「收集冊本體」不再需要任何排除機制：item_card_book / item_equip_book 的 DB.items 定義已刪除，
+//     不存在於 DB 即自然不進分母（原本那行冗餘排除已一併移除）。
+//     ⚠️ 日後若把 item_card_book 重新加回 DB 定義（例如做成活動道具），它會跑進道具收集冊分母，需自行補排除
+//     （加進 MISC_BOOK_EXCLUDED 或在 miscCatKey 回 null）。
 
 // ---- 分類（顯示順序）----
 const MISC_CATEGORIES = [
@@ -19,13 +23,15 @@ const MISC_BOOK_EXCLUDED = {
     new_item_bless_acc: true
 };
 
-// ---- 將一個道具分到類別 key（回傳 null＝不收錄：裝備/怪物卡片/收集冊本體）----
+// ---- 將一個道具分到類別 key（回傳 null＝不收錄：MISC_BOOK_EXCLUDED 名單／裝備／怪物卡片）----
+//   ⚠️ v3.5.87 起本函式已無「收集冊本體」的排除分支：item_card_book / item_equip_book 的 DB.items 定義已刪除，
+//      呼叫端遍歷 DB.items 時根本不會走到它們。日後若把 item_card_book 重新加回 DB 定義（例如做成活動道具），
+//      它會跑進道具收集冊分母，需自行補排除（加進上方 MISC_BOOK_EXCLUDED 最省事）。
 function miscCatKey(id, d) {
     if (!d) return null;
     if (MISC_BOOK_EXCLUDED[id]) return null;
     var t = d.type;
     if (t === 'wpn' || t === 'arm' || t === 'acc') return null;          // 裝備 → 裝備收集冊
-    if (id === 'item_card_book' || id === 'item_equip_book') return null; // 兩本收集冊本體
     if (d.eff === 'card' || id.indexOf('card_') === 0) return null;       // 怪物卡片 → 怪物收集冊
     if (t === 'pot' || id.indexOf('potion_') === 0) return 'pot';
     if (t === 'scroll' || id.indexOf('scroll_') === 0 || (d.n && d.n.indexOf('卷軸') >= 0)) return 'scroll';   // 卷軸（含 賦予祝福/解除詛咒 等 type:misc/new_item_ 命名為「卷軸」者）
@@ -64,6 +70,9 @@ const OBTAINABLE_MISC = (function buildObtainableMisc() {
     ['new_item_164', 'new_item_195', 'new_item_165'].forEach(add);
     // (f) 兌換/特殊取得的卷軸（gachaWeight0·掃描器漏掉·顯式補）：祝福的卷軸(伊賽馬利)、解除詛咒卷軸
     ['scroll_weapon_b', 'scroll_armor_b', 'new_item_uncurse'].forEach(add);
+    // (g) v3.5.87 兌換限定道具無掉落表來源→顯式補登：魔法娃娃的袋子/高級盒子（銀卡/金卡兌換·gachaWeight0）
+    //     否則只靠 registerMiscObtained 動態補登（僅在記憶體）→重載後不在靜態索引，收集冊計數靜默退回
+    ['doll_bag', 'doll_box_high'].forEach(add);
     return S;
 })();
 function miscObtainable(id) { return !!OBTAINABLE_MISC[id]; }
@@ -97,7 +106,7 @@ const MISC_CAT_BONUS = {
     mat:     { stat: 'potion', val: 3,  label: '藥水恢復量 +3%' },
     special: { stat: 'potion', val: 2,  label: '藥水恢復量 +2%' }
 };
-// recomputeStats 鉤子（js/02 呼叫·仿 equipCollectionBonus）：weight→d._miscWeightBonus(負重段)、mpR→d.mpR、potion→p._miscPotionBonus(js/08 藥水恢復%)。傭兵(p=ally 無 miscDex)自動不吃。
+// recomputeStats 鉤子（js/02 呼叫·仿 equipCollectionBonus）：weight→d._miscWeightBonus(負重段)、mpR→d.mpR、potion→p._miscPotionBonus(js/08 藥水恢復%)。傭兵換身重算時借隊長 miscDex 亦生效。
 function miscCollectionBonus(p, d) {
     if (d) d._miscWeightBonus = 0;
     if (p) p._miscPotionBonus = 0;
@@ -162,7 +171,7 @@ let _miscBookCat = MISC_CATEGORIES[0].key;
 function openMiscBook() {
     if (!player) return;
     if (!player.miscDex) player.miscDex = {};
-    if (typeof mergeSharedIntoPlayer === 'function') mergeSharedIntoPlayer('misc');   // 🔄 多開兜底：開書前併入其他分頁的道具進度
+    if (typeof mergeSharedIntoPlayer === 'function' && mergeSharedIntoPlayer('misc') && typeof calcStats === 'function') calcStats();   // 🔄 多開兜底：開書前併入其他分頁的道具進度；⚠️ MISC_CAT_BONUS 有加成（負重+10／MP恢復+3／藥水恢復%），合併後要重算（比照 js/15 openCardBook）
     if (typeof closeModal === 'function') closeModal();
     _miscBookOpen = true;
     var el = document.getElementById('misc-book'); if (!el) return;

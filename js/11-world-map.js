@@ -193,7 +193,10 @@ const SIEGE_CITY = {
     heine:    { key:'heine',    name:'海音城', outer:'heine_outer', outerName:'海音外門區', inner:'heine_inner', innerName:'海音內城', castle:'town_heine_castle', castleName:'海音城', gate:'海音城門', tower:'海音守護塔' }
 };
 function siegeCityCfg() { return SIEGE_CITY[(player.siege && player.siege.city) || 'kent']; }   // 進行中攻城的城池
-function victoryCityCfg() { return SIEGE_CITY[(player.siege && player.siege.victoryCity) || 'kent']; }   // 攻城獲勝（8折/城堡）對應城池
+function victoryCityCfg() {
+    let city = (typeof clanGetCastleCity === 'function') ? clanGetCastleCity(player) : null;
+    return SIEGE_CITY[city] || SIEGE_CITY.kent;
+}   // 血盟同模式共用的永久城堡
 const SIEGE_OUTER_INNER = ['kent_outer', 'kent_inner', 'ww_outer', 'ww_inner', 'heine_outer', 'heine_inner'];
 const SIEGE_CASTLES = ['town_kent_castle', 'town_windwood_castle', 'town_heine_castle'];
 
@@ -319,7 +322,7 @@ function castleGuardTick() {
 const CASTLE_EXTRA = ['windwood_dungeon'];   // 🔧 風木地監歸入「城堡」分類（隨風木城一起，攻城獲勝後開放）
 // 🔧 城堡分類清單：依獲勝城池組成。肯特城＝僅肯特城；風木城＝風木城（安全）＋風木地監（狩獵）
 function getCastleAreas() {
-    if (!siegeVictoryActive()) return [];   // 🔧 攻城獲勝 24h 結束後：城堡狩獵區（風木地監）不再開放（與「城堡」分頁同步消失，堵住出發/選單殘留路徑；victoryCity 不會被清空，故須在此以時效把關）
+    if (!siegeVictoryActive()) return [];
     let c = victoryCityCfg();
     if (c.key === 'windwood') return [{v:'town_windwood_castle', t:'風木城'}, {v:'windwood_dungeon', t:'風木地監', c:'#34d399'}];
     return [{v:c.castle, t:c.castleName}];
@@ -542,12 +545,12 @@ function getHomeTown() {
     return 'town_silver_knight';
 }
 // 🏘️ v3.0.94 回村改「回上一個待過的安全區」：changeMap 進村分支記錄 player.lastTownVisited；無紀錄/地圖無效→回家鄉。
-//    ⚠️ 城堡安全區(town_*_castle)有攻城獲勝 24h 時效：效期外不可回→退回家鄉（比照 siege-victory 各讀點自把時效）。
+//    城堡安全區只允許目前持有該城堡的血盟返回；未持有時退回家鄉。
 function getLastTown() {
     let t = player && player.lastTownVisited;
     if (!t || typeof t !== 'string' || !t.startsWith('town_') || !(DB.towns[t] || DB.maps[t])) return getHomeTown();
     let _isCastle = Object.values(SIEGE_CITY).some(c => c && c.castle === t);
-    if (_isCastle && !siegeVictoryActive()) return getHomeTown();
+    if (_isCastle && (!siegeVictoryActive() || victoryCityCfg().castle !== t)) return getHomeTown();
     return t;
 }
 function returnToTown() {
@@ -558,17 +561,20 @@ function returnToTown() {
         return;
     }
     let _wasKingRoom = !!KING_ROOMS[mapState.current];   // 🔧 記住離開前是否在軍王之室
+    let _kingRegion = _wasKingRoom && typeof mapRegionOf === 'function' ? mapRegionOf(mapState.current) : null;   // 🗝️ 離場前先取得該軍王之室所屬地區（changeMap 後 mapState.current 已變）
     if (state.oblivion) { state.oblivion = null; state._oblivionAdvance = false; }   // 🏝️ 回村即結束遺忘之島旅程
-    setMapSelectors(siegeVictoryActive() ? victoryCityCfg().castle : getLastTown());   // 攻城獲勝 24h：回城＝獲勝城池；🏘️ v3.0.94 否則回「上一個待過的安全區」（無紀錄→家鄉）
+    setMapSelectors(siegeVictoryActive() ? victoryCityCfg().castle : getLastTown());   // 持有城堡：回城＝血盟城堡；否則回上一個待過的安全區（無紀錄→家鄉）
     changeMap();   // 走既有切換流程（進入村莊：補滿 HP/MP、清狀態、渲染 NPC）
     // 🔧 自軍王之室手動回城／回村：同樣將「特殊」記憶位置改為新兵修練場（避免下次自動回到需鑰匙的軍王之室）
-    if (_wasKingRoom) { if (!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat.special = 'training'; saveGame(); }
+    // 🗝️ 離開軍王之室：清掉該「地區」的最後位置記憶，否則下次在下拉選同一地區會自動再進 BOSS 房、白扣一把軍王的鑰匙。
+    //    （舊寫法寫的是 lastMapByCat.special，但分類改用 MAP_REGIONS 後 'special' 不再是任何鍵＝死碼。）
+    if (_wasKingRoom) { if (!player.lastMapByCat) player.lastMapByCat = {}; if (_kingRegion) delete player.lastMapByCat[_kingRegion]; saveGame(); }
 }
 
 // ===== ⌨️ 鍵盤快捷鍵（v3.1.13）=====
 //  Tab       → 背包三分頁輪替：武器 → 防具 → 道具 → 武器…（不在三分頁時→武器）
 //  Ctrl+S    → 技能欄　  Ctrl+A → 裝備欄　  Ctrl+B → 圖鑑（收藏）選單
-//  Ctrl+C    → 立即返回血盟據點（攻城獲勝→城堡）；未加入血盟則提示。有選取文字時放行瀏覽器複製。
+//  Ctrl+C    → 立即返回血盟據點（持有城堡→城堡）；未加入血盟則提示。有選取文字時放行瀏覽器複製。
 //  ⚠️ 只在遊戲畫面(game-screen 顯示中·已有職業)且焦點不在輸入框時生效；避免攔截打字/登入頁。
 function _hkInGame() {
     let gs = document.getElementById('game-screen');
@@ -590,7 +596,7 @@ function hotkeyCycleInventory() {
     let cur = order.findIndex(id => { let e = document.getElementById('tab-' + id); return e && !e.classList.contains('hidden'); });
     _hkSwitchTab(order[(cur < 0) ? 0 : (cur + 1) % order.length]);
 }
-// Ctrl+C：返回血盟據點（getHomeTown 已含「血盟優先回盟主村莊」）；攻城獲勝 24h→城堡。未入盟→提示。
+// Ctrl+C：返回血盟據點（getHomeTown 已含「血盟優先回盟主村莊」）；持有城堡時回城堡。未入盟→提示。
 function returnToPledgeBase() {
     if (!player || !player.bloodPledge) { logSys('<span class="text-amber-300">你尚未加入任何血盟，沒有可返回的據點。</span>'); return; }
     // 受控限制（比照回村）：石化／麻痺／冰凍／暈眩／睡眠時不可傳送
@@ -600,11 +606,14 @@ function returnToPledgeBase() {
     }
     if (state.riftRun && mapState.current === 'rift_battle') { logSys('<span class="text-violet-300">時空裂痕緊緊纏繞著你，唯有戰死方能離開，無法返回據點。</span>'); return; }
     let _wasKingRoom = !!KING_ROOMS[mapState.current];
+    let _kingRegion = _wasKingRoom && typeof mapRegionOf === 'function' ? mapRegionOf(mapState.current) : null;   // 🗝️ 同上：離場前記錄地區
     if (state.oblivion) { state.oblivion = null; state._oblivionAdvance = false; }   // 🏝️ 返回即結束遺忘之島旅程
     let _victory = siegeVictoryActive();
     setMapSelectors(_victory ? victoryCityCfg().castle : getHomeTown());
     changeMap();
-    if (_wasKingRoom) { if (!player.lastMapByCat) player.lastMapByCat = {}; player.lastMapByCat.special = 'training'; saveGame(); }
+    // 🗝️ 離開軍王之室：清掉該「地區」的最後位置記憶，否則下次在下拉選同一地區會自動再進 BOSS 房、白扣一把軍王的鑰匙。
+    //    （舊寫法寫的是 lastMapByCat.special，但分類改用 MAP_REGIONS 後 'special' 不再是任何鍵＝死碼。）
+    if (_wasKingRoom) { if (!player.lastMapByCat) player.lastMapByCat = {}; if (_kingRegion) delete player.lastMapByCat[_kingRegion]; saveGame(); }
     logSys('<span class="text-emerald-300">⌨️ 已返回' + (_victory ? '城堡' : '血盟據點') + '。</span>');
 }
 if (typeof document !== 'undefined' && document.addEventListener) {
@@ -640,7 +649,7 @@ function departToLastBattle() {
         tgt = 'training';
         player.lastBattleMap = 'training';
     }
-    // 🔧 攻城獲勝 24h 結束後，上一張戰鬥地圖若為城堡狩獵區（風木地監）：強制改往新兵修練場，避免「回城→出發」重新進入已失效的城堡狩獵區
+    // 血盟不再持有風木城時，上一張若為風木地監則改往新兵修練場。
     if (tgt && CASTLE_EXTRA.includes(tgt) && !siegeVictoryActive()) {
         tgt = 'training';
         player.lastBattleMap = 'training';
@@ -680,76 +689,86 @@ function departToLastBattle() {
     changeMap();   // 走既有切換流程（軍王之室在此消耗 1 把鑰匙）
 }
 
-// ===== 攻城戰（第一階段：核心循環）=====
-function siegeWarrants() { return pledgeCountItem('new_item_241'); }   // 王族搜索狀數量
-// 🔧 點「攻城戰」先開「選擇城池」介面（肯特城／風木城）；含開戰條件提示
-function openSiegeSelect(faction) {
+// ===== 攻城戰 =====
+function openSiegeSelect(faction, targetEl) {
     let s = player.siege || {};
-    if (!player.bloodPledge) { alert('你尚未加入任何血盟，無法宣布攻城戰。'); return; }
+    let clan = (typeof clanGetModeInfo === 'function') ? clanGetModeInfo(player) : null;
+    if (!clan) { alert('你尚未加入血盟，無法宣布攻城戰。'); return; }
+    if (typeof clanCanSiege === 'function' && !clanCanSiege(player)) { alert('此模式沒有創立血盟的王族，無法攻城。'); return; }
     if (s.active) { alert('攻城戰正在進行中！'); return; }
-    if (s.rewardPending) { alert('你還有尚未領取的攻城戰獎勵，請先點「領賞」。'); return; }
-    let cd = (s.cooldownUntil || 0) - Date.now();
-    if (cd > 0) { let h = Math.floor(cd/3600000), m = Math.floor((cd%3600000)/60000); alert(`攻城戰冷卻中，尚需 ${h} 小時 ${m} 分才能再次宣布。`); return; }
-    if (player.lv < 40) { alert('需要等級 40 以上才能宣布攻城戰。'); return; }
-    let el = document.getElementById('interaction-content'); if (!el) return;
+    faction = clan.faction;
+    let held = (typeof clanGetCastleCity === 'function') ? clanGetCastleCity(player) : null;
+    let choice = (city, label, style) => held === city
+        ? `<button class="btn flex-1 py-4 text-lg font-bold bg-slate-700 border-slate-500 text-slate-400 opacity-60 cursor-not-allowed" disabled>${label}<span class="block text-xs font-normal mt-1">目前持有</span></button>`
+        : `<button class="btn flex-1 py-4 text-lg font-bold ${style}" onclick="startSiege('${faction}','${city}')">${label}</button>`;
+    let el = targetEl || document.getElementById('interaction-content'); if (!el) return;
     el.innerHTML = `
         <div class="flex flex-col gap-4 p-2 items-center text-center">
             <div class="text-amber-200 font-bold text-lg">⚔ 宣布攻城戰</div>
             <div class="bg-slate-800/70 border border-red-700/60 rounded p-3 text-sm text-slate-300 leading-relaxed">
-                消耗 <span class="text-amber-300 font-bold">10 張王族搜索狀</span>（目前持有 ${siegeWarrants()} 張），限時 30 分鐘。<br>
-                不論攻打哪座城，結束後皆觸發 <span class="text-red-300 font-bold">24 小時冷卻</span>。
+                限時 30 分鐘。<br>
+                攻城戰<span class="text-emerald-300 font-bold">不設冷卻</span>，不論勝負皆可隨時再次宣戰。
             </div>
             <div class="text-slate-300 text-sm">選擇要攻打的城池：</div>
             <div class="flex gap-3 w-full">
-                <button class="btn flex-1 py-4 text-lg font-bold bg-red-900 hover:bg-red-800 border-red-500" onclick="startSiege('${faction}','kent')">🏰 肯特城</button>
-                <button class="btn flex-1 py-4 text-lg font-bold bg-emerald-900 hover:bg-emerald-800 border-emerald-500" onclick="startSiege('${faction}','windwood')">🌲 風木城</button>
+                ${choice('kent', '🏰 肯特城', 'bg-red-900 hover:bg-red-800 border-red-500')}
+                ${choice('windwood', '🌲 風木城', 'bg-emerald-900 hover:bg-emerald-800 border-emerald-500')}
             </div>
-            <button class="btn w-1/2 py-4 text-lg font-bold bg-sky-900 hover:bg-sky-800 border-sky-400 text-sky-100" onclick="startSiege('${faction}','heine')">🌊 海音城</button>
+            <div class="flex w-full">${choice('heine', '🌊 海音城', 'bg-sky-900 hover:bg-sky-800 border-sky-400 text-sky-100')}</div>
         </div>`;
 }
 function startSiege(faction, city) {
     city = SIEGE_CITY[city] ? city : 'kent';
     let cfg = SIEGE_CITY[city];
-    let s = player.siege || (player.siege = { active:false, gateKilled:false, towerKilled:false, endTime:0, kills:0, result:null, cooldownUntil:0, rewardPending:false });
-    if (!player.bloodPledge) { alert('你尚未加入任何血盟，無法宣布攻城戰。'); return; }
+    let s = player.siege || (player.siege = { active:false, city:'kent', gateKilled:false, towerKilled:false, endTime:0, kills:0, result:null, cooldownUntil:0, accCdUntil:0 });
+    let clan = (typeof clanGetModeInfo === 'function') ? clanGetModeInfo(player) : null;
+    if (!clan) { alert('你尚未加入血盟，無法宣布攻城戰。'); return; }
+    if (typeof clanCanSiege === 'function' && !clanCanSiege(player)) { alert('此模式沒有創立血盟的王族，無法攻城。'); return; }
     if (s.active) { alert('攻城戰正在進行中！'); return; }
-    if (s.rewardPending) { alert('你還有尚未領取的攻城戰獎勵，請先點「領賞」。'); return; }
-    let cd = (s.cooldownUntil || 0) - Date.now();
-    if (cd > 0) { let h = Math.floor(cd/3600000), m = Math.floor((cd%3600000)/60000); alert(`攻城戰冷卻中，尚需 ${h} 小時 ${m} 分才能再次宣布。`); return; }
-    if (player.lv < 40) { alert('需要等級 40 以上才能宣布攻城戰。'); return; }
-    if (siegeWarrants() < 10) { alert(`需持有 10 張以上王族搜索狀才能宣布攻城戰（目前 ${siegeWarrants()} 張）。`); return; }
-    if (!confirm(`宣布對【${cfg.name}】的攻城戰將消耗 10 張王族搜索狀（目前持有 ${siegeWarrants()} 張），限時 30 分鐘。確定要開戰嗎？`)) return;
-    // 消耗 10 張王族搜索狀
-    let _need = 10;
-    for (let it of player.inv) { if (it.id === 'new_item_241' && _need > 0) { let take = Math.min(it.cnt, _need); it.cnt -= take; _need -= take; } }
-    player.inv = player.inv.filter(it => it.cnt > 0);
-    renderTabs();
-    player.siege = { active:true, city:city, gateKilled:false, towerKilled:false, endTime: Date.now() + 30*60*1000, kills:0, result:null, cooldownUntil:0, rewardPending:false, victoryUntil:0, victoryCity:(player.siege&&player.siege.victoryCity)||null, accCdUntil:0 };
-    logSys(`⚔ <span class="text-red-300 font-bold">攻城戰開始！</span>消耗了 10 張王族搜索狀，限時 30 分鐘。攻破【${cfg.gate}】後進攻【${cfg.innerName}】，於時限內擊殺【${cfg.tower}】即可獲勝！`);
+    // ⚔️ v3.6.05 等級限制取消（用戶拍板·原 Lv40 門檻）：與 v3.6.01 的冷卻取消一致，攻城不再有任何前置條件
+    if (typeof clanGetCastleCity === 'function' && clanGetCastleCity(player) === city) { alert(`你的血盟目前已持有${cfg.name}。`); return; }
+    if (!confirm(`確定要對【${cfg.name}】宣戰嗎？限時 30 分鐘。`)) return;
+    let accCdUntil = Number(s.accCdUntil) || 0;
+    player.siege = { active:true, city:city, gateKilled:false, towerKilled:false, endTime: Date.now() + 30*60*1000, kills:0, result:null, cooldownUntil:0, accCdUntil:accCdUntil };
+    logSys(`⚔ <span class="text-red-300 font-bold">攻城戰開始！</span>限時 30 分鐘。攻破【${cfg.gate}】後進攻【${cfg.innerName}】，於時限內擊殺【${cfg.tower}】即可獲勝！`);
     setMapSelectors(cfg.outer);
     changeMap(true);
     updateUI();
 }
 function endSiege(result) {
     let s = player.siege; if (!s || !s.active) return;
-    s.active = false; s.result = result; s.rewardPending = true;
+    s.active = false; s.result = result;
     s.endTime = Date.now();   // 擊敗守護塔（獲勝）或時間到：攻城時間立即結束
-    s.cooldownUntil = Date.now() + 24*3600*1000;   // 不論勝負，24 小時後才能再次宣布
+    s.cooldownUntil = 0;   // ⚔️ v3.6.01 攻城冷卻取消（用戶拍板）：欄位保留=0 兼容舊存檔殘值
+    delete s.rewardPending;
+    delete s.victoryUntil;
+    delete s.victoryCity;
     let _cfg = siegeCityCfg();
-    if (result === 'win') { s.victoryUntil = Date.now() + 24*3600*1000; s.victoryCity = _cfg.key; player.ismaelAccUsed = false; logSys(`🏆🏰 <span class="text-yellow-300 font-bold">攻城獲勝！</span>擊破了${_cfg.tower}！24 小時內全商店 8 折、開放「城堡」前往${_cfg.castleName}，回村按鈕變為回城。前往盟主處點「領賞」領取金幣獎勵。`); }
-    else logSys(`🏰 <span class="text-slate-300 font-bold">攻城失敗…</span>時間到，未能攻下${_cfg.tower}。仍可前往盟主處點「領賞」領取獎勵。`);
+    if (result === 'win') {
+        let setResult = (typeof clanSetCastle === 'function') ? clanSetCastle(_cfg.key) : { ok:false };
+        if (setResult && setResult.ok) {
+            let replaced = setResult.previous && setResult.previous !== _cfg.key && SIEGE_CITY[setResult.previous] ? `，原有的${SIEGE_CITY[setResult.previous].castleName}已放棄` : '';
+            logSys(`🏆🏰 <span class="text-yellow-300 font-bold">攻城獲勝！</span>血盟已永久佔領${_cfg.castleName}${replaced}。同模式所有角色可使用城堡、全商店 8 折，回村按鈕改為回城。`);
+        } else {
+            logSys('<span class="text-red-400 font-bold">攻城獲勝，但城堡共用資料寫入失敗。</span>攻城已無冷卻，可立即再次宣戰重試佔領。');
+        }
+    } else {
+        logSys(`🏰 <span class="text-slate-300 font-bold">攻城失敗…</span>時間到，未能攻下${_cfg.tower}。`);
+    }
     { let timer = document.getElementById('siege-timer'); if (timer) timer.classList.add('hidden'); }   // 結束隱藏倒數
-    setMapSelectors(getHomeTown());
+    // 🏰 v3.6.32 獲勝→直接傳送到「奪下的城堡」（用戶拍板）；敗北或城堡共用資料寫入失敗→照舊回家鄉村莊。
+    //    用 siegeVictoryActive/victoryCityCfg 判定（clanSetCastle 剛寫入·寫入失敗時 victory 不成立自動走 fallback）；
+    //    changeMap 的城堡把關（持有時效）同一組函式，不會被彈回。
+    let _dest = (result === 'win' && siegeVictoryActive() && victoryCityCfg().castle) ? victoryCityCfg().castle : getHomeTown();
+    setMapSelectors(_dest);
     changeMap(true);
     updateUI();
     saveGame();   // 攻城戰結束時自動存檔
 }
 function siegeTick() {
     let s = player.siege;
-    // 🔧 攻城獲勝 24h 一到：仍滯留在城堡狩獵區（風木地監）掛機的玩家，強制請離回村（堵住效期外續刷）。
-    //    每秒檢查；踢出後 mapState.current 變村莊→條件轉 false 不重複觸發。只踢狩獵區、不踢城堡安全區（避免打斷領賞等互動）。
-    if (mapState.current && CASTLE_EXTRA.includes(mapState.current) && !(s && s.active) && !siegeVictoryActive()) {
-        logSys('<span class="text-amber-300 font-bold">⏳ 攻城獲勝效期已過，城堡狩獵區不再為你開放，你被請離回村了。</span>');
+    if (mapState.current && CASTLE_EXTRA.includes(mapState.current) && !(s && s.active) && (!siegeVictoryActive() || victoryCityCfg().key !== 'windwood')) {
+        logSys('<span class="text-amber-300 font-bold">血盟目前未持有風木城，城堡狩獵區不再開放，你被送回村莊。</span>');
         setMapSelectors(getHomeTown());
         changeMap(true);
         updateUI();
@@ -790,13 +809,18 @@ function handleSiegeKill(mob) {
         endSiege('win');
     }
 }
-function siegeVictoryActive() { return !!(player.siege && Date.now() < (player.siege.victoryUntil || 0)); }
-function shopPrice(base) { return siegeVictoryActive() ? Math.floor((base || 0) * 0.8) : (base || 0); }   // 攻城獲勝 24h：商店 8 折
-// 🔧 對飾品施法的卷軸改為「次數制」：每次攻城獲勝重置 1 張購買額度
-//（原 24 小時計時存於 player.siege.accCdUntil，會被 startSiege 整包重建而歸零，可用搜索狀重置冷卻刷買）
-function ismaelAccAvailable() { return !player.ismaelAccUsed; }
+function siegeVictoryActive() { return !!(typeof clanGetCastleCity === 'function' && clanGetCastleCity(player)); }
+function shopPrice(base) { return siegeVictoryActive() ? Math.floor((base || 0) * 0.8) : (base || 0); }
+function ismaelAccCooldownMs() { return Math.max(0, Number(player.siege && player.siege.accCdUntil) - Date.now()); }
+function ismaelAccAvailable() { return ismaelAccCooldownMs() <= 0; }
+function ismaelAccCooldownText() {
+    let ms = ismaelAccCooldownMs();
+    if (ms <= 0) return '';
+    let h = Math.floor(ms / 3600000), m = Math.ceil((ms % 3600000) / 60000);
+    return `${h} 小時 ${m} 分`;
+}
 let _obelSel = { map: '', mob: '' };
-let _activePanel = null;   // 'obel' | 'pledge:esti' | 'pledge:tros' | null：目前開啟、需每分鐘刷新剩餘時間的面板
+let _activePanel = null;   // 'obel' | null：目前開啟、需每分鐘刷新剩餘時間的面板（唯一有倒數的是奧貝勒魔物追蹤）
 function startPanelRefresh() {
     if(window._panelRefreshTimer) return;
     window._panelRefreshTimer = setInterval(() => {
@@ -805,15 +829,15 @@ function startPanelRefresh() {
         if(!cont || cont.classList.contains('hidden') || !el || !_activePanel) return;
         if(_activePanel === 'obel') {
             if(player.tracking && player.tracking.until > Date.now()) renderObelNPC(el);   // 追蹤中(有倒數)才刷新，避免打斷選取
-        } else if(_activePanel.indexOf('pledge:') === 0) {
-            renderPledgeNPC(el, _activePanel.split(':')[1]);
         }
     }, 60000);
 }
 // 🔍 魔物追蹤可指定地圖：野外/地監/特殊＋底比斯(rift)＋海賊島(pirate_island) 三類掃 MAP_CATEGORIES（濾掉村莊與純BOSS房），
 //    再補上「不在 MAP_CATEGORIES」的遺忘之島(途中/島)＋風木地監。
-//    刻意排除：村莊(town_)、純BOSS房(PURE_BOSS_MAPS)、攻城內外城(siege_* 限時活動)、傲慢之塔攀登樓層(pride_* 攀登模式·非固定地圖)、
+//    刻意排除：村莊(town_)、純BOSS房(PURE_BOSS_MAPS)、攻城內外城(siege_* 限時活動)、傲慢之塔攀登樓層(pride_f* 攀登模式·非固定地圖)、
 //    🚫 隱藏狩獵區域(hidden_*·象牙塔密室/巨蟻女皇·用戶要求不開放追蹤·維持只能由母圖傳送進入)。
+//    🗼 v3.6.25 例外（用戶拍板）：背包持有 傲慢之塔支配符(NF)（僅 dom·傳送符/移動卷軸不算）→ 開放該符對應樓層區間
+//    (pride_N_(N+9)) 的魔物追蹤；賣掉/存倉即從清單消失（追蹤已生效者不中斷·出怪判定只看 tracking.map）。
 const OBEL_EXTRA_MAPS = [
     { v: 'oblivion_travel', t: '遺忘之島途中' }, { v: 'oblivion_island', t: '遺忘之島' },
     { v: 'windwood_dungeon', t: '風木地監' }
@@ -826,11 +850,14 @@ function obelMapList() {
         });
     });
     OBEL_EXTRA_MAPS.forEach(e => { if(DB.maps[e.v]) out.push({ v: e.v, t: e.t }); });
+    [11, 21, 31, 41, 51, 61, 71, 81, 91].forEach(N => {   // 🗼 v3.6.25 支配符樓層
+        let _pv = 'pride_' + N + '_' + (N + 9);
+        if(DB.maps[_pv] && typeof prideHasTalisman === 'function' && prideHasTalisman(N, ['dom'])) out.push({ v: _pv, t: '傲慢之塔' + N + '~' + (N + 9) + '樓' });
+    });
     return out;
 }
 function renderObelNPC(div) {
     _activePanel = 'obel'; startPanelRefresh();
-    let warrants = pledgeCountItem('new_item_241');
     let tr = player.tracking;
     if(tr && tr.until > Date.now()) {
         let leftMs = tr.until - Date.now();
@@ -863,32 +890,31 @@ function renderObelNPC(div) {
             return `<label class="flex items-center gap-2 cursor-pointer py-1 px-2 rounded ${checked ? 'bg-sky-900/50' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onclick="onObelMobToggle('${id}')"> <span class="${getMobColor(mb.lv)}">${mb.n}</span> <span class="text-xs text-slate-500">Lv${mb.lv}</span></label>`;
         }).join('');
     }
-    let canStart = _obelSel.mob && warrants >= 50;
+    let canStart = !!_obelSel.mob;
     div.innerHTML = `
         <div class="flex flex-col gap-3 p-1">
-            <div class="text-slate-300 text-sm leading-relaxed">奧貝勒：你想搜索哪一頭魔物？給我 50 張王族搜索狀就能幫你追蹤。<br><span class="text-xs text-slate-400">持有王族搜索狀：<span class="text-green-400 font-bold">${warrants}</span> 張</span></div>
+            <div class="text-slate-300 text-sm leading-relaxed">奧貝勒：你想搜索哪一頭魔物？花費 100,000 金幣就能幫你追蹤。</div>
             <select class="w-full bg-slate-900 border border-slate-600 text-white px-2 py-2 rounded text-sm" onchange="onObelMapChange(this.value)">${mapOpts}</select>
             ${_obelSel.map ? `<div class="bg-slate-800/40 border border-slate-700 rounded p-2 max-h-60 overflow-y-auto flex flex-col gap-0.5">${mobHtml || '<span class="text-slate-500 text-sm">此地區無可追蹤的怪物</span>'}</div>` : ''}
-            <button class="btn ${canStart ? 'bg-red-700 hover:bg-red-600 border-red-500' : 'bg-slate-600 border-slate-500 opacity-60 cursor-not-allowed'} py-2 px-4 font-bold" ${canStart ? '' : 'disabled'} onclick="obelStartTracking()">開始追蹤（消耗 50 張王族搜索狀）</button>
+            <button class="btn ${canStart ? 'bg-red-700 hover:bg-red-600 border-red-500' : 'bg-slate-600 border-slate-500 opacity-60 cursor-not-allowed'} py-2 px-4 font-bold" ${canStart ? '' : 'disabled'} onclick="obelStartTracking()">開始追蹤（消耗 100,000 金幣）</button>
         </div>`;
 }
 function onObelMapChange(v) { _obelSel.map = v; _obelSel.mob = ''; let el = document.getElementById('interaction-content'); if(el) renderObelNPC(el); }
 function onObelMobToggle(id) { if(DB.mobs[id] && DB.mobs[id].boss) return; _obelSel.mob = (_obelSel.mob === id) ? '' : id; let el = document.getElementById('interaction-content'); if(el) renderObelNPC(el); }
 function obelStartTracking() {
     if(!_obelSel.mob || !_obelSel.map) return;
-    if(pledgeCountItem('new_item_241') < 50) { alert('王族搜索狀不足 50 張。'); return; }
-    let left = 50;
-    for(let it of player.inv) { if(it.id === 'new_item_241' && left > 0) { let take = Math.min(it.cnt, left); it.cnt -= take; left -= take; } }
-    player.inv = player.inv.filter(it => it.cnt > 0);
+    const TRACKING_GOLD_COST = 100000;
+    if ((player.gold || 0) < TRACKING_GOLD_COST) { alert(`金幣不足，追蹤需要 ${TRACKING_GOLD_COST.toLocaleString()} 金幣。`); return; }
+    player.gold -= TRACKING_GOLD_COST;
     player.tracking = { map: _obelSel.map, mob: _obelSel.mob, until: Date.now() + 8 * 3600 * 1000 };
     _obelSel = { map: '', mob: '' };
     renderTabs(); saveGame();
-    logSys(`奧貝勒開始追蹤 <span class="text-amber-300 font-bold">${(DB.mobs[player.tracking.mob] || {}).n}</span>，持續 8 小時。`);
+    logSys(`花費 ${TRACKING_GOLD_COST.toLocaleString()} 金幣，奧貝勒開始追蹤 <span class="text-amber-300 font-bold">${(DB.mobs[player.tracking.mob] || {}).n}</span>，持續 8 小時。`);
     let el = document.getElementById('interaction-content'); if(el) renderObelNPC(el);
     updateUI();
 }
 function obelCancelTracking() {
-    if(!confirm('確定要取消追蹤嗎？（已消耗的王族搜索狀不會退還）')) return;
+    if(!confirm('確定要取消追蹤嗎？（已支付的金幣不會退還）')) return;
     player.tracking = null;
     saveGame();
     logSys('已取消追蹤。');
@@ -898,7 +924,7 @@ function renderIsmaelExchange(el) {
     let sw = invCountId('scroll_weapon'), sa = invCountId('scroll_armor');   // 🔧 含倉庫存量
     let swc = invCountId('scroll_weapon_c'), sac = invCountId('scroll_armor_c');
     let accOk = ismaelAccAvailable();
-    let accTxt = accOk ? '' : '（本次額度已用完，攻城獲勝後重置）';
+    let accTxt = accOk ? '' : `（購買冷卻尚餘 ${ismaelAccCooldownText()}）`;
     el.innerHTML = `
         <div class="flex flex-col gap-3 p-1">
             <div class="text-slate-300 text-sm leading-relaxed">伊賽馬利：需要稀有的卷軸嗎？我這裡能交換（背包與倉庫的卷軸皆可使用）。</div>
@@ -929,7 +955,7 @@ function renderIsmaelExchange(el) {
                 <button class="btn bg-blue-700 hover:bg-blue-600 border-blue-500 py-2 px-4 font-bold shrink-0" onclick="ismaelCursedExchange('armor')">兌換</button>
             </div>
             <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-600 rounded p-3">
-                <div class="text-sm text-slate-200 leading-relaxed">1,000,000 金幣 → 1 張 <span class="text-sky-300 font-bold">對飾品施法的卷軸</span><br><span class="text-xs text-slate-400">每次攻城獲勝可購買 1 張 ${accTxt}</span></div>
+                <div class="text-sm text-slate-200 leading-relaxed">1,000,000 金幣 → 1 張 <span class="text-sky-300 font-bold">對飾品施法的卷軸</span><br><span class="text-xs text-slate-400">購買後 24 小時可再次購買 ${accTxt}</span></div>
                 <button class="btn ${!accOk ? 'bg-slate-600 border-slate-500 opacity-60 cursor-not-allowed' : 'bg-yellow-700 hover:bg-yellow-600 border-yellow-500'} py-2 px-4 font-bold shrink-0" ${!accOk ? 'disabled' : ''} onclick="ismaelBuyAcc()">購買</button>
             </div>
         </div>`;
@@ -1073,25 +1099,16 @@ function renderBianAttr(el) {
         </div>`;
 }
 function ismaelBuyAcc() {
-    if (!ismaelAccAvailable()) { alert('本次購買額度已用完，攻城獲勝後可再購買 1 張。'); return; }
+    if (!ismaelAccAvailable()) { alert(`購買冷卻中，尚餘 ${ismaelAccCooldownText()}。`); return; }
     if (player.gold < 1000000) { alert(`金幣不足（需 1,000,000，目前 ${player.gold.toLocaleString()}）。`); return; }
     player.gold -= 1000000;
     gainItem('scroll_acc', 1, true, true);
-    player.ismaelAccUsed = true;   // 🔧 次數制：本額度用畢，攻城獲勝時重置
+    if (!player.siege || typeof player.siege !== 'object') player.siege = {};
+    player.siege.accCdUntil = Date.now() + 24 * 3600 * 1000;
     saveGame();   // 高價購買立即存檔
-    logSys('花費 1,000,000 金幣購買了 1 張 <span class="text-sky-300 font-bold">對飾品施法的卷軸</span>。（攻城獲勝後可再次購買）');
+    logSys('花費 1,000,000 金幣購買了 1 張 <span class="text-sky-300 font-bold">對飾品施法的卷軸</span>。（24 小時後可再次購買）');
     updateUI();
     let el = document.getElementById('interaction-content'); if (el) renderIsmaelExchange(el);
-}
-function claimSiegeReward(faction) {
-    let s = player.siege;
-    if (!s || !s.rewardPending) { alert('目前沒有可領取的攻城戰獎勵。'); return; }
-    let per = (s.result === 'win') ? 5000 : 2000;
-    let gold = per * (s.kills || 0);
-    player.gold += gold;
-    s.rewardPending = false;
-    logSys(`🏆 攻城${s.result === 'win' ? '獲勝' : '失敗'}領賞：本次擊殺血盟／攻城敵人 ${s.kills || 0} 名，獲得 <span class="text-yellow-400 font-bold">${gold}</span> 金幣！`);
-    updateUI();
 }
 
 function changeMap(force) {
@@ -1184,6 +1201,7 @@ function changeMap(force) {
         player.hp = player.mhp;
         player.mp = player.mmp;
         try { if (typeof reviveDownedMercsAtTown === 'function') reviveDownedMercsAtTown(); } catch (e) {}   // 🤝 Phase 3：回村/回城免費復活全體倒地傭兵
+        try { if (typeof petsReviveAtTown === 'function') petsReviveAtTown(); } catch (e) {}   // 🐾 v3.6.29 回村：出戰寵物倒地復活＋補滿 HP/MP＋清異常（比照傭兵·js/22）
         try { if (typeof mercBankAlliesAtTown === 'function') mercBankAlliesAtTown(); } catch (e) {}   // 🤝 v2.6.68 隊長回村：上場傭兵各記一筆待領經驗（不解散·不改來源存檔）
         try { if (typeof mercExpClaimPending === 'function') mercExpClaimPending(); } catch (e) {}     // 🤝 v2.6.68 本角色回村/載入（loadGame 一律回家鄉村莊）：自動領取自己的待領經驗
         // 🏰 城堡護衛：回城/回村補滿血並解除力竭
@@ -1191,7 +1209,10 @@ function changeMap(force) {
         // 協力角色：進村莊一併回滿 MP（與玩家一致）
         if (player.allies) player.allies.forEach(a => { if (a) a.mp = a.mmp; });
         // 進入村莊解除所有異常狀態（中毒/灼燒/燙傷/石化/麻痺/冰凍/暈眩/沉默/封印）
-        player.statuses = { stun: 0, freeze: 0, stone: 0, poison: 0, poisonDmg: 0, poisonTick: 0, burn: 0, burnDmg: 0, burnTick: 0, scald: 0, scaldDmg: 0, scaldTick: 0, bleed: 0, bleedDmg: 0, bleedTick: 0, sleep: 0, silence: 0, paralyze: 0, magicseal: 0, armorBreak: 0, slowAtk: 0, cleave: 0 };   // 🔧 補齊 armorBreak/slowAtk/cleave，與初始定義一致
+        // ⚠️ evilAura 必須列進來：整包覆蓋若少了這個鍵，js/03 的 for...in 到期還原迴圈永遠列舉不到它，
+        //    已烙進 player.d 的 AC+10/ER−10 就再也回不去了。cleave 的攻速覆寫同理需要重算。
+        player.statuses = { stun: 0, freeze: 0, stone: 0, poison: 0, poisonDmg: 0, poisonTick: 0, burn: 0, burnDmg: 0, burnTick: 0, scald: 0, scaldDmg: 0, scaldTick: 0, bleed: 0, bleedDmg: 0, bleedTick: 0, sleep: 0, silence: 0, paralyze: 0, magicseal: 0, armorBreak: 0, slowAtk: 0, cleave: 0, evilAura: 0 };   // 🔧 補齊 armorBreak/slowAtk/cleave/evilAura，與初始定義一致
+        calcStats();   // 清狀態後重算：把 evilAura/cleave 烙進 player.d 的修正還原
         updateUI();
         
         // 關閉可能開啟著的互動面板，渲染 NPC 列表
@@ -1199,6 +1220,7 @@ function changeMap(force) {
         renderTownNPCs(mapState.current);
     } else {
         try { closeNpcInteraction(); } catch (e) {}   // 🗼 v3.2.89 離開安全區→關閉可能開著的 NPC 浮動視窗(position:fixed 不會隨 town-view 隱藏·如傲慢之塔入口)
+        try { if (typeof closeWarehouseWindow === 'function') closeWarehouseWindow(); } catch (e) {}   // 🏦 浮動倉庫視窗掛 #app-stage、不隨 town-view 隱藏→離開安全區必須一併關閉，否則可帶進狩獵區/頭目戰使用
         document.getElementById('battle-view').classList.remove('hidden');
         document.getElementById('combat-log-panel').classList.remove('hidden');
         document.getElementById('town-view').classList.add('hidden');
@@ -1280,7 +1302,12 @@ function hanAcceptQuest() {
 }
 function hanSubmitProof() {
     if (player.masteryQuest !== 'active') return;
-    if (!player.inv.some(i => i.id === 'item_mastery_proof')) return;
+    // 🔒 v3.5.87 閘門口徑＝扣除口徑（questCountId 排除鎖定件）：舊寫法 inv.some 不看 lock，
+    //    鎖定的精通之證會「過閘但扣不到」→ 白拿 done 狀態、證還留在背包。
+    if (questCountId('item_mastery_proof') < 1) {
+        if (player.inv.some(i => i.id === 'item_mastery_proof' && i.lock)) logSys('精通之證已被上鎖，解鎖後才能交付。');
+        return;
+    }
     questConsumeId('item_mastery_proof', 1);
     player.masteryQuest = 'done';
     logSys('<span class="text-amber-300 font-bold">【精通任務】</span>漢：很好……你已證明了自己。現在，選擇你的「道」吧。');
@@ -1299,20 +1326,16 @@ function chooseMastery(id) {
         let stillOk = reqAllowsClass(wd, player.cls) || loadUpAllows(player.eq.wpn.id);
         if (!stillOk) { logSys('<span class="text-red-400 font-bold">手中被詛咒的騎士武器無法卸下，無法切換精通！</span><span class="text-red-300">請先至象牙塔『碧恩』處解除詛咒。</span>'); return; }
     }
-    // 初次選擇免費；之後每次更換固定 300 萬金幣＋10 張王族搜索狀（不隨次數遞增）
+    // 初次選擇免費；之後每次更換固定 300 萬金幣（不隨次數遞增）
     if (player.mastery !== null) {
         let cost = masteryChangeCost();
-        let w = pledgeCountItem('new_item_241');
-        if (player.gold < cost.gold || w < cost.warrants) {
-            logSys(`<span class="text-red-400 font-bold">更換精通需要 ${cost.gold.toLocaleString()} 金幣與 王族搜索狀 ×${cost.warrants}。</span>`);
+        if (player.gold < cost.gold) {
+            logSys(`<span class="text-red-400 font-bold">更換精通需要 ${cost.gold.toLocaleString()} 金幣。</span>`);
             return;
         }
         // 更換前確認
-        if (!confirm(`確定要將精通由「${md.list[player.mastery].n}」更換為「${md.list[id].n}」嗎？\n將消耗 ${cost.gold.toLocaleString()} 金幣與 王族搜索狀 ×${cost.warrants}。`)) return;
+        if (!confirm(`確定要將精通由「${md.list[player.mastery].n}」更換為「${md.list[id].n}」嗎？\n將消耗 ${cost.gold.toLocaleString()} 金幣。`)) return;
         player.gold -= cost.gold;
-        let _need = cost.warrants;
-        for (let it of player.inv.filter(i => i.id === 'new_item_241')) { if (_need <= 0) break; let dd = Math.min(it.cnt, _need); it.cnt -= dd; _need -= dd; }
-        player.inv = player.inv.filter(i => i.cnt > 0);
         player.masteryChangeCnt = (player.masteryChangeCnt || 0) + 1;
     }
     let prev = player.mastery;
@@ -1375,7 +1398,7 @@ function renderHanNPC(div) {
         return;
     }
     if (q === 'active') {
-        let hasProof = player.inv.some(i => i.id === 'item_mastery_proof');
+        let hasProof = questCountId('item_mastery_proof') >= 1;   // 🔒 v3.5.87 顯示口徑＝交付口徑（鎖定件不計）
         div.innerHTML = `
         <div class="flex flex-col gap-4 p-2 items-center text-center">
             <div class="text-slate-300 leading-relaxed">漢：${hasProof ? '哦……你手中的氣息，是貨真價實的證明。' : `<span class="text-red-300 font-bold">${md.boss}</span> 還在等著你。把「精通之證」帶回來。`}</div>
@@ -1390,7 +1413,7 @@ function renderHanNPC(div) {
     let cost = masteryChangeCost();
     let costTxt = (cur === null)
         ? '<span class="text-emerald-300 font-bold">初次選擇免費</span>'
-        : `更換費用：<span class="text-yellow-300 font-bold">${cost.gold.toLocaleString()} 金幣</span>＋<span class="text-amber-300 font-bold">王族搜索狀 ×${cost.warrants}</span>（固定費用）`;
+        : `更換費用：<span class="text-yellow-300 font-bold">${cost.gold.toLocaleString()} 金幣</span>（固定費用）`;
     let btn = (id) => {
         let m = md.list[id];
         let active = cur === id;
@@ -1425,55 +1448,8 @@ function renderTownNPCs(townId) {
     container.innerHTML = '';
     // 🗼🌀 v3.2.89 底部入口按鈕全取消：傲慢之塔／時空裂痕的進入選單改成地圖上的「告示 NPC」，點擊才跳浮動視窗（見 renderTownNPCMap）
     container.classList.add('hidden');
-    return;
-    /* 🗄️ 舊城鎮 NPC 卡片清單（保留原始碼·不再執行）：
-    let townData = DB.towns[townId];
-    if (!townData || !townData.npcs) return;
-
-    townData.npcs.forEach(npc => {
-        // 城堡血盟NPC：只顯示玩家所屬陣營（依詩蒂陣營→依詩蒂；特羅斯陣營→特羅斯）
-        if (townId === 'town_kent_castle' || townId === 'town_windwood_castle') {
-            if (npc.id === 'npc_esti' && player.bloodPledge !== 'esti') return;
-            if (npc.id === 'npc_tros' && player.bloodPledge !== 'tros') return;
-        }
-        if (npc.darkOnly && player.cls !== 'dark') return;   // 🔧 黑暗妖精限定試煉：其他職業看不到
-        if (npc.classicHide && player.classicMode) return;   // 🔥 經典模式：隱藏 漢（無精通）；v3.0.77 起碧恩不再 classicHide（賦予屬性經典也開放）、克里斯特已移除
-        let el = document.createElement('div');
-        el.className = 'bg-slate-800 border border-slate-600 rounded-lg p-3 hover:bg-slate-700 transition-colors cursor-pointer flex flex-col justify-between';
-        
-        let typeIcon = "👤";
-        if(npc.type === 'shop') typeIcon = "💰";
-        else if(npc.type === 'craft') typeIcon = "⚒️";
-        else if(npc.type === 'skill') typeIcon = "📖";
-        else if(npc.type === 'exchange') typeIcon = "⚖️";
-        else if(npc.type === 'quest') typeIcon = "📜";
-        else if(npc.type === 'pledge') typeIcon = "⚔️";
-        else if(npc.type === 'ally') typeIcon = "🤝";
-        else if(npc.type === 'bless') typeIcon = "✨";
-        else if(npc.type === 'pray') typeIcon = "🙏";
-        else if(npc.type === 'mastery') typeIcon = "🏅";
-        else if(npc.type === 'castleguard') typeIcon = "🛡️";
-        else if(npc.type === 'petstore') typeIcon = "🐾";
-        else if(npc.type === 'travel') typeIcon = "⛵";
-        else if(npc.type === 'synth') typeIcon = "🎴";
-
-        el.innerHTML = `
-            <div class="flex items-start justify-between mb-2">
-                <div class="flex flex-col">
-                    <span class="text-white font-bold text-lg leading-none">${npc.n}</span>
-                    <span class="text-yellow-500 text-sm mt-1">[${npc.title}]</span>
-                </div>
-                <span class="text-2xl">${typeIcon}</span>
-            </div>
-            <p class="text-slate-400 text-sm mt-auto leading-snug">${npc.d}</p>
-        `;
-        el.onclick = () => interactNPC(npc.id, townId);
-        container.appendChild(el);
-    });
-    // 🗼 傲慢之塔入口：NPC 之下顯示「進入傲慢之塔 / 挑戰排名模式」較大按鈕與紀錄
-    if (townId === 'town_pride') renderPrideEntrance(container);
-    if (townId === 'town_rift') renderRiftEntrance(container);   // 🌀 時空裂痕入口：進入/領獎按鈕＋時間排名
-    */
+    // 🗑️ v3.5.87 移除註解掉的舊 NPC 卡片清單死碼（48 行）：其城堡血盟過濾漏 heine、typeIcon 表漏 warehouse、
+    //    無 classicOnly 過濾——三處皆與現行單一真相 renderTownNPCMap 不符，留著只會誤導維護。
 }
 
 // 🗼 傲慢之塔入口：攀登與排名模式的大按鈕＋紀錄面板
@@ -1527,6 +1503,7 @@ function sanctuaryEnter(mapKey, costId) {
     if (!_sanctConsume(costId)) { logSys(`<span class="text-red-400">沒有 ${d0 ? d0.n : costId}，無法進入。</span>`); return; }
     logSys(`<span class="text-amber-300">你交出了 1 個 ${d0 ? d0.n : costId}，${mapKey === 'collapsed_elder_council_hall' ? '被傳送到了 崩壞的長老會議廳' : '踏入了 ' + (mapKey === 'dark_elf_sanctuary' ? '黑暗妖精聖地' : '受詛咒的黑暗妖精聖地')}……</span>`);
     closeNpcInteraction();
+    try { if (typeof closeWarehouseWindow === 'function') closeWarehouseWindow(); } catch (e) {}   // 🏦 v3.5.94 本函式複製 changeMap 的戰鬥進場流程但不經過 changeMap；closeNpcInteraction 刻意不負責關倉庫(見其開頭註解)，故此處自行補上，否則浮動倉庫視窗會殘留到聖地並遮住 battle-view
     saveSiegeBossHp();
     mapState.current = mapKey;
     player.lastBattleMap = mapKey;
@@ -1619,6 +1596,7 @@ function openPandoraShortcut() {
 function interactNPC(npcId, townId) {
     let npc = DB.towns[townId].npcs.find(n => n.id === npcId);
     if(!npc) return;
+    if ((npc.id === 'npc_esti' || npc.id === 'npc_tros') && typeof clanNpcVisible === 'function' && !clanNpcVisible(npc.id, townId)) return;
     if (npc.classicHide && player.classicMode) return;   // 🔥 經典模式：漢 不可互動（縱深防護，正常情況卡片已不渲染；v3.0.77 碧恩經典可用）
     if (npc.classicOnly && !player.classicMode) return;   // 🕊️ 經典限定 NPC（聖使阿卡塔）：一般模式不可互動（縱深防護，渲染層已過濾）
     _activePanel = null;   // 開啟新面板：先清除自動刷新標記，由對應 render 視需要重新設定
@@ -1634,7 +1612,7 @@ function interactNPC(npcId, townId) {
     document.getElementById('town-interaction-container').classList.remove('hidden');
     document.getElementById('town-interaction-container').classList.add('flex');
     
-    document.getElementById('interaction-npc-name').innerText = npc.n;
+    document.getElementById('interaction-npc-name').innerText = ((npc.id === 'npc_esti' || npc.id === 'npc_tros') && typeof clanNpcDisplayName === 'function') ? clanNpcDisplayName() : npc.n;
     document.getElementById('interaction-npc-title').innerText = `[${npc.title}]`;
     
     let contentDiv = document.getElementById('interaction-content');
@@ -1740,11 +1718,13 @@ function interactNPC(npcId, townId) {
 }
 
 function closeNpcInteraction() {
+    // ⚠️ 勿在此關閉浮動倉庫視窗：本函式在城鎮內「切換 NPC 面板」時也會被呼叫，
+    //    那樣會變成點任何一個 NPC 都把倉庫關掉。倉庫的關閉點在 changeMap 的「離開安全區」分支。
     document.getElementById('town-interaction-container').classList.add('hidden');
     document.getElementById('town-interaction-container').classList.remove('flex');
     { let _m = document.getElementById('town-npc-map'); if (_m) _m.classList.remove('hidden'); }   // 🏘️ v3.2.83 關閉功能視窗→重新顯示地圖
-    // NPC 底列容器：僅傲慢之塔／時空裂痕入口有內容(進入按鈕)才顯示，一般城鎮維持收合
-    { let _c = document.getElementById('town-npc-container'); if (_c) _c.classList.toggle('hidden', !_c.children.length); }
+    // NPC 底列容器：v3.2.89 起恆為空（傲慢之塔/時空裂痕入口改地圖告示 NPC＋浮動視窗），維持收合即可
+    { let _c = document.getElementById('town-npc-container'); if (_c) _c.classList.add('hidden'); }   // 🗑️ v3.5.87 原 children.length 判斷恆 0·簡化
 }
 
 // ================= 🏘️ v3.2.83 城鎮 NPC 地圖系統 =================
@@ -1866,16 +1846,16 @@ const TOWN_NPC_SPOTS = {
     town_silver_knight: [[20, 60], [79, 56], [39, 77], [25, 80], [52, 36], [64, 36], [41, 36]],   // 🎯 v3.4.79 茉莉(製作·第3位)[16,75]→[39,77]：右下移出圍欄工作區到中央廣場（用戶箭頭指示）
     // 說話之島：吉倫=左上大屋門廊｜巴辛=水井邊｜朵琳=左中小屋門前｜潘朵拉=中央大屋遮陽棚攤位｜拉達爾=漁棚前院草地(v3.3.32勿站進棚內)｜法林=曬網架旁｜萊恩=沙灘小船邊｜詹姆/甘特=主路上｜尤麗婭=大屋門前｜拉比安尼=右下茅屋前
     town_talking: [[24, 40], [48, 40], [20, 63], [51, 82], [82, 41], [67, 34], [60, 23], [38, 62], [45, 75], [62, 89], [80, 88]],   // 🏦 v3.4.78 朵琳(倉庫·第3位)[14,57]→[20,63]：右下移出屋前台階到空地（用戶箭頭指示）
-    // 妖精森林：埃爾頻=左階梯下空地｜艾爾=主殿門前｜琳達=舞台前｜艾利溫=右屋階梯口｜那翰/娜魯帕=林間空地｜精靈女皇(override)｜精靈=花圃間｜安特(override釘右上)｜潘/芮克妮=空地｜布拉伯=右下屋門廊｜羅賓孫=左下樹屋平台｜迷幻森林之母=右中開闊地(巨石像)
-    town_elf: [[30, 48], [42, 33], [57, 30], [76, 42], [22, 60], [69, 49], [48, 62], [44, 74], [84, 43], [55, 70], [30, 72], [84, 74], [15, 88], [63, 63]],   // 🎯 v3.4.79 羅賓孫(製作·第13位)[12,82]→[15,88]：右下移出樹屋門口到圓形木平台（用戶箭頭指示）
+    // 妖精森林：埃爾頻=左階梯下空地｜艾爾=主殿門前｜琳達=舞台前｜艾利溫=右側林間石徑｜那翰/娜魯帕=林間空地｜精靈女皇(override)｜精靈=花圃間｜安特(override釘右上)｜潘/芮克妮=空地｜布拉伯=右下屋門廊｜羅賓孫=左下樹屋平台｜迷幻森林之母=右中開闊地(巨石像)
+    town_elf: [[30, 48], [42, 33], [57, 30], [72, 34], [22, 60], [69, 49], [48, 62], [44, 74], [84, 43], [55, 70], [30, 72], [84, 74], [15, 88], [63, 63]],   // 🎯 艾利溫右移出安特點擊範圍；羅賓孫(第13位)維持圓形木平台
     // 奇岩城鎮：邁爾/范吉爾/愛弗特=右下市集攤棚各一攤｜溫諾=攤棚上方廣場路面(v3.3.32勿站攤頂)｜莫麗雅/海克特=噴泉兩側｜哈巴特=公會階梯前｜倫提斯=左教堂門廊｜賽巴斯=右上綠籬步道｜蘇瑞耳=圓頂庫房右側街面(v3.3.32勿貼圓頂)
     town_giran: [[69, 81], [81, 56], [88, 79], [57, 88], [38, 66], [54, 66], [66, 42], [19, 39], [58, 33], [24, 84]],   // 🎯 v3.4.79 倫提斯(製作·第8位)[14,36]→[19,39] 移出教堂門廊到路面＋蘇瑞耳(倉庫·第10位)[22,81]→[24,84] 移出圓頂庫房牆邊（用戶箭頭指示）
-    // 海音城鎮(運河水都·v3.3.31 依用戶截圖箭頭校正)：比特=左下屋前空地｜哈金=上排庫房前街面｜傭兵公會=右上建築左側路面｜琉米埃爾=花壇右下路面(勿站上花壇)｜多文=中央廣場｜依詩蒂=橋頭左側廣場(勿站上橋)｜依斯巴=木棧碼頭板上(港口)
-    town_heine: [[19, 85], [41, 26], [56, 29], [22, 41], [50, 50], [62, 45], [28, 88]],
+    // 海音城鎮(運河水都)：比特=左下通往碼頭的街面｜哈金=上排庫房前街面｜傭兵公會=右上建築左側路面｜琉米埃爾=花壇右下路面(勿站上花壇)｜多文=中央廣場｜依詩蒂=橋頭左側廣場(勿站上橋)｜依斯巴=木棧碼頭板上(港口)
+    town_heine: [[29, 67], [41, 26], [56, 29], [22, 41], [50, 50], [62, 45], [28, 88]],
     // 亞丁城鎮(白石王都)：拉溫=左宅邸前｜恬金=右上宮殿階梯｜烏普尼=噴泉台階旁｜諾斯=中央羅盤地磚｜包武=右下拱廊前｜聖使阿卡塔=左上迴廊前(經典限定)
     town_aden: [[19, 62], [76, 30], [64, 48], [42, 68], [69, 77], [31, 40]],
     // 歐瑞村莊(雪山村·v3.3.32 依用戶截圖箭頭校正四點全下到路面)：畢伍德=右屋前雪路｜希林=上方倉庫門前地面｜傭兵公會=村中央｜伊貝爾賓=左屋前空地(勿站台階)｜大衛=右屋角前雪路｜特羅斯=左下柴堆路口
-    town_oren: [[72, 54], [53, 29], [45, 55], [33, 49], [77, 59], [22, 72]],
+    town_oren: [[63, 52], [53, 29], [45, 55], [33, 49], [77, 59], [22, 72]],
     // 燃柳村莊：歐斯=鍛造屋前院(火爐鐵砧旁)
     town_gludio: [[62, 36]],
     // 威頓村莊(火山村)：馬沙=大宅階梯前｜漢=村中央｜客盧亞=左上屋簷攤棚｜宙斯之熔岩高崙=左下鍛造爐(自家熔爐)｜魔法娃娃商人=右下屋前｜艾斯倫=右側貨箱堆旁
@@ -1901,13 +1881,29 @@ const TOWN_NPC_SPOTS = {
     // 時空裂痕入口：入口告示=中央圓形石紋
     town_rift: [[48, 58], [30, 50], [66, 46]],
     // 🏰 v3.3.9 三攻城城堡（用戶新補背景圖·依圖避開牆壁/水池/柱子/王座/側房家具）
-    // 🏰 v3.5.78 肯特城重排（用戶要求「站位增加距離·不站牆壁/物件」）：原 8 點擠在 x42-58/y40-60（最近間距僅4%）且 [47,54]貼(44,60)石柱、[58,48]貼(60.5,52)石柱→改王座大廳環狀站位（最近間距≥8%·多數≥10%）。
-    //   格線實測：台基 x47-62/y22-33·藍毯縱段 x50-56.5/y33-68 後折向左下·石柱 (37.5,52)/(44,60)/(41,70)/(60.5,52)/(68.5,44)/(75.5,40)·右下書房牆沿 (60,70)→(78,52)——全點落在空曠石地/地毯，避柱避牆避燈架。
-    //   對位：尼奇=台基左下石地｜巴歐=台基右下石地｜傭兵公會=左中石地(柱間)｜伊賽馬利=右中石地｜潘朵拉=地毯轉折處｜守衛隊長=右下石地(書房牆前)｜第7/8格=地毯中段(無盟主時奧貝勒站前者·有盟主時奧貝勒站後者·盟主本身走 override 釘 [50,35])
-    town_kent_castle: [[42, 37], [65, 36], [43, 52], [66, 54], [48, 67], [61, 61], [53, 45], [55, 55]],
-    town_windwood_castle: [[40, 42], [56, 42], [43, 50], [55, 50], [48, 48]],   // 🏰 v3.3.10 祭壇在頂端中央→NPC 上移近祭壇(中央十字綠毯上緣)
-    town_heine_castle: [[55, 40], [63, 39], [54, 49], [62, 48], [50, 44], [67, 44]]   // 🏰 v3.3.10 王座在頂端中央(反射水池後)→NPC 上移聚集近王座·守在水渠右側石地(避水池/水渠·盟主 override 釘階台前)
+    // 🏰 三座城堡：每格對應原始 NPC 索引，最後一格預留叫賣玩家。避免 vis 過濾後或叫賣玩家加入時，_townNpcLayout 回繞到前排造成重疊。
+    //   各點均落在大廳的石地或地毯，避開牆面、柱子、欄杆、桌椅與水池；實際同時顯示的 NPC 最短間距約 8% 以上。
+    //   肯特：盟主索引 6/7 由下方 override 共用王座前位置；奧貝勒與叫賣玩家另有獨立安全點。
+    town_kent_castle: [[42, 37], [65, 36], [43, 52], [66, 54], [48, 67], [61, 61], [50, 35], [50, 35], [54, 47], [72, 64]],
+    //   風木：盟主索引 3/4 共用祭壇前位置；其餘人員分站左右石地與下方地毯，避開兩側軍械架和下方會議桌。
+    town_windwood_castle: [[37, 43], [61, 43], [40, 57], [48, 35], [48, 35], [60, 59], [48, 72]],
+    //   海音（🏰 v3.6.02 依用戶截圖重排：原 5 點擠 x58-70/y42-66 全落在中央斜拱廊牆頂 → 散開到四方開闊地）：
+    //   須凡=南側廣場展示桌旁｜哈金=拱廊西南側廣場（[80,56]實測落在拱門洞正中·柱間夾人→移出）｜傭兵公會=東南大廣場｜
+    //   海音神官隊長=禮拜堂長椅前（神官↔禮拜堂）｜盟主=王座水池平台右側石地（階梯上方·避池避渠）｜
+    //   帝倫=左側迴廊（水渠以西·避開雙立柱）｜末格叫賣=大廣場星紋旁。⚠️中央斜拱廊牆基線≈y=0.7(x−52)+38（x52→72）·牆面再往上約 10%，此帶全禁站。
+    town_heine_castle: [[52, 84], [76, 62], [68, 72], [66, 34], [42, 22], [42, 22], [27, 48], [66, 54]]
 };
+// 🏴 叫賣玩家只會在這些安全區出現。獨立保留站位，避免在原始 NPC 格位用盡後回繞並貼近人物或落到場景物件上。
+const TOWN_WANDERING_BUYER_SPOTS = {
+    town_silver_knight: [55, 60], town_talking: [53, 60], town_elf: [54, 48], town_gludio: [50, 60],
+    town_giran: [48, 48], town_heine: [43, 64], town_oren: [54, 70], town_aden: [60, 62],
+    town_elder_council: [38, 60], town_pride: [62, 70], town_rift: [30, 50], town_ivory_tower: [69, 63],
+    town_witon: [52, 68], town_silent: [54, 72], town_hyperia: [57, 68], town_behemoth: [52, 72],
+    town_pirate_village: [56, 58]
+};
+// 同城出現兩位收購者時，第二位從已驗證的原收購點周圍挑選空位；實際選點還會避開當前城鎮的所有 NPC。
+const TOWN_WANDERING_BUYER_OFFSETS = [[0, 0], [-12, 0], [12, 0], [0, -14], [0, 14], [-12, -10], [12, -10], [-12, 10], [12, 10]];
+const TOWN_WANDERING_BUYER_MIN_GAP = 12;   // 以 800×450 地圖換算，至少約 54px 的垂直／96px 的水平腳點距離。
 // 🌳 v3.2.92 逐 NPC 站位覆蓋（少數巨型 NPC 佔位過大會遮住鄰居點擊→釘固定角落）：townId → { npcId: [x%, y%(腳點)] }
 //   安特(spr 847)＝110×145px 巨樹人·放正中央會蓋住兩側 NPC 的點擊熱區→改釘右上角(y=43 使 145px 身體＋名牌完整落在 450px 地圖內不被裁)
 const TOWN_NPC_POS_OVERRIDE = {
@@ -1917,7 +1913,7 @@ const TOWN_NPC_POS_OVERRIDE = {
     // 🏰 v3.3.10 三城堡盟主(依詩蒂/特羅斯·只顯示其一)釘在王座/祭壇前中央·其餘主要 NPC 由 TOWN_NPC_SPOTS 上移聚集靠近；兩 id 同座標(擇一顯示)
     town_kent_castle: { npc_esti: [50, 35], npc_tros: [50, 35] },      // 肯特城：王座頂端中央(藍地毯上緣)
     town_windwood_castle: { npc_esti: [48, 35], npc_tros: [48, 35] },  // 風木城：祭壇頂端中央(綠十字毯上緣)
-    town_heine_castle: { npc_esti: [48, 35], npc_tros: [48, 35] }      // 海音城：王座前階台(水池右側石地·避水渠)
+    town_heine_castle: { npc_esti: [42, 22], npc_tros: [42, 22] }      // 海音城：王座水池平台右側石地（v3.6.02 隨站位重排上移·舊點[48,35]在階梯下混入人群）
 };
 function _townNpcLayout(n, townId) {
     if (n <= 0) return [];
@@ -1948,6 +1944,46 @@ function _townNpcLayout(n, townId) {
     return out;
 }
 
+function _townNpcMapPoint(npc, index, pos, overrides) {
+    let ov = overrides[npc.id];
+    return ov ? { x: ov[0], y: ov[1] } : (pos[npc._spotIdx != null ? npc._spotIdx : index] || { x: 50, y: 60 });
+}
+
+function _townPointDistance(a, b) {
+    // 地圖為 16:9，x 軸每 1% 的實際像素約為 y 軸的 1.78 倍。
+    return Math.hypot((a.x - b.x) * (16 / 9), a.y - b.y);
+}
+
+function _townWanderingBuyerPositions(vis, townId, pos, overrides) {
+    let base = TOWN_WANDERING_BUYER_SPOTS[townId];
+    if (!base) return {};
+    let occupied = vis
+        .filter(npc => !npc._wanderer)
+        .map((npc, index) => _townNpcMapPoint(npc, index, pos, overrides));
+    let buyers = vis
+        .filter(npc => npc._wanderer)
+        .sort((a, b) => (a.currency === 'gold' ? 1 : 0) - (b.currency === 'gold' ? 1 : 0));
+    let out = {};
+
+    buyers.forEach((npc, index) => {
+        let candidates = TOWN_WANDERING_BUYER_OFFSETS.map(offset => ({
+            x: Math.max(8, Math.min(92, base[0] + offset[0])),
+            y: Math.max(22, Math.min(90, base[1] + offset[1]))
+        }));
+        let gapOf = point => occupied.length
+            ? Math.min.apply(null, occupied.map(other => _townPointDistance(point, other)))
+            : Infinity;
+        let baseGap = gapOf(candidates[0]);
+        // 單一 NPC 或第一位仍優先原本手工確認過的安全點；只有已太靠近既有 NPC 時才避讓。
+        let best = (index === 0 && baseGap >= TOWN_WANDERING_BUYER_MIN_GAP)
+            ? candidates[0]
+            : candidates.reduce((picked, point) => gapOf(point) > gapOf(picked) ? point : picked, candidates[0]);
+        out[npc.id] = best;
+        occupied.push(best);   // 第二位同時避開第一位，避免立繪與名牌互相吃掉點擊。
+    });
+    return out;
+}
+
 // 城鎮地圖背景：沿用 TOWN_BG_1920/SPECIAL_TOWN_BG/TOWN_AREA_BG 解析，但用較淡遮罩(場景清楚)
 function _townMapBg(townId) {
     let cat = (typeof mapCategoryOf === 'function') ? mapCategoryOf(townId) : null;
@@ -1963,6 +1999,68 @@ function _townMapBg(townId) {
 }
 
 let _townNpcSprites = [];
+function _townCastleCrownHtml(npc) {
+    if (!npc || typeof siegeVictoryActive !== 'function' || !siegeVictoryActive()) return '';
+    let royalNpc = npc.id === 'npc_esti' || npc.id === 'npc_tros';
+    let royalPlayer = !!npc._wanderer && (npc.avatar === '王子' || npc.avatar === '公主');
+    return (royalNpc || royalPlayer)
+        ? '<img class="tn-castle-crown" src="assets/ui/castle-crown.gif?v=v3.6.22" alt="" aria-hidden="true" draggable="false">'
+        : '';
+}
+let _townCastleCrownBoxCache = {};
+function _townCastleCrownBox(img) {
+    if (!img || !img.complete || !(img.naturalWidth > 0) || !(img.naturalHeight > 0)) return null;
+    let src = img.currentSrc || img.src || '';
+    if (src && _townCastleCrownBoxCache[src]) return _townCastleCrownBoxCache[src];
+    let w = img.naturalWidth, h = img.naturalHeight;
+    let srcText = '';
+    try { srcText = decodeURIComponent(String(src || '')).replace(/\\/g, '/'); } catch (e) { srcText = String(src || '').replace(/\\/g, '/'); }
+    if (srcText.indexOf('/assets/npc/3227/') >= 0 || srcText.indexOf('/assets/npc/3225/') >= 0) {
+        let royalBox = { x: 18, bottom: h };
+        if (src) _townCastleCrownBoxCache[src] = royalBox;
+        return royalBox;
+    }
+    let box = null;
+    try {
+        let cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        let ctx = cv.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        let data = ctx.getImageData(0, 0, w, h).data;
+        let minY = h, maxY = -1;
+        for (let y = 0, p = 3; y < h; y++) {
+            for (let x = 0; x < w; x++, p += 4) {
+                if (data[p] > 8) {
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+        if (maxY >= 0) {
+            let bandY = Math.min(h - 1, minY + Math.max(8, Math.round((maxY - minY) * 0.28)));
+            let sumX = 0, cnt = 0;
+            for (let y = minY; y <= bandY; y++) {
+                for (let x = 0; x < w; x++) {
+                    if (data[(y * w + x) * 4 + 3] > 8) { sumX += x; cnt++; }
+                }
+            }
+            box = { x: cnt ? Math.round(sumX / cnt) : Math.round(w / 2), bottom: Math.max(12, h - minY) };
+        }
+    } catch (e) {}
+    if (!box) box = { x: Math.round(w / 2), bottom: h };
+    if (src) {
+        if (Object.keys(_townCastleCrownBoxCache).length > 512) _townCastleCrownBoxCache = {};
+        _townCastleCrownBoxCache[src] = box;
+    }
+    return box;
+}
+function _townCastleCrownAlign(crown, bodyImg) {
+    if (!crown || !bodyImg) return;
+    let box = _townCastleCrownBox(bodyImg);
+    if (!box) return;
+    crown.style.left = box.x + 'px';
+    crown.style.bottom = box.bottom + 'px';
+}
 function renderTownNPCMap(townId) {
     let map = document.getElementById('town-npc-map');
     if (!map) return;
@@ -1974,35 +2072,53 @@ function renderTownNPCMap(townId) {
     if (!td) return;
     // 與舊卡片清單相同的可見性過濾
     let vis = (td.npcs || []).filter(npc => {
-        if (SIEGE_CASTLES.includes(townId)) {   // 🏰 v3.3.9 三座攻城城堡皆只顯示玩家所屬血盟盟主(依詩蒂/特羅斯)，不兩者並列(原漏 town_heine_castle)
-            if (npc.id === 'npc_esti' && player.bloodPledge !== 'esti') return false;
-            if (npc.id === 'npc_tros' && player.bloodPledge !== 'tros') return false;
+        if (npc.id === 'npc_esti' || npc.id === 'npc_tros') {
+            return typeof clanNpcVisible === 'function' && clanNpcVisible(npc.id, townId);
         }
         if (npc.darkOnly && player.cls !== 'dark') return false;
         if (npc.classicHide && player.classicMode) return false;
         if (npc.classicOnly && !player.classicMode) return false;   // 🕊️ 經典限定 NPC（聖使阿卡塔）：一般模式不渲染
         return true;
+    }).map(npc => {
+        if ((npc.id === 'npc_esti' || npc.id === 'npc_tros') && typeof clanNpcDisplayName === 'function') {
+            return Object.assign({}, npc, { n:clanNpcDisplayName(), _sourceSpotIdx:(td.npcs || []).indexOf(npc) });
+        }
+        return npc;
     });
     // 🗼🌀 v3.2.89 傲慢之塔／時空裂痕：入口告示改成地圖上的可點 NPC（_spr 專屬圖·_float 專屬點擊→浮動視窗）
     if (townId === 'town_pride') vis.push({ id: '_pride_entrance', n: '傲慢之塔', title: '入口', _spr: '1148', _float: 'pride' });
     if (townId === 'town_rift') vis.push({ id: '_rift_entrance', n: '時空裂痕', title: '入口', _spr: '1149', _float: 'rift' });
-    // 🏴 潘朵拉玩家 NPC：每個符合條件的安全區各自最多一名，並沿用玩家職業站立動畫。
+    // 🏴 潘朵拉玩家 NPC：每個安全區可各有一位龍鑽／金幣收購者，並沿用玩家職業站立動畫。
     try {
-        if (typeof getWanderingBuyerForTown === 'function') {
+        if (typeof getWanderingBuyersForTown === 'function') {
+            let wanderers = getWanderingBuyersForTown(townId);
+            if (Array.isArray(wanderers)) vis.push.apply(vis, wanderers);
+        } else if (typeof getWanderingBuyerForTown === 'function') {
             let wandering = getWanderingBuyerForTown(townId);
             if (wandering) vis.push(wandering);
         }
     } catch (e) {}
     if (!vis.length) return;
-    let pos = _townNpcLayout(vis.length, townId);
+    // ⚠️ 站位要以「NPC 在未過濾 td.npcs 中的原始索引」對位，不能用過濾後的順序。
+    //    否則像威頓村的 npc_han（classicHide、位於索引 1 非末尾）在經典模式被濾掉時，
+    //    其後所有 NPC 的手工站位會整體前移一格、最後一格閒置。虛擬 NPC（塔/裂痕入口、叫賣玩家）續接末尾。
+    {
+        let _base = (td.npcs || []).length, _extra = 0;
+        vis.forEach(npc => {
+            let _oi = Number.isInteger(npc._sourceSpotIdx) ? npc._sourceSpotIdx : (td.npcs || []).indexOf(npc);
+            npc._spotIdx = (_oi >= 0) ? _oi : (_base + (_extra++));
+        });
+    }
+    let _spotN = vis.reduce((m, npc) => Math.max(m, (npc._spotIdx || 0) + 1), 0);
+    let pos = _townNpcLayout(_spotN, townId);
     let ovr = TOWN_NPC_POS_OVERRIDE[townId] || {};
+    let buyerPositions = _townWanderingBuyerPositions(vis, townId, pos, ovr);
     let used = new Set();
     // 🔒 v3.2.99 先把所有「專屬/固定/角色」sprite 佔位，避免池分配的 NPC 搶走稍後才出現的固定 NPC 的圖
     //   （例：肯特城堡 奧貝勒固定 1049，若 伊賽馬利 先抽到 1049 就會撞臉；先預留固定圖 → 池分配自動避開）
     vis.forEach(npc => { let fk = npc._spr || NPC_SPR_FIXED[npc.id] || NPC_SPR_ROLE[npc.type]; if (fk) used.add(fk); });
     vis.forEach((npc, i) => {
-        let ov = ovr[npc.id];
-        let p = ov ? { x: ov[0], y: ov[1] } : (pos[i] || { x: 50, y: 60 });
+        let p = (npc._wanderer && buyerPositions[npc.id]) || _townNpcMapPoint(npc, i, pos, ovr);
         // 玩家 NPC 使用 classanim 的無武器 idle（三方向隨機·由 wanderingBuyerSpriteData 依 id 決定），本體與影子各自同步播放。
         if (npc._wanderer && typeof wanderingBuyerSpriteData === 'function') {
             let spr = wanderingBuyerSpriteData(npc);
@@ -2013,17 +2129,24 @@ function renderTownNPCMap(townId) {
             el.style.left = p.x + '%'; el.style.top = p.y + '%'; el.style.zIndex = Math.round(p.y * 10);
             let align = (typeof pvpClampAlignment === 'function') ? pvpClampAlignment(npc.alignmentValue) : Math.max(-32767, Math.min(32767, Math.round(Number(npc.alignmentValue) || 0)));
             let nameHtml = (typeof pvpNameHtml === 'function') ? pvpNameHtml(npc.n, align, 'tn-name') : '<span class="tn-name">' + npc.n + '</span>';
+            let crownHtml = _townCastleCrownHtml(npc);
+            if (crownHtml) el.classList.add('has-castle-crown');
             el.innerHTML =
-                '<div class="tn-label">' + nameHtml + '<span class="tn-title">[玩家收購]</span></div>' +
+                '<div class="tn-label">' + nameHtml + '<span class="tn-title">[' + (npc.title || '玩家收購') + ']</span></div>' +
+                crownHtml +
                 '<img class="tn-shadow" src="' + shadow0 + '" alt="" onload="this.parentElement.classList.add(\'has-tn-shadow\')" onerror="this.remove()">' +
                 '<img class="tn-body" src="' + body0 + '" alt="">';
             el.onclick = () => openWanderingBuyerDialog(npc.id);
             map.appendChild(el);
             let bodyImg = el.querySelector('.tn-body');
             let shadowImg = el.querySelector('.tn-shadow');
+            let crownImg = el.querySelector('.tn-castle-crown');
+            if (crownImg) bodyImg.addEventListener('load', () => _townCastleCrownAlign(crownImg, bodyImg));
+            if (crownImg) setTimeout(() => _townCastleCrownAlign(crownImg, bodyImg), 0);
             bodyImg.addEventListener('load', _scheduleTownLabelResolve, { once: true });
             _townNpcSprites.push({
                 img: bodyImg,
+                crown: crownImg,
                 wimg: shadowImg,
                 wframes: spr.shadows || null,
                 frames: spr.frames || [],
@@ -2037,8 +2160,11 @@ function renderTownNPCMap(townId) {
         let el = document.createElement('div');
         el.className = 'town-npc';
         el.style.left = p.x + '%'; el.style.top = p.y + '%'; el.style.zIndex = Math.round(p.y * 10);
+        let crownHtml = _townCastleCrownHtml(npc);
+        if (crownHtml) el.classList.add('has-castle-crown');
         el.innerHTML =
             '<div class="tn-label"><span class="tn-name">' + npc.n + '</span><span class="tn-title">' + npc.title + '</span></div>' +
+            crownHtml +
             '<img class="tn-shadow" src="assets/npc/' + cat.g + '/idle_s_0.png" alt="" onload="this.parentElement.classList.add(\'has-tn-shadow\')" onerror="this.remove()">' +   // 🌑 v3.3.5 真實影子 sprite(body gfx+1·共畫布疊本體對齊)；有影子→onload 標記父層隱藏後備橢圓；無影子(職業動畫/老 gfx/告示)→404 remove→改用 CSS 橢圓後備影子(v3.3.18)
             '<img class="tn-body"' + (cat.tint ? (' style="filter:' + cat.tint + '"') : '') + ' src="assets/npc/' + cat.g + '/idle_0.png" alt="">' +
             (cat.w ? '<img class="tn-weapon" src="assets/npc/' + cat.g + '/idle_w_0.png" alt="" onerror="this.remove()">' : '');   // 🔥 v3.3.18 火焰/武器疊層(screen 混合·宙斯之熔岩高崙的燃燒特效)
@@ -2047,9 +2173,12 @@ function renderTownNPCMap(townId) {
         else el.onclick = () => interactNPC(npc.id, townId);
         map.appendChild(el);
         let bodyImg = el.querySelector('.tn-body');
+        let crownImg = el.querySelector('.tn-castle-crown');
+        if (crownImg) bodyImg.addEventListener('load', () => _townCastleCrownAlign(crownImg, bodyImg));
+        if (crownImg) setTimeout(() => _townCastleCrownAlign(crownImg, bodyImg), 0);
         bodyImg.addEventListener('load', _scheduleTownLabelResolve, { once: true });   // 🏷️ 圖片載入拿到真實高度後再排名牌
         let wImg = cat.w ? el.querySelector('.tn-weapon') : null;   // 🔥 火焰疊層與本體同步推進
-        _townNpcSprites.push({ img: bodyImg, wimg: wImg, wframes: (cat.w ? _npcWeaponFrames(key) : null), frames: _npcFrames(key), phase: (i * 3) % 8, last: -1 });
+        _townNpcSprites.push({ img: bodyImg, crown: crownImg, wimg: wImg, wframes: (cat.w ? _npcWeaponFrames(key) : null), frames: _npcFrames(key), phase: (i * 3) % 8, last: -1 });
     });
     // 🏷️ v3.2.92 名牌常駐開關：跟隨戰鬥日誌「狀態」鈕(_showMobStatus)·開→所有 NPC 名字常駐頭頂；關→僅 hover
     map.classList.toggle('show-labels', (typeof _showMobStatus === 'undefined') ? true : !!_showMobStatus);
@@ -2081,7 +2210,11 @@ function _resolveTownLabelOverlap() {
         let labels = [].slice.call(map.querySelectorAll('.town-npc .tn-label'));
         if (!labels.length) return;
         labels.forEach(l => { l.style.marginBottom = ''; });   // 先歸零(回 CSS 預設 5px)再量測
-        let entries = labels.map(l => ({ l, r: l.getBoundingClientRect() })).filter(e => e.r.width > 0);
+        let entries = labels.map(l => ({
+            l,
+            r: l.getBoundingClientRect(),
+            baseMargin: l.parentElement && l.parentElement.classList.contains('has-castle-crown') ? 17 : 5
+        })).filter(e => e.r.width > 0);
         entries.sort((a, b) => a.r.top - b.r.top);   // 由上而下：越高者當錨點，下方者往上讓
         let placed = [];
         for (let e of entries) {
@@ -2100,7 +2233,7 @@ function _resolveTownLabelOverlap() {
             }
             placed.push({ left, right, top, bottom });
             let shift = r.top - top;
-            if (shift > 0.5) e.l.style.marginBottom = (5 + shift / scale) + 'px';
+            if (shift > 0.5) e.l.style.marginBottom = (e.baseMargin + shift / scale) + 'px';
         }
     } catch (err) {}
 }
@@ -2123,6 +2256,7 @@ function _townNpcAnimTick() {
         if (fi !== s.last) {
             s.last = fi;
             let fr = s.frames[fi]; if (fr && fr.src) s.img.src = fr.src;
+            if (s.crown) _townCastleCrownAlign(s.crown, s.img);
             if (s.wimg && s.wframes && s.wframes.length) { let wf = s.wframes[fi % s.wframes.length]; if (wf && wf.src) s.wimg.src = wf.src; }   // 🔥 火焰疊層同幀
         }
     }

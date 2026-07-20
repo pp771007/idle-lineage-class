@@ -89,21 +89,22 @@ function patchTradEnHook() {
 }
 
 // ── 補丁 3：存檔位 8 → 16（加掛版原有功能，上游只有 8 格）──────────
-//   上游把格數硬寫死在 3 處：js/13 anySaveExists、js/13 選檔清單渲染迴圈、js/06 allySlotList（招募）。
-//   改成用 SAVE_SLOT_MAX=16（定義於 js/13，執行期全域，afk-wiki/afk-diag/afk-traditional 的選角面板也讀它）。
+//   上游把格數硬寫死在 2 處：js/13 匯入時的「同角色重複」掃描、js/06 allySlotList（招募）。
+//   改成用 SAVE_SLOT_MAX=16（定義於 js/13，執行期全域，afk-loadslots/afk-wiki/afk-diag 的選角面板也讀它）。
+//   選角畫面本身不必改核心：上游是分頁式卡片（每頁 4 格），afk-loadslots 自行擴充頁數。
 function patch16Slots() {
-  // js/13：定義 SAVE_SLOT_MAX + anySaveExists + 選檔渲染迴圈
+  // js/13：定義 SAVE_SLOT_MAX + 匯入重複掃描涵蓋全部格
   const F13 = 'js/13-shop-save.js';
   let s13 = readFileSync(F13, 'utf8');
   if (!s13.includes('SAVE_SLOT_MAX')) {
-    const A1 = "function anySaveExists(){ return ['1','2','3','4','5','6','7','8'].some(n => _lsGet('lineage_idle_save_' + n)); }";
-    if (s13.indexOf(A1) < 0) throw new Error(`[${F13}] 找不到 anySaveExists 8 格錨點——上游可能改了存檔位邏輯。`);
+    const A1 = "function slotSummary(n){ return _summaryFromRaw(_lzGet('lineage_idle_save_' + n)); }";
+    if (s13.indexOf(A1) < 0) throw new Error(`[${F13}] 找不到 slotSummary 錨點——上游可能改了存檔位邏輯。`);
     s13 = s13.replace(A1,
-      "const SAVE_SLOT_MAX = 16;   // 🔌 加掛版補丁：存檔位 8 → 16（選檔清單/anySaveExists/傭兵招募/選角面板共用）\n"
-      + "function anySaveExists(){ for(let n=1;n<=SAVE_SLOT_MAX;n++){ if(_lsGet('lineage_idle_save_'+n)) return true; } return false; }");
-    const A2 = "for(let n = 1; n <= 8; n++){";   // 單行錨點（檔案為 CRLF，避開跨行 \n）；js/13 唯一
-    if (s13.indexOf(A2) < 0) throw new Error(`[${F13}] 找不到選檔渲染 8 格迴圈錨點。`);
-    s13 = s13.replace(A2, "for(let n = 1; n <= SAVE_SLOT_MAX; n++){");
+      "const SAVE_SLOT_MAX = 16;   // 🔌 加掛版補丁：存檔位 8 → 16（匯入重複掃描/傭兵招募/選角面板共用）\n" + A1);
+    // 匯入存檔時掃「同一角色是否已存在別格」——沒放大就掃不到第 9~16 格，會讓同角色重複進來
+    const A2 = "for(let slotN = 1; slotN <= 8; slotN++){";
+    if (s13.indexOf(A2) < 0) throw new Error(`[${F13}] 找不到匯入重複掃描 8 格迴圈錨點。`);
+    s13 = s13.replace(A2, "for(let slotN = 1; slotN <= SAVE_SLOT_MAX; slotN++){");
     if (!CHECK) writeFileSync(F13, s13);
     changed++;
     console.log(`[patch] 存檔位 16 格（${F13}）`);

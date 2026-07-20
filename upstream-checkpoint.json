@@ -1,7 +1,7 @@
 {
   "upstreamRepo": "https://github.com/shines871/idle-lineage-class.git",
   "localClone": "D:/otherPersonRepos/idle-lineage-class",
-  "syncedUpstreamCommit": "25b776c034ee89a50d1b97a81b74d5685b1053c7",
-  "syncedAt": "2026-07-19 10:40 (UTC+8)",
-  "note": "由 sync-upstream.mjs 自動更新；上游 GAME_VERSION v3.5.79。架構=純上游鏡像+外掛層，syncedUpstreamCommit=目前核心/資產鏡像的上游 commit。"
+  "syncedUpstreamCommit": "e176dd74ea5be100a9cff12536a74a93060645f8",
+  "syncedAt": "2026-07-20 11:13 (UTC+8)",
+  "note": "由 sync-upstream.mjs 自動更新；上游 GAME_VERSION v3.6.36。架構=純上游鏡像+外掛層，syncedUpstreamCommit=目前核心/資產鏡像的上游 commit。"
 }

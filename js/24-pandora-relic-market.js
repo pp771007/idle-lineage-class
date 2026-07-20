@@ -6,7 +6,7 @@
     const TEST_BUILD = !!(typeof window !== 'undefined' && window.__FB5_TEST_BUILD);
     const STORE_KEY = 'fb5_pandora_relic_market_v1';
     const LOCK_KEY = STORE_KEY + '_lock';
-    const STORE_VERSION = 2;
+    const STORE_VERSION = 3;
     const CHECK_MS = 10 * 60 * 1000;
     const WANDERER_LIFE_MS = 2 * 60 * 60 * 1000;
     const BROADCAST_MS = 3 * 60 * 1000;
@@ -14,6 +14,7 @@
     const BOARD_COOLDOWN_MS = 24 * 60 * 60 * 1000;
     const RELIC_SEARCH_COST = 100;
     const WANDERER_CHANCE = 0.50;
+    const GOLD_WANDERER_CHANCE = 0.30;
 
     // 🚫 v3.5.53 出沒排除（用戶拍板）：攻城三城（限持城者進入·NPC 形同碰不到）＋炎魔謁見所＋席琳神殿；
     //    其餘安全區皆可出沒（含 傲慢之塔入口/時空裂痕入口/沉默洞穴/長老會議廳/希培利亞村莊/貝希摩斯）。
@@ -40,6 +41,15 @@
     const NAME_SURNAME = ['南宮', '上官', '司徒', '慕容', '東方', '北辰', '長孫', '令狐', '歐陽', '夏侯'];
     const NAME_GIVEN = ['無月', '長歌', '聽雪', '清風', '流雲', '暮雨', '星河', '青鋒', '白夜', '未央', '若水', '凌霜'];
     const NAME_CASUAL = ['小隊長', '老玩家', '別打我', '路過', '掛機中', '求組隊', '練功中', '只收不賣', '佛系玩家'];
+    const NAME_SHORT = NAME_PREFIX.concat(NAME_TITLE).filter((name, index, list) => name.length === 2 && list.indexOf(name) === index);
+    const NAME_WRAPPERS = [
+        ['Oo', 'oO'], ['oO', 'Oo'], ['O0', '0O'], ['Xx', 'xX'], ['xX', 'Xx'], ['Xxx', 'xxX'],
+        ['卍', '卍'], ['乂', '乂'], ['一', '一'], ['丨', '丨'], ['灬', '灬'], ['丶', '丶'],
+        ['メ', 'メ'], ['ミ', 'ミ'], ['彡', '彡'], ['艸', '艸'], ['ㄨ', 'ㄨ'], ['★', '★'],
+        ['☆', '☆'], ['◆', '◆'], ['◇', '◇'], ['煞氣a', 'a煞氣'], ['可愛a', 'a可愛'],
+        ['霸氣a', 'a霸氣'], ['最愛a', 'a最愛'], ['闇夜a', 'a闇夜'], ['神之', '之神'],
+        ['惡魔a', 'a惡魔'], ['天使a', 'a天使'], ['戀愛a', 'a戀愛']
+    ];
     const SILENCE_COMPLAINTS = [
         '吵死了', '安靜一點', '別再喊了', '不要一直廣播', '別洗了', '可以停一下嗎', '別再洗頻了', '安靜啦',
         '不要重複喊', '我已經看到了', '別一直刷訊息', '可以閉嘴了', '讓頻道安靜一下', '不要再洗版', '停一下好嗎', '夠了喔',
@@ -49,6 +59,18 @@
         '可以不要洗畫面嗎', '安靜做生意吧', '別再吵大家', '讓頻道休息一下', '不用一直宣傳', '停手吧廣播王', '別把頻道當你家', '少喊兩句',
         '這裡不是廣播台', '請停止洗頻行為', '別再連續宣傳', '你的收購大家知道了', '先安靜做生意', '不要再佔版面', '可以收聲了', '別一直洗同一句',
         '拜託安靜一下', '不要再廣播收購了', '讓我看其他訊息', '你的廣播太密集了', '別再吵人了', '到此為止吧', '停止重播', '請把廣播關掉'
+    ];
+    const LOW_PRICE_COMPLAINTS = [
+        '出這什麼白目價', '先去看一下市場價格好嗎？', '不會喊價就不要喊', '這價格你自己留著吧', '你是在收裝還是在搶劫？',
+        '這點錢也敢洗頻？', '市場價都不查就來收？', '你當大家都是新手？', '這價格連路邊商人都笑你', '少拿這種破價來騙人',
+        '你這出價是在侮辱誰？', '先把行情搞懂再喊', '這種價格還敢說意者密', '你是少打一個零吧？', '這價錢連鑑定費都不夠',
+        '收不到不是沒有原因', '拿零頭出來收神裝喔？', '你乾脆叫人免費送你好了', '這價格是在釣新手吧', '別把便宜當成行情',
+        '你的算盤是不是壞了？', '這價我丟商店都比較多', '商店老闆都比你有誠意', '這種出價還想成交？', '喊這價不怕被全頻笑？',
+        '你先補點金幣再來收', '這價低到我以為看錯', '你收購價少得太誇張了', '別用乞丐價洗頻道', '想撿漏也不是這樣撿',
+        '這行情你從哪個夢裡看的？', '你是不是沒逛過市場？', '出不起就別一直喊', '這價格只夠買空氣', '你的誠意跟出價一樣低',
+        '這價連我倉庫灰塵都不賣', '先學會估價再來做生意', '你把別人都當白癡喔？', '這價也想收到東西，做夢吧', '少在頻道喊這種笑話',
+        '這不是收購，這是明搶', '你的價格比掉寶率還低', '看到這出價我都笑了', '這點金幣留著買藥水吧', '行情差成這樣還敢收',
+        '你先問問正常玩家怎麼出價', '這種價只騙得到剛創角的', '你是不是以為裝備不用打？', '價格開正常一點再說', '再喊這種低價照樣噴你'
     ];
     const SILENCE_APOLOGIES = [
         '對不起', '抱歉', '打擾了', '不好意思', '真的很抱歉', '我會安靜的', '對不起我不喊了', '抱歉打擾大家',
@@ -70,6 +92,147 @@
         '你的意見我放倉庫了', '收到，完全不想聽', '再吵我加價收給你看', '你管天管地管不到我喊價', '先贏一場再教我安靜', '你這發言很有 Lv.1 的美感', '別鬧，市場不是給你哭的', '笑到我忘記要收什麼',
         '你這句話傷害大概 1 點', '你是不是把勇氣喝到嘴上了', '來啊，我站著等你', '你喊破喉嚨也不會變強', '嘴砲有安定值嗎', '你這氣勢連卷軸都點不亮', '別演了，大家都看著呢', '先存夠傳送費再兇'
     ];
+    const OFFLINE_TAUNT_CHOICES = {
+        lowPrice: [
+            '出 {price} 金幣收 {item}，你是少打一個零嗎？',
+            '這種價格也敢喊，你當整個頻道都是新手？',
+            '{price} 金幣留著買紅水吧，別拿來侮辱 {item}。',
+            '你的出價比掉寶率還難看，先去市場繞一圈。',
+            '開這種破價還敢叫人密你，臉皮點幾的？',
+            '收不起 {item} 就直說，不用在這裡裝行情大師。',
+            '這價錢拿去買箭都嫌寒酸，別拿來喊 {item}。',
+            '{item} 被你喊到像清倉廢料，拜託尊重一下物品。',
+            '你這不是收購，是在公開示範什麼叫沒預算。',
+            '出 {price} 金幣還敢喊那麼大聲，勇氣藥水喝太多？',
+            '市場看到你這價格都想登出。',
+            '別侮辱 {item}，它再爛也不是這個價。',
+            '喊這種低價還裝老手，笑點比價格還低。',
+            '{price} 金幣收 {item}？你是不是把倉庫當慈善箱。',
+            '這價位連路過的新手都會搖頭。',
+            '省錢不是問題，問題是你省到沒尊嚴。'
+        ],
+        price: [
+            '{price} 金幣的行情是你夢裡查到的嗎？',
+            '有錢喊價不代表你懂價格，先做點功課吧。',
+            '你這價格很有自信，可惜看起來沒什麼常識。',
+            '拿金幣砸頻道很帥嗎？先確定真的有人想賣。',
+            '喊得像市場老大，結果價格一看就露餡。',
+            '價格開成這樣，你是收裝還是在收笑話？',
+            '你這價格像亂數骰出來的，還敢叫行情。',
+            '喊價前先醒醒，別把夢裡的市場搬出來。',
+            '{price} 金幣講得像很豪邁，實際看起來很外行。',
+            '這價格不是盤，就是想找盤。',
+            '你是不是把估價師點到負數了？',
+            '行情不是靠你嘴硬就會成立。',
+            '別用這種價格測大家智商。',
+            '你喊價的自信，比你的市場觀念還誇張。',
+            '價格開成這樣，我懷疑你連商店在哪都不知道。',
+            '先學會算錢，再來當收購大師。'
+        ],
+        item: [
+            '連 {item} 都要靠洗頻收，你平常到底在打什麼？',
+            '為了 {item} 喊成這樣，看來你真的很缺。',
+            '收個 {item} 也能這麼高調，你是怕沒人認識你？',
+            '{item} 還沒收到，存在感倒是先刷滿了。',
+            '你跟 {item} 哪一個比較難掉？我看是你的面子。',
+            '一直喊 {item}，不知道的還以為你在解新手任務。',
+            '你連 {item} 都收不到，還敢在這裡擺架子。',
+            '為了 {item} 叫成這樣，場面真的很難看。',
+            '{item} 還沒到手，你的名聲先掉光了。',
+            '一直喊 {item}，是怕大家不知道你打不到嗎？',
+            '你跟 {item} 的距離，大概比你跟強者還遠。',
+            '收個 {item} 搞得像攻城宣戰，有必要嗎？',
+            '{item} 不難，難的是忍受你一直喊。',
+            '看你收 {item} 收成這樣，我都替你裝備難過。',
+            '缺 {item} 就去打，別在這裡演悲情頻道主。',
+            '{item} 聽到你喊價大概自己躲回倉庫。'
+        ],
+        spam: [
+            '整個頻道都是你，收不到就安靜一點。',
+            '喊這麼久還收不到，問題可能不是頻道。',
+            '別再刷存在感了，大家早就看到你要收什麼。',
+            '{town}不是你家的廣播台，少洗幾次行不行？',
+            '收東西靠行情，不是靠把別人的訊息洗掉。',
+            '你再喊下去，大家記住的只會是你很吵。',
+            '{town} 的頻道快被你刷成個人頻道了。',
+            '你這廣播頻率比怪物重生還煩。',
+            '洗這麼久還沒人理，答案已經很明顯了。',
+            '大家不是沒看到，是懶得理你。',
+            '拜託把頻道還給正常人。',
+            '你再喊下去，NPC 都想把你封鎖。',
+            '收購不是靠音量，少刷一點。',
+            '你把 {town} 當自己血盟頻道喔？',
+            '刷到我都會背了，還是沒人賣你。',
+            '你的廣播存在感很高，價值感很低。'
+        ],
+        strength: [
+            '嘴那麼大聲，戰力有跟上嗎？',
+            '先把裝備穿好，再來裝市場老大。',
+            '你是來收裝，還是來證明自己很缺存在感？',
+            '有本事出安全區講，別只會躲著喊。',
+            '看你喊得這麼有力，我還以為你能單吃頭目。',
+            '你這氣勢很強，可惜看起來只有頻道吃得到傷害。',
+            '你這口氣很像會噴裝的人。',
+            '少裝大尾，出村三步就知道答案。',
+            '別只會嘴，武器拿穩再說。',
+            '你那氣勢拿去打怪，大概怪都覺得吵。',
+            '講得像王者，站姿像等救援。',
+            '你這程度還想壓場，先壓住自己的嘴。',
+            '別在頻道裝狠，傷害數字會說真話。',
+            '你看起來比較適合躲倉庫，不適合嗆人。',
+            '嘴巴點滿也不會加命中。',
+            '你如果真的很強，就不會需要一直刷存在感。'
+        ]
+    };
+    const OFFLINE_NPC_CHAT = {
+        fierce: {
+            open: ['叫三小？', '你又是哪位？', '嘴很秋喔，', '敢這樣講，'],
+            end: ['不爽就來城外。', '有種報座標。', '別只會躲安全區。', '先打贏我再繼續嘴。']
+        },
+        proud: {
+            open: ['笑死，', '就這？', '我還以為是哪位大人物，', '嘴完了嗎？'],
+            end: ['先照照鏡子再回來。', '你的意見我先丟倉庫。', '再練幾級才比較有說服力。', '別急著在頻道丟臉。']
+        },
+        trader: {
+            open: ['先學會看行情再開口，', '做生意不是靠你一張嘴，', '沒貨就別裝專家，', '市場看久一點再來，'],
+            end: ['有東西就拿來，沒有就旁邊站。', '成交不了也輪不到你教我。', '行情不是你喊了算。', '別拿嘴巴當貨交。']
+        },
+        cool: {
+            open: ['講完了嗎？', '嗯，然後呢？', '你很在意我喔，', '特地點我就為了這句？'],
+            end: ['要賣就密，不賣就算了。', '我繼續收，你慢慢氣。', '別讓自己看起來更急。', '省點力氣去打怪吧。']
+        }
+    };
+    const OFFLINE_NPC_REPLY_CORES = {
+        price: [
+            '我開 {price} 金幣，收不收輪不到你替別人決定。',
+            '價格看不懂就別裝行情專家。',
+            '嫌價格不合就別賣，市場又不是只有你。',
+            '至少我金幣拿得出來，你有貨嗎？',
+            '會嫌價的人很多，真的有 {item} 的沒幾個。'
+        ],
+        item: [
+            '至少我收得起 {item}，你身上有嗎？',
+            '打不到 {item} 才需要收，這道理很難懂？',
+            '我要收什麼關你什麼事，先顧好自己的背包。',
+            '{item} 還沒看到，倒是先看到你跑來刷存在感。',
+            '有貨就拿出來，沒貨別拿嘴巴湊數。'
+        ],
+        spam: [
+            '頻道又不是你租的，我喊我的，你可以不看。',
+            '我每三分鐘才喊一次，這樣你就破防了？',
+            '大家都沒說話，就你急著跳出來管。',
+            '收得到自然就不喊，還用你提醒？',
+            '嫌吵可以關頻道，別把自己當管理員。'
+        ],
+        strength: [
+            '你 Lv.{level} 的自信，是哪隻怪掉的？',
+            '{player}，先出安全區再說，別只讓鍵盤替你打。',
+            '戰力先報出來，不然我以為在跟新手說話。',
+            '嘴砲沒有命中加成，你喊再大聲也一樣。',
+            '等你能單吃頭目，再來評論別人的裝備。'
+        ]
+    };
+    const OFFLINE_NPC_REPEAT_OPENERS = ['同一套一直講，', '又是這句？', '你只會抓著這點喔？', '講第二次也不會比較有傷害，'];
 
     const RELIC_CATEGORIES = {
         weapon: { label: '武器遺物', short: '武器' },
@@ -81,6 +244,8 @@
     let _lastMapSignature = '';
     let _classFrameCache = Object.create(null);
     let _wanderingShoutMenu = null;
+    let _activeTauntChoices = null;
+    const _wandererChatMemory = new Map();
 
     function _esc(s) {
         if (typeof _pandoraEsc === 'function') return _pandoraEsc(s);
@@ -114,23 +279,33 @@
         st.seq = Math.max(0, Math.floor(Number(st.seq) || 0));
         st.lastCheckBucket = Number.isFinite(Number(st.lastCheckBucket)) ? Math.floor(Number(st.lastCheckBucket)) : -1;
         st.diamonds = Math.max(0, Math.floor(Number(st.diamonds) || 0));
-        // v1 僅能保存全遊戲一名玩家 NPC；v2 改為每個符合條件的安全區各自最多一名。
+        // v1 僅能保存全遊戲一名玩家 NPC；v2 改為每個符合條件的安全區各自最多一名；
+        // v3 同一安全區可各有一位龍鑽／金幣收購 NPC。
         let oldWanderer = st.wanderer && typeof st.wanderer === 'object' ? st.wanderer : null;
         let wanderers = Array.isArray(st.wanderers) ? st.wanderers.slice() : [];
         if (oldWanderer) wanderers.push(oldWanderer);
-        let seenTown = new Set();
+        let seenTownCurrency = new Set();
         let seenId = new Set();
         st.wanderers = wanderers.filter(w => {
             if (!w || typeof w !== 'object' || !w.id || !w.townId) return false;
-            if (seenTown.has(w.townId) || seenId.has(w.id)) return false;
-            seenTown.add(w.townId);
+            let currency = w.currency === 'gold' ? 'gold' : 'diamond';
+            let townCurrencyKey = currency + '|' + w.townId;
+            if (seenTownCurrency.has(townCurrencyKey) || seenId.has(w.id)) return false;
+            seenTownCurrency.add(townCurrencyKey);
             seenId.add(w.id);
             let spawnedAt = Math.max(0, Math.floor(Number(w.spawnedAt) || 0));
             let expiresAt = Math.max(0, Math.floor(Number(w.expiresAt) || 0));
             if (spawnedAt) w.expiresAt = Math.min(expiresAt || (spawnedAt + WANDERER_LIFE_MS), spawnedAt + WANDERER_LIFE_MS);
+            w.currency = currency;   // 舊存檔未記錄幣別者一律視為原本的龍鑽收購。
+            if (currency === 'gold') w.price = Math.max(1, Math.floor(Number(w.price) || 1));
+            else w.reward = Math.max(1, Math.floor(Number(w.reward) || 1));
             w.alignmentValue = _normalizeAlignmentValue(w.alignmentValue);
-            w.broadcastStopped = !!w.broadcastStopped;
+            w.dismissed = !!w.dismissed;
+            w.dismissedAt = w.dismissed ? Math.max(0, Math.floor(Number(w.dismissedAt) || 0)) : 0;
+            w.broadcastStopped = !!w.broadcastStopped || w.dismissed;
             w.quietAt = Math.max(0, Math.floor(Number(w.quietAt) || 0));
+            w.playerBlocked = !!w.playerBlocked;
+            w.playerBlockedAt = w.playerBlocked ? Math.max(0, Math.floor(Number(w.playerBlockedAt) || 0)) : 0;
             return true;
         });
         delete st.wanderer;
@@ -185,7 +360,12 @@
             let st = _readState();
             let result = mutator(st) || {};
             if (result.commit === false) return Object.assign({ ok: false, state: st }, result);
-            if (!_writeState(st)) return { ok: false, error: '共用資料儲存失敗，請稍後重試。', state: st };
+            if (!_writeState(st)) {
+                // ⚠️ mutator 內若已對倉庫/背包做過「已經落盤」的破壞性變更（_consumeMatchedItems），
+                //    共用狀態寫入失敗時必須把它還原，否則玩家物品被吃掉卻沒拿到鑽石／遺物。
+                try { if (typeof result.rollback === 'function') result.rollback(); } catch (e) {}
+                return { ok: false, error: '共用資料儲存失敗，請稍後重試。', state: st };
+            }
             return Object.assign({ ok: true, state: st }, result);
         } catch (e) {
             return { ok: false, error: '共用資料暫時忙碌，請稍後重試。' };
@@ -210,6 +390,17 @@
         return { text: list[Math.floor(Math.random() * list.length)], spicy: spicy };
     }
 
+    function _pickSilenceComplaint(w) {
+        let isGoldBuyer = _wandererCurrency(w) === 'gold';
+        let d = isGoldBuyer && typeof DB !== 'undefined' && DB.items ? DB.items[w.itemId] : null;
+        let basePrice = Math.max(0, Math.floor(Number(d && d.p) || 0));
+        let offeredPrice = isGoldBuyer ? _goldBuyerPrice(w) : 0;
+        let belowBase = isGoldBuyer && offeredPrice < basePrice;
+        let useLowPriceComplaint = belowBase || (isGoldBuyer && offeredPrice > basePrice && Math.random() < 0.30);
+        let list = useLowPriceComplaint ? LOW_PRICE_COMPLAINTS : SILENCE_COMPLAINTS;
+        return list[Math.floor(Math.random() * list.length)];
+    }
+
     function _normalizeAlignmentValue(v) {
         if (typeof pvpClampAlignment === 'function') return pvpClampAlignment(v);
         v = Math.round(Number(v) || 0);
@@ -222,6 +413,50 @@
         return a <= evilLine;
     }
 
+    function _tauntChaseRate(alignmentValue) {
+        let alignment = _normalizeAlignmentValue(alignmentValue);
+        let evilLine = (typeof PVP_ALIGN_EVIL !== 'undefined') ? PVP_ALIGN_EVIL : -1000;
+        let justiceLine = (typeof PVP_ALIGN_JUSTICE !== 'undefined') ? PVP_ALIGN_JUSTICE : 1000;
+        if (alignment <= evilLine) return 1;
+        if (alignment >= justiceLine) return 0.2;
+        return 0.5;
+    }
+
+    function _logWandererBlocked(w) {
+        if (typeof logSys !== 'function') return;
+        logSys('<span class="text-slate-400">你已被對方封鎖</span>');
+    }
+
+    function _startWandererChase(w) {
+        if (!w || typeof player === 'undefined' || !player || !player.cls) return false;
+        if (!Array.isArray(player.trollPlayers)) player.trollPlayers = [];
+        let old = player.trollPlayers.find(t => t && t.n === w.name);
+        let chase = {
+            n: w.name,
+            avatar: w.avatar || '男戰士',
+            alignmentValue: _normalizeAlignmentValue(w.alignmentValue),
+            until: Date.now() + 2 * 60 * 60 * 1000
+        };
+        if (old && Number.isFinite(Number(old.levelOffset))) chase.levelOffset = old.levelOffset;
+        player.trollPlayers = player.trollPlayers.filter(t => t && t.n !== w.name);
+        player.trollPlayers.push(chase);
+        let quietResult = _stopWanderingBroadcast(w.id);
+        if (quietResult && !quietResult.gone) _lastBroadcastCycles[w.id] = 'quiet';
+        try { if (typeof saveGame === 'function') saveGame(); } catch (e) {}
+        return true;
+    }
+
+    function _blockPlayerForWanderer(wandererId) {
+        return _withStateLock(st => {
+            let w = _findWanderer(st, wandererId);
+            if (!_wandererPresent(w)) return { commit: false, gone: true };
+            if (w.playerBlocked) return { commit: false, already: true, name: w.name };
+            w.playerBlocked = true;
+            w.playerBlockedAt = Date.now();
+            return { name: w.name };
+        });
+    }
+
     function _makeAlignmentValue(st) {
         return _normalizeAlignmentValue(Math.floor(-32767 + _rand(st, 'wander-alignment') * 65535));
     }
@@ -230,6 +465,106 @@
         let a = _normalizeAlignmentValue(w && w.alignmentValue);
         let n = w && w.name ? w.name : '';
         return (typeof pvpNameHtml === 'function') ? pvpNameHtml(n, a, 'font-bold') : `<span class="font-bold">${_esc(n)}</span>`;
+    }
+
+    function _chatHash(text) {
+        let h = 2166136261;
+        text = String(text || '');
+        for (let i = 0; i < text.length; i++) {
+            h ^= text.charCodeAt(i);
+            h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+    }
+
+    function _chatMemoryFor(w) {
+        let id = String(w && w.id || '');
+        let memory = _wandererChatMemory.get(id);
+        if (!memory) {
+            memory = { turns: 0, lastIntent: '', used: Object.create(null), touchedAt: Date.now() };
+            _wandererChatMemory.set(id, memory);
+        }
+        memory.touchedAt = Date.now();
+        if (_wandererChatMemory.size > 20) {
+            let oldestId = '', oldestAt = Infinity;
+            _wandererChatMemory.forEach((entry, entryId) => {
+                if (entryId !== id && entry.touchedAt < oldestAt) {
+                    oldestAt = entry.touchedAt;
+                    oldestId = entryId;
+                }
+            });
+            if (oldestId) _wandererChatMemory.delete(oldestId);
+        }
+        return memory;
+    }
+
+    function _chatPick(memory, key, list) {
+        if (!Array.isArray(list) || !list.length) return '';
+        let recent = memory.used[key] || [];
+        let available = list.filter(text => !recent.includes(text));
+        if (!available.length) available = list.slice();
+        let picked = available[Math.floor(Math.random() * available.length)] || available[0];
+        recent.push(picked);
+        memory.used[key] = recent.slice(-Math.min(4, Math.max(1, list.length - 1)));
+        return picked;
+    }
+
+    function _chatContext(w) {
+        let d = (typeof DB !== 'undefined' && DB.items) ? DB.items[w.itemId] : null;
+        let isGold = _wandererCurrency(w) === 'gold';
+        return {
+            item: _requirementText(w.itemId, w.en),
+            price: isGold ? _goldBuyerPrice(w).toLocaleString() : '龍之鑽石',
+            town: _townName(w.townId),
+            player: (typeof player !== 'undefined' && player && player.name) ? player.name : '你',
+            level: Math.max(1, Math.floor(Number(typeof player !== 'undefined' && player && player.lv) || 1)),
+            basePrice: Math.max(0, Math.floor(Number(d && d.p) || 0)),
+            isGold: isGold
+        };
+    }
+
+    function _chatFill(template, ctx) {
+        return String(template || '').replace(/\{(item|price|town|player|level)\}/g, (_, key) => String(ctx[key] == null ? '' : ctx[key]));
+    }
+
+    function _chatPersona(w) {
+        if (_isEvilAlignmentValue(w && w.alignmentValue)) return 'fierce';
+        let alignment = _normalizeAlignmentValue(w && w.alignmentValue);
+        let pool = alignment >= 1000 ? ['cool', 'trader'] : ['proud', 'trader', 'cool'];
+        return pool[_chatHash((w && w.id) + '|persona') % pool.length];
+    }
+
+    function _buildOfflineTauntChoices(w) {
+        let memory = _chatMemoryFor(w);
+        let ctx = _chatContext(w);
+        let pools = [];
+        if (ctx.isGold) {
+            let low = ctx.basePrice > 0 && _goldBuyerPrice(w) < ctx.basePrice;
+            pools.push({ intent: 'price', key: low ? 'lowPrice' : 'price' });
+        } else {
+            pools.push({ intent: 'item', key: 'item' });
+        }
+        pools.push({ intent: 'spam', key: 'spam' }, { intent: 'strength', key: 'strength' });
+        return pools.map(entry => ({
+            intent: entry.intent,
+            text: _chatFill(_chatPick(memory, 'choice-' + entry.key, OFFLINE_TAUNT_CHOICES[entry.key]), ctx)
+        }));
+    }
+
+    function _buildOfflineNpcReply(w, choice) {
+        let memory = _chatMemoryFor(w);
+        let ctx = _chatContext(w);
+        let personaKey = _chatPersona(w);
+        let persona = OFFLINE_NPC_CHAT[personaKey];
+        let repeated = memory.lastIntent === choice.intent;
+        let opener = repeated
+            ? _chatPick(memory, 'repeat-open', OFFLINE_NPC_REPEAT_OPENERS)
+            : _chatPick(memory, 'open-' + personaKey, persona.open);
+        let core = _chatPick(memory, 'reply-' + choice.intent, OFFLINE_NPC_REPLY_CORES[choice.intent] || OFFLINE_NPC_REPLY_CORES.item);
+        let ending = memory.turns > 0 ? _chatPick(memory, 'end-' + personaKey, persona.end) : '';
+        memory.turns += 1;
+        memory.lastIntent = choice.intent;
+        return _chatFill(opener + core + ending, ctx);
     }
 
     function _isEquipmentDef(d) {
@@ -243,6 +578,32 @@
 
     function _safeValue(d) {
         return Math.max(0, Math.min(20, Math.floor(Number(d && d.safe) || 0)));
+    }
+
+    function _wandererCurrency(w) {
+        return w && w.currency === 'gold' ? 'gold' : 'diamond';
+    }
+
+    function _goldBuyerPrice(w) {
+        return Math.max(1, Math.floor(Number(w && w.price) || 1));
+    }
+
+    function _makeGoldBuyerPrice(st, d, mult, alignmentValue) {
+        let basePrice = Math.max(1, Math.floor(Math.max(0, Number(d && d.p) || 0)));
+        mult = Math.max(1, Number(mult) || 1);
+        let lowball = basePrice > 1
+            && _isEvilAlignmentValue(alignmentValue)
+            && _rand(st, 'wander-gold-lowball') < 0.5;
+        let rollMax = lowball
+            ? Math.max(1, Math.floor((basePrice - 1) / mult))
+            : Math.max(1, basePrice * 50);
+        let rolledPrice = 1 + Math.floor(_rand(st, 'wander-gold-price') * rollMax);
+        let price = Math.max(1, Math.floor(rolledPrice * mult));
+        return lowball ? Math.min(basePrice - 1, price) : price;
+    }
+
+    function _buyerTitle(w) {
+        return _wandererCurrency(w) === 'gold' ? '金幣收購' : '龍鑽收購';
     }
 
     function _requirementText(id, en) {
@@ -265,12 +626,13 @@
         });
     }
 
-    function _wandererItemPool() {
+    function _wandererItemPool(currency) {
         if (typeof DB === 'undefined' || !DB.items) return [];
+        let maxWeight = currency === 'gold' ? 80 : 10;
         return Object.keys(DB.items).filter(id => {
             let d = DB.items[id];
             let w = Math.floor(Number(d && d.gachaWeight) || 0);
-            return !!(d && d.n && !d.relic && w >= 1 && w <= 10);
+            return !!(d && d.n && !d.relic && w >= 1 && w <= maxWeight);
         });
     }
 
@@ -279,14 +641,20 @@
         let made = '';
         for (let tries = 0; tries < 12; tries++) {
             let mode = _rand(st, 'name-mode');
-            if (mode < 0.40) {
-                made = _pick(st, NAME_PREFIX, 'name-prefix') + _pick(st, NAME_IMAGE, 'name-image') + _pick(st, NAME_TITLE, 'name-title');
-            } else if (mode < 0.65) {
-                made = _pick(st, NAME_SURNAME, 'name-surname') + _pick(st, NAME_GIVEN, 'name-given');
+            if (mode < 0.45) {
+                made = _pick(st, NAME_SHORT, 'name-short');
+            } else if (mode < 0.70) {
+                made = _pick(st, NAME_CASUAL, 'name-casual');
             } else if (mode < 0.85) {
                 made = _pick(st, NAME_PREFIX, 'name-prefix2') + _pick(st, NAME_GIVEN, 'name-given2');
+            } else if (mode < 0.95) {
+                made = _pick(st, NAME_PREFIX, 'name-prefix') + _pick(st, NAME_IMAGE, 'name-image') + _pick(st, NAME_TITLE, 'name-title');
             } else {
-                made = _pick(st, NAME_CASUAL, 'name-casual');
+                made = _pick(st, NAME_SURNAME, 'name-surname') + _pick(st, NAME_GIVEN, 'name-given');
+            }
+            if (_rand(st, 'name-wrapper-chance') < 0.4) {
+                let wrapper = _pick(st, NAME_WRAPPERS, 'name-wrapper');
+                made = wrapper[0] + made + wrapper[1];
             }
             if (!history.has(made)) break;
         }
@@ -295,9 +663,10 @@
         return made;
     }
 
-    function _makeWanderer(st, now, townId) {
+    function _makeWanderer(st, now, townId, currency) {
         let towns = _eligibleTowns();
-        let items = _wandererItemPool();
+        currency = currency === 'gold' ? 'gold' : 'diamond';
+        let items = _wandererItemPool(currency);
         if (!towns.length || !items.length) return null;
         if (!townId || !towns.includes(townId)) townId = _pick(st, towns, 'wander-town');
         let itemId = _pick(st, items, 'wander-item');
@@ -307,32 +676,39 @@
             let max = _safeValue(d) + 3;
             en = Math.floor(_rand(st, 'wander-enhance') * (max + 1));
         }
-        let weight = Math.max(1, Math.min(10, Math.floor(Number(d.gachaWeight) || 10)));
+        let weight = Math.max(1, Math.min(currency === 'gold' ? 80 : 10, Math.floor(Number(d.gachaWeight) || 10)));
         let over = en == null ? 0 : Math.max(0, en - _safeValue(d));
         let mult = over === 1 ? 1.2 : over === 2 ? 1.5 : over >= 3 ? 2 : 1;
-        let reward = Math.max(1, Math.ceil((11 - weight) * mult));
-        return {
-            id: 'wander-' + now.toString(36) + '-' + Math.floor(_rand(st, 'wander-id') * 0xffffff).toString(36),
+        let buyer = {
+            id: 'wander-' + currency + '-' + now.toString(36) + '-' + Math.floor(_rand(st, 'wander-id|' + currency) * 0xffffff).toString(36),
             townId: townId,
             name: _makeName(st),
             avatar: _pick(st, PLAYER_AVATARS, 'wander-avatar'),
             alignmentValue: _makeAlignmentValue(st),
+            currency: currency,
             itemId: itemId,
             en: en,
             weight: weight,
-            reward: reward,
             spawnedAt: now,
             expiresAt: now + WANDERER_LIFE_MS,
             broadcastStopped: false,
-            quietAt: 0
+            quietAt: 0,
+            dismissed: false,
+            dismissedAt: 0
         };
+        if (currency === 'gold') {
+            buyer.price = _makeGoldBuyerPrice(st, d, mult, buyer.alignmentValue);
+        } else {
+            buyer.reward = Math.max(1, Math.ceil((11 - weight) * mult));
+        }
+        return buyer;
     }
 
     function _activeSignature(wanderers) {
         if (!Array.isArray(wanderers)) return '';
         return wanderers
             .filter(w => w && w.id && w.townId)
-            .map(w => [w.id, w.townId, w.expiresAt].join('|'))
+            .map(w => [w.id, _wandererCurrency(w), w.townId, w.expiresAt, w.dismissed ? 1 : 0].join('|'))
             .sort()
             .join('||');
     }
@@ -342,9 +718,19 @@
         return st.wanderers.find(w => w && w.id === wandererId) || null;
     }
 
+    function _wandererPresent(w, now) {
+        return !!(w && !w.dismissed && Number(w.expiresAt) > (now == null ? Date.now() : now));
+    }
+
+    function _findWanderersForTown(st, townId) {
+        if (!st || !Array.isArray(st.wanderers)) return [];
+        return st.wanderers
+            .filter(w => w && w.townId === townId && _wandererPresent(w))
+            .sort((a, b) => _wandererCurrency(a).localeCompare(_wandererCurrency(b)) || String(a.id).localeCompare(String(b.id)));
+    }
+
     function _findWandererForTown(st, townId) {
-        if (!st || !Array.isArray(st.wanderers)) return null;
-        return st.wanderers.find(w => w && w.townId === townId && Number(w.expiresAt) > Date.now()) || null;
+        return _findWanderersForTown(st, townId)[0] || null;
     }
 
     function _currentTownWanderer(st) {
@@ -353,7 +739,10 @@
     }
 
     function _announceWanderer(w) {
-        if (!w || w.broadcastStopped) return;
+        // ⚠️ 到期守衛放在這裡＝單一真相：tick 路徑（_normalizeState 已濾）與 storage 多開同步路徑共用。
+        //    WANDERER_LIFE_MS(2h) 剛好是 BROADCAST_MS(3min) 的整數倍，cycle 邊界正好落在到期瞬間，
+        //    去重必然放行 → 另一分頁寫入時會替「已到期但本頁還沒 tick 清掉」的叫賣者重播喊話。
+        if (!_wandererPresent(w) || w.broadcastStopped) return;
         if (typeof player === 'undefined' || !player || typeof logSys !== 'function') return;
         if (typeof state !== 'undefined' && state && state.ff) return;
         let spawnedAt = Math.max(0, Number(w.spawnedAt) || Date.now());
@@ -363,7 +752,7 @@
         //    首次到場的喊話仍照舊進日誌，排隊中（第 3 位以後）也維持原本每 3 分鐘的廣播，才不會完全看不到。
         if (cycle > 0 && _pinnedWandererIds().has(w.id)) { _lastBroadcastCycles[w.id] = cycle; return; }
         _lastBroadcastCycles[w.id] = cycle;
-        // 名稱可點擊；選擇「吵死了」後只會停止這名玩家後續的廣播。
+        // 名稱可點擊；可傳送、嘲諷，選擇「吵死了」後只會停止這名玩家後續的廣播。
         logSys(_broadcastLineHTML(w));
     }
 
@@ -373,7 +762,7 @@
         let now = Date.now();
         let list = (st && Array.isArray(st.wanderers)) ? st.wanderers : [];
         return list
-            .filter(w => w && w.id && !w.broadcastStopped && Number(w.expiresAt) > now)
+            .filter(w => w && w.id && !w.broadcastStopped && _wandererPresent(w, now))
             .sort((a, b) => ((Number(a.spawnedAt) || 0) - (Number(b.spawnedAt) || 0)) || String(a.id).localeCompare(String(b.id)));
     }
 
@@ -395,9 +784,12 @@
     }
 
     function _broadcastLineHTML(w) {
+        let offer = _wandererCurrency(w) === 'gold'
+            ? `收 ${_esc(_requirementText(w.itemId, w.en))} ${_goldBuyerPrice(w).toLocaleString()} 金幣`
+            : `鑽收 ${_esc(_requirementText(w.itemId, w.en))}`;
         return `<button type="button" class="wander-broadcast-name" ` +
             `onclick="openWanderingShoutMenu('${_esc(w.id)}',event)">${_wandererNameHtml(w)}</button>` +
-            `<span class="wander-broadcast-text">：收 ${_esc(_requirementText(w.itemId, w.en))}，人在 ` +
+            `<span class="wander-broadcast-text">：${offer}，人在 ` +
             `<span class="text-amber-200">${_esc(_townName(w.townId))}</span>，意者密</span>`;
     }
 
@@ -410,11 +802,11 @@
         _pinnedIdSet = el ? new Set(list.map(w => w.id)) : new Set();
         _pinExpiryDue = el && list.length ? Math.min.apply(null, list.map(w => Number(w.expiresAt) || 0)) : 0;
         if (!el) return;
-        let sig = list.map(w => [w.id, w.itemId, w.en, w.townId].join('|')).join('||');
+        let sig = list.map(w => [w.id, _wandererCurrency(w), w.itemId, w.en, w.price, w.townId].join('|')).join('||');
         if (el._pinSig === sig) return;
         el._pinSig = sig;
         el.innerHTML = list.map(w =>
-            `<div class="wander-pin"><span class="wander-pin-tag">收購</span>` +
+            `<div class="wander-pin"><span class="wander-pin-tag">${_esc(_buyerTitle(w))}</span>` +
             `<span class="wander-pin-body">${_broadcastLineHTML(w)}</span></div>`
         ).join('');
     }
@@ -446,13 +838,20 @@
             if (st.lastCheckBucket !== bucket) {
                 st.lastCheckBucket = bucket;
                 changed = true;
-                let occupiedTowns = new Set(st.wanderers.map(w => w.townId));
-                let availableTowns = _eligibleTowns().filter(id => !occupiedTowns.has(id));
-                if (availableTowns.length && _rand(st, 'wander-roll|' + bucket) < WANDERER_CHANCE) {
-                    let townId = _pick(st, availableTowns, 'wander-town|' + bucket);
-                    let made = _makeWanderer(st, now, townId);
-                    if (made) st.wanderers.push(made);
-                }
+                [
+                    { currency: 'diamond', chance: WANDERER_CHANCE },
+                    { currency: 'gold', chance: GOLD_WANDERER_CHANCE }
+                ].forEach(kind => {
+                    let occupiedTowns = new Set(st.wanderers
+                        .filter(w => _wandererCurrency(w) === kind.currency)
+                        .map(w => w.townId));
+                    let availableTowns = _eligibleTowns().filter(id => !occupiedTowns.has(id));
+                    if (availableTowns.length && _rand(st, 'wander-roll|' + kind.currency + '|' + bucket) < kind.chance) {
+                        let townId = _pick(st, availableTowns, 'wander-town|' + kind.currency + '|' + bucket);
+                        let made = _makeWanderer(st, now, townId, kind.currency);
+                        if (made) st.wanderers.push(made);
+                    }
+                });
             }
             return changed ? {} : { commit: false, unchanged: true };
         });
@@ -461,15 +860,24 @@
         if (sig !== beforeSig || sig !== _lastMapSignature) _refreshTownMapIfNeeded(sig);
         renderWanderBroadcastPins(latest);   // 📌 v3.5.77 先更新釘選列（新到場/離場遞補），_announceWanderer 才知道誰已釘選不必重播
         latest.wanderers
-            .filter(w => w && Number(w.expiresAt) > now)
+            .filter(w => _wandererPresent(w, now))
             .forEach(_announceWanderer);
     }
 
-    function getWanderingBuyerForTown(townId) {
+    function getWanderingBuyersForTown(townId) {
         let st = _readState();
-        let w = _findWandererForTown(st, townId);
-        if (!w) return null;
-        return Object.assign({ _wanderer: true, n: w.name, title: '玩家收購' }, w);
+        let list = _findWanderersForTown(st, townId);
+        return list.map((w, index) => Object.assign({
+            _wanderer: true,
+            _wandererIndex: index,
+            _wandererCount: list.length,
+            n: w.name,
+            title: _buyerTitle(w)
+        }, w));
+    }
+
+    function getWanderingBuyerForTown(townId) {
+        return getWanderingBuyersForTown(townId)[0] || null;
     }
 
     function wanderingBuyerSpriteData(w) {
@@ -535,6 +943,23 @@
         return { ok: true, matches: matches };
     }
 
+    // 🛡️ 交付前快照倉庫與背包，回傳一個還原函式（供 _withStateLock 在共用狀態寫入失敗時呼叫）。
+    function _snapshotItemState() {
+        let wh = null, inv = null;
+        try { wh = JSON.parse(JSON.stringify(loadWarehouse())); } catch (e) {}
+        try { inv = JSON.parse(JSON.stringify(player.inv || [])); } catch (e) {}
+        return function () {
+            // 🪦 v3.5.94 還原倉庫前必須先 loadWarehouse() 重新整理 js/12 的 _whLoadUids 快照。
+            //    否則：_consumeMatchedItems 落盤刪除時 saveWarehouse 已替該 uid 寫下墓碑（js/12:138-141），
+            //    而 _whLoadUids 仍停在「消耗前」的集合、仍含該 uid → 回滾寫回時被 js/12:118-122 的墓碑過濾
+            //    判為「快照殘留＝已被領出」直接丟棄，且 saveWarehouse 照樣回 true，這裡的 try/catch 完全察覺不到。
+            //    先重讀一次讓 _whLoadUids 變成「消耗後」的集合，該 uid 不在其中 → 走「合法回歸」分支自動解墓碑並保留。
+            try { if (wh && typeof loadWarehouse === 'function') loadWarehouse(); } catch (e) {}
+            try { if (wh) saveWarehouse(wh); } catch (e) {}
+            try { if (inv) player.inv = inv; } catch (e) {}
+            try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
+        };
+    }
     function _consumeMatchedItems(matches) {
         let warehouseMatches = matches.filter(m => m.source === 'warehouse');
         if (warehouseMatches.length) {
@@ -587,11 +1012,33 @@
         return `${Math.max(1, m)}分`;
     }
 
+    let _shoutMenuDocHandler = null;
     function _closeWanderingShoutMenu() {
         if (_wanderingShoutMenu && _wanderingShoutMenu.parentNode) {
             _wanderingShoutMenu.parentNode.removeChild(_wanderingShoutMenu);
         }
         _wanderingShoutMenu = null;
+        _activeTauntChoices = null;
+        if (_shoutMenuDocHandler) { try { document.removeEventListener('click', _shoutMenuDocHandler); } catch (e) {} _shoutMenuDocHandler = null; }
+    }
+
+    function _mountWanderingShoutMenu(menu, ev) {
+        document.body.appendChild(menu);
+        let x = ev && Number.isFinite(ev.clientX) ? ev.clientX : Math.round(window.innerWidth / 2);
+        let y = ev && Number.isFinite(ev.clientY) ? ev.clientY : Math.round(window.innerHeight / 2);
+        let rect = menu.getBoundingClientRect();
+        menu.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + 'px';
+        menu.style.top = Math.max(8, Math.min(y + 8, window.innerHeight - rect.height - 8)) + 'px';
+        _wanderingShoutMenu = menu;
+
+        // 點在選單 padding 不消耗監聽器；只有點到選單外才關閉。
+        setTimeout(() => {
+            if (_wanderingShoutMenu !== menu) return;
+            _shoutMenuDocHandler = function (e) {
+                if (!_wanderingShoutMenu || !_wanderingShoutMenu.contains(e.target)) _closeWanderingShoutMenu();
+            };
+            document.addEventListener('click', _shoutMenuDocHandler);
+        }, 0);
     }
 
     function openWanderingShoutMenu(wandererId, ev) {
@@ -602,9 +1049,12 @@
         _closeWanderingShoutMenu();
         let st = _readState();
         let w = _findWanderer(st, wandererId);
-        if (!w || w.broadcastStopped || Number(w.expiresAt) <= Date.now()) {
-            // 📌 v3.5.77 點到「已離場但還沒被下一次 tick 清掉」的釘選列：給明確回覆並立刻重畫（否則按了完全沒反應，像壞掉）
+        // ⚠️ broadcastStopped（按過「吵死了」或已對話過）≠ 已離場：該玩家仍在城裡最長 2 小時、照常可交易。
+        //    原本把兩者併成同一分支，會讓「馬上到」傳送（此函式是唯一入口）在剩餘生命期內再也用不了。
+        if (!_wandererPresent(w)) {
+            // 📌 點到「已離場但還沒被下一次 tick 清掉」的釘選列：給明確回覆並立刻重畫（否則按了完全沒反應，像壞掉）
             if (typeof logSys === 'function') logSys('<span class="text-slate-400">這名玩家已經離開。</span>');
+            _lastMapSignature = '__force__';   // 立繪也要跟著消失（比照成交路徑）
             renderWanderBroadcastPins(st);
             return;
         }
@@ -613,29 +1063,97 @@
         menu.id = 'wandering-shout-menu';
         menu.className = 'wandering-shout-menu';
         menu.innerHTML =
-            `<button type="button" onclick="silenceWanderingBuyer('${_esc(w.id)}')">吵死了</button>` +
+            `<button type="button" class="wandering-taunt-entry" onclick="openWanderingTauntMenu('${_esc(w.id)}',event)">嘲諷</button>` +
+            (w.broadcastStopped ? '' : `<button type="button" onclick="silenceWanderingBuyer('${_esc(w.id)}')">吵死了</button>`) +   // 已靜音者不再顯示「吵死了」
             `<button type="button" onclick="hurryToWanderingBuyer('${_esc(w.id)}')">馬上到</button>`;
-        document.body.appendChild(menu);
+        _mountWanderingShoutMenu(menu, ev);
+    }
 
-        let x = ev && Number.isFinite(ev.clientX) ? ev.clientX : Math.round(window.innerWidth / 2);
-        let y = ev && Number.isFinite(ev.clientY) ? ev.clientY : Math.round(window.innerHeight / 2);
-        let rect = menu.getBoundingClientRect();
-        menu.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + 'px';
-        menu.style.top = Math.max(8, Math.min(y + 8, window.innerHeight - rect.height - 8)) + 'px';
-        _wanderingShoutMenu = menu;
+    function openWanderingTauntMenu(wandererId, ev) {
+        if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+        }
+        _closeWanderingShoutMenu();
+        let st = _readState();
+        let w = _findWanderer(st, wandererId);
+        if (!_wandererPresent(w)) {
+            if (typeof logSys === 'function') logSys('<span class="text-slate-400">這名玩家已經離開。</span>');
+            renderWanderBroadcastPins(st);
+            return;
+        }
+        if (w.playerBlocked) {
+            _logWandererBlocked(w);
+            return;
+        }
+        let choices = _buildOfflineTauntChoices(w);
+        _activeTauntChoices = { wandererId: w.id, choices: choices, createdAt: Date.now() };
+        let menu = document.createElement('div');
+        menu.id = 'wandering-shout-menu';
+        menu.className = 'wandering-shout-menu wandering-taunt-menu';
+        menu.innerHTML =
+            `<div class="wandering-taunt-heading">選一句回 ${_wandererNameHtml(w)}</div>` +
+            choices.map((choice, index) =>
+                `<button type="button" onclick="tauntWanderingBuyer('${_esc(w.id)}',${index})">${_esc(choice.text)}</button>`
+            ).join('');
+        _mountWanderingShoutMenu(menu, ev);
+    }
 
-        setTimeout(() => {
-            document.addEventListener('click', function closeShoutMenu(e) {
-                if (!_wanderingShoutMenu || !_wanderingShoutMenu.contains(e.target)) _closeWanderingShoutMenu();
-            }, { once: true });
-        }, 0);
+    function tauntWanderingBuyer(wandererId, choiceIndex) {
+        let active = _activeTauntChoices;
+        let choice = active && active.wandererId === wandererId && Date.now() - active.createdAt < 60000
+            ? active.choices[Math.max(0, Math.floor(Number(choiceIndex) || 0))]
+            : null;
+        let st = _readState();
+        let w = _findWanderer(st, wandererId);
+        _closeWanderingShoutMenu();
+        if (!_wandererPresent(w)) {
+            if (typeof logSys === 'function') logSys('<span class="text-slate-400">這名玩家已經離開。</span>');
+            renderWanderBroadcastPins(st);
+            return;
+        }
+        if (w.playerBlocked) {
+            _logWandererBlocked(w);
+            return;
+        }
+        if (!choice) {
+            if (typeof logSys === 'function') logSys('<span class="text-slate-400">嘲諷選項已失效，請重新點選這名玩家。</span>');
+            return;
+        }
+        let reply = _buildOfflineNpcReply(w, choice);
+        if (typeof logSys === 'function') {
+            logSys(
+                `<span class="wander-chat-out"><span class="wander-chat-arrow">-&gt;</span> ` +
+                `<span class="wander-chat-target">[${_wandererNameHtml(w)}]</span> ${_esc(choice.text)}</span>`
+            );
+            logSys(
+                `<span class="wander-chat-in"><span class="wander-chat-speaker">[${_wandererNameHtml(w)}]</span> ` +
+                `${_esc(reply)}</span>`
+            );
+        }
+        if (Math.random() < _tauntChaseRate(w.alignmentValue)) {
+            if (_startWandererChase(w) && typeof logSys === 'function') {
+                logSys(`<span class="text-rose-400 font-bold">[${_wandererNameHtml(w)}] 惡狠狠地記住了你……</span>`);
+            }
+            return;
+        }
+        if (Math.random() < 0.2) {
+            let blockResult = _blockPlayerForWanderer(w.id);
+            if (blockResult.ok || blockResult.already) {
+                w.playerBlocked = true;
+                _logWandererBlocked(w);
+            } else if (!blockResult.gone && typeof logSys === 'function') {
+                logSys(`<span class="text-slate-400">${_esc(blockResult.error || '共用資料暫時忙碌，封鎖狀態未能儲存。')}</span>`);
+            }
+        }
     }
 
     function _stopWanderingBroadcast(wandererId) {
         let result = _withStateLock(st => {
             let w = _findWanderer(st, wandererId);
-            if (!w || Number(w.expiresAt) <= Date.now()) {
-                return { commit: false, error: '這名玩家已經離開。' };
+            if (!_wandererPresent(w)) {
+                // 🏷️ v3.5.94 標記 gone＝「真的離場」，讓呼叫端能跟 already／busy／寫入失敗這些「只是沒停下叫賣」區分開。
+                return { commit: false, gone: true, error: '這名玩家已經離開。' };
             }
             if (w.broadcastStopped) return { commit: false, already: true, name: w.name };
             w.broadcastStopped = true;
@@ -649,17 +1167,29 @@
     function silenceWanderingBuyer(wandererId) {
         let st = _readState();
         let w = _findWanderer(st, wandererId);
-        if (!w || Number(w.expiresAt) <= Date.now()) {
+        if (!_wandererPresent(w)) {
             _closeWanderingShoutMenu();
             return;
         }
+        if (w.playerBlocked) {
+            _closeWanderingShoutMenu();
+            _logWandererBlocked(w);
+            return;
+        }
         let forceSpicy = _isEvilAlignmentValue(w.alignmentValue);
-        let complaint = SILENCE_COMPLAINTS[Math.floor(Math.random() * SILENCE_COMPLAINTS.length)];
+        let complaint = _pickSilenceComplaint(w);
         let _reply = _pickSilenceReply(forceSpicy);
         let apology = _reply.text;
         let result = _stopWanderingBroadcast(w.id);
         _closeWanderingShoutMenu();
-        if (!result.ok) return;
+        // 🔇 v3.5.94 這裡失敗＝叫賣真的沒停下（本按鈕只在 !broadcastStopped 時渲染，already 僅剩多分頁競態），
+        //    照舊中止流程即可；但至少補一行訊息，別讓玩家按了完全沒反應。
+        if (!result.ok) {
+            if (!result.already && typeof logSys === 'function') {
+                logSys(`<span class="text-slate-400">${_esc(result.error || '共用資料暫時忙碌，請稍後重試。')}</span>`);
+            }
+            return;
+        }
 
         _lastBroadcastCycles[w.id] = 'quiet';
         if (typeof logSys === 'function') {
@@ -673,19 +1203,15 @@
             );
         }
         // 😤 白目玩家系統：NPC 嗆聲回覆→正式版 20% 記仇；若叫賣者是紅名，玩家選「吵死了」必定反嗆並追殺。
-        if (_reply.spicy && (forceSpicy || TEST_BUILD || Math.random() < 0.2) && typeof player !== "undefined" && player && player.cls) {   // 🧪 TEST版：回嗆必定記仇（正式版 20%；紅名 100%）
-            if (!player.trollPlayers) player.trollPlayers = [];
-            player.trollPlayers = player.trollPlayers.filter(t => t && t.n !== w.name);
-            player.trollPlayers.push({ n: w.name, avatar: w.avatar || "男戰士", alignmentValue: _normalizeAlignmentValue(w.alignmentValue), until: Date.now() + 2 * 60 * 60 * 1000 });
+        if (_reply.spicy && (forceSpicy || TEST_BUILD || Math.random() < 0.2) && _startWandererChase(w)) {   // 🧪 TEST版：回嗆必定記仇（正式版 20%；紅名 100%）
             if (typeof logSys === "function") logSys(`<span class="text-rose-400 font-bold">[${_wandererNameHtml(w)}] 惡狠狠地記住了你……</span>`);
-            try { if (typeof saveGame === "function") saveGame(); } catch (e) {}
         }
     }
 
     function hurryToWanderingBuyer(wandererId) {
         let st = _readState();
         let w = _findWanderer(st, wandererId);
-        if (!w || Number(w.expiresAt) <= Date.now()) {
+        if (!_wandererPresent(w)) {
             _closeWanderingShoutMenu();
             return;
         }
@@ -700,7 +1226,18 @@
 
         let result = _stopWanderingBroadcast(w.id);
         _closeWanderingShoutMenu();
-        if (!result.ok) return;
+        // 🚚 v3.5.94 「傳送過去」與「停止叫賣」是兩件獨立的事：靜音失敗不該把按鈕變成死鍵。
+        //    已對話過／按過「吵死了」的叫賣者 broadcastStopped 早就是 true，mutator 回 already（ok=false），
+        //    舊碼在此直接 return → 對這些人「馬上到」永久失效且完全沒有回饋。
+        //    already 本來就不需要再寫共用狀態；busy／寫入失敗也只是叫賣沒停下，一樣照常傳送，只補一行提示。
+        //    唯一該中止的是這名玩家真的離場（gone），而且必須留訊息，避免按下去毫無反應。
+        if (result.gone) {
+            if (typeof logSys === 'function') logSys('<span class="text-slate-400">這名玩家已經離開。</span>');
+            return;
+        }
+        if (!result.ok && !result.already && typeof logSys === 'function') {
+            logSys(`<span class="text-amber-300">${_esc(result.error || '共用資料暫時忙碌，叫賣沒能停下。')}</span>`);
+        }
         _lastBroadcastCycles[w.id] = 'quiet';
 
         if (typeof logSys === 'function') {
@@ -736,8 +1273,11 @@
     function openWanderingBuyerDialog(wandererId) {
         let st = _readState();
         let w = wandererId ? _findWanderer(st, wandererId) : _currentTownWanderer(st);
-        if (!w || Number(w.expiresAt) <= Date.now()) {
+        if (!_wandererPresent(w)) {
             if (typeof logSys === 'function') logSys('<span class="text-slate-400">這名玩家已經離開。</span>');
+            // ⚠️ _activeSignature 不排除已到期者＝簽章與 _lastMapSignature 相同 → _refreshTownMapIfNeeded 會早退成空操作，
+            //    幽靈立繪最長會留在城鎮地圖 30 秒（tick 間隔）並可重複點擊。比照成交路徑強制重畫。
+            _lastMapSignature = '__force__';
             _refreshTownMapIfNeeded(_activeSignature(st.wanderers));
             return;
         }
@@ -747,7 +1287,7 @@
             _lastBroadcastCycles[w.id] = 'quiet';
         }
         if (typeof openTownFloatWindow === 'function') {
-            openTownFloatWindow(w.name, '玩家收購', div => renderWanderingBuyerDialog(div, w.id));
+            openTownFloatWindow(w.name, _buyerTitle(w), div => renderWanderingBuyerDialog(div, w.id));
         }
     }
 
@@ -755,7 +1295,7 @@
         if (!div) return;
         let st = _readState();
         let w = wandererId ? _findWanderer(st, wandererId) : _currentTownWanderer(st);
-        if (!w || Number(w.expiresAt) <= Date.now()) {
+        if (!_wandererPresent(w)) {
             div.innerHTML = '<div class="p-8 text-center text-slate-400">這名玩家已經離開。</div>';
             return;
         }
@@ -763,6 +1303,11 @@
         let req = { id: w.itemId, en: w.en };
         let match = _findMatches([req], st);
         let icon = d ? getIconUrl(d) : '';
+        let isGoldBuyer = _wandererCurrency(w) === 'gold';
+        let goldPrice = _goldBuyerPrice(w);
+        let buyerVerb = isGoldBuyer ? '收' : '鑽收';
+        let buyerAmount = isGoldBuyer ? ` <b>${goldPrice.toLocaleString()} 金幣</b>` : '';
+        let rewardText = isGoldBuyer ? `報酬：${goldPrice.toLocaleString()} 金幣` : `報酬：龍之鑽石 × ${Math.max(1, Math.floor(Number(w.reward) || 1))}`;
         let proofText = d && _isEquipmentDef(d)
             ? '成交後會消耗道具欄或倉庫內這件指定裝備；已穿戴的裝備不會被消耗。'
             : '成交後會消耗道具欄或倉庫內 1 個指定物品。';
@@ -771,7 +1316,7 @@
                 <div class="wandering-buyer-head">
                     <div class="wandering-buyer-avatar">${_esc(w.avatar || '')}</div>
                     <div>
-                        <div class="wandering-buyer-line">${_wandererNameHtml(w)}：收 <b>${_esc(_requirementText(w.itemId, w.en))}</b></div>
+                        <div class="wandering-buyer-line">${_wandererNameHtml(w)}：${buyerVerb} <b>${_esc(_requirementText(w.itemId, w.en))}</b>${buyerAmount}</div>
                         <div class="wandering-buyer-meta">位於 ${_esc(_townName(w.townId))}・剩餘 ${_remainingText(w.expiresAt - Date.now())}</div>
                     </div>
                 </div>
@@ -779,12 +1324,15 @@
                     <img src="${_esc(icon)}" alt="" onmouseenter="pandoraRelicTipShow(event,'${_esc(w.itemId)}')" onmousemove="pandoraTipMove(event)" onmouseleave="pandoraTipHide()">
                     <div class="wandering-buyer-offer-main">
                         <div class="${d ? getItemColor({ id: w.itemId }) : ''}">${_esc(_requirementText(w.itemId, w.en))}</div>
-                        <div class="wandering-buyer-reward">報酬：龍之鑽石 × ${w.reward}</div>
+                        <div class="wandering-buyer-reward">${rewardText}</div>
                         <div class="wandering-buyer-note">${_esc(proofText)}</div>
                     </div>
                     <div class="${match.ok ? 'text-green-400' : 'text-red-400'} wandering-buyer-state">${match.ok ? '可交付' : '道具欄／倉庫缺少'}</div>
                 </div>
-                <button class="btn wandering-buyer-submit ${match.ok ? '' : 'opacity-60'}" onclick="performWanderingBuyerTrade('${_esc(w.id)}')">交付物品</button>
+                <div class="wandering-buyer-actions">
+                    <button class="btn wandering-buyer-dismiss" onclick="dismissWanderingBuyer('${_esc(w.id)}')">驅離</button>
+                    <button class="btn wandering-buyer-submit ${match.ok ? '' : 'opacity-60'}" onclick="performWanderingBuyerTrade('${_esc(w.id)}')">交付物品</button>
+                </div>
                 <div id="wandering-buyer-msg"></div>
             </div>`;
     }
@@ -794,10 +1342,43 @@
         if (el) el.innerHTML = `<span class="${error ? 'text-red-400' : 'text-green-400'}">${_esc(text)}</span>`;
     }
 
+    function dismissWanderingBuyer(wandererId) {
+        let before = _readState();
+        let w = _findWanderer(before, wandererId);
+        if (!_wandererPresent(w)) {
+            _wanderingMessage('這名玩家已經離開。', true);
+            return;
+        }
+        let result = _withStateLock(st => {
+            let liveWanderer = _findWanderer(st, wandererId);
+            if (!_wandererPresent(liveWanderer)) {
+                return { commit: false, gone: true, error: '這名玩家已經離開。' };
+            }
+            liveWanderer.dismissed = true;
+            liveWanderer.dismissedAt = Date.now();
+            liveWanderer.broadcastStopped = true;
+            liveWanderer.quietAt = liveWanderer.dismissedAt;
+            return { name: liveWanderer.name, expiresAt: liveWanderer.expiresAt };
+        });
+        if (!result.ok) {
+            _wanderingMessage(result.error || '共用資料暫時忙碌，請稍後重試。', true);
+            return;
+        }
+        _lastBroadcastCycles[w.id] = 'dismissed';
+        _lastMapSignature = '__force__';
+        let after = result.state || _readState();
+        _refreshTownMapIfNeeded(_activeSignature(after.wanderers));
+        renderWanderBroadcastPins(after);
+        if (typeof logSys === 'function') {
+            logSys(`<span class="text-slate-300">你將 ${_wandererNameHtml(w)} 驅離了這座城鎮。</span>`);
+        }
+        try { closeNpcInteraction(); } catch (e) {}
+    }
+
     function performWanderingBuyerTrade(wandererId) {
         let before = _readState();
         let w = wandererId ? _findWanderer(before, wandererId) : _currentTownWanderer(before);
-        if (!w || Number(w.expiresAt) <= Date.now()) {
+        if (!_wandererPresent(w)) {
             _wanderingMessage('這名玩家已經離開。', true);
             return;
         }
@@ -808,20 +1389,36 @@
         }
         let result = _withStateLock(st => {
             let liveWanderer = _findWanderer(st, w.id);
-            if (!liveWanderer || Number(liveWanderer.expiresAt) <= Date.now()) {
+            if (!_wandererPresent(liveWanderer)) {
                 return { commit: false, error: '這筆收購已經結束。' };
             }
             let liveMatch = _findMatches([{ id: liveWanderer.itemId, en: liveWanderer.en }], st);
             if (!liveMatch.ok) {
                 return { commit: false, error: '道具欄與倉庫內都沒有符合強化值的指定物品。' };
             }
+            let isGoldBuyer = _wandererCurrency(liveWanderer) === 'gold';
+            if (isGoldBuyer && (typeof player === 'undefined' || !player)) {
+                return { commit: false, error: '目前無法發放金幣，請稍後重試。' };
+            }
+            let _rb = _snapshotItemState();   // 🛡️ 交付前快照（倉庫＋背包），供 _writeState 失敗時回滾
             if (!_consumeMatchedItems(liveMatch.matches)) {
                 return { commit: false, error: '交付物品時倉庫資料發生變動，請重新開啟視窗確認。' };
             }
-            let reward = Math.max(1, Math.floor(Number(liveWanderer.reward) || 1));
-            st.diamonds += reward;
+            let amount = isGoldBuyer
+                ? _goldBuyerPrice(liveWanderer)
+                : Math.max(1, Math.floor(Number(liveWanderer.reward) || 1));
+            let goldBefore = Math.max(0, Math.floor(Number(player.gold) || 0));
+            if (isGoldBuyer) player.gold = goldBefore + amount;
+            else st.diamonds += amount;
             st.wanderers = st.wanderers.filter(entry => entry && entry.id !== liveWanderer.id);
-            return { reward: reward };
+            return {
+                isGoldBuyer: isGoldBuyer,
+                amount: amount,
+                rollback: function () {
+                    _rb();
+                    if (isGoldBuyer && typeof player !== 'undefined' && player) player.gold = goldBefore;
+                }
+            };
         });
         if (!result.ok) {
             _wanderingMessage(result.error || '交易資料正忙碌，請稍後重試。', true);
@@ -830,7 +1427,10 @@
         try { saveGame(); } catch (e) {}
         try { updateUI(); renderTabs(); } catch (e) {}
         if (typeof logSys === 'function') {
-            logSys(`<span class="text-amber-300">完成 ${_wandererNameHtml(w)} 的收購，獲得 <b>龍之鑽石 × ${w.reward}</b>。</span>`);
+            let rewardText = result.isGoldBuyer
+                ? `${result.amount.toLocaleString()} 金幣`
+                : `龍之鑽石 × ${result.amount}`;
+            logSys(`<span class="text-amber-300">完成 ${_wandererNameHtml(w)} 的收購，獲得 <b>${rewardText}</b>。</span>`);
         }
         _lastMapSignature = '__force__';
         let _after = result.state || _readState();
@@ -1134,12 +1734,13 @@
             if (!liveMatch.ok) {
                 return { commit: false, error: `道具欄與倉庫缺少：${_requirementText(liveMatch.missing.id, liveMatch.missing.en)}。` };
             }
+            let _rb = _snapshotItemState();   // 🛡️ 交付前快照（倉庫＋背包），供 _writeState 失敗時回滾
             if (!_consumeMatchedItems(liveMatch.matches)) {
                 return { commit: false, error: '交付物品時倉庫資料發生變動，請重新開啟黑市確認。' };
             }
             st.boards[slotIndex].contract = null;
             st.boards[slotIndex].cooldownUntil = Date.now() + BOARD_COOLDOWN_MS;
-            return { relicId: live.relicId };
+            return { relicId: live.relicId, rollback: _rb };
         });
         if (!result.ok) {
             _setPandoraNotice('error', result.error || '兌換資料正忙碌，請稍後重試。');
@@ -1188,15 +1789,47 @@
         return !!result.ok;
     }
 
+    // 匯出／匯入只處理龍之鑽石，不覆蓋叫賣 NPC、遺物布告欄與冷卻中的共用市場資料。
+    function pandoraGetSharedDiamonds() {
+        return _readState().diamonds;
+    }
+
+    function pandoraAdjustSharedDiamonds(delta) {
+        delta = Math.trunc(Number(delta) || 0);
+        if (!delta) return { ok: true, diamonds: _readState().diamonds };
+        let result = _withStateLock(st => {
+            let next = Math.floor(Number(st.diamonds) || 0) + delta;
+            if (next < 0) return { commit: false, error: '龍之鑽石不足。' };
+            st.diamonds = next;
+            return { diamonds: next };
+        });
+        if (result.ok) _rerenderPandora();
+        return result;
+    }
+
+    function pandoraRestoreSharedDiamonds(amount) {
+        let value = Math.max(0, Math.floor(Number(amount) || 0));
+        let result = _withStateLock(st => {
+            st.diamonds = value;
+            return { diamonds: value };
+        });
+        if (result.ok) _rerenderPandora();
+        return result;
+    }
+
     window.wanderingBuyerSystemTick = wanderingBuyerSystemTick;
     window.renderWanderBroadcastPins = renderWanderBroadcastPins;
+    window.getWanderingBuyersForTown = getWanderingBuyersForTown;
     window.getWanderingBuyerForTown = getWanderingBuyerForTown;
     window.wanderingBuyerSpriteData = wanderingBuyerSpriteData;
     window.openWanderingBuyerDialog = openWanderingBuyerDialog;
     window.openWanderingShoutMenu = openWanderingShoutMenu;
+    window.openWanderingTauntMenu = openWanderingTauntMenu;
+    window.tauntWanderingBuyer = tauntWanderingBuyer;
     window.silenceWanderingBuyer = silenceWanderingBuyer;
     window.hurryToWanderingBuyer = hurryToWanderingBuyer;
     window.renderWanderingBuyerDialog = renderWanderingBuyerDialog;
+    window.dismissWanderingBuyer = dismissWanderingBuyer;
     window.performWanderingBuyerTrade = performWanderingBuyerTrade;
     window.pandoraRelicSuggestionHTML = pandoraRelicSuggestionHTML;
     window.pandoraRelicOnSearchInput = pandoraRelicOnSearchInput;
@@ -1211,6 +1844,9 @@
     window.pandoraExchangeRelic = pandoraExchangeRelic;
     window.pandoraCancelRelicBoard = pandoraCancelRelicBoard;
     window.pandoraTestSetDiamonds = pandoraTestSetDiamonds;
+    window.pandoraGetSharedDiamonds = pandoraGetSharedDiamonds;
+    window.pandoraAdjustSharedDiamonds = pandoraAdjustSharedDiamonds;
+    window.pandoraRestoreSharedDiamonds = pandoraRestoreSharedDiamonds;
 
     setTimeout(wanderingBuyerSystemTick, 1500);
     setInterval(wanderingBuyerSystemTick, 30000);

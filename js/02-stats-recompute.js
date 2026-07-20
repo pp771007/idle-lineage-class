@@ -23,7 +23,7 @@ function recomputeStats() {
     d.fireNullify = false;   // 🏺 遺物 火熱愛意：免疫受到的火屬性傷害（每10秒最多1次·js/04 火魔傷攔截·player._fireNullCd 節流）
     d.wearerEle = '';        // 🏺 遺物 火焰/寒冷化身：裝備者化為某屬性→受剋屬性傷害增加、剋制屬性傷害減少（js/04 受擊路徑 elementCounterMult(mob.e, wearerEle)）
     d.physDrGated = 0;       // 🐍 遺物 祭祀儀式陶罐：受一般攻擊傷害減少%（每3秒最多1次·js/04 enemyPhysicalAttack·player._physDrCd 節流）
-    d.lowMpRegenBonus = 0;   // 🐍 遺物 蛇神的凝視：MP<15% 時 MP自然恢復量額外+N（js/03 regenTick）
+    d.lowMpRegenBonus = 0;   // 🐍 遺物 蛇神的凝視：MP<15% 時 MP自然恢復量額外+N（js/03 _regenMP）
     d.moveSpeedPct = 0;  // 🏺 遺物 寄居蟹背殼：移動速度%（負=變慢→怪物重生變慢·js/03 重生延遲讀取·與加速buff相乘）
     d.poisonHealMult = 0;   // 🏺 遺物 毒液化身：受到毒性 DoT 時恢復所受傷害×此倍率的 HP（js/03 中毒 tick 讀取·0=無）
     d.dotCrit = false;       // 🏺 遺物 永不終止的夢魘：我方持續傷害(中毒/出血/猛爆劇毒)可爆擊（js/06 processMobStatusTick _teamDotCrit 讀取）
@@ -91,7 +91,7 @@ function recomputeStats() {
       }
     }
     // 🪆 魔法娃娃全收集：裝備收集冊 doll 部位全收集(50 隻) → 六維各 +1（提前套用→吃進 AC/HP/MP/近遠魔傷害/命中/爆擊等衍生值；受下方 100 上限夾擠）。
-    //    收集判定走 player.equipDex(共用桶)；recomputeStats 只對玩家執行(p 恆＝player)，傭兵不走此路徑故不吃。label 由 js/16 EQUIP_CAT_BONUS.doll 顯示。
+    //    收集判定走 player.equipDex(共用桶)；傭兵經 buildAlly/_allyLevelRecompute 換身（player 暫指向傭兵）時借用隊長共用桶，同樣吃到此加成。label 由 js/16 EQUIP_CAT_BONUS.doll 顯示。
     if (typeof equipCatComplete === 'function' && equipCatComplete('doll')) { d.str += 1; d.dex += 1; d.con += 1; d.int += 1; d.wis += 1; d.cha += 1; }
 
     // 🏺 遺物「百變的透明內衣」(highestAttrPlus)：目前最高的六維屬性 +1（並列最高皆 +1）。置於六維加總完、上限夾擠前→吃進衍生值(HP/近傷/命中等)。掃 p.eq(玩家或換身傭兵)。
@@ -235,7 +235,7 @@ function recomputeStats() {
         // 🏺 v3.2.17 猴子的金箍棒：近距離傷害/命中 +(等級/lvDmgDiv·lvHitDiv)（隨等級成長的武器加成）
         if (w.lvDmgDiv) { let _lb = Math.floor((p.lv || 1) / w.lvDmgDiv); if (isRanged) d.rangedDmg += _lb; else d.meleeDmg += _lb; }
         if (w.lvHitDiv) { let _lh = Math.floor((p.lv || 1) / w.lvHitDiv); if (isRanged) d.rangedHit += _lh; else d.meleeHit += _lh; }
-        // 🔧 武器「強化」固定加成：近距離與遠距離 傷害＋命中 同時各加（每強化+1→四者各+1）。⚠️ 與「最終傷害倍率」wpnEnFinalMult 各自獨立疊加（依使用者指定·+20 武器明顯變強）
+        // 🔧 武器「強化」固定加成：近距離與遠距離 傷害＋命中 同時各加（傷害每+1各+1至+20；命中+1~+10各+1、+11起依 WPN_EN_HIT_OVER10 表續加）。強化的傷害成長僅此固定加成（最終傷害倍率機制已移除·enhanceWpnFinalMult 恆 1）
         d.meleeDmg += _enW.dmg; d.rangedDmg += _enW.dmg;
         d.meleeHit += _enW.hit; d.rangedHit += _enW.hit;
         d.aspd = atkSpdBaseItv(p);   // ⚔️ 攻速改由「職業性別×武器種類」查表（ATK_APM·js/01）·武器 def 的 spd 欄位停用（玩家＋傭兵 buildAlly 共用本函式）
@@ -336,13 +336,13 @@ d.mr += (baseMr + bonusMr);
         if(ed.fireNullify) d.fireNullify = true;              // 🏺 遺物 火熱愛意：免疫火屬性傷害（10秒節流·js/04 攔截）
         if(ed.wearerEle) d.wearerEle = ed.wearerEle;          // 🏺 遺物 火焰/寒冷化身：裝備者化為某屬性（受擊屬性剋制·js/04）
         if(ed.physDrGated) d.physDrGated += ed.physDrGated;   // 🐍 遺物 祭祀儀式陶罐：受一般攻擊傷害減少%（3秒節流·js/04）
-        if(ed.lowMpRegenBonus) d.lowMpRegenBonus += ed.lowMpRegenBonus;   // 🐍 遺物 蛇神的凝視：MP<15% 時 MP自然恢復額外+N（js/03 regenTick）
+        if(ed.lowMpRegenBonus) d.lowMpRegenBonus += ed.lowMpRegenBonus;   // 🐍 遺物 蛇神的凝視：MP<15% 時 MP自然恢復額外+N（js/03 _regenMP）
         if(ed.moveSpeedPct) d.moveSpeedPct += ed.moveSpeedPct;   // 🏺 遺物 寄居蟹背殼：移動速度%（影響怪物重生延遲）
         if(ed.poisonHealMult) d.poisonHealMult = Math.max(d.poisonHealMult, ed.poisonHealMult);   // 🏺 遺物 毒液化身：毒性 DoT 轉治癒倍率（取最高·不疊加）
         if(ed.dotCrit) d.dotCrit = true;                       // 🏺 v3.1.80 永不終止的夢魘：持續傷害可爆擊（js/06 _teamDotCrit）
         if(ed.dmgReflect) d.dmgReflect = Math.max(d.dmgReflect, ed.dmgReflect);   // 🏺 v3.1.80 魅魔女皇的誘惑：受一般攻擊 N% 反射＋免疫（取最高·不疊加）
         if(ed.eleWpnMult) d.eleWpnMult = ed.eleWpnMult;        // 🏺 v3.1.80 四之牙臂甲：裝對應屬性武器時一般攻擊 ×mult（僅副手單槽·無疊加疑慮）
-        if(ed.hpRegenFaster) d.hpRegenFaster += ed.hpRegenFaster;   // 🏺 遺物 巨魔的再生戒指：HP 自然恢復間隔縮短 N 秒（js/03 regenTick 排程）
+        if(ed.hpRegenFaster) d.hpRegenFaster += ed.hpRegenFaster;   // 🏺 遺物 巨魔的再生戒指：HP 自然恢復間隔縮短 N 秒（js/03 tick() 的 _hpIv 排程·呼叫 _regenHP）
         if(ed.noEvade) d.noEvade = true;                       // 🏺 遺物 笨重的鋼鐵石盾：無法迴避攻擊（js/04 受擊迴避閘）
         if(ed.critDmgLowHp) d.critDmgLowHp = ed.critDmgLowHp;   // 🏺 遺物 鬥士的決戰服裝：HP<N 時近爆傷+add（js/03 getPhysicalDmg／js/06 allyAttackOnce）
         // 🛡️ 臂甲（副手）：每強化+1 → HP+10；門檻特效（達 +5/+7/+9 套用對應階、取最高階、非累加）
@@ -393,6 +393,7 @@ d.mr += (baseMr + bonusMr);
             }
         });
     }
+    // ⚠️ 套裝效果唯一真相在此；DB.sets(js/00) 僅供 initSetTags 反向標記、不承載數值
     p._setPoly = null;   // 套裝變身僅在穿著時生效；每次重算先清除，卸下套裝即消失
     if(setCheck['leather'] >= 4) { d.ac -= 3; }   // 皮套裝（原作未實作，依 DB.sets 補上）
     if(setCheck['bone'] >= 3) { d.ac -= 2; p.mhp += 10; }
@@ -493,7 +494,9 @@ d.mr += (baseMr + bonusMr);
     { let _rw = p.eq.wpn ? getWeaponTags(p.eq.wpn.id) : []; if(p.mastery === 'k_royal_sword' && (_rw.includes('單手劍') || _rw.includes('雙手劍'))) spdMult *= (1/1.5); }   // 👑 劍術精通：裝單手劍／雙手劍攻速+50%
     { let _iw = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(p.cls === 'illusion' && _iw && !_iw.isBow && ((p.mastery === 'i_qigu' && _iw.qigu) || (p.mastery === 'i_magicsword' && !_iw.qigu && !isWandWeapon(_iw)))) spdMult *= (1/1.3); }   // 🔮 奇古獸精通(裝奇古獸)／魔劍精通(裝非奇古獸·排除魔杖)：攻速+30%
     if(d.atkSpdPct !== 0) spdMult *= (1 / (1 + d.atkSpdPct / 100));   // 🏺 遺物 綠色妖鬼的指甲 +20%／🏺 鎧甲守衛的笨重巨劍 -50%（負值＝攻速變慢·間隔加倍·v3.1.52 由 >0 改 !==0 使負值生效）
-    { let _polySpd = 0; if (p.poly || p._setPoly) { try { for (let _k in p.eq) { let _e = p.eq[_k]; if (_e && DB.items[_e.id] && DB.items[_e.id].polyAtkSpdPct) _polySpd += DB.items[_e.id].polyAtkSpdPct; } } catch (e) {} } if (_polySpd > 0) spdMult *= (1 / (1 + _polySpd / 100)); }   // 🏺 v3.2.17 浣熊的變身葉：變身狀態時攻擊速度 +20%（需裝備·限變身期間）
+    // ⚠️ 必須連 buffs.poly 一起檢查（與 542 行的 _polyForm 同口徑）：p.poly 只是「上次變成什麼」的紀錄，
+    //    全專案沒有任何路徑會在 buffs.poly 歸零時把它清成 null，只看物件存在＝變身期滿後攻速加成永久殘留。
+    { let _polySpd = 0; if (p._setPoly || (p.buffs.poly > 0 && p.poly)) { try { for (let _k in p.eq) { let _e = p.eq[_k]; if (_e && DB.items[_e.id] && DB.items[_e.id].polyAtkSpdPct) _polySpd += DB.items[_e.id].polyAtkSpdPct; } } catch (e) {} } if (_polySpd > 0) spdMult *= (1 / (1 + _polySpd / 100)); }   // 🏺 v3.2.17 浣熊的變身葉：變身狀態時攻擊速度 +20%（需裝備·限變身期間）
     { let _mhw = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(d.meleeHaste > 0 && _mhw && !_mhw.isBow && !_mhw.ranged) spdMult *= (1 / (1 + d.meleeHaste / 100)); }   // 🏺 遺物 狂野的鬃毛外套：裝備近距離武器時攻速 +meleeHaste%
     if(p.buffs.blue > 0) d.mpR += getWisBlueBonus(d.wis);          // 藍色藥水：依精神提升MP恢復
     if(p.buffs.cautious > 0 || (_mercPots && p.cls === 'mage')) { d.magicDmg += 2; d.mpR += 2; }      // 慎重藥水；法師傭兵常駐
@@ -537,7 +540,8 @@ d.mr += (baseMr + bonusMr);
 
     // 變形卷軸變身依目前武器分流：遠距離武器只能使用遠距離變身，其餘（含空手）只能使用近距離變身。
     // 換武器時 calcStats 會立即重抽相符類型；套裝／武器強制變身 _setPoly 仍保留原本專屬形態。
-    if(p === player && p.poly && p.buffs.poly > 0 && !polyFormMatchesEquippedWeapon(p.poly)) p.poly = getPolyState();
+    // 此正規化對玩家與傭兵換身重算皆執行（player 為可換身全域·buildAlly/_allyLevelRecompute 期間指向傭兵）。
+    if(p.poly && p.buffs.poly > 0 && !polyFormMatchesEquippedWeapon(p.poly)) p.poly = getPolyState();
     // 變身：套裝變身（_setPoly，僅穿著套裝時生效、卸下立即消失）優先於藥水變身（buffs.poly 計時）
     let _polyForm = p._setPoly || ((p.buffs.poly > 0 && p.poly) ? p.poly : null);
     if(_polyForm) {
@@ -585,13 +589,20 @@ d.mr += (baseMr + bonusMr);
     if (p.buffs.sk_warrior_endurance > 0) p.mhp = Math.floor(p.mhp * (1 + (p.lv / 2) / 100));   // ⚔️ 體能強化：HP上限 +(等級/2)%
     if (_shN('狂怒') >= 3) p.mhp = Math.floor(p.mhp * 1.2);   // 😡 狂怒 3/5：最大HP +20%（於各 flat HP 加成後套用）
     if(p.mastery === 'i_mana') p.mmp = Math.floor(p.mmp * 2);   // 🔮 魔力精通：MP 上限加倍（耗魔亦加倍，見 getMpCost）
-    // 盟主的祝福（8 小時，存檔保留、死亡清空）：依到期時間判斷是否生效
-    if(p.blessings) {
-        let _now = Date.now();
-        if(p.blessings.precise > _now) d.extraHit += 3;                    // 精準目標
-        if(p.blessings.blaze   > _now) { d.hpR += 15; d.mpR += 3; }        // 灼熱靈氣
-        if(p.blessings.brave   > _now) { d.extraDmg += 3; d.extraMp += 6; }// 勇敢靈氣
-        if(p.blessings.support > _now) d.dr += 3;                          // 援護盟友
+    // 血盟 Buff：由角色自行開啟，每小時消耗貢獻；能力依全模式共用血盟等級決定。
+    if (typeof getClanBuffStats === 'function') {
+        let _cb = getClanBuffStats(p);
+        if (_cb) {
+            p.mhp += _cb.hp || 0;
+            p.mmp += _cb.mp || 0;
+            d.extraDmg += _cb.extraDmg || 0;
+            d.extraHit += _cb.extraHit || 0;
+            d.mr += _cb.mr || 0;
+            d.magicDmg += _cb.magicDmg || 0;
+            d.hpR += _cb.hpR || 0;
+            d.mpR += _cb.mpR || 0;
+            d.ac += _cb.ac || 0;
+        }
     }
 
     // 🐉 龍騎士 覺醒（安塔瑞斯/法利昂/巴拉卡斯）：d:{} 內的 AC/抗性/屬性/額外命中已由上方 buff 迴圈套用；此處補非標準效果與攻速
@@ -610,8 +621,7 @@ d.mr += (baseMr + bonusMr);
     let _rawIntSp = Math.max(0, getIntExtraMp(d.int));
     d.intSp = Math.min(33, _rawIntSp);
     d.itemSp = Math.max(0, (d.extraMp || 0) - _rawIntSp);
-    d.spdMult = spdMult;   // 純攻擊速度倍率（加速/勇敢/餅乾/精通/裝備等）；施法改由 castIntervalTicks 只讀職業／變身 cast
-    d.aspd = d.aspd * spdMult;
+    d.aspd = d.aspd * spdMult;   // 攻速倍率（加速/勇敢/餅乾/精通/裝備等）套入攻擊間隔；施法改由 castIntervalTicks 只讀職業／變身 cast
 
     // 🐾 馴獸師的飼料袋（allLures）：裝備時視為持有全部誘捕狀態；petCaptureOnKill 讀 player._allLures（不消耗、卸下即失效）
     p._allLures = false;
@@ -636,11 +646,22 @@ d.mr += (baseMr + bonusMr);
         let _limit = _wbase + _cap;
         let _pct = _limit > 0 ? Math.floor(_cur / _limit * 100) : 999;
         let _tier = _pct <= 49 ? 0 : (_pct <= 81 ? 1 : (_pct <= 99 ? 2 : 3));
-        d.weightCur = _cur; d.weightLimit = _limit; d.weightPct = _pct; d.loadTier = _tier;
+        d.weightPct = _pct; d.loadTier = _tier;
         if (_tier === 2) d.aspd = d.aspd * 2;        // 82~99%：攻擊速度 -100%（間隔×2）
         else if (_tier === 3) d.aspd = d.aspd * 3;   // 100%+：攻擊速度 -200%（間隔×3）
     }
 
+    // ⚔️ v3.5.100 副手獨立攻速：以「副手/主手 基礎間隔比」× 已完成全部修正的 d.aspd 推導（0＝沒副手）。
+    //   ⭐ 刻意用比例而不是重算一次：d.aspd 上面經過 spdMult（加速術/勇敢藥水/精靈餅乾/行走加速/切割/劍術/巨斧/
+    //      雙斧/王族劍術/奇古獸/魔劍精通、遺物 atkSpdPct、變身 polyAtkSpdPct、meleeHaste）與負重階懲罰（×2/×3），
+    //      而且還可能被變身 profile 整段覆蓋。若副手重算一次，就得把那十幾條逐一複製——漏一條兩手就會不同步。
+    //      用比例則全部自動繼承，只保留「兩把武器種類不同」這唯一該有的差異。
+    //   ⚠️ 間隔與 APM 成反比 → 比例是 主手APM/副手APM（不是反過來）。
+    d.aspdOff = 0;
+    if (p.eq && p.eq.offwpn && typeof atkSpdApm === 'function') {
+        let _mApm = atkSpdApm(p), _oApm = atkSpdApm(p, p.eq.offwpn.id);
+        if (_mApm > 0 && _oApm > 0) d.aspdOff = d.aspd * (_mApm / _oApm);
+    }
     p.hp = Math.min(p.hp, p.mhp);
     p.mp = Math.min(p.mp, p.mmp);
 }
@@ -954,7 +975,7 @@ function doTeleport(forceBoss) {
 // ===== 🏛️ 隱藏狩獵區域系統（由對應地圖手動傳送/瞬移卷軸進入；不列於地圖選單、魔物追蹤無法指定；區域規則同地監狩獵地圖） =====
 const HIDDEN_AREA_PARENT = { zone_37: 'hidden_lab_nolife', zone_38: 'hidden_lab_darkmagic', zone_39: 'hidden_seal_spirit', zone_40: 'hidden_seal_monster', zone_41: 'hidden_seal_demon', zone_33: 'hidden_antqueen' };
 const HIDDEN_AREA_NAMES = { hidden_lab_nolife: '無生物研究室', hidden_lab_darkmagic: '黑魔法研究室', hidden_seal_spirit: '惡靈封印室', hidden_seal_monster: '魔物封印室', hidden_seal_demon: '惡魔封印室', hidden_antqueen: '巨蟻女皇棲息地' };
-const HIDDEN_AREA_BG = { hidden_lab_nolife: '象牙塔4樓', hidden_lab_darkmagic: '象牙塔5樓', hidden_seal_spirit: '象牙塔6樓', hidden_seal_monster: '象牙塔7樓', hidden_seal_demon: '象牙塔8樓', hidden_antqueen: '螞蟻洞穴2樓' };   // 🏛️ 隱藏區域背景＝對應母地圖樓層同名圖（applyAreaBackground 探測 assets/area/<樓層>.jpg；不存在則退回 SPECIAL_AREA_BG）
+const HIDDEN_AREA_BG = { hidden_lab_nolife: '象牙塔4樓', hidden_lab_darkmagic: '象牙塔5樓', hidden_seal_spirit: '象牙塔6樓', hidden_seal_monster: '象牙塔7樓', hidden_seal_demon: '象牙塔8樓', hidden_antqueen: '螞蟻洞穴2樓' };   // 🏛️ 隱藏區域背景＝對應母地圖樓層同名圖；⚠️ v3.5.90 平面 assets/area/<樓層>.jpg 探測已移除（該目錄只剩 1920x1080 子夾）→ 現行走 AREA_1920 同名判定，這 6 個樓層名皆在表內；新增樓層背景須一併加進 AREA_1920 否則退回 SPECIAL_AREA_BG
 function isHiddenArea(m) { return !!(m && HIDDEN_AREA_NAMES[m]); }
 function enterHiddenArea(hiddenId) {
     if (typeof playTeleportFx === 'function') { try { playTeleportFx(); } catch (e) {} }   // 🌀 v3.0.102 隱藏區域傳送亦播傳送術特效＋玩家 sprite 暫隱

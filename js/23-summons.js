@@ -6,9 +6,9 @@
 //   ・攻速＝該怪攻擊動畫幀數決定（幀數/8fps＋0.7s 收招·轉檔時實測 baked）；傷害依階級解鎖等級與 HP 設計（血少傷高）；命中隨玩家等級
 //   ・隊伍面板顯示每隻血量＋重新施放鈕；時間到或全滅自動重施；戰場八方向 sprite 走 js/22 寵物圖層
 //   🧟 v3.2.21 擴充：玩家的 造屍術(sk_zombie)／召喚屬性精靈(sk_elf_summon)／召喚強力屬性精靈(sk_elf_summon2) 也走本模組
-//     ・三系互斥（SUMMON_BUFF_IDS）→ 共用 player.summonsV2 實體清單＋隊伍面板＋js/22 渲染＋js/04 受害者池（權重統一每隻 3）
+//     ・三系互斥（SUMMON_BUFF_IDS）→ 共用 player.summonsV2 實體清單＋隊伍面板＋js/22 渲染＋js/04 受害者池（權重 召喚術/造屍術＝4·屬性精靈＝3·見 js/04 summonAggroWeight）
 //     ・造屍術：玩家等級分階（法師 24/32/40/44/48/52 → Lv10~20 殭屍·HP100~800；妖精 48+ 固定 Lv10/HP100）·傷害比照召喚術模型
-//     ・屬性精靈：攻擊能力完全維持舊 summonAttack 規則（公式/間隔10/精靈精通數量）——只新增 HP 實體＋戰場動態
+//     ・屬性精靈：v3.2.26 四屬性獨立表（骰/縮放逐屬性·攻速 16~18 ticks）走 spiritAttackOnce·精靈精通→精靈王升級（_elfSpiritKingOverride·js/07）——HP 實體＋戰場動態
 //   ⚠️ 迷魅／傭兵的召喚 維持舊管線（setupSummon/summonTick）不動——只有「玩家」的上述技能走本模組
 // ============================================================
 'use strict';
@@ -181,7 +181,7 @@ function _zmbDerive(s, owner) {
         dr: Math.floor(s.lv / 10)
     };
 }
-// 🧝 屬性精靈：攻擊能力維持舊制（公式見 spiritAttackOnce·間隔＝DB interval 10）；HP/等級為新增的實體設計值。
+// 🧝 屬性精靈：v3.2.26 四屬性獨立表走 spiritAttackOnce（骰/縮放逐屬性·攻速 16~18 ticks 依 _spiritDerive）；HP/等級為實體設計值。
 // 👑 v3.2.25 精靈精通改版（用戶拍板）：不再增加數量（一律 1 隻）——有精靈精通時，
 //    「召喚強力屬性精靈」改為召喚更強大的「<屬性>精靈王」（SPIRIT_KING 獨立參數·使用原強力精靈的動態）；
 //    無精通的強力屬性精靈動態改用一般屬性精靈的圖（強力圖成為精靈王專屬）——由 formGfx 欄位分派（js/22 渲染層）。
@@ -458,7 +458,7 @@ function spiritAttackOnce(s, t, owner) {
     if (t.curHp <= 0) { const i = mapState.mobs.findIndex(x => x && x.uid === t.uid); if (i !== -1) killMob(i); }
     else { try { renderMobs(); } catch (e2) {} }
 }
-// 怪物一般攻擊打召喚物（js/04 受害者池·權重統一每隻 3·v3.2.21 含殭屍/屬性精靈）
+// 怪物一般攻擊打召喚物（js/04 受害者池·權重 召喚術/造屍術＝4·屬性精靈＝3·見 js/04 summonAggroWeight·v3.2.21 含殭屍/屬性精靈）
 function enemyAttackSummon(mob, s) {
     if (!mob || mob.curHp <= 0 || !s || s._downed || (s.hp || 0) <= 0) return;
     if (typeof _mobAnimTrigger === 'function') _mobAnimTrigger(mob, 'attack');
@@ -572,8 +572,8 @@ function renderMercSummonTeamHTML() {
 
 function renderSummonPanel(force) {
     try {
-        const stale = document.getElementById('summon-panel');
-        if (stale) stale.remove();
+        // 🗑️ v3.5.83 移除 #summon-panel 的殘留清理：專案內沒有任何地方建立這個 id（召喚面板是由
+        //    renderSquadPanel 畫進隊伍分頁），查找恆為 null。
         const sig = summonTeamSignature();
         if (!force && sig === _sumPanelSig) return;
         _sumPanelSig = sig;

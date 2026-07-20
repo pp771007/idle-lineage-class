@@ -36,7 +36,7 @@
             const rect = frame.getBoundingClientRect();
             drag = { id: event.pointerId, dx: event.clientX - rect.left, dy: event.clientY - rect.top };
             handle.setPointerCapture(event.pointerId);
-            frame.classList.add('is-dragging');
+            // 🗑️ 移除 classList.add('is-dragging')：三份樣式表(style/floating-ui/tailwind-built)皆無此選擇器、亦無任何 JS 讀取 → 純無效果的狀態標記。
             event.preventDefault();
         });
         handle.addEventListener('pointermove', function (event) {
@@ -49,8 +49,7 @@
         });
         function stop(event) {
             if (!drag || drag.id !== event.pointerId) return;
-            drag = null;
-            frame.classList.remove('is-dragging');
+            drag = null;   // 🗑️ 同上：原 classList.remove('is-dragging') 一併移除
         }
         handle.addEventListener('pointerup', stop);
         handle.addEventListener('pointercancel', stop);

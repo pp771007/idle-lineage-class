@@ -764,7 +764,7 @@
 // • player.buffs（增益）：以「秒」計，於 tick() 的每秒區塊（state.ticks % 10）「統一」遞減，勿在他處再扣
 // • player.cds.atkSk / healSk / purifySk / convertSk：以 tick 計（施法節奏只看職業／變身 cast，不受攻擊速度影響）
 // • player.cds.pot / reviveScrollCd / magicShieldCd：以秒計（tick() 的每秒區塊遞減）
-// • player.blessings / player.siege（盟主祝福、攻城勝利8折、宣戰冷卻）：牆鐘 Date.now()，刻意設計為關閉遊戲仍流逝
+// • player.siege（攻城勝利8折、宣戰冷卻）：牆鐘 Date.now()，刻意設計為關閉遊戲仍流逝
 // • 召喚物 / 迷魅 endTick：絕對 tick，已隨存檔保存（saveGame 的 ticks 欄位），重載後仍有效
 const BUFF_NAMES = {   // buff 鍵 → 顯示名稱（DB.skills 查不到時使用）
     haste: "加速", brave: "勇敢藥水", blue: "藍色藥水", cautious: "慎重藥水",
@@ -786,20 +786,20 @@ function sameItemSig(a, b) { return itemSig(a) === itemSig(b); }
 const SAVE_VERSION = 2;   // v1 = 未標版本的舊存檔
 const SAVE_DEFAULTS = {
     name: null, bonus: 0, panaceaUsed: 0, bloodPledge: null, lootSeq: 0,
-    magicShieldCd: 0, reviveScrollCd: 0, lastMapByCat: {}, lastBattleMap: null, tracking: null, ismaelAccUsed: false, sherineWorld: false, sherineMad: false, classicMode: false, traditionalMode: false,
+    magicShieldCd: 0, reviveScrollCd: 0, lastMapByCat: {}, lastBattleMap: null, tracking: null, sherineWorld: false, sherineMad: false, classicMode: false, traditionalMode: false,
     masteryQuest: null, mastery: null, masteryChangeCnt: 0,
     prideBeatJenis: false, demonTempleOpen: false, flameAffinity: 0, trialStage: 0, prideRank: { best: null, last: null, isNew: false }, prideRankSherine: { best: null, last: null, isNew: false },
     riftRank: { best: null, last: null, isNew: false }, riftRankSherine: { best: null, last: null, isNew: false }, riftRewardMs: null,
-    elfEle: null, poly: null, summon: null, charmed: null, hot: null,
-    manualCd: {}, blessings: {}, blessingAuto: {}, cardDex: {}, cardDexV: 0, equipDex: {}, miscDex: {},
+    elfEle: null, poly: null, summon: null, charmed: null, hots: {},   // 🔧 v3.5.94 移除零讀取的舊制孤兒欄位 hot(單數)；團隊 HoT 休眠機制實際用的是 hots(複數 dict)，改在此初始化與 js/05/js/13 重設點一致
+    manualCd: {}, cardDex: {}, cardDexV: 0, equipDex: {}, miscDex: {},
     alloc:   { str:0, dex:0, con:0, int:0, wis:0, cha:0 },
     panacea: { str:0, dex:0, con:0, int:0, wis:0, cha:0 },
     cds:     { pot:0, atkSk:0, healSk:0, purifySk:0, convertSk:0 },
     buffs:   { haste:0, brave:0, blue:0, cautious:0, elfcookie:0, poly:0, shield:0, sk_magic_shield:0 },
     statuses:{ stun:0, freeze:0, stone:0, poison:0, poisonDmg:0, poisonTick:0, burn:0, burnDmg:0, burnTick:0,
                scald:0, scaldDmg:0, scaldTick:0, bleed:0, bleedDmg:0, bleedTick:0, sleep:0, silence:0, paralyze:0, magicseal:0, armorBreak:0, slowAtk:0, cleave:0 },
-    siege:   { active:false, city:'kent', victoryCity:null, gateKilled:false, towerKilled:false, endTime:0, kills:0, result:null,
-               cooldownUntil:0, rewardPending:false, victoryUntil:0, accCdUntil:0 }
+    siege:   { active:false, city:'kent', gateKilled:false, towerKilled:false, endTime:0, kills:0, result:null,
+               cooldownUntil:0, accCdUntil:0 }
 };
 function applySaveDefaults(p) {
     for (let k in SAVE_DEFAULTS) {
@@ -820,15 +820,19 @@ function applySaveDefaults(p) {
 //      HP×[3/5]、AC×[1.5/1.75]、MR×[1.5/3]、命中×[1.5/2]、額外減傷 +floor(等級/3)、
 //      經驗×[5/10]、金錢×[5/10]、一般攻擊傷害×[2/3]、技能最終傷害×[2/3]（含持續傷害）；
 //      生怪等待 ×0.8（v3.4.26 由「−1 秒」改乘算·與日光術 ×0.8 相乘疊加；下限 0.5 秒）
-//  - 掉落：物品掉落機率×[3/5]、詞綴(祝福)機率×[3/5]；指定部位裝備可附「席琳套裝效果」
-//      ※ 席琳套裝效果(席琳詞綴)與席琳結晶掉率：瘋狂＝一般席琳的 3 倍（一般怪／頭目皆然）
+//  - 掉落：物品掉落機率×[3/5]、詞綴(祝福)機率×[3/5]
+//      ⚠️ v3.5.96 更正：本區塊原寫「指定部位裝備可附『席琳套裝效果』」與「席琳套裝效果(席琳詞綴)瘋狂＝3 倍」，
+//         但 v3.1.68 起套裝詞綴**已不再附在裝備上**（js/08 seteff 硬編 false·改由 8 格席琳遺骸 rem_* 欄承載），
+//         現行席琳世界只影響「掉落機率」與「祝福詞綴機率」兩項。席琳結晶掉率的 3 倍仍成立。
 //  - 恩賜（applySherineGrace）：席琳世界每次刷新 1% 機率讓場上一隻怪（含頭目）獲恩賜；
 //      無冷卻、場上同時僅一隻；HP×10／經驗×10／金錢×10／掉落×10／持續傷害再×2
 // ============================================================================
 function sherineWorldActive() { return !!(player && (player.sherineWorld || player.sherineMad)); }   // 🔮 一般或瘋狂任一開啟皆視為「席琳的世界」（主題/排名/結晶/套裝效果/出怪強化共用此閘）
 function sherineMadActive() { return !!(player && player.sherineMad); }   // 🔮 僅「瘋狂的席琳世界」：供倍率分流
 function applySherineTheme() { document.body.classList.toggle('sherine-world', sherineWorldActive()); document.body.classList.toggle('sherine-mad', sherineMadActive()); }
-let _sherineLootCtx = null;   // 擊殺掉落上下文：killMob 期間設定（{boss,grace}），供 gainItem 判定詞綴×3 與套裝效果
+let _sherineLootCtx = null;   // 擊殺掉落上下文：killMob 期間設定（唯一寫入點 js/05 killMob·payload 為 { mad } 單鍵，try/finally 清為 null）。⚠️ v3.5.94 原有的 boss/grace 兩欄已刪：唯一讀取點 js/07 rollAffixesNew() 只用 .mad 決定祝福詞綴機率 ×3/×5，套裝效果自 v3.1.68 起改由席琳遺骸承載（🔧 v3.5.96 更正符號名：v3.5.94 這裡誤寫 rollAffixes，該函式不存在）
+//   （🗑️ v3.5.95 刪除此處三行舊註解：它們還在描述已於 v3.5.94 移除的 boss / grace 兩欄，與上一行的「單鍵」敘述互斥，
+//     會讓維護者去找兩個不存在的欄位。所有必要資訊都已併入上一行。）
 let _forceSherineSet = false;   // 🔮 席琳製作：成品必定附帶隨機套裝效果（doCraft 產出期間設定）
 let _tradLootCtx = false;   // 🏛️ 傳統模式「掠奪上下文」（⚠️v3.0.83 傳統模式已取消：旗標已無消費者·僅保留宣告讓各處 set/restore 站點不拋錯）
 let _noAffixCtx = false;    // 🦴 「白板上下文」：設 true 時 gainItem 不附加詞綴（祝福/詛咒/屬性）但仍放行傳統自帶強化值——供寵物裝備製作（白板＋隨機強化值，機率同飾品）
@@ -1093,7 +1097,7 @@ function fragileMult(t) {
 // ============================================================================
 // 🏅 職業精通系統（威頓村 NPC 漢，Lv50+）
 //  流程：接取任務 → 擊敗職業對應頭目必得「精通之證」（身上已有則不再掉）→ 回威頓村交付 →
-//        開啟精通選擇。初次選擇免費，之後每次更換固定 300 萬金幣＋10 張王族搜索狀。
+//        開啟精通選擇。初次選擇免費，之後每次更換固定 300 萬金幣。
 //  狀態：player.masteryQuest = null|'active'|'done'；player.mastery = 精通id|null；player.masteryChangeCnt = 已付費更換次數
 // ============================================================================
 const MASTERY_DATA = {
@@ -1157,10 +1161,10 @@ function hasMastery(id) { return !!(player && player.mastery === id); }
 function allyHasMastery(ally, id) { return !!(ally && ally.mastery === id); }   // 🔧 傭兵吃「自身存檔」的精通（不吃主玩家精通）
 // 🌟 v3.0.99 隊長團隊光環：任一隊員(玩家或未倒地傭兵)維持該 buff 即全隊生效。清單供「傭兵可維持/隊伍面板可開關/避免重複施放」使用。
 //   ⚠️不含完全免疫類(絕對屏障/大地屏障/魔法屏障·刻意不給傭兵)。golem/ogre/lich 為幻術幻象召喚(illuSummon)·此處僅列其「光環」由玩家提供·傭兵暫不維持(見 _isMercSelfBuff)。
-const TEAM_AURA_SKILLS = ['sk_elf_earthbless', 'sk_royal_burnweapon', 'sk_royal_shield'];   // 傭兵可維持的團隊光環（大地祝福AC-7·灼熱武器傷害/命中+5·閃亮之盾AC-8）。任一來源施放一次即惠及玩家、傭兵、寵物與召喚物，同技能不重複疊加。鋼鐵防護為施法者自身 AC-10，不列入團隊光環。⚠️v3.4.45 水之元氣/化身已改「單體共享」(TEAM_SHARE_BUFFS)→移出此清單。
+const TEAM_AURA_SKILLS = ['sk_elf_earthbless', 'sk_royal_burnweapon', 'sk_royal_shield'];   // 傭兵可維持的團隊光環（大地祝福AC-7·灼熱武器傷害/命中+5·閃亮之盾AC-8）。任一來源施放一次即惠及玩家、傭兵、寵物與召喚物，同技能不重複疊加。鋼鐵防護為施法者自身 AC-10，不列入團隊光環。⚠️v3.4.45 水之元氣/化身已改「單體共享」(TEAM_SHARE_BUFFS)→移出此清單。⚠️此陣列＝唯一註冊點（勿在 DB.skills 加 teamAura 旗標·無人讀取）。
 // 🤝 v3.4.45 單體輔助共享清單：施法者(玩家/傭兵)自己有清單內 buff、隊友沒有 → 由 shareTeamBuffs(js/06) 一次補滿所有缺者(逐一扣施法者 MP)。與「自動維持勾選」解耦(只看清單＋是否持有)。
 //   ⚠️其中原為全隊光環者(幻覺歐吉/巫妖/鑽石高崙/化身·水之元氣)已於本版改單體：移出 TEAM_AURA_SKILLS＋teamIlluAura/teamAcBonus/teamDmgReduceMult 只對寵物/召喚保留(forMinion)；玩家/傭兵改各自持有(recompute d)＋此共享逐人補。
-const TEAM_SHARE_BUFFS = new Set(['sk_holy_wpn', 'sk_dex_up', 'sk_haste_spell', 'sk_bless_wpn', 'sk_str_up', 'sk_holy_barrier', 'sk_illu_ogre', 'sk_illu_focus', 'sk_illu_lich', 'sk_illu_golem', 'sk_illu_avatar', 'sk_elf_watervital', 'sk_elf_windshot', 'sk_elf_earthshield', 'sk_elf_preciseshot', 'sk_elf_stormeye', 'sk_heal_energy_storm']);   // 🌀 v3.4.71 治癒能量風暴＝單體輔助共享（施法者有→幫缺的傭兵/玩家補·各自 320s 結束才再補）
+const TEAM_SHARE_BUFFS = new Set(['sk_holy_wpn', 'sk_dex_up', 'sk_haste_spell', 'sk_greater_haste', 'sk_bless_wpn', 'sk_str_up', 'sk_holy_barrier', 'sk_illu_ogre', 'sk_illu_focus', 'sk_illu_lich', 'sk_illu_golem', 'sk_illu_avatar', 'sk_elf_watervital', 'sk_elf_windshot', 'sk_elf_earthshield', 'sk_elf_preciseshot', 'sk_elf_stormeye', 'sk_heal_energy_storm']);   // 🌀 v3.4.71 治癒能量風暴＝單體輔助共享（施法者有→幫缺的傭兵/玩家補·各自 320s 結束才再補）；v3.5.87 補強力加速術（漏列·原本「只有強力加速術」的施法者不分享加速）
 // ⚠️ v3.4.45 暴風之眼(sk_elf_stormeye·+2遠傷/+2遠命)＝用戶要「一次施放全隊生效」：以自動共享達成（一位維持者→鋪給全隊玩家/傭兵·各自 recompute d 生效）。寵物/召喚未涵蓋（真．全隊 ranged 光環需改 8 個傷害熱點·邊際效益低·暫以共享代之）。
 // 團隊光環是否有「任一隊員(排除 exclude)」維持中：exclude 傳「受益者本身」→其自身光環已由 recomputeStats 套進自身 d，避免與此 helper 雙算（僅對 recompute 有套進 d 的光環需排除·如 AC/攻擊）。
 function _teamAuraHas(sid, exclude) {
@@ -1169,7 +1173,7 @@ function _teamAuraHas(sid, exclude) {
     for (let i = 0; i < al.length; i++) { let a = al[i]; if (a && a !== exclude && !a._downed && a.buffs && (a.buffs[sid] || 0) > 0) return true; }
     return false;
 }
-function masteryChangeCost() { return { gold: 3000000, warrants: 10 }; }   // 🔧 固定費用：每次更換都維持 300 萬金幣＋10 張王族搜索狀，不再隨次數遞增
+function masteryChangeCost() { return { gold: 3000000 }; }   // 固定費用：每次更換都維持 300 萬金幣，不隨次數遞增
 // 技能職業需求等級（單一事實來源）：🏅 魔導精通的妖精可學四項法師法術（需求等級沿用法師）
 function skillReqLv(sk, skId) {
     if (player.cls === 'dark') {
@@ -1258,11 +1262,11 @@ function flushAwaySummary() {
 }
 
 let player = {
-    cls: null, name: null, lv: 1, exp: 0, gold: 1000, hp: 0, mhp: 0, mp: 0, mmp: 0, blessings: {}, blessingAuto: {}, alignmentValue: 0, pvpOn: false, pvpRevengeList: [],
-    base: { str:0, dex:0, con:0, int:0, wis:0, cha:8 }, bonus: 0, alloc: { str:0, dex:0, con:0, int:0, wis:0, cha:0 }, panacea: { str:0, dex:0, con:0, int:0, wis:0, cha:0 }, panaceaUsed: 0, junkPrefs: {}, bloodPledge: null, magicShieldCd: 0, lastMapByCat: {}, tracking: null, ismaelAccUsed: false, sherineWorld: false, masteryQuest: null, mastery: null, masteryChangeCnt: 0, siege: { active:false, gateKilled:false, towerKilled:false, endTime:0, kills:0, result:null, cooldownUntil:0, rewardPending:false, victoryUntil:0, accCdUntil:0 },
+    cls: null, name: null, lv: 1, exp: 0, gold: 1000, hp: 0, mhp: 0, mp: 0, mmp: 0, alignmentValue: 0, pvpOn: false, pvpRevengeList: [],
+    base: { str:0, dex:0, con:0, int:0, wis:0, cha:8 }, bonus: 0, alloc: { str:0, dex:0, con:0, int:0, wis:0, cha:0 }, panacea: { str:0, dex:0, con:0, int:0, wis:0, cha:0 }, panaceaUsed: 0, junkPrefs: {}, bloodPledge: null, magicShieldCd: 0, lastMapByCat: {}, tracking: null, sherineWorld: false, masteryQuest: null, mastery: null, masteryChangeCnt: 0, siege: { active:false, city:'kent', gateKilled:false, towerKilled:false, endTime:0, kills:0, result:null, cooldownUntil:0, accCdUntil:0 },
     inv: [], eq: { wpn: null, arrow: null, helm: null, armor: null, shin: null, shield: null, cloak: null, tshirt: null, gloves: null, boots: null, ring1: null, ring2: null, ring3: null, ring4: null, amulet: null, ear1: null, ear2: null, belt: null, pet: null, doll: null },
     skills: [], buffs: { haste: 0, brave: 0, blue: 0, cautious: 0, elfcookie: 0, poly: 0, shield: 0, sk_magic_shield: 0 }, poly: null, allies: [],
-    summon: null, charmed: null, manualCd: {}, elfEle: null, hot: null,
+    summon: null, charmed: null, manualCd: {}, elfEle: null, hots: {},   // 🔧 v3.5.94 同上：孤兒 hot(單數) → 休眠機制真正使用的 hots(複數 dict)
     cds: { pot: 0, atkSk: 0, healSk: 0, purifySk: 0, convertSk: 0 }, dead: false, statuses: { stun: 0, freeze: 0, stone: 0, poison: 0, poisonDmg: 0, poisonTick: 0, burn: 0, burnDmg: 0, burnTick: 0, scald: 0, scaldDmg: 0, scaldTick: 0, bleed: 0, bleedDmg: 0, bleedTick: 0, sleep: 0, silence: 0, paralyze: 0, magicseal: 0, armorBreak: 0, slowAtk: 0, cleave: 0 },
     d: { str:0, dex:0, con:0, int:0, wis:0, cha:8,
          meleeDmg: 0, meleeHit: 0, meleeCrit: 0,           // 近距離（力量）
@@ -1837,15 +1841,14 @@ function sanitizeState() {
     if (player.eq) for (let k in player.eq) clampEn(player.eq[k]);
 }
 // 武器強化 → { dmg:額外傷害, hit:額外命中 }
-//  +0~+10：每階 額外傷害+1、額外命中+1（線性）。
-//  +11~+20：取消額外傷害加成（額外傷害維持在 +10 的量＝10）；額外命中沿用「累積」（在 +10 之上再加下表）；
-//           傷害成長改由「最終傷害倍率」提供（enhanceWpnFinalMult，非累加、取該階段數值）。
-const WPN_EN_HIT_OVER10 = { 11:1, 12:2, 13:4, 14:6, 15:8, 16:11, 17:14, 18:17, 19:21, 20:25 };   // +11~+20 額外命中（超過 +10 的「累加」量；每階增量 1,1,2,2,2,3,3,3,4,4 逐級累加 → 總命中 +11/+12/+14/+16/+18/+21/+24/+27/+31/+35）
+//  額外傷害：+0~+20 每階+1（實務受 ENHANCE_CAP.wpn=15 夾擠，最高 +15）；
+//  額外命中：+0~+10 每階+1，+10 之後依 WPN_EN_HIT_OVER10 累加。
+const WPN_EN_HIT_OVER10 = { 11:1, 12:2, 13:4, 14:6, 15:8 };   // +11~+15 額外命中（超過 +10 的「累加」量；每階增量 1,1,2,2,2 逐級累加 → 總命中 +11/+12/+14/+16/+18）
 function enhanceWpnBonus(en) {
     en = Math.max(0, Number(en) || 0);
     let base = Math.min(en, 10);                                                            // +10 以內：每階 +1
     let hitOver = (en > 10) ? (WPN_EN_HIT_OVER10[Math.min(en, 20)] || 0) : 0;               // +11~+20：額外命中累積
-    return { dmg: Math.min(en, 20), hit: base + hitOver };                                  // 🔧 額外傷害每階+1、全程延伸到+20（原+10封頂取消）；額外命中+1~+10後依表續加（最高總+35@+20）
+    return { dmg: Math.min(en, 20), hit: base + hitOver };                                  // 🔧 額外傷害每階+1（實務受武器強化上限 +15 夾擠）；額外命中+1~+10後依表續加
 }
 // 武器強化 → 最終傷害倍率（一般物理攻擊）；+1~+20「取該階段數值」（非累加），+0 為 1.0
 // 基準曲線（最高檔）：+1 ×1.02（平緩）→ +10 ×1.37 → +20 ×2.50（爆發）；總數值 100→250 對應的倍率（總數值/100）。
@@ -1870,7 +1873,7 @@ function wpnEnCurveMax(def) {
     return 1.5;
 }
 function enhanceWpnFinalMult(en, def) {
-    return 1;   // 🔧 v3.1.25 用戶要求移除「武器強化最終傷害倍率」機制：一律回傳 1（所有戰鬥呼叫點 ×1＝無效化）。強化仍保留固定命中/傷害加成（js/02:218 每+1→近/遠 傷害+命中 各+1）。⚠️ 上方 WPN_EN_FINALMULT 曲線與 wpnEnCurveMax 保留供日後還原（把本函式改回原計算即可）。
+    return 1;   // 🔧 v3.1.25 用戶要求移除「武器強化最終傷害倍率」機制：一律回傳 1（所有戰鬥呼叫點 ×1＝無效化）。強化仍保留固定命中/傷害加成（實作＝js/02 calcStats 內 enhanceWpnBonus() 的 _enW，每+1→近/遠 傷害各+1、命中 +1~+10 後依 WPN_EN_HIT_OVER10 續加·⚠️改用符號名指路，行號會漂移）。⚠️ 上方 WPN_EN_FINALMULT 曲線與 wpnEnCurveMax 保留供日後還原（把本函式改回原計算即可）。
 }
 function wpnEnFinalMult(wpnInst) { return enhanceWpnFinalMult(wpnInst && wpnInst.en, wpnInst && DB.items[wpnInst.id]); }      // 由武器實例取倍率（未裝備→1）
 
@@ -1934,7 +1937,10 @@ function atkSpdApm(p, id) {
     let wid = id || (p && p.eq && p.eq.wpn ? p.eq.wpn.id : null);
     if (!wid) return 60;   // 空手＝每分鐘 60 次（維持原 1.0s 間隔）
     let fam = atkSpdFamily(wid) || '單手劍';
-    if (!id && p && p.eq && p.eq.offwpn) fam = '雙斧';   // ⚔️ 雙持單手斧：每次觸發主副手各打一次
+    // ⚔️ v3.5.100 主副手攻速分離：移除「裝副手 → 主手改吃雙斧家族」的覆蓋。
+    //   舊制讓雙手鈍器主手一裝副手就從 51.43 跳到 65.45 APM（戰士 +27%），等於主手借用副手的速度；
+    //   現在兩手各用自己的武器家族，副手的間隔由 d.aspdOff 另計（js/02）。
+    //   （'雙斧' 這一欄在 ATK_APM 全 16 職與 '單手鈍器' 數值完全相同＝純別名，移除覆蓋不影響單手鈍器主手。）
     return row[fam] || ATK_APM_DEFAULT[fam] || 60;
 }
 function atkSpdBaseItv(p) { return Math.round(6000 / Math.max(1, atkSpdApm(p))) / 100; }   // 基礎攻擊間隔（秒·2位小數·未含加速/精通等倍率）

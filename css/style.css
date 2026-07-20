@@ -313,7 +313,7 @@
         #game-screen #btn-collection { background:linear-gradient(180deg,#594428,#392b20 54%,#211a17 100%) !important; border-color:#92704a !important; color:#ead4aa !important; }
         #game-screen #btn-autosell { background:linear-gradient(180deg,#5a3827,#38251f 54%,#211817 100%) !important; border-color:#91604a !important; color:#e4c2ae !important; }
         #game-screen button[onclick="exportSave()"] { background:linear-gradient(180deg,#44394e,#2d2735 54%,#1b181f 100%) !important; border-color:#75667d !important; color:#d7d0df !important; }
-        #game-screen button[onclick="saveGame()"] { background:linear-gradient(180deg,#35493b,#243229 54%,#171e1a 100%) !important; border-color:#70816d !important; color:#d2dfd2 !important; }
+        #game-screen #btn-clan { background:linear-gradient(180deg,#51343b,#35262b 54%,#21191c 100%) !important; border-color:#8b626b !important; color:#ead5d9 !important; box-shadow:inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.28), 0 1px 2px rgba(0,0,0,.35) !important; }
         #game-screen #btn-automation, #game-screen button[style*="#0c4a5e"] { background:linear-gradient(180deg,#354749,#263335 54%,#181f20 100%) !important; border-color:#6d7d7d !important; color:#cbd8d8 !important; }
         #game-screen button[style*="#4c1d95"] { background:linear-gradient(180deg,#49384b,#302633 54%,#1d191f 100%) !important; border-color:#806681 !important; color:#ded3df !important; }
         .list-item { padding: 0.75rem; border-bottom: 1px solid #4b3a31; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; width: 100%;}
@@ -399,6 +399,8 @@
             50%      { filter: drop-shadow(0 0 6px rgba(74,222,128,0.95)) drop-shadow(0 0 14px rgba(74,222,128,0.5)); }
         }
         .grace-badge { color: #4ade80; text-shadow: 0 0 4px #ef4444, 0 0 8px rgba(74,222,128,0.8); }
+        .mob-badge-row { display:flex; justify-content:center; align-content:flex-start; flex-wrap:wrap; gap:2px; min-height:18px; max-height:36px; margin-bottom:4px; overflow:hidden; }
+        .mob-badge-row > span { flex:0 0 auto; white-space:nowrap; max-width:100%; }
         /* 🔮 席琳結晶圖示：與套裝文字同步的呼吸式綠色光芒 */
         .sherine-glow-icon { animation: sherineIcon 2.2s ease-in-out infinite; }
         @keyframes sherineIcon {
@@ -471,7 +473,7 @@
         /* 🎯 五怪站位（⚠️v2.6.39 用戶要求：取消隨機出沒＋恢復整齊「前排三個・後排兩個(後排較高)」＋怪變大）：
            v2.4.85~v2.6.38 曾用 2 排 grid(上下排各半高)——但狩獵區改 1920/580 條狀(v2.6.37)後每格僅 ~87px，被名稱/徽章/血條等固定列擠到怪圖只剩 ~13px(極小)。
            改回「單排站立帶(flex)」＝每隻怪吃滿條狀帶全高→怪圖 ~4-5× 大(13px→~69px)。DOM 順序 [front0,back3,front1,back4,front2](js/09 _order)於 flex 由左至右＝前,後,前,後,前 交錯；
-           ⚠️v2.6.44 用戶要求「前後排統一大小＝取原前排1.55與後排1.02的平均1.285×」：前後排 scale 皆 1.285×，僅保留 translateY 位置差(後排 -30px 較高·前排 +2px)＝景深只靠位置不靠大小。頭目 boss-zoom＝1.78(不變·恆最大·仍 >1.285)。3 格地圖(龍窟/攻城/裂痕)無 .mob-back→走下方單排規則。 */
+           ⚠️v2.6.44 用戶要求「前後排統一大小＝取原前排1.55與後排1.02的平均1.285×」：前後排 scale 皆 1.285×，僅保留 translateY 位置差(後排 -30px 較高·前排 +2px)＝景深只靠位置不靠大小。頭目 boss-zoom＝1.78(不變·恆最大·仍 >1.285)。3 格地圖(單體純BOSS房/雙BOSS祭壇)無 .mob-back→走下方單排規則。 */
         #battle-view.area-fit #mob-list:has(.mob-back) { display: flex; align-items: flex-end; height: 242px; }   /* 🎯 v3.2.80 五怪前後排怪物站立帶固定 242px(同一般·釘 16:9 框底)；原 100% 會隨 16:9 框長成 ~418 使怪放大 1.7×＋景深位移相對變小→維持 242 保尺寸/景深一致 */
         #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner { transform: translateY(-30px) scale(1.285); transform-origin: bottom center; }   /* 後排：上移 30px＋統一大小 1.285×→較高較遠(僅位置差·大小同前排) */
         #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner { transform: translateY(2px) scale(1.285); transform-origin: bottom center; }   /* 前排：統一大小 1.285×＝原前1.55與後1.02平均(<頭目 1.78) */
@@ -521,6 +523,12 @@
         .party-sprite img { position: absolute; left: 0; bottom: 0; image-rendering: crisp-edges; image-rendering: pixelated; }
         .party-sprite .pm-shadow { mix-blend-mode: multiply; }
         #player-morph-sprite .pm-weapon { mix-blend-mode: screen; }
+        #player-morph-sprite .pm-castle-crown {
+            position: absolute; z-index: 6; width: 16px; height: 12px; object-fit: contain;
+            transform: translateX(-50%); pointer-events: none; user-select: none;
+            image-rendering: crisp-edges; image-rendering: pixelated;
+            filter: drop-shadow(0 1px 1px rgba(69,26,3,.95)) drop-shadow(0 0 3px rgba(250,204,21,.82));
+        }
         .party-sprite .pm-weapon { mix-blend-mode: screen; }   /* 🧝 v3.5.23 傭兵變身特效層（_w）＝同玩家 screen 加亮混合（容器同樣不用 transform 防隔離群組毀 blend） */
         /* 🌑 v2.7.17 真實影子 sprite 圖層：絕對定位、底部置中、與本體同 native 尺寸(同世界錨定畫布)→像素級疊合。DOM 順序影子在前→本體(在後)自然疊於其上；影子沿用上方 .mob-anim img 的 native/pixelated 規則。 */
         #battle-view .mob-img-inner.mob-anim .mob-anim-shadow { position: absolute !important; left: 50%; bottom: 0; transform: translateX(-50%); pointer-events: none; mix-blend-mode: multiply; }   /* 🌑 v2.7.43 影子灰階當「濃淡遮罩」multiply(白→透明/黑→濃/灰→淡)：修自帶光源怪(不死鳥/伊弗利特)淺灰影子顯示成一塊灰·改成淡影子·一般近黑怪→濃影子 */
@@ -786,27 +794,14 @@
         }
         .bless-glow-strong { animation: blessGlowStrong 1.3s infinite ease-in-out; }
 
-        /* 血盟敵人名稱：固定鮮紅 + 紅色脈動醒目特效 */
-        @keyframes pledgeNameGlow {
-            0%, 100% { text-shadow: 0 0 4px #ff0000, 0 0 8px #ff3b3b; }
-            50%      { text-shadow: 0 0 10px #ff0000, 0 0 20px #ff2d2d, 0 0 32px #ff5555; }
-        }
-        .mob-name-pledge { color: #ff2d2d !important; animation: pledgeNameGlow 1s infinite ease-in-out; }
-
-        /* 頭目名稱：保留等差顏色，疊加金色脈動專屬特效（與血盟不同） */
-        @keyframes bossNameGlow {
-            0%, 100% { text-shadow: 0 0 4px rgba(251,191,36,0.7), 0 0 8px rgba(245,158,11,0.5); letter-spacing: 0; }
-            50%      { text-shadow: 0 0 12px rgba(251,191,36,1), 0 0 22px rgba(217,119,6,0.85); letter-spacing: 0.5px; }
-        }
+        /* 🗑️ v3.5.83 移除死 CSS：.mob-name-pledge / @keyframes pledgeNameGlow / @keyframes bossNameGlow
+           ・.mob-name-pledge 無任何 JS 發出此 class，且上方 `#battle-view .mob-name span` 的白色鎖定規則
+             （color:#fff!important; animation:none!important）優先度更高，就算補回也不會生效。
+           ・bossNameGlow 被緊接著的 `.mob-name-boss { animation: none }` 取消；頭目名稱的鮮紅由
+             `#battle-view .mob-name span.mob-name-boss` 那條高優先規則設定，與「等差顏色」無關。 */
         .mob-name-boss { animation: none; }   /* 👑 頭目名稱：固定鮮紅(實際紅色由上方 #battle-view .mob-name span.mob-name-boss 高優先規則設定)、無脈動動畫(受擊不變色) */
-        /* 🎨 怪物名稱等差顏色（依 mob.lv − player.lv）：自訂 hex class，因本專案 Tailwind JIT 未生成 text-red-500/pink/blue 等→改用自訂 class 保證生效 */
-        .mc-red    { color: #ef4444 !important; }   /* 高11等以上：鮮紅 */
-        .mc-lred   { color: #fca5a5 !important; }   /* 高7~10：淺紅（淡） */
-        .mc-yellow { color: #facc15 !important; }   /* 高4~6：黃色 */
-        .mc-white  { color: #ffffff !important; }   /* 高3~低3：白色 */
-        .mc-lgreen { color: #86efac !important; }   /* 低4~6：淺綠 */
-        .mc-lblue  { color: #bae6fd !important; }   /* 低7~10：淺藍（更淺） */
-        .mc-dblue  { color: #2158e1 !important; }   /* 低11等以上：深藍（稍微淺一點點·仍深藍） */
+        /* 🏷️ 怪名一律白（539 行附近 `#battle-view .mob-name span` 白鎖規則·getMobNameClass(js/03) 硬回 mc-white）；頭目名固定鮮紅由白鎖規則下一行的 `#battle-view .mob-name span.mob-name-boss` 設定。舊「等差顏色」六個 class（依 mob.lv−player.lv 分色）不可達，已於 v3.5.83 移除 */
+        .mc-white  { color: #ffffff !important; }   /* 怪卡名統一白色（getMobNameClass 回傳） */
         .mc-mobname { color: #fcd34d !important; }   /* 🔧 戰鬥日誌怪名專用（淡金色）：怪卡名已統一白色、日誌怪名改金色以與其他白色訊息區隔 */
 
         /* 三詞綴(屬性+遠古+祝福)：紅→藍→綠→琥珀 循環變換光（顏色不變，顯眼度最高，恆定強光+大光暈） */
@@ -877,8 +872,9 @@
         .vfx-blood { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); will-change: transform,opacity; pointer-events: none; }   /* 🩸 命中濺血小血滴：小顆、不上發光陰影→不搶眼 */
         /* 🏹 弓箭投射物（playArrowFx）：原生像素尺寸、不旋轉（左上/右上兩張方向圖）、飛行由 element.animate 驅動 */
         .vfx-arrow { position: absolute; transform: translate(-50%,-50%); will-change: transform,opacity; pointer-events: none; image-rendering: crisp-edges; image-rendering: pixelated; filter: drop-shadow(0 1px 2px rgba(0,0,0,.55)); }
-        /* ✨ 怪物死亡：衝擊波環 + 白閃殘影（vfxKill 以 element.animate 驅動·邊框色/尺寸由 JS 內聯指定） */
-        .vfx-killring { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); border: 4px solid #ff8a5c; pointer-events: none; will-change: transform,opacity; }
+        /* ✨ 怪物死亡：白閃殘影（vfxKill 以 element.animate 驅動·尺寸由 JS 內聯指定）
+           📝 v3.5.94 同步刪除段標題裡的「衝擊波環」：.vfx-killring 已於 v3.5.83 清除，此段只剩 .vfx-ghost 殘影 */
+        /* 🗑️ v3.5.83 移除死 CSS：.vfx-killring——v2.7.49 取消死亡衝擊環後零引用（同批註解提到的 .vfx-particle 仍在使用，勿一併刪）。 */
         .vfx-ghost { position: absolute; transform: translate(-50%,-50%); object-fit: contain; pointer-events: none; will-change: transform,opacity,filter; }
         /* ⚡ v2.7.15 法術特效疊加圖層：定位由 JS 內聯(left/top/width/height/mix-blend-mode:screen)；left/top＝螢幕座標(相對 #vfx-layer position:fixed inset:0)；image-rendering 保持像素銳利與怪圖一致 */
         .vfx-spell { position: absolute; pointer-events: none; image-rendering: pixelated; image-rendering: crisp-edges; will-change: opacity; }
@@ -932,9 +928,8 @@
         }
         @keyframes vfxHurt { 0%,100% { box-shadow: inset 0 0 0 0 rgba(220,38,38,0); } 42% { box-shadow: inset 0 0 32px 6px rgba(220,38,38,.55); } }
         .vfx-hurt { animation: vfxHurt .5s ease-out; }
-        /* 命中衝擊環 */
-        .vfx-ring { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); border: 2px solid #fff; will-change: transform,opacity; }
-        @keyframes vfxRing { 0% { opacity: .9; transform: translate(-50%,-50%) scale(.2); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
+        /* 🗑️ v3.5.83 移除死 CSS：.vfx-ring / @keyframes vfxRing——v3.0.104 取消白色命中衝擊環，
+           v3.5.48 已清掉對應的 _vfxImpact JS，只剩這兩條沒人引用的樣式。 */
         /* 升級慶祝 */
         .vfx-lvring { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); border: 3px solid #ffd54f; box-shadow: 0 0 18px #ffca28, inset 0 0 18px #ffca28; will-change: transform,opacity; }
         @keyframes vfxLvRing { 0% { opacity: 1; transform: translate(-50%,-50%) scale(.15); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
@@ -1026,6 +1021,15 @@
 .classic-item-lock-badge { position:absolute; z-index:6; right:1px; top:1px; display:flex; align-items:center; justify-content:center; width:34%; height:34%; max-width:16px; max-height:16px; color:#f8d36a; font-size:clamp(7px,.65vw,11px); line-height:1; filter:drop-shadow(0 1px 2px #000); pointer-events:none; }
 .classic-item-junk .classic-icon-box img { opacity:.48 !important; filter:grayscale(1) brightness(.62) !important; }
 .classic-item-junk-label { position:absolute; z-index:6; left:1px; right:1px; bottom:1px; color:#ff5b5b; background:rgba(25,0,0,.70); font-size:clamp(6px,.5vw,8px); font-weight:800; line-height:1.1; text-align:center; text-shadow:0 1px 2px #000; pointer-events:none; }
+/* 🔒 上鎖物品：原本只加 .classic-item-locked class 但三份樣式表皆無定義(純無效果)，比照上方廢品補上視覺區別。
+   語彙刻意與廢品(琥珀灰／灰階圖示＋紅字標籤)分流：改用低飽和藍青底＋左側青色條，讀作「保護中」而非「待丟棄」，且不動圖示明度(上鎖物品仍要看得清楚)。
+   ⚠️ 選擇器用 .list-item.classic-item-locked(0,2,0) 而非單一 class：tailwind-built.css 排在 style.css 之後，平手時 bg-slate-800 等 utility 會勝出。
+   ⚠️ box-shadow 必須帶 !important：上方 .classic-inventory-viewport > .list-item 的內陰影本身就是 !important，
+      不加的話方格模式下這裡的青色邊完全不會出現（v3.5.90 實機量到 computed 仍是黑色內陰影才發現）。
+   ⚠️ 一律原生 CSS 屬性、不用 Tailwind 任意值語法(預編譯不會生成)。 */
+.list-item.classic-item-locked { background-color:rgba(23,54,74,.72) !important; box-shadow:inset 3px 0 0 #38bdf8 !important; }
+.list-item.classic-item-locked .classic-name-box { color:#cfe9fb; }
+.classic-inventory-viewport > .list-item.classic-item-locked { box-shadow:inset 0 0 0 1px #38bdf8aa, inset 0 0 9px #38bdf833, inset 0 0 6px #000 !important; }
 .classic-inventory-scroll { position:absolute; z-index:4; right:4.1%; width:7%; height:6.2%; padding:0; border:0; border-radius:50%; background:transparent; opacity:.01; }
 .classic-inventory-scroll:hover { opacity:.18; background:#fff3b0; }
 .classic-inventory-scroll-up { top:11.2%; }
@@ -1146,7 +1150,7 @@ button.classic-skill-cell { cursor:pointer; }
 .classic-skill-stat-mr { left:74.1%; top:89.35%; width:13%; height:4.7%; }
 
 /* 📵 v3.0.74 移植參考版 UI 時移除其手機 media query（@media pointer:coarse）：本專案為「桌機專用」設計（見記憶 desktop-only-layout·手機改 viewport-meta 等比縮小），不再引入手機響應式版面。 */
-#slot-select-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,92vw); max-height:92vh; overflow:auto; margin:0 !important; padding:22px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
+/* 🗑️ 移除 #slot-select-panel:not(.hidden) 孤兒規則：v3.5.83 已刪除 index.html 的 #slot-select-panel 元素與 openSlotSelect／chooseSlot／slotBackToMenu，零元素會套用（唯一存檔載入面板＝下方仍在用的 #load-select-panel）。 */
 #creation-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(1000px,96vw); max-height:96vh; overflow:auto; padding:20px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
 
 /* ===== 824.png 創角畫面：底圖框架、序列幀角色、原圖配點熱區 ===== */
@@ -1749,9 +1753,8 @@ button.classic-skill-cell { cursor:pointer; }
     opacity:.42;
     cursor:not-allowed;
 }
-#load-btn-restore.hidden {
-    display:none !important;
-}
+/* 🗑️ v3.5.83 移除 #load-btn-restore：載入畫面沒有這顆按鈕（只有 create/import/enter/export/delete/back 六顆），
+   復原備份機制本身也已於本版一併移除。 */
 
 /* ===== 載入畫面資訊與右側按鈕校準 ===== */
 #load-info-panel {
@@ -2277,12 +2280,14 @@ button.classic-skill-cell { cursor:pointer; }
 }
 :is(#card-book-body, #equip-book-body, #misc-book-body, #relic-book-body) [class*="bg-slate-"],
 #warehouse-window-content [class*="bg-slate-"],
-#tab-audit [class*="bg-slate-"] {
+#tab-audit [class*="bg-slate-"],
+#tab-clan [class*="bg-slate-"] {
     background-color: #292832 !important;
 }
 :is(#card-book-body, #equip-book-body, #misc-book-body, #relic-book-body) [class*="border-slate-"],
 #warehouse-window-content [class*="border-slate-"],
-#tab-audit [class*="border-slate-"] {
+#tab-audit [class*="border-slate-"],
+#tab-clan [class*="border-slate-"] {
     border-color: #594638 !important;
 }
 
@@ -2371,7 +2376,8 @@ button.classic-skill-cell { cursor:pointer; }
 #autosell-rule-modal select,
 #town-interaction-container input,
 #town-interaction-container select,
-#tab-audit input {
+#tab-audit input,
+#tab-clan input {
     color: #eee9e1 !important;
     border-color: #665449 !important;
     background: #19181e !important;
@@ -2380,7 +2386,8 @@ button.classic-skill-cell { cursor:pointer; }
 #autosell-rule-modal select:focus,
 #town-interaction-container input:focus,
 #town-interaction-container select:focus,
-#tab-audit input:focus { border-color: #b18454 !important; outline: none; }
+#tab-audit input:focus,
+#tab-clan input:focus { border-color: #b18454 !important; outline: none; }
 
 #warehouse-window-frame {
     color: #e5e1dc !important;
@@ -2404,10 +2411,12 @@ button.classic-skill-cell { cursor:pointer; }
 #warehouse-window-content { color: #ddd8d2 !important; background: #27262f !important; }
 #warehouse-window-content :is(.bg-slate-900, .bg-slate-800, .bg-slate-700),
 #town-interaction-container :is(.bg-slate-900, .bg-slate-800, .bg-slate-700),
-#tab-audit :is(.bg-slate-900, .bg-slate-800, .bg-slate-700) { background-color: #24232b !important; }
+#tab-audit :is(.bg-slate-900, .bg-slate-800, .bg-slate-700),
+#tab-clan :is(.bg-slate-900, .bg-slate-800, .bg-slate-700) { background-color: #24232b !important; }
 #warehouse-window-content [class*="border-slate-"],
 #town-interaction-container [class*="border-slate-"],
-#tab-audit [class*="border-slate-"] { border-color: #594638 !important; }
+#tab-audit [class*="border-slate-"],
+#tab-clan [class*="border-slate-"] { border-color: #594638 !important; }
 
 #town-interaction-container:not(.hidden) {
     color: #ddd8d2 !important;
@@ -2629,6 +2638,7 @@ button.classic-skill-cell { cursor:pointer; }
 }
 
 #tab-audit { color: #ddd8d2; background: #292832 !important; }
+#tab-clan { color: #ddd8d2; background: #292832 !important; }
 #tab-audit > div > div,
 #tab-audit [class*="bg-slate-800"] {
     border-color: #594638 !important;
@@ -2672,6 +2682,14 @@ button.classic-skill-cell { cursor:pointer; }
     position: absolute; left: 0; top: 0; width: 100%; height: auto; z-index: 2;
     pointer-events: none; image-rendering: pixelated; mix-blend-mode: screen;
 }
+.town-npc .tn-castle-crown {
+    position: absolute; left: 50%; bottom: 100%; z-index: 55;
+    transform: translateX(-50%); margin-bottom: 3px;
+    display: block; width: 16px; height: 12px; object-fit: contain;
+    pointer-events: none; user-select: none;
+    image-rendering: crisp-edges; image-rendering: pixelated;
+    filter: drop-shadow(0 1px 1px rgba(69,26,3,.95)) drop-shadow(0 0 4px rgba(250,204,21,.9));
+}
 .town-npc:hover { filter: brightness(1.16) drop-shadow(0 0 7px rgba(250,204,21,.65)); transform: translate(-50%,-100%) scale(1.07); }
 .town-npc .tn-label {
     position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); margin-bottom: 5px;
@@ -2679,6 +2697,7 @@ button.classic-skill-cell { cursor:pointer; }
     background: rgba(15,23,42,.94); border: 1px solid #64748b; box-shadow: 0 2px 8px rgba(0,0,0,.5);
     opacity: 0; pointer-events: none; transition: opacity .12s ease; z-index: 60;
 }
+.town-npc.has-castle-crown .tn-label { margin-bottom: 17px; }
 .town-npc:hover .tn-label { opacity: 1; }
 /* 🏷️ v3.2.92 戰鬥日誌「狀態」鈕(_showMobStatus)開啟→名牌常駐頭頂；hover 的 NPC 一律置頂(蓋過鄰近 NPC 身體/名牌) */
 /* 🖱️ v3.2.93 狀態開啟時名牌也可點：pointer-events 打開→點名牌事件冒泡到父層 .town-npc 的 onclick(interactNPC)＝點名字＝選到該 NPC；狀態關閉時維持 none(僅 hover 顯示·不擋下方點擊) */
@@ -2729,7 +2748,15 @@ button.classic-skill-cell { cursor:pointer; }
 .wandering-buyer-reward { margin-top: 5px; color: #7dd3fc; font-size: 13px; }
 .wandering-buyer-note { margin-top: 5px; color: #8f8781; font-size: 10px; font-weight: 400; }
 .wandering-buyer-state { flex: none; font-size: 11px; font-weight: 700; }
-.wandering-buyer-submit { justify-self: center; min-width: 180px; }
+.wandering-buyer-actions { display: flex; justify-content: center; gap: 10px; }
+.wandering-buyer-submit { min-width: 180px; }
+.wandering-buyer-dismiss {
+    min-width: 112px;
+    color: #fecaca;
+    border-color: #7f1d1d;
+    background: #3f1717;
+}
+.wandering-buyer-dismiss:hover { background: #5b1f1f; }
 #wandering-buyer-msg { min-height: 18px; text-align: center; font-size: 12px; }
 .wander-broadcast-name {
     display: inline;
@@ -2773,6 +2800,26 @@ button.classic-skill-cell { cursor:pointer; }
     background: rgba(183, 146, 62, .18);
     color: #f4df9e;
 }
+.wandering-shout-menu .wandering-taunt-entry { color: #f3b5a9; }
+.wandering-shout-menu .wandering-taunt-entry:hover {
+    background: rgba(153, 63, 51, .24);
+    color: #ffd2c8;
+}
+.wandering-taunt-menu {
+    width: min(340px, calc(100vw - 16px));
+}
+.wandering-taunt-heading {
+    padding: 7px 10px 8px;
+    border-bottom: 1px solid rgba(183, 146, 62, .32);
+    color: #b8afa5;
+    font-size: 11px;
+    line-height: 1.35;
+}
+.wandering-taunt-menu button {
+    padding: 9px 11px;
+    white-space: normal;
+    line-height: 1.45;
+}
 /* 📌 v3.5.77 NPC 叫賣釘選列（#sys-log-pins·index.html 位於 #sys-log 上方）：
    最多兩條常駐在「系統與物品日誌」頂端不被推走；被互動(吵死了/馬上到/開對話/成交)或離場後自動換下一位。
    ⚠️ 用 :empty 收起整條（不用 Tailwind .hidden：ID 選擇器權重會壓過 class，切換會失效）。 */
@@ -2803,6 +2850,53 @@ button.classic-skill-cell { cursor:pointer; }
 .wander-chat-target { color: #d8c79e; font-weight: 700; }
 .wander-chat-in { color: #ddd6d0; }
 .wander-chat-speaker { color: #c8b9ee; font-weight: 700; }
+.pvp-kill-whisper-name {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    line-height: inherit;
+    cursor: pointer;
+}
+.pvp-kill-whisper-name:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.pvp-kill-whisper-menu {
+    position: fixed;
+    z-index: 261;
+    width: min(340px, calc(100vw - 16px));
+    padding: 4px;
+    border: 1px solid #9f4d52;
+    border-radius: 3px;
+    background: rgba(36, 30, 33, .98);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .72);
+}
+.pvp-kill-whisper-heading {
+    padding: 7px 10px 8px;
+    border-bottom: 1px solid rgba(190, 83, 91, .34);
+    color: #b8afa5;
+    font-size: 11px;
+    line-height: 1.35;
+}
+.pvp-kill-whisper-menu button {
+    width: 100%;
+    padding: 9px 11px;
+    border: 0;
+    background: transparent;
+    color: #eadfdb;
+    font-size: 13px;
+    line-height: 1.45;
+    text-align: left;
+    white-space: normal;
+    cursor: pointer;
+}
+.pvp-kill-whisper-menu button:hover {
+    background: rgba(153, 63, 70, .24);
+    color: #ffd2d5;
+}
 /* 🏘️ v3.2.88 NPC 功能改成與倉庫相同的「浮動視窗」：position:fixed 脫離會塌陷的 town-view(不再點了沒顯示)·z-index 73 高於動態 sprite 圖層(map z:1) 與倉庫(72) */
 #town-interaction-container:not(.hidden) {
     position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);

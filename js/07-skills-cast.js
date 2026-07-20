@@ -339,7 +339,17 @@ function royalMagicFreeCast() {
     let _id = _sel ? _sel.value : '';
     if (!_id || !DB.skills[_id]) return;
     _royalFreeCast = true;
-    try { castSkill(_id); } finally { _royalFreeCast = false; }
+    // 👑 v3.5.94 攻擊技冷卻快照還原：免費追加施放是「額外的一次」，不得吃掉已累積的冷卻進度。
+    //    原本只在物理／魔法兩條分支加 `if (!_royalFreeCast)` 守衛，但 _royalFreeCast 能繞過 atkSk 閘門進場，
+    //    該區塊內共有 7 處 `player.cds.atkSk = getAutoCastInterval(...)`——屠宰者／咆哮／呼喚盟友／固定狀態／
+    //    武器傷害五條分支都沒守衛，其中「呼喚盟友」(sk_royal_callally) 是王族自己的 Lv30 攻擊技＝可實際觸發的活路徑。
+    //    改成在這裡快照還原：一次覆蓋所有分支，日後新增 atk 分支也不會再漏改。
+    //    （655／727 兩處的守衛保留：不寫入優於寫了再還原，且具自我說明作用。）
+    let _cdSnap = (player.cds && player.cds.atkSk !== undefined) ? player.cds.atkSk : undefined;
+    try { castSkill(_id); } finally {
+        _royalFreeCast = false;
+        if (_cdSnap !== undefined && player.cds) player.cds.atkSk = _cdSnap;
+    }
 }
 let _silenceLogAt = 0;   // ⏱️ 沉默／魔法封印提示節流：自動施法每 tick 會重試→原本每 tick 洗一次頻。共用時間戳，最多每 1 秒顯示 1 次。
 function _logSilenceOnce(msg){ let now = (typeof Date !== 'undefined') ? Date.now() : 0; if(now - _silenceLogAt < 1000) return; _silenceLogAt = now; logSys(msg); }
@@ -399,6 +409,7 @@ function castSkillInner(skId) {
         if (_t.race === '血盟') dmg *= 2;                                 // 對血盟敵人 x2
         _t.curHp -= dmg; _t.justHit = getWpnEle(player.eq.wpn, wpn); mobWake(_t);
         if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(_t, dmg, (wpn && (wpn.isBow || wpn.ranged)) ? 'ranged' : 'melee', null);   // 🌑 v3.4.14 血壁空間：會心一擊＝技能直擊反射（玩家傭兵一致）
+        if (player.dead) return true;   // ☠️ v3.5.87 反射可反殺施放者：死後中止收尾（不結算擊殺經驗/掉落·比照 js/04 playerAttack）
         logCombat(`<span class="font-bold" style="color:#f0abfc;text-shadow:0 0 8px #d946ef;">【會心一擊】</span>對 <span class="${getMobColor(_t.lv)}">${_t.n}</span> 造成 ${dmg} 點致命傷害！`, 'player-crit');
         let _i = mapState.mobs.findIndex(m => m && m.uid === _t.uid);
         if (_t.curHp <= 0) { if (_i !== -1) killMob(_i); } else renderMobs();
@@ -463,10 +474,11 @@ function castSkillInner(skId) {
         // 🆕 v2.6.28 淨化改「團隊清除」→ v2.6.29 改「一次只解一人·優先主要玩家」：施法者(玩家自己)受 石化/冰凍/暈眩/麻痺/沉睡/沉默/魔封 時無法使用；否則解隊列首位(玩家排首→傭兵)有可解狀態者一人。
         let _dk = (skId === 'sk_antidote') ? ['poison']
             : (skId === 'sk_holy_light') ? ['stone', 'paralyze']
-            : (skId === 'sk_cancel') ? ['freeze', 'stone', 'poison', 'paralyze', 'burn', 'scald', 'weaken', 'disease', 'blind', 'potionFrost'] : null;   // 🌅 審查修：魔法相消術可解日出之國四新異常
+            : (skId === 'sk_cancel') ? ['freeze', 'stone', 'poison', 'paralyze', 'burn', 'scald', 'weaken', 'disease', 'blind', 'potionFrost', 'foulWater'] : null;   // 🌅 審查修：魔法相消術可解日出之國四新異常；🌊 v3.6.20 含汙濁之水
         if(!_dk) { player.mp -= cost; player.cds.purifySk = getAutoCastInterval(player, true, player.cds.purifySk); logCombat(`施放 ${sk.n}。${sk.msg || ''}`, 'heal'); return true; }   // 非淨化 heal（保底·理論上無此類）
         if(dispelCasterBlocked(player.statuses)) return false;   // 🆕 自己硬控/沉默/魔封→無法使用
-        let _tgt = teamCleanseOne(_dk);   // 🆕 v2.6.29 一次只解一人·優先主要玩家
+        let _tgt = teamCleanseOne(_dk);
+        if (_tgt) _lastHealFxTarget = _tgt;   // ✨ 淨化類技能的治癒特效要錨在「實際被解狀態的對象」上；不設的話會沿用上一次被治癒的隊員（或 fallback 到玩家）   // 🆕 v2.6.29 一次只解一人·優先主要玩家
         if(!_tgt) return false;           // 隊伍(含自己)無對應可解狀態：不施放、不耗 MP
         player.mp -= cost;
         player.cds.purifySk = getAutoCastInterval(player, true, player.cds.purifySk);
@@ -480,12 +492,12 @@ function castSkillInner(skId) {
         if(sk.hot) {
             if(player.hots && player.hots[skId] && player.hots[skId].ticksLeft > 0) return false;  // 🍃 該技能團隊 HoT 已在持續中→不重複(防自動施放洗版/耗MP)；不同技能(生命的祝福/體力回復術)可並存、同技能後放取代先放
             player.mp -= cost;
-            applyTeamHot(skId, sk, player.d, player);   // 🍃 施放時全隊(玩家＋全體傭兵)持續回復；🏺 v3.1.80 傳施放者供 hotHealMult 快照
+            applyTeamHot(skId, sk, player.d, player);   // 🍃 施放時全隊(玩家＋全體傭兵)持續回復；🏺 v3.1.80 傳施放者供團體治癒強化(groupHealMult)快照
             player.cds.healSk = getAutoCastInterval(player, true, player.cds.healSk);  // 🔧 HoT 不再把共用治癒冷卻鎖到結束：重複施放已由上方守衛擋住；長鎖會餓死其他自動治癒（高級治癒術/生命之泉等）
             logCombat(`施放 ${sk.n}，全隊開始持續回復 HP。`, 'heal');
             return true;
         }
-        // 舊版方向瞬間治癒：基本骰數＋INT治癒加成，固定滿正義×2；不吃魔法傷害／SP／法術階級。
+        // 舊版方向瞬間治癒：基本骰數＋INT治癒加成，×2 為 classicHeal 基礎倍率（與正義值無關·正義加成由 justiceHeal 旗標在 rollHealingSpell 另乘）；不吃魔法傷害／SP／法術階級。
         // 團體治癒對每名存活成員獨立擲骰；生命之泉則直接恢復目標全部已損失HP。
         let _cands = (typeof healBeneficiaries === 'function') ? healBeneficiaries() : [player];
         if (!_cands.length) return false;
@@ -540,6 +552,7 @@ function castSkillInner(skId) {
                 if (sk.hpCost && player._setDragonblood5) dmg = Math.max(1, Math.floor(dmg * 1.2));   // 🐉 龍血5/5：HP消耗技傷害+20%（屠宰者＝物理HP消耗技·與魔法路徑 js/07 一致）
                 t.curHp -= dmg; t.justHit = getWpnEle(player.eq.wpn, wpn); total += dmg; mobWake(t);
                 if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, 'melee', null);   // 🌑 v3.4.14 血壁空間：屠宰者每擊＝近距離技能直擊反射（玩家傭兵一致）
+                if (player.dead) { if (consume && applied) t.weakExpose = 0; return true; }   // ☠️ v3.5.87 反射反殺：死後中止後續斬擊與擊殺結算　⚡ v3.5.89 早退前補做弱點曝光消耗（否則玩家已吃到 +10/層加成、目標層數卻沒清）
                 log.push(dmg + (res.heavy ? '(重)' : ''));
                 if (t.curHp > 0) wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true, player.classicMode);
             }
@@ -556,7 +569,8 @@ function castSkillInner(skId) {
             player.mp -= cost; player.cds.atkSk = getAutoCastInterval(player, false, player.cds.atkSk);
             if (sk.hpCost) player.hp = Math.max(1, player.hp - effHpCost(sk));
             let base = 50 + Math.max(0, (player.lv || 1) - 30);
-            targets.forEach(m => { if (!m || m.curHp <= 0 || m._dead) return; let dmg = Math.max(1, Math.floor(base * fragileMult(m))); m.curHp -= dmg; m.justHit = 'magic'; m._spellHurt = true; mobWake(m); if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(m, dmg, 'magic', null); });   // 🎬 v3.0.14 _spellHurt：法術傷害→hurt 動畫(含頭目)；🌑 v3.3.33 血壁空間魔法反射
+            targets.forEach(m => { if (player.dead) return; if (!m || m.curHp <= 0 || m._dead) return; let dmg = Math.max(1, Math.floor(base * fragileMult(m))); m.curHp -= dmg; m.justHit = 'magic'; m._spellHurt = true; mobWake(m); if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(m, dmg, 'magic', null); });   // 🎬 v3.0.14 _spellHurt：法術傷害→hurt 動畫(含頭目)；🌑 v3.3.33 血壁空間魔法反射
+            if (player.dead) return true;   // ☠️ v3.5.87 反射反殺：死後不結算擊殺
             logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，咆哮震懾全場，對所有敵人造成約 ${base} 點固定傷害。`, 'skill');
             targets.forEach(m => { if (m && m.curHp <= 0 && !m._dead) { let i = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (i !== -1) killMob(i); } });
             renderMobs();
@@ -620,6 +634,7 @@ function castSkillInner(skId) {
             dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(player) * wpnEnFinalMult(player.eq.wpn) * elementCounterMult(sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'none', t.e)));   // 🔮 幻術士等級加成 ×(1+等級/50)；🔧 武器強化 +11~+20 最終倍率；⚔️ 屬性剋制(僅武器傷害技吃武器屬性)
             t.curHp -= dmg; t.justHit = sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'magic'; if (!sk.weaponDmg) t._spellHurt = true; mobWake(t);   // 🎬 v3.0.14 純魔法技→hurt(含頭目)
             if (typeof reflectWallOnDamage === 'function' && t._reflectWall) { let _rwW = player.eq.wpn && DB.items[player.eq.wpn.id]; reflectWallOnDamage(t, dmg, sk.weaponDmg ? ((_rwW && (_rwW.isBow || _rwW.ranged)) ? 'ranged' : 'melee') : 'magic', null); }   // 🌑 v3.3.33 血壁空間：玩家技能傷害反射
+            if (player.dead) return true;   // ☠️ v3.5.87 反射反殺：死後中止收尾（不結算擊殺）
             if (sk.mpDmgPct && t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;   // 🔧 心靈破壞（魔法）：受一次魔法傷害後解除魔抗減半（與其他魔法路徑一致）
             logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。`, 'skill');
             if (t.curHp > 0 && sk.status) applyMobStatus(t, sk.status, sk.n, magicDamageCoef(player.d, 0));
@@ -644,7 +659,10 @@ function castSkillInner(skId) {
                 if (!arrowData) return false;
             }
             player.mp -= cost;
-            player.cds.atkSk = getAutoCastInterval(player, false, player.cds.atkSk);
+            // 👑 魔法精通的免費追加施放是「額外的一次」，它繞過了 521 行的 atkSk 閘門進場，
+            //    若在這裡照樣重設冷卻，會把玩家原本已累積的冷卻進度整段吃掉（nextCastCooldown
+            //    對正值 current 直接丟棄 carry）→ 平均只剩名目效益的一半。物理與魔法兩條分支都要擋。
+            if (!_royalFreeCast) player.cds.atkSk = getAutoCastInterval(player, false, player.cds.atkSk);
 
             let dice = wpn ? (t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
             if (arrowData) {
@@ -670,6 +688,7 @@ function castSkillInner(skId) {
                 t.curHp -= res.dmg;
                 t.justHit = getWpnEle(player.eq.wpn, wpn);
                 if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, res.dmg, res.ranged ? 'ranged' : 'melee', null);   // 🌑 v3.4.14 血壁空間：物理技能每擊反射（衝擊之暈/三重矢·玩家傭兵一致）
+                if (player.dead) { player._skillHitBonus = 0; return true; }   // ☠️ v3.5.87 反射反殺：死後中止後續箭/擊與收尾（⚠️ 記得歸零范德命中加成）
                 totalDmg += res.dmg;
                 let mark = (res.heavy && res.crit) ? '會心' : (res.crit ? '爆' : (res.heavy ? '重' : ''));
                 hitsLog.push(res.dmg + (mark ? '(' + mark + ')' : ''));
@@ -712,7 +731,10 @@ function castSkillInner(skId) {
             }
             
             player.mp -= cost;
-            player.cds.atkSk = getAutoCastInterval(player, false, player.cds.atkSk);
+            // 👑 魔法精通的免費追加施放是「額外的一次」，它繞過了 521 行的 atkSk 閘門進場，
+            //    若在這裡照樣重設冷卻，會把玩家原本已累積的冷卻進度整段吃掉（nextCastCooldown
+            //    對正值 current 直接丟棄 carry）→ 平均只剩名目效益的一半。物理與魔法兩條分支都要擋。
+            if (!_royalFreeCast) player.cds.atkSk = getAutoCastInterval(player, false, player.cds.atkSk);
             if(sk.hpCost && !_echoFree) player.hp = Math.max(1, player.hp - effHpCost(sk));   // 🔮 混亂/幻想/恐慌：扣除 HP 消耗（迴響連發那次免費；🐉 龍血精通減半）
 
             let totalDmgText = [];
@@ -770,6 +792,8 @@ function castSkillInner(skId) {
                     let multiText = hitsLog.length > 1 ? `[${hitsLog.join(", ")}] (總和: ${totalDmg})` : `${totalDmg}`;
                     if (isCrit) multiText += " (爆擊!)";
                     totalDmgText.push(`對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 <span class="${isCrit?'text-yellow-500 font-bold':'text-cyan-300'}">${multiText} 點傷害</span>`);
+                    if (player.dead) return;   // ☠️ v3.5.87 反射反殺：跳過本目標其餘附帶效果（forEach 內·外層另有總守衛）
+                                               // ⚡ v3.5.89 守衛移到傷害訊息 push 之後：原本擋在前面會讓被反殺當下印出「施放 冰矛 -> 」的空箭頭殘缺日誌
                 } else {
                     // 純狀態/秒殺類魔法（無傷害骰）：不造成直接傷害，只施加效果
                     t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic';
@@ -793,7 +817,7 @@ function castSkillInner(skId) {
             });
             
             logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span> -> ${totalDmgText.join(" | ")}`, 'skill');
-            
+            if (player.dead) return true;   // ☠️ v3.5.87 反射反殺：死後不結算擊殺經驗/掉落與後續 proc
             targets.forEach((t) => {
                 if(t.curHp <= 0) {
                     let realIdx = mapState.mobs.findIndex(m => m && m.uid === t.uid);
@@ -876,14 +900,23 @@ function castSkillInner(skId) {
     return false;
 }
 
+// 💤 【休眠機制】團隊 HoT（持續回復）：整條鏈路目前不可達——DB.skills 內已無任何技能宣告 hot/autoBuff
+//    （sk_regen 體力回復術／sk_elf_lifebless 生命的祝福 已改為 classicHeal+groupHeal 的「瞬間全隊治癒」）。
+//    機制本身完整且正確，刻意保留以便日後新增持續回復技能：只要在 js/00-data.js 該技能加回
+//    `hot: { interval: <每跳 tick 數>, ticks: <總跳數> }` 與 `autoBuff: true`，整條鏈路即自動復活。
+//    相關落點：js/03 tick 回復迴圈、js/07 applyTeamHot＋施放分支、js/06 傭兵施放、js/08 狀態圖示、js/10 取消打勾結束。
 // 🍃 團隊 HoT（生命的祝福 / 體力回復術）單一真相：施放時登錄「全隊持續回復」到 player.hots[skId]。
 //   ・player.hots 為 dict(skId→HoT 實例)→不同技能可並存；同 skId 後放覆蓋先放（取代/刷新）。
 //   ・dStats＝施法者衍生值(玩家 player.d 或傭兵 ally.d)→spCoef 由施法者魔法傷害決定；每 interval 於 js/03 tick 對「玩家＋全體非倒地傭兵」各回復一次。
 function applyTeamHot(skId, sk, dStats, caster) {
     if (!player.hots) player.hots = {};
     let mDmg = (dStats && dStats.magicDmg) || 0;
-    let _hm = 1;   // 🏺 v3.1.80 治癒者的恢復魔棒：施放者（玩家或傭兵）持有 hotHealMult 武器 → 此 HoT 每跳回復 ×N（施放時快照·中途換武器不影響已存在的 HoT）
-    try { let _cw = caster && caster.eq && caster.eq.wpn && DB.items[caster.eq.wpn.id]; if (_cw && _cw.hotHealMult) _hm = _cw.hotHealMult; } catch (e) {}
+    // 🏺 v3.1.80 治癒者的恢復魔棒：施放者（玩家或傭兵）持有團體治癒強化武器 → 此 HoT 每跳回復 ×N（施放時快照·中途換武器不影響已存在的 HoT）
+    // 🔧 v3.5.94 斷鏈修復：舊碼讀的 hotHealMult 欄位在 DB.items 已零定義（relic_healer_wand 早已遷移為 groupHealMult），
+    //    照橫幅配方復活時 _hm 會恆為 1、魔棒對 HoT 完全失效。改走單一真相 healingSpellCasterMult(js/03)，與瞬間治癒同一份欄位。
+    //    ⚠️ 該 helper 以 sk.groupHeal 為閘：日後復活的 HoT 技能若要吃魔棒加成，技能定義須保留 groupHeal:true（sk_regen／sk_elf_lifebless 現況即是）。
+    let _hm = 1;
+    try { if (typeof healingSpellCasterMult === 'function') _hm = Math.max(0, Number(healingSpellCasterMult(sk, caster)) || 1); } catch (e) {}
     player.hots[skId] = { skId: skId, healDice: sk.healDice, healBase: sk.healBase, valDice: sk.valDice, magicDmg: mDmg, spCoef: 1 + (3 * mDmg / 32), interval: sk.hot.interval, ticksLeft: sk.hot.ticks, cd: sk.hot.interval, skName: sk.n, msg: sk.msg, healMult: _hm };
 }
 function autoActions() {
@@ -912,13 +945,13 @@ function autoActions() {
         }
     }
     
-    const buffs = [
-        { id: 'set-haste', pot: 'potion_haste', b: 'haste', buyId: 'set-auto-buy-haste' },
-        { id: 'set-brave', pot: 'potion_brave', b: 'brave', req: 'knight,dragon,warrior,royal', buyId: 'set-auto-buy-brave' },
-        { id: 'set-blue', pot: 'potion_blue', b: 'blue', buyId: 'set-auto-buy-blue' },
-        { id: 'set-cautious', pot: 'new_item_140', b: 'cautious', req: 'mage,illusion', buyId: 'set-auto-buy-cautious' },
-        { id: 'set-elfcookie', pot: 'new_item_139', b: 'elfcookie', req: 'elf', buyId: 'set-auto-buy-elfcookie' },
-        { id: 'set-poly', pot: 'scroll_poly', b: 'poly', buyId: 'set-auto-buy-poly' },
+    const buffs = [   // 🗑️ v3.5.87 刪除六筆 buyId 欄位：v3.3.15「自動購買併入自動使用」時對應 DOM id 已移除·欄位零讀取（自動補購改由缺貨自動買一瓶邏輯處理）
+        { id: 'set-haste', pot: 'potion_haste', b: 'haste' },
+        { id: 'set-brave', pot: 'potion_brave', b: 'brave', req: 'knight,dragon,warrior,royal' },
+        { id: 'set-blue', pot: 'potion_blue', b: 'blue' },
+        { id: 'set-cautious', pot: 'new_item_140', b: 'cautious', req: 'mage,illusion' },
+        { id: 'set-elfcookie', pot: 'new_item_139', b: 'elfcookie', req: 'elf' },
+        { id: 'set-poly', pot: 'scroll_poly', b: 'poly' },
         { id: 'set-magicbarrier', pot: 'scroll_magicbarrier', b: 'sk_magic_shield' }
     ];
     buffs.forEach(cfg => {
@@ -1062,7 +1095,5 @@ function rollAffixesNew() {
     let m = _sherineLootCtx ? (_sherineLootCtx.mad ? 5 : 3) : 1;   // 🔮 席琳的世界 祝福機率 ×3（瘋狂×5）
     return { attr: false, bless: (lootRng('affixb') < 0.01 * m), anc: false };   // 🎲 committed RNG（防 SL 重抽祝福詞綴）
 }
-function rollAffixesOld() {
-    let m = _sherineLootCtx ? (_sherineLootCtx.mad ? 5 : 3) : 1;   // 🔮 席琳的世界 祝福機率 ×3（瘋狂×5）
-    return { attr: false, bless: (lootRng('affixb') < 0.01 * m), anc: false };   // 🎲 committed RNG（防 SL 重抽祝福詞綴）
-}
+// 🗑️ v3.5.87 移除 rollAffixesOld()：與 rollAffixesNew 早已 byte-identical（新舊詞綴制 v3.1 期合一），
+//    唯一呼叫點 js/08 gainItem 已改恆走 rollAffixesNew；affixOld 參數槽保留（位置相容）但不再分派。

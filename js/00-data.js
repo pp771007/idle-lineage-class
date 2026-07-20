@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v3.5.79';
+const GAME_VERSION = 'v3.6.36';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -803,14 +803,14 @@ const DB = {
         "relic_kangaroo_gloves": { n: "袋鼠的拳擊套",     type: "arm", slot: "gloves", relic: true, noEnhance: true, ac: 4, meleeDmg: 2, meleeHit: 4, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】袋鼠拳王的專用拳擊套，出拳快狠準。" },
         "relic_monkey_staff":    { n: "猴子的金箍棒",     type: "wpn", relic: true, noEnhance: true, eff: "crush", ignHardSkin: true, dmgS: 6, dmgL: 3, hit: 6, dmgBonus: 6, lvDmgDiv: 5, lvHitDiv: 5, req: "royal,knight,elf,mage,illusion,dragon,warrior", p: 10000, gachaWeight: 0, d: "【遺物】猴王隨心變化的如意金箍棒。單手鈍器。" },
         // ===== 🏺 遺物 第十五批：元素精靈王與職業特化遺物（單一怪物 0.0001% 掉落） =====
-        "relic_magic_resist_shirt": { n: "魔力阻抗襯衫", type: "arm", slot: "tshirt", relic: true, noEnhance: true, ac: 0, mrPerWis: 1, relicRole: "精神越高，魔法防禦越強", req: "all", p: 10000, gachaWeight: 0, img: "assets/icons/armors/T恤.png", d: "【遺物】以紅鬼魂殘留的靈質織成，布面會隨穿戴者的精神波動泛起幽光。" },
-        "relic_fireking_blast": { n: "火精靈王的爆焰", type: "wpn", w2h: true, relic: true, noEnhance: true, dmgS: 17, dmgL: 21, hit: 15, dmgBonus: 18, eff: "cleave", ele: "fire", hitEchoMagic: { rate: 10, ele: "fire" }, relicRole: "兼具切割攻速與命中爆破的近戰爆發武器", req: "royal,knight,dragon", p: 10000, gachaWeight: 0, img: "assets/icons/weapons/雙手劍.png", d: "【遺物】劍身封存著火精靈王未熄的核心，每次揮斬都會拖曳灼熱的爆燃火痕。" },
-        "relic_waterking_caress": { n: "水精靈王的撫摸", type: "wpn", relic: true, noEnhance: true, ignHardSkin: true, dmgS: 17, dmgL: 13, hit: 15, dmgBonus: 15, eff: "combo", comboRate: 35, ele: "water", missGrazeRate: 30, relicRole: "以雙擊、貫穿與擦傷補正穩定近戰輸出", req: "dark", p: 10000, gachaWeight: 0, img: "assets/icons/weapons/鋼鐵鋼爪.png", d: "【遺物】冷冽水流纏繞爪刃，即使攻勢落空，也可能被迴旋的水勢牽回敵身。" },
-        "relic_windking_roar": { n: "風精靈王的狂嘯", type: "wpn", isWand: true, relic: true, noEnhance: true, ignHardSkin: true, dmgS: 3, dmgL: 3, hit: 15, dmgBonus: 15, ele: "wind", windSpellProcRate: 15, relicRole: "強化風屬性主動法術的連鎖爆發", req: "mage", p: 10000, gachaWeight: 0, img: "assets/icons/weapons/橡木魔法杖.png", d: "【遺物】風精靈王不息的狂嘯被封入杖心，施法時仍能聽見風暴在其中翻湧。" },
-        "relic_earthking_resist": { n: "地精靈王的抗拒", type: "wpn", isBow: true, ranged: true, w2h: true, rapidfire: 65, relic: true, noEnhance: true, dmgS: 3, dmgL: 3, hit: 15, dmgBonus: 18, ele: "earth", hurtRapidfire: true, relicRole: "兼具主動連射與受擊反制的遠距離武器", req: "elf,illusion", p: 10000, gachaWeight: 0, img: "assets/icons/weapons/精靈弓.png", d: "【遺物】弓身承載地精靈王拒絕屈服的意志，越是遭受壓迫，反擊便越發猛烈。" },
-        "relic_pure_maiden_love": { n: "純潔少女的憐愛", type: "acc", slot: "amulet", relic: true, noEnhance: true, ac: 0, dex: 2, int: 2, mpR: 3, relicRole: "女妖精專屬的敏捷、智力與魔力恢復項鍊", req: "elf", reqAvatar: "女妖精", strictAvatar: true, p: 10000, gachaWeight: 0, img: "assets/icons/accessories/智力項鍊.png", d: "【遺物】獨角獸回應純潔少女的憐愛所留下的項鍊，唯有同樣純淨的靈魂能得到它的祝福。" },
-        "relic_rockmage_secret": { n: "破岩法師的秘術", type: "wpn", isWand: true, relic: true, noEnhance: true, ignHardSkin: true, dmgS: 3, dmgL: 3, hit: 15, dmgBonus: 15, extraMp: 15, ele: "earth", procSkill: "sk_hell_fang", procRateBase: 100, procRatePerEn: 0, relicRole: "以每次攻擊必定施法，補強魔法型普攻輸出", req: "mage,illusion", p: 10000, gachaWeight: 0, img: "assets/icons/weapons/巴風特魔杖.png", d: "【遺物】破岩法師將撼動大地的秘術封入杖中，每次揮動都會喚醒地底尖牙。" },
-        "relic_general_swordguard": { n: "將軍愛用的握劍護腕", type: "arm", slot: "gloves", relic: true, noEnhance: true, ac: 6, swordStr: 3, relicRole: "主手持單手劍或雙手劍時，進一步強化力量", req: "all", p: 10000, gachaWeight: 0, img: "assets/icons/armors/武官手套.png", d: "【遺物】黑暗妖精將軍久經戰陣的護腕，磨損的握帶仍殘留著不容退讓的劍勢。" },
+        "relic_magic_resist_shirt": { n: "魔力阻抗襯衫", type: "arm", slot: "tshirt", relic: true, noEnhance: true, ac: 0, mrPerWis: 1, relicRole: "精神越高，魔法防禦越強", req: "all", p: 10000, gachaWeight: 0, d: "【遺物】以紅鬼魂殘留的靈質織成，布面會隨穿戴者的精神波動泛起幽光。" },
+        "relic_fireking_blast": { n: "火精靈王的爆焰", type: "wpn", w2h: true, relic: true, noEnhance: true, dmgS: 17, dmgL: 21, hit: 15, dmgBonus: 18, eff: "cleave", ele: "fire", hitEchoMagic: { rate: 10, ele: "fire" }, relicRole: "兼具切割攻速與命中爆破的近戰爆發武器", req: "royal,knight,dragon", p: 10000, gachaWeight: 0, d: "【遺物】劍身封存著火精靈王未熄的核心，每次揮斬都會拖曳灼熱的爆燃火痕。" },
+        "relic_waterking_caress": { n: "水精靈王的撫摸", type: "wpn", relic: true, noEnhance: true, ignHardSkin: true, dmgS: 17, dmgL: 13, hit: 15, dmgBonus: 15, eff: "combo", comboRate: 35, ele: "water", missGrazeRate: 30, relicRole: "以雙擊、貫穿與擦傷補正穩定近戰輸出", req: "dark", p: 10000, gachaWeight: 0, d: "【遺物】冷冽水流纏繞爪刃，即使攻勢落空，也可能被迴旋的水勢牽回敵身。" },
+        "relic_windking_roar": { n: "風精靈王的狂嘯", type: "wpn", isWand: true, relic: true, noEnhance: true, ignHardSkin: true, dmgS: 3, dmgL: 3, hit: 15, dmgBonus: 15, ele: "wind", windSpellProcRate: 15, relicRole: "強化風屬性主動法術的連鎖爆發", req: "mage", p: 10000, gachaWeight: 0, d: "【遺物】風精靈王不息的狂嘯被封入杖心，施法時仍能聽見風暴在其中翻湧。" },
+        "relic_earthking_resist": { n: "地精靈王的抗拒", type: "wpn", isBow: true, ranged: true, w2h: true, rapidfire: 65, relic: true, noEnhance: true, dmgS: 3, dmgL: 3, hit: 15, dmgBonus: 18, ele: "earth", hurtRapidfire: true, relicRole: "兼具主動連射與受擊反制的遠距離武器", req: "elf,illusion", p: 10000, gachaWeight: 0, d: "【遺物】弓身承載地精靈王拒絕屈服的意志，越是遭受壓迫，反擊便越發猛烈。" },
+        "relic_pure_maiden_love": { n: "純潔少女的憐愛", type: "acc", slot: "amulet", relic: true, noEnhance: true, ac: 0, dex: 2, int: 2, mpR: 3, relicRole: "女妖精專屬的敏捷、智力與魔力恢復項鍊", req: "elf", reqAvatar: "女妖精", strictAvatar: true, p: 10000, gachaWeight: 0, d: "【遺物】獨角獸回應純潔少女的憐愛所留下的項鍊，唯有同樣純淨的靈魂能得到它的祝福。" },
+        "relic_rockmage_secret": { n: "破岩法師的秘術", type: "wpn", isWand: true, relic: true, noEnhance: true, ignHardSkin: true, dmgS: 3, dmgL: 3, hit: 15, dmgBonus: 15, extraMp: 15, ele: "earth", procSkill: "sk_hell_fang", procRateBase: 100, procRatePerEn: 0, relicRole: "以每次攻擊必定施法，補強魔法型普攻輸出", req: "mage,illusion", p: 10000, gachaWeight: 0, d: "【遺物】破岩法師將撼動大地的秘術封入杖中，每次揮動都會喚醒地底尖牙。" },
+        "relic_general_swordguard": { n: "將軍愛用的握劍護腕", type: "arm", slot: "gloves", relic: true, noEnhance: true, ac: 6, swordStr: 3, relicRole: "主手持單手劍或雙手劍時，進一步強化力量", req: "all", p: 10000, gachaWeight: 0, d: "【遺物】黑暗妖精將軍久經戰陣的護腕，磨損的握帶仍殘留著不容退讓的劍勢。" },
         // ===== 🏺 遺物 第十六批（單一怪物 0.0001% 掉落·MOB_DROPS/ITEM_WEIGHTS 於 js/01；WEAPON_TAGS 於 js/10；新機制掛點見 js/02/03/04/06/07/22） =====
         "relic_tamer_petarm":    { n: "馴獸師手做寵物專用盔甲", type: "arm", slot: "petarm", relic: true, noEnhance: true, petAc: 5, petDmgReduce: 0.2, relicRole: "寵物專用生存護甲，兼具防禦與20%傷害減免", req: "all", p: 10000, gachaWeight: 0, d: "【遺物】馴獸師依照愛寵的身形一針一線縫製，內襯至今仍留著主人掌心的溫度。寵物專用，無法強化。" },
         "relic_slave_shirt":     { n: "奴隸粗布衫",         type: "arm", slot: "tshirt", relic: true, noEnhance: true, ac: 9, dr: 5, relicRole: "以高防禦與固定減傷承受正面攻擊", req: "all", p: 10000, gachaWeight: 0, d: "【遺物】粗布浸透地獄奴隸的血汗，在無盡苦役中磨出了難以撕裂的堅韌。" },
@@ -1267,7 +1267,7 @@ const DB = {
         "new_item_194": { n: "阿西塔基奧的灰燼", p: 1000, gachaWeight: 0 },
         "new_item_195": { n: "精靈玉", p: 100, gachaWeight: 0 },
         "new_item_196": { n: "古老的交易文件", p: 1, c: "text-blue-300", gachaWeight: 0 },   // 🔧 試煉材料統一藍色
-        "new_item_197": { n: "搜索狀", p: 1, noUse: true, noSell: true, gachaWeight: 0, c: "text-amber-300", d: "王族 15 級試煉道具。接取甘特的試煉後，擊殺 黑騎士搜索隊 必定掉落（達需求數量即停止掉落·無法存入倉庫）。" },   // 🔧 v3.0.80 王族15試煉道具（與多用途的 王族搜索狀 new_item_241 不同）
+        "new_item_197": { n: "搜索狀", p: 1, noUse: true, noSell: true, gachaWeight: 0, c: "text-amber-300", d: "王族 15 級試煉道具。接取甘特的試煉後，擊殺 黑騎士搜索隊 必定掉落（達需求數量即停止掉落·無法存入倉庫）。" },
         "new_item_198": { n: "黑騎士的誓約", p: 1, c: "text-blue-300", gachaWeight: 0 },   // 🔧 試煉材料統一藍色（198~206、208、212~214、240 同）
         "new_item_199": { n: "都達瑪拉妖魔魔法書", p: 1, c: "text-blue-300", gachaWeight: 0 },
         "new_item_200": { n: "那魯加妖魔魔法書", p: 1, c: "text-blue-300", gachaWeight: 0 },
@@ -1311,8 +1311,6 @@ const DB = {
 		"new_item_elfwing": { n: "精靈羽翼", p: 10, gachaWeight: 0 },
 		"new_item_mermaid_scale": { n: "人魚之鱗", p: 10, gachaWeight: 0 },
 		"new_item_240": { n: "變形怪的血", p: 1, c: "text-blue-300", gachaWeight: 0 },
-		"new_item_241": { n: "王族搜索狀", p: 10000, gachaWeight: 0, d: "記載著血盟仇敵行蹤的密令文書，沾染著一絲血誓的氣息。擊敗血盟敵人必定取得。可向血盟盟主交出，換取盟主的祝福。" },
-		
 		        // ===== 🔥 50級試煉擴充：製作材料（潘朵拉權重0）=====
         "mat_demon_anklet_white": { n: "惡魔的白色腳鐐", type: "etc", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "製作材料。" },
         "mat_demon_anklet_black": { n: "惡魔的黑色腳鐐", type: "etc", p: 1, c: "text-blue-300", noUse: true, gachaWeight: 0, d: "製作材料。" },
@@ -1478,7 +1476,7 @@ const DB = {
         "wpn_greatsword": { n: "巨劍", type: "wpn", w2h: true, dmgS: 20, dmgL: 14, hit: 0, dmgBonus: 0, spd: 1, req: "knight", safe: 6, p: 15000, gachaWeight: 80, eff: "cleave", d: "沉重而厚實的雙手巨劍，一揮便能將成排敵人一同斬開。切割。" },
         "wpn_taurus_axe": { n: "牛人斧頭", type: "wpn", w2h: true, dmgS: 22, dmgL: 24, hit: 0, dmgBonus: 0, spd: 1.2, req: "knight", safe: 6, p: 15000, gachaWeight: 30, eff: "crush", d: "牛人族戰士慣用的雙手鈍器，蠻力一砸足以震碎骨骼。重擊。" },
         "wpn_shaha_bow": { n: "沙哈之弓", type: "wpn", isBow: true, ranged: true, w2h: true, legend: true, rapidfire: 70, dmgS: 4, dmgL: 4, hit: 2, dmgBonus: 5, spd: 1.0, req: "elf", safe: 6, p: 230000, gachaWeight: 0, shahaBow: true, d: "傳說中神射手沙哈所遺的名弓，拉滿弦時便有清風自箭袋憑空生出。" },
-        "wpn_shaha_arrow": { n: "沙哈之箭", type: "wpn", isArrow: true, dmgS: 15, dmgL: 12, hit: 0, p: 0, gachaWeight: 0, shahaArrow: true, noSell: true, d: "沙哈之弓憑風凝成的箭矢，取之不竭（卸下沙哈之弓即消失）。" },
+        "wpn_shaha_arrow": { n: "沙哈之箭", type: "wpn", img: "assets/icons/weapons/箭.png", isArrow: true, dmgS: 15, dmgL: 12, hit: 0, p: 0, gachaWeight: 0, shahaArrow: true, noSell: true, d: "沙哈之弓憑風凝成的箭矢，取之不竭（卸下沙哈之弓即消失）。" },
         // ===== 🏝️ 遺忘之島：防具 =====
         "hlm_wind": { n: "風之頭盔", type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 26000, gachaWeight: 10, windHelm: true, d: "以疾風祝福鍛成的頭盔，戴上時身形彷彿被風托起。" },
         "hlm_darkelf": { n: "黑暗妖精頭箍", type: "arm", slot: "helm", ac: 1, req: "elf,dark", safe: 6, p: 6000, gachaWeight: 30, d: "承載著高等黑暗精靈血脈記憶的頭箍，集齊全套方能喚醒沉睡的暗夜之姿。" },
@@ -1807,40 +1805,41 @@ const DB = {
         "acc_ear_clan":     { n: "族群耳環", type: "acc", slot: "ear", ac: 3, req: "all", safe: 0, p: 0, gachaWeight: 0, noEnhance: true, mhp: 50, mmp: 20, weightCap: 100, d: "凝聚族群的耳環。" },
         "acc_ear_slave":    { n: "奴隸耳環", type: "acc", slot: "ear", legend: true, ac: 3, req: "all", safe: 0, p: 0, gachaWeight: 0, mhp: 50, mmp: 20, weightCap: 200, d: "禁忌的奴隸耳環。" },
     },
+    // ⚠️ 純標記表：僅供 initSetTags（本檔尾）反向標記 DB.items[].set；套裝效果唯一真相在 js/02 recomputeStats（搜 _setEarly）、UI 門檻在 js/10（勿在此加數值欄位·無人讀取）
     sets: {
-        "set_0": { n: "皮套裝", items: ["arm_48", "arm_91", "arm_111", "arm_75"], ac: 3 },
-        "set_1": { n: "歐西斯套裝", items: ["hlm_oasis", "amr_oasis", "clk_oasis", "arm_104"], ac: 3 },
-        "set_2": { n: "侏儒套裝", items: ["hlm_gnome", "arm_86", "shd_gnome"], ac: 1, hp: 5 },
-        "set_3": { n: "銀釘套裝", items: ["hlm_silver", "arm_92", "arm_112", "arm_77"], ac: 3 },
-        "set_4": { n: "骷髏套裝", items: ["hlm_bone", "shd_bone", "amr_bone"], ac: 2, hp: 10 },
-        "set_5": { n: "鋼鐵套裝", items: ["arm_100", "hlm_steel", "arm_113", "arm_94", "arm_79"], ac: 3 },
-        "set_6": { n: "法師套裝", items: ["hlm_mage", "amr_magerobe"], mp: 50, mpR: 1 },
-        "set_7": { n: "死亡騎士套裝", items: ["glv_dk", "amr_dk", "bot_dk", "hlm_dk"], ac: 4 },
-        "set_8": { n: "克特套裝", items: ["arm_101", "amr_kurt", "arm_97", "hlm_kurt"], ac: 4 },
-        "set_9": { n: "抗魔套裝", items: ["rng_mr", "acc_126", "blt_mr"], mr: 5 },
-        "set_10": { n: "守護套裝", items: ["acc_118", "acc_124", "acc_138"], ac: 1 },
-        "set_11": { n: "四大軍王套裝", items: ["clk_kingnecro", "amr_kinglaw", "glv_kingassassin", "bot_kingbeast"], hp: 30, mp: 30 },
-        "set_12": { n: "惡魔套裝", items: ["hlm_demon", "amr_demon", "glv_demon", "bot_demon"], ac: 2 },
-        "set_13": { n: "黑暗妖精套裝", items: ["hlm_darkelf", "amr_darkelf", "bot_darkelf"], ac: 3 }
+        "set_0": { n: "皮套裝", items: ["arm_48", "arm_91", "arm_111", "arm_75"] },
+        "set_1": { n: "歐西斯套裝", items: ["hlm_oasis", "amr_oasis", "clk_oasis", "arm_104"] },
+        "set_2": { n: "侏儒套裝", items: ["hlm_gnome", "arm_86", "shd_gnome"] },
+        "set_3": { n: "銀釘套裝", items: ["hlm_silver", "arm_92", "arm_112", "arm_77"] },
+        "set_4": { n: "骷髏套裝", items: ["hlm_bone", "shd_bone", "amr_bone"] },
+        "set_5": { n: "鋼鐵套裝", items: ["arm_100", "hlm_steel", "arm_113", "arm_94", "arm_79"] },
+        "set_6": { n: "法師套裝", items: ["hlm_mage", "amr_magerobe"] },
+        "set_7": { n: "死亡騎士套裝", items: ["glv_dk", "amr_dk", "bot_dk", "hlm_dk"] },
+        "set_8": { n: "克特套裝", items: ["arm_101", "amr_kurt", "arm_97", "hlm_kurt"] },
+        "set_9": { n: "抗魔套裝", items: ["rng_mr", "acc_126", "blt_mr"] },
+        "set_10": { n: "守護套裝", items: ["acc_118", "acc_124", "acc_138"] },
+        "set_11": { n: "四大軍王套裝", items: ["clk_kingnecro", "amr_kinglaw", "glv_kingassassin", "bot_kingbeast"] },
+        "set_12": { n: "惡魔套裝", items: ["hlm_demon", "amr_demon", "glv_demon", "bot_demon"] },
+        "set_13": { n: "黑暗妖精套裝", items: ["hlm_darkelf", "amr_darkelf", "bot_darkelf"] }
     },
             
     mobs: {
         "orc": { n: "妖魔", lv: 2, s: "S", beh: "被動", race: "妖魔", e: "fire", hp: 6, ac: 10, mr: 0, exp: 5, goldMin: 10, goldMax: 30, atkSpd: 2, dmg: [2, 2], db: 2, hit: 0 },
         "goblin": { n: "哥布林", lv: 2, s: "S", beh: "被動", race: "哥布林", e: "earth", hp: 3, ac: 10, mr: 2, exp: 5, goldMin: 10, goldMax: 30, atkSpd: 2, dmg: [2, 2], db: 2, hit: 0 },
-        "esti_enemy": { n: "依詩蒂", img: "assets/icons/monsters/依詩蒂.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "女騎士", seeInsight: true, hp: 20, ac: -10, mr: 0, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 10], db: 0, hit: 2, regenHp: 15, scale: { hpC: 20, acBase: -10, acDiv: 3, mrBase: 0, mrDiv: 5, dmgSides: 10, dbDiv: 2, hitBase: 2, hitDiv: 3, atkSpd: 0.67 }, mag: { skn: "衝擊之暈", cd: 50, chance: 0.2, type: "extra_attack", stunChance: 10 } },
-        "aton_enemy": { n: "阿頓", img: "assets/icons/monsters/阿頓.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "男騎士", seeInsight: true, hp: 18, ac: -10, mr: 0, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.6, dmg: [1, 14], db: 0, hit: 0, regenHp: 15, scale: { hpC: 18, acBase: -10, acDiv: 3, mrBase: 0, mrDiv: 5, dmgSides: 14, dbDiv: 2, hitBase: 0, hitDiv: 3, atkSpd: 0.6 }, mag: { skn: "衝擊之暈", cd: 50, chance: 0.2, type: "extra_attack", stunChance: 10 } },
-        "julian_enemy": { n: "朱利安", img: "assets/icons/monsters/朱利安.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "男妖精", hp: 12, ac: -15, mr: 25, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 9], db: 0, hit: 5, regenHp: 15, scale: { hpC: 12, acBase: -15, acDiv: 4, mrBase: 25, mrDiv: 2, dmgSides: 9, dbDiv: 3, hitBase: 5, hitDiv: 3, atkSpd: 0.67 }, mag: { skn: "三重矢", cd: 50, chance: 0.2, type: "multi_attack", times: 3 } },
-        "ovi_enemy": { n: "歐薇", img: "assets/icons/monsters/歐薇.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "女妖精", hp: 10, ac: -18, mr: 25, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 8], db: 0, hit: 5, regenHp: 15, scale: { hpC: 10, acBase: -10, acDiv: 5, mrBase: 25, mrDiv: 2, dmgSides: 8, dbDiv: 4, hitBase: 5, hitDiv: 3, atkSpd: 0.67 }, mag: { skn: "生命的祝福", cd: 50, chance: 0.2, type: "pledge_bless", healDice: [1, 20], dur: 18, interval: 3 } },
-        "joe_enemy": { n: "喬", img: "assets/icons/monsters/喬.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "男法師", hp: 10, ac: -10, mr: 15, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 5, regenHp: 15, scale: { hpC: 10, acBase: -10, acDiv: 6, mrBase: 15, mrDiv: 3, dmgSides: 4, dbDiv: 6, hitBase: 5, hitDiv: 5, atkSpd: 0.67, dbHalf: true }, mag: { skn: "光箭", cd: 20, dmg: [2, 6], dbLv: 1, ele: "none", alwaysHit: true }, mag2: { skn: "地裂術", cd: 50, chance: 0.2, dmg: [8, 8], dbLv: 1, dbLvMult: 2, ele: "earth", alwaysHit: true } },
-        "senis_enemy": { n: "賽尼斯", img: "assets/icons/monsters/賽尼斯.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "女法師", hp: 8, ac: -11, mr: 18, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 0, regenHp: 15, scale: { hpC: 8, acBase: -11, acDiv: 6, mrBase: 18, mrDiv: 3, dmgSides: 4, dbDiv: 6, hitBase: 0, hitDiv: 5, atkSpd: 0.67, dbHalf: true }, mag: { skn: "冰箭", cd: 20, dmg: [2, 6], dbLv: 1, ele: "water", alwaysHit: true }, mag2: { skn: "冰矛圍籬", cd: 50, chance: 0.2, dmg: [5, 12], dbLv: 1, dbLvMult: 2, ele: "water", alwaysHit: true, sec: { type: "freeze", pbase: 150 } } },
+        "esti_enemy": { n: "依詩蒂", img: "assets/icons/monsters/依詩蒂.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "女騎士", seeInsight: true, hp: 20, ac: -10, mr: 0, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 10], db: 0, hit: 2, regenHp: 15, scale: { hpC: 20, acBase: -10, acDiv: 3, mrBase: 0, mrDiv: 5, dmgSides: 10, hitBase: 2, atkSpd: 0.67 }, mag: { skn: "衝擊之暈", cd: 50, chance: 0.2, type: "extra_attack", stunChance: 10 } },
+        "aton_enemy": { n: "阿頓", img: "assets/icons/monsters/阿頓.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "男騎士", seeInsight: true, hp: 18, ac: -10, mr: 0, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.6, dmg: [1, 14], db: 0, hit: 0, regenHp: 15, scale: { hpC: 18, acBase: -10, acDiv: 3, mrBase: 0, mrDiv: 5, dmgSides: 14, hitBase: 0, atkSpd: 0.6 }, mag: { skn: "衝擊之暈", cd: 50, chance: 0.2, type: "extra_attack", stunChance: 10 } },
+        "julian_enemy": { n: "朱利安", img: "assets/icons/monsters/朱利安.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "男妖精", hp: 12, ac: -15, mr: 25, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 9], db: 0, hit: 5, regenHp: 15, scale: { hpC: 12, acBase: -15, acDiv: 4, mrBase: 25, mrDiv: 2, dmgSides: 9, hitBase: 5, atkSpd: 0.67 }, mag: { skn: "三重矢", cd: 50, chance: 0.2, type: "multi_attack", times: 3 } },
+        "ovi_enemy": { n: "歐薇", img: "assets/icons/monsters/歐薇.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "女妖精", hp: 10, ac: -18, mr: 25, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 8], db: 0, hit: 5, regenHp: 15, scale: { hpC: 10, acBase: -10, acDiv: 5, mrBase: 25, mrDiv: 2, dmgSides: 8, hitBase: 5, atkSpd: 0.67 }, mag: { skn: "生命的祝福", cd: 50, chance: 0.2, type: "pledge_bless", healDice: [1, 20], dur: 18, interval: 3 } },
+        "joe_enemy": { n: "喬", img: "assets/icons/monsters/喬.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "男法師", hp: 10, ac: -10, mr: 15, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 5, regenHp: 15, scale: { hpC: 10, acBase: -10, acDiv: 6, mrBase: 15, mrDiv: 3, dmgSides: 4, hitBase: 5, atkSpd: 0.67, dbHalf: true }, mag: { skn: "光箭", cd: 20, dmg: [2, 6], dbLv: 1, ele: "none", alwaysHit: true }, mag2: { skn: "地裂術", cd: 50, chance: 0.2, dmg: [8, 8], dbLv: 1, dbLvMult: 2, ele: "earth", alwaysHit: true } },
+        "senis_enemy": { n: "賽尼斯", img: "assets/icons/monsters/賽尼斯.png", lv: 1, s: "S", beh: "主動", race: "血盟", wild: true, e: "none", pledgeEnemy: true, excludeAvatar: "女法師", hp: 8, ac: -11, mr: 18, exp: 100, goldMin: 1136, goldMax: 1136, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 0, regenHp: 15, scale: { hpC: 8, acBase: -11, acDiv: 6, mrBase: 18, mrDiv: 3, dmgSides: 4, hitBase: 0, atkSpd: 0.67, dbHalf: true }, mag: { skn: "冰箭", cd: 20, dmg: [2, 6], dbLv: 1, ele: "water", alwaysHit: true }, mag2: { skn: "冰矛圍籬", cd: 50, chance: 0.2, dmg: [5, 12], dbLv: 1, dbLvMult: 2, ele: "water", alwaysHit: true, sec: { type: "freeze", pbase: 150 } } },
         // ===== 攻城戰（攻城）怪物：等級隨玩家(由 applySiegeEnemyScaling 縮放)，由攻城系統生成 =====
-        // 攻城塔/城門：固定HP、不會攻擊；HP 跨地圖保留(siegePersistHp)需攻城系統支援
-        "siege_tower": { hard: true, n: "肯特守護塔", img: "assets/icons/monsters/肯特守護塔.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, siegePersistHp: true, noAttack: true, e: "none", boss: true, hp: 15000, ac: 10, mr: 0, dr: 10, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 500, ac: 10, mr: 0, dr: 10 } },   // 🔧 HP=500×玩家等級；新增被動：傷害減免10
-        "siege_gate": { hard: true, n: "肯特城門", img: "assets/icons/monsters/肯特城門.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, siegePersistHp: true, noAttack: true, e: "none", boss: true, hp: 10000, ac: 10, mr: 0, dr: 20, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 300, ac: 10, mr: 0, dr: 20 } },   // 🔧 HP=300×玩家等級
-        "siege_tower_heine": { hard: true, n: "海音守護塔", img: "assets/icons/monsters/海音守護塔.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, siegePersistHp: true, noAttack: true, e: "none", boss: true, hp: 15000, ac: 10, mr: 0, dr: 10, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 500, ac: 10, mr: 0, dr: 10 } },   // 🔧 海音守護塔：能力同肯特守護塔
-        "siege_gate_heine": { hard: true, n: "海音城門", img: "assets/icons/monsters/海音城門.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, siegePersistHp: true, noAttack: true, e: "none", boss: true, hp: 10000, ac: 10, mr: 0, dr: 20, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 300, ac: 10, mr: 0, dr: 20 } },   // 🔧 海音城門：能力同肯特城門
-        "siege_tower_ww": { hard: true, n: "風木守護塔", img: "assets/icons/monsters/風木守護塔.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, siegePersistHp: true, noAttack: true, e: "none", boss: true, hp: 15000, ac: 10, mr: 0, dr: 10, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 500, ac: 10, mr: 0, dr: 10 } },   // 🔧 風木守護塔：HP=500×玩家等級、傷害減免10
-        "siege_gate_ww": { hard: true, n: "風木城門", img: "assets/icons/monsters/風木城門.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, siegePersistHp: true, noAttack: true, e: "none", boss: true, hp: 10000, ac: 10, mr: 0, dr: 20, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 300, ac: 10, mr: 0, dr: 20 } },   // 🔧 風木城門：HP=300×玩家等級、傷害減免20
+        // 攻城塔/城門：固定HP、不會攻擊；跨圖 HP 持久化＝js/03 依顯示名比對 siegeCityCfg() 還原（spawnMob）、js/11 離圖時存（saveSiegeBossHp），無旗標欄位
+        "siege_tower": { hard: true, n: "肯特守護塔", img: "assets/icons/monsters/肯特守護塔.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, noAttack: true, e: "none", boss: true, hp: 15000, ac: 10, mr: 0, dr: 10, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 500, ac: 10, mr: 0, dr: 10 } },   // 🔧 HP=500×玩家等級；新增被動：傷害減免10
+        "siege_gate": { hard: true, n: "肯特城門", img: "assets/icons/monsters/肯特城門.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, noAttack: true, e: "none", boss: true, hp: 10000, ac: 10, mr: 0, dr: 20, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 300, ac: 10, mr: 0, dr: 20 } },   // 🔧 HP=300×玩家等級
+        "siege_tower_heine": { hard: true, n: "海音守護塔", img: "assets/icons/monsters/海音守護塔.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, noAttack: true, e: "none", boss: true, hp: 15000, ac: 10, mr: 0, dr: 10, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 500, ac: 10, mr: 0, dr: 10 } },   // 🔧 海音守護塔：能力同肯特守護塔
+        "siege_gate_heine": { hard: true, n: "海音城門", img: "assets/icons/monsters/海音城門.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, noAttack: true, e: "none", boss: true, hp: 10000, ac: 10, mr: 0, dr: 20, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 300, ac: 10, mr: 0, dr: 20 } },   // 🔧 海音城門：能力同肯特城門
+        "siege_tower_ww": { hard: true, n: "風木守護塔", img: "assets/icons/monsters/風木守護塔.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, noAttack: true, e: "none", boss: true, hp: 15000, ac: 10, mr: 0, dr: 10, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 500, ac: 10, mr: 0, dr: 10 } },   // 🔧 風木守護塔：HP=500×玩家等級、傷害減免10
+        "siege_gate_ww": { hard: true, n: "風木城門", img: "assets/icons/monsters/風木城門.png", lv: 1, s: "L", beh: "被動", race: "建築", siegeEnemy: true, noAttack: true, e: "none", boss: true, hp: 10000, ac: 10, mr: 0, dr: 20, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [0, 0], db: 0, hit: 0, siege: { fixed: true, hpPerLv: 300, ac: 10, mr: 0, dr: 20 } },   // 🔧 風木城門：HP=300×玩家等級、傷害減免20
         "baless": { hard: true, n: "巴列斯", lv: 70, s: "S", beh: "主動", race: "惡魔", e: "earth", boss: true, hp: 6200, ac: -66, mr: 80, exp: 2802, goldMin: 385, goldMax: 1554, atkSpd: 1.5, dmg: [3, 94], db: 28, hit: 77,
             mag:  { skn: "燃燒的火球", cd: 50, chance: 0.5, dmg: [4, 100], db: 202, ele: "fire" },
             mag2: { skn: "地獄犬噴吐", cd: 70, dmg: [3, 100], db: 130, ele: "fire" } },   // 🔧 巴列斯 BOSS（風木地監）
@@ -1855,15 +1854,29 @@ const DB = {
         "siege_senis": { n: "魔女賽尼斯", img: "assets/icons/monsters/魔女賽尼斯.png", lv: 1, s: "S", beh: "主動", race: "血盟", siegeEnemy: true, e: "none", hp: 8, ac: -11, mr: 18, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 0, siege: { hpC: 8, acBase: -11, acDiv: 6, mrBase: 18, mrDiv: 3, dmgSides: 4, dbHalf: true, hitBase: 0, atkSpd: 0.67 }, mag: { skn: "冰箭", cd: 20, dmg: [2, 6], dbLv: 1, ele: "water", alwaysHit: true }, mag2: { skn: "冰矛圍籬", cd: 50, chance: 0.2, dmg: [5, 12], dbLv: 1, dbLvMult: 2, ele: "water", alwaysHit: true, sec: { type: "freeze", pbase: 150 } }, mag3: { skn: "冰雪暴", cd: 130, chance: 0.1, dmg: [8, 12], dbLv: 1, dbLvMult: 3, ele: "water", alwaysHit: true, sec: { type: "freeze", pbase: 200 } } },
         // 闇影格立特：ER+12、雙重破壞被動(doubleDestroy)、破壞盔甲(armor_break) — 已實作
         "siege_grit": { n: "闇影格立特", img: "assets/icons/monsters/闇影格立特.png", lv: 1, s: "S", beh: "主動", race: "血盟", siegeEnemy: true, doubleDestroy: true, e: "none", hp: 10, ac: -13, mr: 20, er: 12, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.5, dmg: [1, 50], db: 0, hit: 5, siege: { hpC: 10, acBase: -13, acDiv: 5, mrBase: 20, mrDiv: 2, dmgSides: 50, dbHalf: true, hitBase: 5, atkSpd: 0.5, er: 12 }, mag: { skn: "破壞盔甲", type: "armor_break", cd: 50, chance: 0.1 } },
-        // ===== 😤 v3.5.59 白目玩家（白目玩家系統.md）：js/24 嗆聲 20% 觸發→野外重生 5% 遭遇·名稱/外觀由叫賣NPC 決定（spawnMob 動態覆蓋 n/img）·等級=玩家+5(上限100·applyTrollScaling)·經驗/金幣 0·擊殺 10% 裝備掉落（同血盟掉寶池·王族搜索狀權重0不會出） =====
-        "troll_royal":    { n: "白目玩家(王族)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 16, ac: -10, mr: 0, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.67, dmg: [1, 12], db: 0, hit: 2, regenFix: 60, scale: { hpC: 16, acBase: -10, acDiv: 4, mrBase: 0, mrDiv: 5, dmgSides: 12, hitBase: 2, atkSpd: 0.67 }, mag: { skn: "初級治癒術", type: "self_heal", cd: 60, healDice: [30, 60] } },
-        "troll_knight":   { n: "白目玩家(騎士)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 20, ac: -15, mr: 0, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.25, dmg: [1, 28], db: 0, hit: 0, scale: { hpC: 20, acBase: -15, acDiv: 3, mrBase: 0, mrDiv: 5, dmgSides: 28, hitBase: 0, atkSpd: 0.25 }, mag: { skn: "衝擊之暈", cd: 50, chance: 0.5, type: "extra_attack", stunChance: 10 }, mag2: { skn: "堅固防護", type: "self_buff", buffKind: "guard", cd: 60 } },
-        "troll_elf":      { n: "白目玩家(妖精)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 14, ac: -15, mr: 25, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.56, dmg: [1, 18], db: 0, hit: 5, scale: { hpC: 14, acBase: -15, acDiv: 4, mrBase: 25, mrDiv: 2, dmgSides: 18, hitBase: 5, atkSpd: 0.56 }, mag: { skn: "三重矢", cd: 50, chance: 0.5, type: "multi_attack", times: 3 }, mag2: { skn: "暴風神射", type: "self_buff", buffKind: "volley", cd: 60 } },
-        "troll_mage":     { n: "白目玩家(法師)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 10, ac: -11, mr: 18, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 5, scale: { hpC: 10, acBase: -11, acDiv: 6, mrBase: 18, mrDiv: 3, dmgSides: 4, dbHalf: true, hitBase: 5, atkSpd: 0.67 }, mag: { skn: "光箭", cd: 20, dmg: [3, 6], dbLv: 1, ele: "none", alwaysHit: true }, mag2: { skn: "冰矛圍籬", cd: 50, chance: 0.3, dmg: [8, 12], dbLv: 1, dbLvMult: 2, ele: "water", alwaysHit: true, sec: { type: "freeze", pbase: 200 } }, mag3: { skn: "冰雪暴", cd: 110, chance: 0.1, dmg: [10, 12], dbLv: 1, dbLvMult: 3, ele: "water", alwaysHit: true, sec: { type: "freeze", pbase: 200 } }, mag4: { skn: "震裂術", cd: 70, chance: 0.5, dmg: [5, 25], dbLv: 1, dbLvMult: 3, ele: "earth", alwaysHit: true } },
-        "troll_dark":     { n: "白目玩家(黑妖)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, doubleDestroy: true, e: "none", hp: 12, ac: -13, mr: 20, er: 20, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.4, dmg: [1, 50], db: 0, hit: 5, scale: { hpC: 12, acBase: -13, acDiv: 5, mrBase: 20, mrDiv: 2, dmgSides: 50, dbHalf: true, hitBase: 5, atkSpd: 0.4, er: 20 }, mag: { skn: "破壞盔甲", type: "armor_break", cd: 50, chance: 0.5 } },
-        "troll_dragon":   { n: "白目玩家(龍騎)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 18, ac: -15, mr: 0, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.3, dmg: [1, 24], db: 0, hit: 2, scale: { hpC: 18, acBase: -15, acDiv: 3, mrBase: 0, mrDiv: 5, dmgSides: 24, hitBase: 2, atkSpd: 0.3 }, mag: { skn: "屠宰者", cd: 50, chance: 0.5, type: "multi_attack", times: 3 }, mag2: { skn: "奪命之雷", cd: 60, dmg: [5, 25], dbLv: 1, dbLvMult: 3, ele: "wind", alwaysHit: true } },
-        "troll_illusion": { n: "白目玩家(幻術)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, magicMelee: true, e: "none", hp: 11, ac: -11, mr: 18, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 30, scale: { hpC: 11, acBase: -11, acDiv: 6, mrBase: 18, mrDiv: 3, dmgSides: 4, dbHalf: true, hitBase: 30, atkSpd: 0.67 }, mag: { skn: "粉碎能量", cd: 20, dmg: [3, 6], dbLv: 1, ele: "none", alwaysHit: true }, mag2: { skn: "燃燒立方", cd: 40, dmg: [2, 12], dbLv: 1, dbLvMult: 2, ele: "fire", alwaysHit: true } },
-        "troll_warrior":  { n: "白目玩家(戰士)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 22, ac: -15, mr: 0, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.2, dmg: [1, 20], db: 10, hit: 0, scale: { hpC: 22, acBase: -15, acDiv: 3, mrBase: 0, mrDiv: 5, dmgSides: 20, hitBase: 0, atkSpd: 0.2, dbPlus: 10 }, onHitPoison: { skn: "出血", pbase: 150, d: 30, tick: 5, dur: 10 }, mag: { skn: "咆哮", cd: 50, chance: 0.5, dmg: [5, 12], dbLv: 1, ele: "none", alwaysHit: true } },
+        // ===== 😤 v3.5.59 白目玩家（白目玩家系統.md）：js/24 嗆聲 20% 觸發→野外重生 5% 遭遇·名稱/外觀由叫賣NPC 決定（spawnMob 動態覆蓋 n/img）·等級=玩家±10(applyTrollScaling·無上限)·經驗/金幣 0·擊殺掉落依性向 10%~3%。
+        //   🎲 v3.6.23 兩個模板的普攻骰皆＝「同等級怪物」傷害骰模型（用戶拍板·scale.curveDmg→js/03 trollCurveDmg 依等級+攻速生成時計算）。
+        //   😤 v3.6.26 模板倍率 dmgMult（用戶拍板·v3.6.24 首設 1.5/2.0）：一模板 2.0／二模板 2.5／法師兩模板皆不掛(×1)——乘在曲線解出的每擊傷害上（帽後）。=====
+        "troll_royal":    { n: "白目玩家(王族)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 16, ac: -10, mr: 0, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.67, dmg: [1, 12], db: 0, hit: 2, regenFix: 60, scale: { hpC: 16, acBase: -10, acDiv: 4, mrBase: 0, mrDiv: 5, curveDmg: true, dmgMult: 2, hitBase: 2, atkSpd: 0.67 }, mag: { skn: "初級治癒術", type: "self_heal", cd: 60, healDice: [30, 60] } },
+        "troll_knight":   { n: "白目玩家(騎士)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 20, ac: -15, mr: 0, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.25, dmg: [1, 28], db: 0, hit: 0, scale: { hpC: 20, acBase: -15, acDiv: 3, mrBase: 0, mrDiv: 5, curveDmg: true, dmgMult: 2, hitBase: 0, atkSpd: 0.25 }, mag: { skn: "衝擊之暈", cd: 50, chance: 0.5, type: "extra_attack", stunChance: 10 }, mag2: { skn: "堅固防護", type: "self_buff", buffKind: "guard", cd: 60 } },
+        "troll_elf":      { n: "白目玩家(妖精)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 14, ac: -15, mr: 25, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.56, dmg: [1, 18], db: 0, hit: 5, scale: { hpC: 14, acBase: -15, acDiv: 4, mrBase: 25, mrDiv: 2, curveDmg: true, dmgMult: 2, hitBase: 5, atkSpd: 0.56 }, mag: { skn: "三重矢", cd: 50, chance: 0.5, type: "multi_attack", times: 3 }, mag2: { skn: "暴風神射", type: "self_buff", buffKind: "volley", cd: 60 } },
+        "troll_mage":     { n: "白目玩家(法師)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 10, ac: -11, mr: 18, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 5, scale: { hpC: 10, acBase: -11, acDiv: 6, mrBase: 18, mrDiv: 3, curveDmg: true, hitBase: 5, atkSpd: 0.67 }, mag: { skn: "光箭", cd: 20, dmg: [3, 6], dbLv: 1, ele: "none", alwaysHit: true }, mag2: { skn: "冰矛圍籬", cd: 50, chance: 0.3, dmg: [8, 12], dbLv: 1, dbLvMult: 2, ele: "water", alwaysHit: true, sec: { type: "freeze", pbase: 200 } }, mag3: { skn: "冰雪暴", cd: 110, chance: 0.1, dmg: [10, 12], dbLv: 1, dbLvMult: 3, ele: "water", alwaysHit: true, sec: { type: "freeze", pbase: 200 } }, mag4: { skn: "震裂術", cd: 70, chance: 0.5, dmg: [5, 25], dbLv: 1, dbLvMult: 3, ele: "earth", alwaysHit: true } },
+        "troll_dark":     { n: "白目玩家(黑妖)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, doubleDestroy: true, e: "none", hp: 12, ac: -13, mr: 20, er: 20, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.4, dmg: [1, 50], db: 0, hit: 5, scale: { hpC: 12, acBase: -13, acDiv: 5, mrBase: 20, mrDiv: 2, curveDmg: true, dmgMult: 2, hitBase: 5, atkSpd: 0.4, er: 20 }, mag: { skn: "破壞盔甲", type: "armor_break", cd: 50, chance: 0.5 } },
+        "troll_dragon":   { n: "白目玩家(龍騎)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 18, ac: -15, mr: 0, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.3, dmg: [1, 24], db: 0, hit: 2, scale: { hpC: 18, acBase: -15, acDiv: 3, mrBase: 0, mrDiv: 5, curveDmg: true, dmgMult: 2, hitBase: 2, atkSpd: 0.3 }, mag: { skn: "屠宰者", cd: 50, chance: 0.5, type: "multi_attack", times: 3 }, mag2: { skn: "奪命之雷", cd: 60, dmg: [5, 25], dbLv: 1, dbLvMult: 3, ele: "wind", alwaysHit: true } },
+        "troll_illusion": { n: "白目玩家(幻術)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, magicMelee: true, e: "none", hp: 11, ac: -11, mr: 18, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 30, scale: { hpC: 11, acBase: -11, acDiv: 6, mrBase: 18, mrDiv: 3, curveDmg: true, dmgMult: 2, hitBase: 30, atkSpd: 0.67 }, mag: { skn: "粉碎能量", cd: 20, dmg: [3, 6], dbLv: 1, ele: "none", alwaysHit: true }, mag2: { skn: "燃燒立方", cd: 40, dmg: [2, 12], dbLv: 1, dbLvMult: 2, ele: "fire", alwaysHit: true } },
+        "troll_warrior":  { n: "白目玩家(戰士)",   lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 22, ac: -15, mr: 0, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.2, dmg: [1, 20], db: 10, hit: 0, scale: { hpC: 22, acBase: -15, acDiv: 3, mrBase: 0, mrDiv: 5, curveDmg: true, dmgMult: 2, hitBase: 0, atkSpd: 0.2, dbPlus: 10 }, onHitPoison: { skn: "出血", pbase: 150, d: 30, tick: 5, dur: 10 }, mag: { skn: "咆哮", cd: 50, chance: 0.5, dmg: [5, 12], dbLv: 1, ele: "none", alwaysHit: true } },
+        // ===== 😤 v3.6.20 玩家 NPC 第二能力模板（troll2_*）：生成時 70% 抽上方原模板、30% 抽本組（js/03 trollPickClassMob）。
+        //   全組更強：HP 係數+2、AC/MR 大幅提升、攻速加快；🎲 v3.6.22 一般攻擊骰＝「同等級怪物」傷害骰模型（用戶拍板·scale.curveDmg→js/03 trollCurveDmg 依等級+攻速生成時計算·單一真相 tools/mob-designer.js）。
+        //   等級規則與原模板相同（玩家±10·尋仇+3/次·無 100 上限·applyTrollScaling）；經驗/金幣 0、名稱外觀由叫賣 NPC 覆蓋、掉落走同一 trollPlayer 管線。
+        //   新機制：counter_barrier(反擊屏障)/foulwater(汙濁之水)/troll_bless(生命的祝福) 見 js/04；guard 傷減與 armor_break %數、doubleDestroy 機率均參數化。=====
+        "troll2_royal":    { n: "白目玩家(王族)", lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 18, ac: -20, mr: 50, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.4, dmg: [1, 12], db: 10, hit: 5, regenFix: 60, scale: { hpC: 18, acBase: -20, acDiv: 4, mrBase: 50, mrDiv: 5, curveDmg: true, dmgMult: 2.5, hitBase: 5, dbPlus: 10, atkSpd: 0.4 }, mag: { skn: "中級治癒術", type: "self_heal", cd: 60, healDice: [60, 90] } },   // 常駐：額外傷害+10(dbPlus 疊在曲線db上)·額外命中+5(hitBase)·每2秒回60
+        "troll2_knight":   { n: "白目玩家(騎士)", lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 22, ac: -25, mr: 50, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.2, dmg: [1, 28], db: 0, hit: 0, scale: { hpC: 22, acBase: -25, acDiv: 3, mrBase: 50, mrDiv: 5, curveDmg: true, dmgMult: 2.5, hitBase: 0, atkSpd: 0.2 }, mag: { skn: "衝擊之暈", cd: 50, chance: 0.7, type: "extra_attack", stunChance: 10 }, mag2: { skn: "堅固防護", type: "self_buff", buffKind: "guard", cd: 60, drBase: 10, dr50: 12, drStep: 2 }, mag3: { skn: "反擊屏障", type: "counter_barrier", cd: 150 } },   // 回血走預設40/60；堅固防護：傷減10·50級12·每10級+2·15秒
+        "troll2_elf":      { n: "白目玩家(妖精)", lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 16, ac: -25, mr: 100, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.4, dmg: [1, 18], db: 0, hit: 5, scale: { hpC: 16, acBase: -25, acDiv: 4, mrBase: 100, mrDiv: 2, curveDmg: true, dmgMult: 2.5, hitBase: 5, atkSpd: 0.4 }, mag: { skn: "三重矢", cd: 50, type: "multi_attack", times: 3 }, mag2: { skn: "汙濁之水", cd: 80, type: "foulwater", dur: 8 }, mag3: { skn: "生命的祝福", cd: 150, chance: 0.6, type: "troll_bless", healDice: [1, 200] } },   // 生命的祝福：恢復場上所有玩家NPC 1D200+等級
+        "troll2_mage":     { n: "白目玩家(法師)", lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 12, ac: -21, mr: 80, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.67, dmg: [1, 4], db: 0, hit: 5, regenFix: 60, scale: { hpC: 12, acBase: -21, acDiv: 6, mrBase: 80, mrDiv: 3, curveDmg: true, hitBase: 5, atkSpd: 0.67 }, mag: { skn: "火箭", cd: 30, dmg: [3, 6], dbLv: 1, dbLvMult: 2, ele: "fire", alwaysHit: true }, mag2: { skn: "燃燒的火球", cd: 50, chance: 0.6, dmg: [10, 12], dbLv: 1, dbLvMult: 2, ele: "fire", alwaysHit: true, sec: { type: "burn", pbase: 250, d: 100, tick: 3, dur: 18 } }, mag3: { skn: "龍捲風", cd: 110, chance: 0.3, dmg: [20, 10], dbLv: 1, dbLvMult: 3, ele: "wind", alwaysHit: true }, mag4: { skn: "流星雨", cd: 130, chance: 0.2, dmg: [20, 12], dbLv: 1, dbLvMult: 4, ele: "fire", alwaysHit: true }, mag5: { skn: "究極光裂術", cd: 90, chance: 0.2, reqAlign: 500, dmg: [1, 500], dbLv: 1, dbLvMult: 5, ele: "none", alwaysHit: true } },   // 火球灼燒=(250-MR)/2%·100固定/3秒·18秒；究極光裂術限性向≥500(reqAlign·js/03 施法閘)
+        "troll2_dark":     { n: "白目玩家(黑妖)", lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, doubleDestroy: true, ddBase: 20, e: "none", hp: 14, ac: -23, mr: 100, er: 30, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.2, dmg: [1, 50], db: 0, hit: 5, regenFix: 60, scale: { hpC: 14, acBase: -23, acDiv: 5, mrBase: 100, mrDiv: 2, curveDmg: true, dmgMult: 2.5, hitBase: 5, atkSpd: 0.2, er: 30 }, mag: { skn: "破壞盔甲", type: "armor_break", cd: 60, pct: 58, dur: 8 } },   // 雙重破壞 20%·50級21%·每5級+1%(ddBase)；破壞盔甲受傷+58%
+        "troll2_dragon":   { n: "白目玩家(龍騎)", lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 20, ac: -25, mr: 50, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.2, dmg: [1, 24], db: 0, hit: 2, regenFix: 60, scale: { hpC: 20, acBase: -25, acDiv: 3, mrBase: 50, mrDiv: 5, curveDmg: true, dmgMult: 2.5, hitBase: 2, atkSpd: 0.2 }, mag: { skn: "屠宰者", cd: 40, type: "multi_attack", times: 3 }, mag2: { skn: "奪命之雷", cd: 60, dmg: [10, 25], dbLv: 1, dbLvMult: 3, ele: "wind", alwaysHit: true } },
+        "troll2_illusion": { n: "白目玩家(幻術)", lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, magicMelee: true, e: "none", hp: 14, ac: -21, mr: 80, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.5, dmg: [1, 4], db: 0, hit: 30, regenFix: 60, scale: { hpC: 14, acBase: -21, acDiv: 6, mrBase: 80, mrDiv: 3, curveDmg: true, dmgMult: 2.5, hitBase: 30, atkSpd: 0.5 }, mag: { skn: "粉碎能量", cd: 20, dmg: [7, 6], dbLv: 1, ele: "none", alwaysHit: true }, mag2: { skn: "燃燒立方", cd: 40, dmg: [8, 12], dbLv: 1, dbLvMult: 2, ele: "fire", alwaysHit: true } },
+        "troll2_warrior":  { n: "白目玩家(戰士)", lv: 1, s: "S", beh: "主動", race: "玩家", wild: true, trollPlayer: true, e: "none", hp: 24, ac: -25, mr: 50, exp: 0, goldMin: 0, goldMax: 0, atkSpd: 0.2, dmg: [1, 20], db: 20, hit: 0, regenFix: 60, scale: { hpC: 24, acBase: -25, acDiv: 3, mrBase: 50, mrDiv: 5, curveDmg: true, dmgMult: 2.5, hitBase: 0, atkSpd: 0.2, dbPlus: 20 }, onHitPoison: { skn: "出血", pbase: 150, d: 30, tick: 5, dur: 10 }, mag: { skn: "咆哮", cd: 50, chance: 0.5, dmg: [5, 12], dbLv: 1, dbLvMult: 2, ele: "none", alwaysHit: true } },   // 常駐：額外傷害+20(dbPlus 疊在曲線db上)·命中附加出血·咆哮 5D12+等級×2
         "orc_archer": { n: "妖魔弓箭手", lv: 3, s: "S", beh: "被動", race: "妖魔", e: "fire", hp: 12, ac: 10, mr: 2, exp: 10, goldMin: 11, goldMax: 32, atkSpd: 2, dmg: [2, 4], db: 2, hit: 0 },
         "gremlin": { n: "地靈", lv: 3, s: "S", beh: "被動", race: "地靈", e: "earth", hp: 7, ac: 10, mr: 2, exp: 10, goldMin: 11, goldMax: 32, atkSpd: 2, dmg: [2, 4], db: 2, hit: 0 },
         "nm_001": { n: "污染的地精靈", lv: 3, s: "S", beh: "被動", race: "元素", elem: true, e: "earth", hp: 10, ac: 10, mr: 10, exp: 10, goldMin: 11, goldMax: 32, atkSpd: 2, dmg: [2, 4], db: 2, hit: 0 },
@@ -1976,7 +1989,7 @@ const DB = {
         "nm_022": { hard: true, n: "鋼鐵高崙", lv: 35, s: "L", beh: "主動", race: "高崙", e: "earth", hp: 650, ac: -18, mr: 50, exp: 1226, goldMin: 125, goldMax: 302, atkSpd: 3, dmg: [2, 49], db: 25, hit: 35 },
         "bandit_boss": { n: "強盜頭目", lv: 35, s: "S", beh: "主動", race: "強盜", e: "none", hp: 500, ac: -25, mr: 50, exp: 1226, goldMin: 185, goldMax: 302, atkSpd: 1.5, dmg: [1, 57], db: 6, hit: 43 },
         "evil_lizard": { n: "邪惡蜥蜴", lv: 36, s: "L", beh: "主動", race: "邪惡蜥蜴", e: "water", hp: 800, ac: -20, mr: 30, exp: 1297, goldMin: 165, goldMax: 365, atkSpd: 2, dmg: [2, 51], db: 26, hit: 37, mag: { skn: "石化噴吐", cd: 110, type: "stone", pbase: 100 } },
-        // 🔧 卡瑞：攜帶四樣任務道具時於龍之谷地監6樓 1% 機率出現（spawnMob 特殊判定·遭遇不消耗道具）；「擊殺」才 100% 掉屠龍劍並消耗四道具各一（🎮 v2.6.75 經典模式亦維持 100%·不受 ×1/10）
+        // 🔧 卡瑞：攜帶四樣任務道具時於龍之谷地監6樓 1% 機率出現（spawnMob 特殊判定·遭遇不消耗道具）；「擊殺」才 100% 掉屠龍劍並消耗四道具各一（🎮 v2.6.75 經典模式亦維持 100%）
         "kari": { hard: true, n: "卡瑞", lv: 52, s: "S", beh: "主動", race: "不死", un: true, e: "earth", boss: true, noAutoTeleport: true, hp: 3000, ac: -45, mr: 100, exp: 3000, goldMin: 1000, goldMax: 2000, atkSpd: 0.9, dmg: [3, 67], db: 21, hit: 76,   // 🔧 BOSS（但不觸發瞬移卷軸自動使用）
             mag:  { skn: "地面震裂", cd: 50, chance: 0.2, dmg: [4, 100], db: 99, ele: "earth" },                 // 每 5 秒判定，20% 機率施放：必中 4D100+99 地屬性魔法傷害
             mag2: { skn: "龍的一擊", cd: 70, dmg: [1, 100], db: 25, ele: "none", fixedDmg: true } },             // 每 7 秒：必中 1D100+25 無屬性固定傷害（不受屬抗/抗魔/減免影響）
@@ -2119,7 +2132,6 @@ const DB = {
         "de_train_cursetamer": { n: "受詛咒的馴獸師", lv: 43, s: "S", beh: "主動", race: "拉斯塔巴德", e: "fire", hp: 728, ac: -39, mr: 65, exp: 1850, goldMin: 110, goldMax: 300, atkSpd: 1, dmg: [1, 53], db: 5, hit: 54, tamerAura: true },
         "de_train_hellhound": { n: "地獄束縛犬", lv: 40, s: "S", beh: "主動", race: "惡魔", e: "earth", hp: 657, ac: -40, mr: 0, exp: 1601, goldMin: 110, goldMax: 300, atkSpd: 1, dmg: [1, 53], db: 5, hit: 50, tamedByAura: true, mag: { skn: "火焰噴吐", cd: 70, dmg: [4, 30], db: 28, ele: "fire", alwaysHit: true } },
         "de_train_soulknight": { n: "魂騎士", lv: 41, s: "S", beh: "主動", race: "拉斯塔巴德", e: "earth", hp: 1080, ac: -43, mr: 50, exp: 1682, goldMin: 110, goldMax: 300, atkSpd: 1, dmg: [1, 53], db: 5, hit: 51, mag: { skn: "地面震裂", cd: 70, dmg: [3, 40], db: 18, ele: "earth", alwaysHit: true } },
-        "de_train_hellslave": { n: "地獄奴隸", lv: 43, s: "S", beh: "主動", race: "拉斯塔巴德", e: "earth", hp: 962, ac: -41, mr: 45, exp: 1850, goldMin: 110, goldMax: 300, atkSpd: 1, dmg: [1, 53], db: 5, hit: 54 },
         "de_train_summoner": { n: "喚獸師", lv: 30, s: "S", beh: "主動", race: "拉斯塔巴德", e: "earth", hp: 600, ac: -28, mr: 35, exp: 962, goldMin: 10, goldMax: 200, atkSpd: 2, dmg: [2, 42], db: 22, hit: 28 },
         "de_train_gatekeeper": { n: "拉斯塔巴德守門人", lv: 40, s: "S", beh: "主動", race: "黑暗妖精", e: "none", hp: 800, ac: -27, mr: 30, exp: 1601, goldMin: 110, goldMax: 400, atkSpd: 1.5, dmg: [1, 66], db: 7, hit: 50 },
         // ===== 魔獸軍王之室（純BOSS房，需軍王的鑰匙入場） =====
@@ -2151,7 +2163,7 @@ const DB = {
         "de_elder_taimas": { n: "長老．泰瑪斯", lv: 90, s: "L", beh: "主動", race: "拉斯塔巴德", e: "none", boss: true, hard: true, hp: 21773, ac: -94, mr: 89, exp: 12962, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [5, 79], db: 101, hit: 128, mag: { skn: "黑暗流星雨", cd: 110, chance: 0.4, dmg: [1, 1000], db: 200, ele: "fire", alwaysHit: true } },
         "de_elder_adiel":  { n: "長老．艾迪爾", lv: 80, s: "L", beh: "主動", race: "拉斯塔巴德", e: "none", boss: true, hard: true, hp: 17746, ac: -85, mr: 75, exp: 10242, goldMin: 0, goldMax: 0, atkSpd: 2, dmg: [4, 99], db: 100, hit: 118, mag: { skn: "光球．闇", cd: 110, chance: 0.5, dmg: [4, 160], db: 100, ele: "none", alwaysHit: true } },
         // ===== 🌑 黑暗妖精聖地（依《黑暗妖精聖地.md》·v3.3.33）：7 新一般怪＋2 頭目（重裝歐姆戰士沿用 de_necro_omheavy）=====
-        "sanct_hellslave":      { n: "地獄奴隸", lv: 48, s: "S", beh: "主動", race: "異界生物", e: "earth", hp: 900, ac: -77, mr: 80, exp: 2305, goldMin: 150, goldMax: 400, atkSpd: 2, dmg: [2, 60], db: 30, hit: 53 },   // 聖地版（拉斯塔巴德訓練場另有 de_train_hellslave lv43·同名同動畫）
+        "sanct_hellslave":      { n: "地獄奴隸", lv: 48, s: "S", beh: "主動", race: "異界生物", e: "earth", hp: 900, ac: -77, mr: 80, exp: 2305, goldMin: 150, goldMax: 400, atkSpd: 2, dmg: [2, 60], db: 30, hit: 53 },   // 聖地版（拉斯塔巴德訓練場同名孤兒定義 de_train_hellslave 已刪·地獄奴隸僅此一筆）
         "sanct_cursed_fighter": { n: "受詛咒的黑暗妖精鬥士", lv: 46, s: "S", beh: "主動", race: "黑暗妖精", e: "fire", hp: 800, ac: -43, mr: 60, exp: 2117, goldMin: 150, goldMax: 400, atkSpd: 1, dmg: [1, 55], db: 6, hit: 58, mag: { skn: "衝擊之暈", cd: 90, chance: 0.3, type: "stun", pbase: 150 } },   // 每9秒判定30%·全體暈眩(150-MR)/2%
         "sanct_cursed_mage":    { n: "受詛咒的黑暗妖精法師", lv: 48, s: "S", beh: "主動", race: "黑暗妖精", e: "wind", hp: 750, ac: -38, mr: 120, exp: 2305, goldMin: 150, goldMax: 400, atkSpd: 2, dmg: [2, 60], db: 30, hit: 53, mag: { skn: "黑暗落雷", cd: 60, dmg: [3, 50], db: 40, ele: "wind", alwaysHit: true } },
         "sanct_cursed_knight":  { n: "受詛咒的黑暗妖精騎士", lv: 50, s: "S", beh: "主動", race: "黑暗妖精", e: "earth", hp: 1100, ac: -52, mr: 50, exp: 2501, goldMin: 180, goldMax: 420, atkSpd: 1, dmg: [1, 70], db: 7, hit: 63, mag: { skn: "黑暗地裂斬", cd: 80, dmg: [3, 60], db: 50, ele: "earth", alwaysHit: true } },
@@ -2397,7 +2409,7 @@ const DB = {
                 { id: "npc_kent_guard", n: "肯特守衛隊長", title: "城堡護衛", type: "castleguard", d: "肯特守衛隊長以盾為誓，雇用守衛替你承擔 10% 一般攻擊傷害（HP 低於設定門檻時發動）。" },
                 { id: "npc_esti", n: "依詩蒂", title: "血盟", type: "pledge", d: "依詩蒂低聲訴說著血盟的古老誓言，為你尋找以血為盟的夥伴。" },
                 { id: "npc_tros", n: "特羅斯", title: "血盟", type: "pledge", d: "特羅斯握劍而立，為你尋找以血為盟的夥伴。" },
-                { id: "npc_obel", n: "奧貝勒", title: "魔物追蹤", type: "exchange", d: "奧貝勒是追蹤魔物的老手，消耗王族搜索狀，追蹤指定地區的特定魔物。" }
+                { id: "npc_obel", n: "奧貝勒", title: "魔物追蹤", type: "exchange", d: "奧貝勒是追蹤魔物的老手，花費金幣追蹤指定地區的特定魔物。" }
             ]
         },
         "town_windwood_castle": {
@@ -2408,7 +2420,7 @@ const DB = {
                 { id: "npc_ww_guard", n: "風木傭兵隊長", title: "城堡護衛", type: "castleguard", d: "風木傭兵隊長深諳抵禦法術之道，雇用守衛替你承擔 10% 魔法攻擊傷害（HP 低於設定門檻時發動）。" },
                 { id: "npc_esti", n: "依詩蒂", title: "血盟", type: "pledge", d: "依詩蒂低聲訴說著血盟的古老誓言，為你尋找以血為盟的夥伴。" },
                 { id: "npc_tros", n: "特羅斯", title: "血盟", type: "pledge", d: "特羅斯握劍而立，為你尋找以血為盟的夥伴。" },
-                { id: "npc_hert", n: "赫特", title: "魔物追蹤", type: "exchange", d: "赫特循著魔物的氣息而行，消耗王族搜索狀，追蹤指定地區的特定魔物。" }
+                { id: "npc_hert", n: "赫特", title: "魔物追蹤", type: "exchange", d: "赫特循著魔物的氣息而行，花費金幣追蹤指定地區的特定魔物。" }
             ]
         },
         "town_heine_castle": {
@@ -2420,7 +2432,7 @@ const DB = {
                 { id: "npc_heine_guard", n: "海音神官隊長", title: "城堡治療", type: "castleguard", d: "海音神官隊長以聖光庇佑同袍，雇用神官在你 HP 低於設定門檻時，每 5 秒為你施放治癒術。" },
                 { id: "npc_esti", n: "依詩蒂", title: "血盟", type: "pledge", d: "依詩蒂低聲訴說著血盟的古老誓言，為你尋找以血為盟的夥伴。" },
                 { id: "npc_tros", n: "特羅斯", title: "血盟", type: "pledge", d: "特羅斯握劍而立，為你尋找以血為盟的夥伴。" },
-                { id: "npc_diren", n: "帝倫", title: "魔物追蹤", type: "exchange", d: "帝倫熟知各地魔物的蹤跡，消耗王族搜索狀，追蹤指定地區的特定魔物。" }
+                { id: "npc_diren", n: "帝倫", title: "魔物追蹤", type: "exchange", d: "帝倫熟知各地魔物的蹤跡，花費金幣追蹤指定地區的特定魔物。" }
             ]
         },
         "town_talking": {
@@ -2647,7 +2659,7 @@ const DB = {
 
         // 四階魔法 (Lv 16)
         "sk_fireball": { n: "燃燒的火球", type: "atk", tier: 4, reqM: 16, reqE: 32, mp: 16, dmgType: "magic", ele: "fire", target: "all", dmgDice: [5, 9] },
-        "sk_fireball_burst": { n: "爆裂的火球", type: "atk", tier: 4, mp: 20, dmgType: "magic", ele: "fire", target: "all", dmgDice: [6, 10], fxAlias: "燃燒的火球" },   // 🏺 遺物「烈焰巫師的正式長袍」：已學燃燒的火球時，於施法瞬間替換（castSkillInner/manualCast remap）；非可學技能
+        "sk_fireball_burst": { n: "爆裂的火球", type: "atk", tier: 4, mp: 20, dmgType: "magic", ele: "fire", target: "all", dmgDice: [6, 10] },   // 🏺 遺物「烈焰巫師的正式長袍」：已學燃燒的火球時，於施法瞬間替換（castSkillInner→_fireballMorphId·js/07；傭兵鏡像 js/06）；特效由 js/09 SPELL_FX 直接註冊「爆裂的火球」；非可學技能
         "sk_darkwave": { n: "闇黑波動", type: "atk", tier: 4, dmgType: "magic", ele: "none", target: "all", dmgDice: [5, 9] },   // 🏺 遺物「被差遣的迷你闇精靈」奇古獸 procSkill(8%) 用；非可學技能·對全體造成無屬性魔法傷害
         "sk_dex_up": { n: "通暢氣脈術", type: "buff", tier: 4, reqM: 16, reqE: 32, mp: 45, dur: 1200, d: { dex: 5 }, msg: "你覺得身手變得更靈活。" },
         "sk_break": { n: "壞物術", type: "atk", tier: 4, reqM: 16, reqE: 32, mp: 20, dmgType: "magic", status: { kind: "broken", pbase: 150, dur: 25 } },
@@ -2716,10 +2728,10 @@ const DB = {
         "sk_fire_storm": { n: "火風暴", type: "atk", tier: 9, reqM: 36, mp: 48, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[4, 10], [4, 10], [4, 10], [4, 10]] },
 
         // 十階魔法 (Lv 40)
-        "sk_meteor": { n: "流星雨", type: "atk", tier: 10, reqM: 40, mp: 60, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9]], apexAoe: true },
+        "sk_meteor": { n: "流星雨", type: "atk", tier: 10, reqM: 40, mp: 60, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9]] },
         "sk_soul_up": { n: "靈魂昇華", type: "buff", tier: 10, reqM: 40, mp: 20, dur: 1200, msg: "你覺得身體充滿了活力。" },
         "sk_abs_barrier": { n: "絕對屏障", type: "manual", tier: 10, reqM: 40, mp: 30, mEff: "barrier", dur: 7, label: "增益", msg: "你感覺身體與這個世界隔絕了。" },
-        "sk_disintegrate": { n: "究極光裂術", type: "atk", reqJustice: true, tier: 10, reqM: 40, mp: 70, dmgType: "magic", ele: "none", dmgDice: [10, 20], dmgBase: 100, apexSingle: true },
+        "sk_disintegrate": { n: "究極光裂術", type: "atk", reqJustice: true, tier: 10, reqM: 40, mp: 70, dmgType: "magic", ele: "none", dmgDice: [10, 20], dmgBase: 100 },
 
         // ================= 【騎士技術】 =================
         "sk_solid_shield": { n: "堅固防護", type: "buff", tier: 2, reqK: 40, hpCost: 30, mp: 5, dur: 180, reqShield: true, d: { er: 15 } },
@@ -2752,7 +2764,7 @@ const DB = {
 
         // 四階 (Lv 40)
         "sk_elf_magicerase": { n: "魔法消除", type: "atk", tier: 4, reqE: 40, mp: 30, dmgType: "magic", status: { kind: "mrhalf", pbase: 150, dur: 16 } },
-        "sk_elf_summon": { n: "召喚屬性精靈", type: "buff", tier: 4, reqE: 40, mp: 30, dur: 3600, reqEleAny: true, desc: "向締結契約的元素祈求援助，召來與自身屬性相同的精靈並肩作戰。", summon: { n: "夥伴：{ele}之精靈", dmgDice: [1, 40], elemScale: 20, dmgMult: 1.00, mrPenBase: 10, interval: 10, kind: "ranged", eleFromPlayer: true, hitLvOff: 10 } },
+        "sk_elf_summon": { n: "召喚屬性精靈", type: "buff", tier: 4, reqE: 40, mp: 30, dur: 3600, reqEleAny: true, desc: "向締結契約的元素祈求援助，召來與自身屬性相同的精靈並肩作戰。", summon: { n: "夥伴：{ele}之精靈", dmgDice: [1, 40], elemScale: 20, dmgMult: 1.00, mrPenBase: 10, interval: 10, kind: "ranged", eleFromPlayer: true, hitLvOff: 10 } },   // ⚠️ 以下召喚數值欄位(dmgDice/elemScale/dmgMult/mrPenBase/interval/hitLvOff)已被 _elfSpiritKingOverride(js/07·讀 js/23 _spiritSpec 規格表)無條件覆蓋·僅存參考
         "sk_elf_dancefire": { n: "舞躍之火", type: "buff", tier: 4, reqE: 40, mp: 30, dur: 1200, reqEle: "fire", d: { meleeDmg: 5 } },
         "sk_elf_stormeye": { n: "暴風之眼", type: "buff", tier: 4, reqE: 40, mp: 40, dur: 1200, reqEle: "wind", d: { rangedDmg: 2, rangedHit: 2 } },
         "sk_elf_earthshield": { n: "大地屏障", type: "buff", tier: 4, reqE: 40, mp: 50, dur: 8, reqEle: "earth" },
@@ -2760,7 +2772,7 @@ const DB = {
         "sk_elf_earthbless": { n: "大地的祝福", type: "buff", tier: 4, reqE: 40, mp: 35, dur: 1200, reqEle: "earth", d: { ac: 7 } },
 
         // 五階 (Lv 50)
-        "sk_elf_summon2": { n: "召喚強力屬性精靈", type: "buff", tier: 5, reqE: 50, mp: 50, dur: 3600, reqEleAny: true, desc: "以更深的元素契約呼喚高位精靈。精通精靈之道的妖精，甚至能使精靈王親臨戰場。", summon: { n: "夥伴：強力{ele}之精靈", dmgDice: [2, 40], elemScale: 10, dmgMult: 1.18, mrPenBase: 20, interval: 10, kind: "ranged", eleFromPlayer: true, hitLvOff: 20 } },
+        "sk_elf_summon2": { n: "召喚強力屬性精靈", type: "buff", tier: 5, reqE: 50, mp: 50, dur: 3600, reqEleAny: true, desc: "以更深的元素契約呼喚高位精靈。精通精靈之道的妖精，甚至能使精靈王親臨戰場。", summon: { n: "夥伴：強力{ele}之精靈", dmgDice: [2, 40], elemScale: 10, dmgMult: 1.18, mrPenBase: 20, interval: 10, kind: "ranged", eleFromPlayer: true, hitLvOff: 20 } },   // ⚠️ 以下召喚數值欄位(dmgDice/elemScale/dmgMult/mrPenBase/interval/hitLvOff)已被 _elfSpiritKingOverride(js/07·讀 js/23 _spiritSpec 規格表)無條件覆蓋·僅存參考
         "sk_elf_lifebless": { n: "生命的祝福", type: "heal", justiceHeal: true, tier: 5, reqE: 50, mp: 30, reqEle: "water", valDice: [1, 20], healDice: [1, 28], healBase: 28, classicHeal: { baseDice: 12, sides: 12, mult: 0.8 }, groupHeal: true, healCooldownTicks: 60, msg: "生命的祝福立即治癒全隊。" },
         "sk_elf_seal": { n: "封印禁地", type: "atk", tier: 5, reqE: 50, mp: 40, dmgType: "magic", reqEleAny: true, status: { kind: "magicseal", pbase: 100, dur: 8 } },
         "sk_elf_muddywater": { n: "污濁之水", type: "atk", tier: 5, reqE: 50, mp: 20, dmgType: "magic", ele: "water", reqEle: "water", bossOnly: true, status: { kind: "muddywater", force: true, dur: 32 }, desc: "只能對頭目施放；必定命中，使其HP自然恢復量減半", msg: "污濁的水流纏繞著目標，阻滯其生命力的匯聚。" },   // 🌊 五階水靈異常：bossOnly=只對頭目施放·force=跳過命中判定(必中)·dur單位秒·效果=js/03 頭目每5秒%回血減半·純異常技(無傷害骰)→js/07 守衛=目標狀態結束前不重複施放
@@ -2770,7 +2782,7 @@ const DB = {
         "sk_elf_preciseshot": { n: "精準射擊", type: "buff", tier: 5, reqE: 50, mp: 15, dur: 64, reqEle: "wind", noRefresh: true, msg: "你的目光變得無比銳利，攻擊精準無比。" },   // 🏹 持續內一般攻擊擲骰1由必定未命中→必定命中（最高命中率可達100%·見 getPhysicalDmg）；noRefresh：效果結束才可再施放
         "sk_elf_steelguard": { n: "鋼鐵防護", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1200, reqEle: "earth", d: { ac: 10 } },   // 🛡️ 鋼鐵防護：僅施法者自身 AC-10；不再提供全隊百分比減傷
         "sk_elf_attrfire": { n: "屬性之火", type: "buff", tier: 5, reqE: 50, mp: 20, dur: 320, reqEle: "fire", noRefresh: true, msg: "屬性之火在你的攻擊中燃燒。" },   // 🔧 一般攻擊30%機率傷害×1.5（見 playerAttack，與燃燒鬥志同效）；noRefresh：效果結束才可再施放
-        "sk_elf_physboost": { n: "體能激發", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 960, reqEle: "earth", noRefresh: true, loadFreeRegen: true, msg: "體能激發，負重之下仍能調息。" },   // 🔧 負重狀態仍可自然恢復HP/MP（見 regenTick / hasLoadFreeRegen）；noRefresh：效果結束才可再施放
+        "sk_elf_physboost": { n: "體能激發", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 960, reqEle: "earth", noRefresh: true, loadFreeRegen: true, msg: "體能激發，負重之下仍能調息。" },   // 🔧 負重狀態仍可自然恢復HP/MP（見 js/03 _regenHP/_regenMP 與 hasLoadFreeRegen）；noRefresh：效果結束才可再施放
         "sk_elf_energyboost": { n: "能量激發", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 960, reqEle: "fire", noRefresh: true, loadFreeRegen: true, msg: "能量激發，負重之下仍能調息。" },   // 🔧 同體能激發，火屬性版本
         "sk_elf_mirror": { n: "鏡反射", type: "buff", tier: 5, reqE: 50, mp: 10, dur: 16, msg: "你的周身浮現一面鏡子。" },   // 🪞 受魔法傷害時 精神%機率（每1點精神+1%），對施法者造成等量必中固定傷害（見 applyMobMagic）；type:buff → 自動施放且效果結束才再施放
         // ================= 【黑暗妖精魔法】 =================
@@ -2852,9 +2864,9 @@ const DB = {
         // 👑 王族魔法（reqRoy；cat:'royal' → 技能欄「王族魔法」分區）
         "sk_royal_precise":    { n: "精準目標", type: "buff", label: "增益", cat: "royal", reqRoy: 15, mp: 2, dur: 16, noRefresh: true, msg: "你鎖定全場敵人，使其露出破綻。" },
         "sk_royal_callally":   { n: "呼喚盟友", type: "atk", label: "攻擊", cat: "royal", reqRoy: 30, mp: 30, callAllies: true },
-        "sk_royal_burnweapon": { n: "灼熱武器", type: "buff", label: "增益", cat: "royal", reqRoy: 40, mp: 25, dur: 640, noRefresh: true, teamAura: true, d: { extraDmg: 5, extraHit: 5 }, msg: "灼熱之炎籠罩全隊武器，所有隊員的額外傷害與命中提升。" },
+        "sk_royal_burnweapon": { n: "灼熱武器", type: "buff", label: "增益", cat: "royal", reqRoy: 40, mp: 25, dur: 640, noRefresh: true, d: { extraDmg: 5, extraHit: 5 }, msg: "灼熱之炎籠罩全隊武器，所有隊員的額外傷害與命中提升。" },
         "sk_royal_bravewill":  { n: "勇猛意志", type: "buff", label: "增益", cat: "royal", reqRoy: 50, mp: 25, dur: 640, noRefresh: true, msg: "勇猛的意志充盈你的全身。" },
-        "sk_royal_shield":     { n: "閃亮之盾", type: "buff", label: "增益", cat: "royal", reqRoy: 50, mp: 25, dur: 640, noRefresh: true, teamAura: true, d: { ac: 8 }, msg: "閃亮的護盾環繞全隊，使所有隊員的防禦提升。" },
+        "sk_royal_shield":     { n: "閃亮之盾", type: "buff", label: "增益", cat: "royal", reqRoy: 50, mp: 25, dur: 640, noRefresh: true, d: { ac: 8 }, msg: "閃亮的護盾環繞全隊，使所有隊員的防禦提升。" },
         "sk_royal_kingguard":  { n: "王者加護", type: "passive", label: "被動", cat: "royal", reqRoy: 50, desc: "亞丁王族不屈的意志護持身心，使邪術與撼動神智的攻擊更難得逞。" },
         // ================= 【魔法頭盔技能】 =================
         // 治癒魔法頭盔技能
@@ -2883,12 +2895,12 @@ const DB = {
         "demon_temple": ["metal_centipede","flame_avatar","darkdweller","ohm_militia","flame_skba","de_lab_blackmage","flame_skba_queen","ohm_armor","flame_imp","tomb_guardian","flame_baphomet","fallen_priest1","fallen_priest2","fallen_priest3","flame_baless","fallen_priest4","fallen_priest5","flame_demon","fallen_boss"],
         "shadow_temple": ["death_priest_succubus","death_priest_baphomet","chaos_priest_wing","chaos_priest_beast","flameshadow_guard_baphomet","death_boss","chaos_boss"],
         "dream_island": ["nm_038", "nm_039", "nm_040", "nm_036", "nm_041", "nm_042", "nm_043", "nm_044", "nm_023", "nm_024", "nm_045", "nm_028", "nm_029", "nm_030", "nm_031", "nm_032", "nm_037"],
-        "kent_outer": ["siege_aton", "siege_julian", "siege_ovi", "siege_joe", "siege_senis", "siege_tros", "siege_esti", "siege_grit", "siege_gate"],
-        "kent_inner": ["siege_aton", "siege_julian", "siege_ovi", "siege_joe", "siege_senis", "siege_tros", "siege_esti", "siege_grit", "siege_tower"],
-        "ww_outer": ["siege_aton", "siege_julian", "siege_ovi", "siege_joe", "siege_senis", "siege_tros", "siege_esti", "siege_grit", "siege_gate_ww"],
-        "ww_inner": ["siege_aton", "siege_julian", "siege_ovi", "siege_joe", "siege_senis", "siege_tros", "siege_esti", "siege_grit", "siege_tower_ww"],
-        "heine_outer": ["siege_aton", "siege_julian", "siege_ovi", "siege_joe", "siege_senis", "siege_tros", "siege_esti", "siege_grit", "siege_gate_heine"],
-        "heine_inner": ["siege_aton", "siege_julian", "siege_ovi", "siege_joe", "siege_senis", "siege_tros", "siege_esti", "siege_grit", "siege_tower_heine"],
+        "kent_outer": ["siege_gate"],
+        "kent_inner": ["siege_tower"],
+        "ww_outer": ["siege_gate_ww"],
+        "ww_inner": ["siege_tower_ww"],
+        "heine_outer": ["siege_gate_heine"],
+        "heine_inner": ["siege_tower_heine"],
         "windwood_dungeon": ["zombie", "skeleton", "skel_archer", "skel_axe", "skel_spear", "sparto", "ghoul", "ungoliant", "ogre", "cerberus", "ogre_king", "nm_008", "baless"],
         "silver_knight": ["orc", "goblin", "orc_archer", "gremlin", "侏儒", "nm_003", "zombie", "fighter", "ice_wolf", "wolf", "gnome_warrior", "skeleton", "orc_mage", "stone_golem", "hobgoblin", "b_knight", "ghoul", "sparto", "lycan", "dragon_turtle"],
         "talking_island": ["orc", "goblin", "orc_archer", "gremlin", "侏儒", "nm_035", "nm_003", "doberman", "zombie", "floating_eye", "fighter", "wolf", "skeleton", "stone_golem", "spider"],
@@ -2960,7 +2972,7 @@ const DB = {
         "rastabad_cave2": ["de_remnant_bow", "de_remnant_sword", "de_remnant_xbow", "de_remnant_mage", "de_remnant_2h"],
         "rastabad_cave3": ["de_remnant_bow", "de_remnant_sword", "de_remnant_xbow", "de_remnant_mage", "de_remnant_2h", "dark_spirit_caller"],
         "rastabad_gate": ["de_gate_xbow", "de_gate_apprentice", "de_gate_spear", "de_gate_patrol", "de_gate_soldier", "de_gate_general"],
-        "rastabad_beast": ["de_gate_general", "de_train_blacktiger", "de_train_tamer", "de_train_cursetamer", "de_train_hellhound", "de_train_soulknight", "de_train_summoner", "de_train_gatekeeper"],   // 🌑 v3.4.21 地獄奴隸(de_train_hellslave)移出：地獄奴隸改為只在黑暗妖精聖地(sanct_hellslave)出沒
+        "rastabad_beast": ["de_gate_general", "de_train_blacktiger", "de_train_tamer", "de_train_cursetamer", "de_train_hellhound", "de_train_soulknight", "de_train_summoner", "de_train_gatekeeper"],   // 🌑 v3.4.21 地獄奴隸移出：地獄奴隸改為只在黑暗妖精聖地(sanct_hellslave)出沒（原 de_train_hellslave 孤兒定義已刪）
         "king_baranka_room": ["de_king_baranka"],
         "law_king_room": ["de_king_laia"],
         "necro_king_room": ["de_king_heruby"],
@@ -3360,7 +3372,7 @@ const DB = {
         DB.items['item_pride_dom_' + N] = {
             n: `傲慢之塔支配符(${N}F)`, type: 'misc', p: 0, c: 'text-orange-300', noUse: true, gachaWeight: 0,
             prideKind: 'dom', prideTier: N,
-            d: `攜帶在身上即可進入傲慢之塔${N}~${N + 9}樓，並可使用傳送術與瞬間移動卷軸`
+            d: `攜帶在身上即可進入傲慢之塔${N}~${N + 9}樓，並可使用傳送術與瞬間移動卷軸。城堡的魔物追蹤可指定傲慢之塔${N}~${N + 9}樓的魔物。`
         };
         DB.items['item_pride_scroll_' + N] = {
             n: `傲慢之塔移動卷軸(${N}F)`, type: 'misc', p: 0, c: 'text-sky-300', noUse: true, gachaWeight: 0,

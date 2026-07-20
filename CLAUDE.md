@@ -47,7 +47,7 @@
 4. 更新 `upstream-checkpoint.json` → commit(不主動 push)。
 5. 後續提醒:小百科/掉落查詢內容要另跑 `/update-wiki` 對齊(看上游 BASE..TARGET 的遊戲資料 diff);上游 commit message 全是「1」不可依賴,一律讀 diff。
 
-CI 版:GitHub Actions `sync-upstream.yml`(**每小時 :23 排程**+可手動)做同一件事:ls-remote 比 checkpoint 早退 → 鏡像資產(`rsync --delete`)→ sync 腳本(AFK_SKIP_SMOKE=1)→ smoke → **全綠直推 main(Pages 自動部署)+ 發 Release(tag `vYYYYMMDD-HHMM`,標題帶原作者版本號)**;錨點失效/smoke 紅 → 各開 issue、不推壞版。commit 用路徑白名單 add(CI 臨時裝的 playwright/package.json 不進版控)。**因此 `assets/`、`public/` 下不可放我方獨有檔案**(會被 `--delete` 刪)——外掛需要圖優先引用上游既有檔(例:afk-training 背景用 `assets/area/1920x1080/新兵修練場.jpg`);真的要自有素材就放 assets 之外,或改 workflow 加 exclude。
+CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHub schedule**;定時由 `cf-sync-trigger/` 的 Cloudflare Worker Cron Trigger 每天台灣 18:20 打 workflow_dispatch——GitHub 自家 schedule 常延遲 1~2 小時,故不用)做同一件事:ls-remote 比 checkpoint 早退 → 鏡像資產(`rsync --delete`)→ sync 腳本(AFK_SKIP_SMOKE=1)→ smoke → **全綠直推 main(Pages 自動部署)+ 發 Release(tag `vYYYYMMDD-HHMM`,標題帶原作者版本號)**;錨點失效/smoke 紅 → 各開 issue、不推壞版。commit 用路徑白名單 add(CI 臨時裝的 playwright/package.json 不進版控)。**因此 `assets/`、`public/` 下不可放我方獨有檔案**(會被 `--delete` 刪)——外掛需要圖優先引用上游既有檔(例:afk-training 背景用 `assets/area/1920x1080/新兵修練場.jpg`);真的要自有素材就放 assets 之外,或改 workflow 加 exclude。
 
 ## 目前的外掛(32 支;載入順序見 `scripts/afk-plugin-block.html`)
 

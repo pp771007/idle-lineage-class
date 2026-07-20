@@ -1,12 +1,10 @@
 name: 同步上游原版
 
-# 每小時檢查原作者 repo：有更新 → 鏡像資產 + 核心整包換 + 套錨點補丁 + 重產 manifest/版本 + smoke，
+# 只在被觸發時檢查原作者 repo（定時由 cf-sync-trigger Worker 每天台灣 18:20 打 workflow_dispatch）：有更新 → 鏡像資產 + 核心整包換 + 套錨點補丁 + 重產 manifest/版本 + smoke，
 # 全綠直接推 main（Pages 自動部署）並發 Release（標題帶原作者版本號）。
 # 失敗不推壞版本：錨點失效/同步錯誤、或外掛掛點 smoke 紅 → 各開 issue 通知，等人工處理。
 
 on:
-  schedule:
-    - cron: '23 * * * *'   # 每小時 :23（避開整點排程大軍，降低 GitHub 排隊延遲）
   workflow_dispatch: {}
 
 permissions:
@@ -23,7 +21,7 @@ jobs:
     steps:
       # ── 早退：上游 HEAD 沒變就整包跳過 ──────────────────────────
       #   一定要在 checkout 之前用 ls-remote + raw 檔判斷：stamp 的 BUILD_ID 含時間，
-      #   跑了 sync 腳本就必產生位元組變動 → 不早退的話每小時都會做白工甚至誤 commit。
+      #   跑了 sync 腳本就必產生位元組變動 → 不早退的話每次觸發都會做白工甚至誤 commit。
       - name: 檢查上游有無更新
         id: chk
         run: |

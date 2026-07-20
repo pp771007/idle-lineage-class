@@ -1,0 +1,20 @@
+name = "sync-trigger"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# 這個 Worker 只靠下面的 Cron Trigger 跑,不需要公開 HTTP 網址,
+# 故關掉 workers.dev 發佈(免去註冊 workers.dev 子網域)。
+workers_dev = false
+
+# 每天觸發一次,打 GitHub workflow_dispatch 叫 sync-upstream.yml 跑。
+# 用 Cloudflare Cron Trigger 取代 GitHub schedule(後者常延遲 1~2 小時)。
+# Cloudflare 的 cron 一律吃 UTC:10:20 UTC = 台灣時間 18:20。
+[triggers]
+crons = ["20 10 * * *"]
+
+# GH_PAT 不放這裡,用:  npx wrangler secret put GH_PAT
+# 觸發目標(repo / workflow / 分支)放成可改的環境變數,程式碼讀 env.*
+[vars]
+GH_REPO = "pp771007/idle-lineage-class"
+GH_WORKFLOW = "sync-upstream.yml"
+GH_REF = "main"

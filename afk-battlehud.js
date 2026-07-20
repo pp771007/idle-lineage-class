@@ -61,6 +61,12 @@
     document.documentElement.style.setProperty('--afk-hud-bar-h', barBottom + 'px');
   }
 
+  // 剛切到遊戲畫面時版面還在安頓(橫幅圖載入、afk-mobile 讓位、字型換行)→ 隔幾個時間點各量一次
+  function refitSoon() {
+    try { requestAnimationFrame(function () { requestAnimationFrame(fitTop); }); } catch (e) { fitTop(); }
+    [120, 400, 1200, 2500].forEach(function (ms) { setTimeout(fitTop, ms); });
+  }
+
   function txt(id) { var e = document.getElementById(id); return e ? e.textContent.trim() : ''; }
   function barW(id) { var e = document.getElementById(id); return (e && e.style.width) ? e.style.width : '0%'; }
   function setTxt(el, v) { if (el && el.textContent !== v) el.textContent = v; }
@@ -251,6 +257,23 @@
     fitTop();
     var n = 0, iv = setInterval(function () { fitTop(); if (++n >= 12) clearInterval(iv); }, 1000);
     window.addEventListener('resize', fitTop);
+    // ⚠ 開機後那 12 次量測全都發生在「還在首頁」——#game-screen 這時是 hidden,
+    //   getBoundingClientRect().top 量到 0,算出來的讓位量是錯的。玩家在首頁待超過 12 秒
+    //   才選角(很常見)就再也沒有重量的機會 → 進遊戲後等級/血/魔/經驗整條位置跑掉(玩家回報「有時」,
+    //   差別就在選角快不快)。故改為「畫面真的出現/尺寸變化時」再量一次。
+    ['loadGame', 'startGame'].forEach(function (fn) {
+      var orig = window[fn];
+      if (typeof orig !== 'function' || orig.__afkHud) return;
+      var w = function () {
+        var r = orig.apply(this, arguments);
+        try { refitSoon(); } catch (e) {}
+        return r;
+      };
+      w.__afkHud = true; window[fn] = w;
+    });
+    try {
+      if (window.ResizeObserver) new ResizeObserver(fitTop).observe(gs);   // 版面高度變動(橫幅換行/讓位)自動跟上
+    } catch (e) {}
     console.log('[AFK-battlehud] hooks OK — 手機戰鬥狀態列已取代上游 #mobile-vitals。');
   }
 

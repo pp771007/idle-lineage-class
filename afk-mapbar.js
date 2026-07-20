@@ -36,8 +36,11 @@
       HDR + ' > span{font-size:0 !important;line-height:0 !important;gap:4px !important;}',
       HDR + ' > span > span:empty{display:none !important;}',
       HDR + ' > span > span{line-height:1.4 !important;}',
-      /* 短按鈕(黑市/瞬移/出發·回村)改成等分一排:原本 flex:1 1 50% 兩顆就換行 */
-      HDR + ' > div > button{flex:1 1 0 !important;min-width:0 !important;padding:4px 6px !important;}',
+      /* 短按鈕(黑市/瞬移/出發·回村)等分第一排,兩個下拉(地區→地圖)自己一排＝同組的排在一起。
+         基準用「1/3 - gap」而不是 flex:1 1 0:basis 0 的話換行判斷用的是 min-content(≈0),
+         下拉會被塞進第一排的空隙裡,反而跟按鈕混在一起。3 顆按鈕剛好吃滿一排 → 下拉必定換行。
+         實測最長地圖名「拉斯塔巴德地下洞穴1樓」137px,併排後可用 180px,不會被截斷。 */
+      HDR + ' > div > button{flex:1 1 calc(33.333% - 4px) !important;min-width:0 !important;padding:4px 6px !important;}',
       /* 復活鈕要緊急點且標籤長 → 不參與擠壓,獨佔整排 */
       HDR + ' #btn-revive,' + HDR + ' #btn-revive-inplace{flex:1 0 100% !important;}',
       '}'

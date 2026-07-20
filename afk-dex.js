@@ -243,7 +243,7 @@
       var isEquip = (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc');
       // ③ 有手動「取得方式」(itemAcquire)的:如龍騎士書板(skillbk、非商店、無怪掉)→ 兌換取得,收進來才搜得到
       var hasAcq = !!(window.AFK_EXTRA && AFK_EXTRA.itemAcquire && AFK_EXTRA.itemAcquire[id]);
-      // ④ 在潘朵拉抽獎池(gachaWeight>0)的:雖無固定來源,但確實抽得到 → 也收進來,搜得到名字、詳情卡自動標「目前沒有固定取得途徑」
+      // ④ 會在潘朵拉黑市上架的(gachaWeight>0=上架權重):雖無固定來源,但確實買得到 → 也收進來,搜得到名字、詳情卡自動標「目前沒有固定取得途徑」
       //    (避免「明明拿得到卻完全查無」的死角;真正純內部用、gachaWeight=0 又無任何來源的維持排除、不灌爆搜尋)
       var inGacha = (d.gachaWeight > 0);
       // ⑤ 被任一隻怪掉落的(DROPPED_SET,buildIndexes 已先建好):非裝備但有怪掉的法術書/材料(如記憶水晶=幻術士法術書·gachaWeight=0 那批)

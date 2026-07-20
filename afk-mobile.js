@@ -225,6 +225,11 @@
             'body.m-mobile.mlog-sys #m-log-body #combat-log-panel{display:none !important;}',
             'body.m-mobile:not(.mlog-sys) #m-log-body #syslog-panel{display:none !important;}',
             'body.m-mobile #m-log-hd .m-log-sw{background:#1e293b;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:2px 10px;margin-right:6px;cursor:pointer;}',
+            // 從系統日誌點 NPC 名字彈出的選單（叫賣/嘲諷、擊殺密語）：核心給的 z-index 只有 260/261，
+            //   而日誌在手機被搬進 fixed 的 #m-log-sheet(9500) → 選單掛在 body 上、開了卻整個被面板蓋住，
+            //   玩家看到「點名字沒反應」；再點一下想試試看，那一下反而觸發核心的 document 關閉器把它關掉。
+            //   拉到面板與導覽列之上（仍低於登出遮罩，不會壓到逃生門）。
+            'body.m-mobile .wandering-shout-menu,body.m-mobile .wandering-taunt-menu,body.m-mobile .pvp-kill-whisper-menu{z-index:9700 !important;max-height:60vh;overflow-y:auto;}',
             // 登出確認視窗（自製，取代原生 confirm）
             '#m-logout-modal{display:none;position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:99998;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
             '#m-logout-modal.open{display:flex;}',

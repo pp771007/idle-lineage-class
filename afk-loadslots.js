@@ -25,8 +25,14 @@
     //   把按鈕改 relative 讓 flex 橫排、抑制原本 ::after 數字改用 textContent(page3+ 沒 ::after)。
     //   之前誤把整個容器改 position:static → 它跑到流式頂端被絕對定位的卡片蓋住(分頁鈕看似不見·已修)。
     // 單列不換行:width:auto 在絕對定位下 shrink-to-fit,寬一被擠 wrap 就折兩列(手機 4 顆鈕踩過)→ max-content+nowrap 鎖一列。
+    // 🚨 桌機/手機橫向的分頁鈕原本是「透明熱區」——數字 1 2 是**畫在背景圖上的美術**(css 把按鈕的
+    //    color/background/border 全設透明)。背景圖只畫得出兩個圈,我們擴到 4 頁時第 3、4 顆就成了看不見
+    //    的按鈕、位置也跟畫上的圈對不起來(玩家回報「切換按鈕跑掉了」)。只有手機直式因為另一條 media query
+    //    會把文字塗成金色才看得見 → 一轉橫向就露餡。
+    //    故這裡自己給可見樣式(不吃背景圖的圈),四頁以上才對得起來;.active 的光暈仍由核心規則負責(特異度較高)。
     var css = '#load-page-tabs{width:max-content !important;min-width:0 !important;height:auto !important;gap:8px !important;justify-content:center !important;padding:0 6px !important;flex-wrap:nowrap !important;}'
-        + '#load-page-tabs button{position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;min-width:34px;}'
+        + '#load-page-tabs button{position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;min-width:34px;'
+        + 'color:#e6d4a4;background:rgba(12,10,8,.82);border:1px solid rgba(180,139,65,.62);border-radius:50%;font:700 15px Georgia,serif;text-shadow:0 1px 2px #000;}'
         + '#load-page-tabs button::after{content:none !important;}';
     var st = document.createElement('style'); st.id = 'afk-loadslots-css'; st.textContent = css;
     (document.head || document.documentElement).appendChild(st);

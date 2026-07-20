@@ -152,7 +152,7 @@
     if (_castleEntry === null) {
       _castleEntry = {};
       try {
-        if (typeof CASTLE_EXTRA !== 'undefined') CASTLE_EXTRA.forEach(function (v) { _castleEntry[mapNameOf(v)] = '攻下' + (_castleCity[v] || '對應城池') + '後才開放，勝利後 24 小時內'; });
+        if (typeof CASTLE_EXTRA !== 'undefined') CASTLE_EXTRA.forEach(function (v) { _castleEntry[mapNameOf(v)] = '攻下' + (_castleCity[v] || '對應城池') + '後才開放（持有該城期間一直開著）'; });
       } catch (e) {}
     }
     return _castleEntry[mapName] || '';
@@ -175,6 +175,20 @@
     DROPPED_SET = {};
     var mobToMaps = {};
     for (var mid in DB.maps) (DB.maps[mid] || []).forEach(function (mob) { (mobToMaps[mob] = mobToMaps[mob] || []).push(mid); });
+    // 🦊 變身鏈頭目(玉藻→九尾→殺生石):後續階不在任何出怪池,直接查會變成「沒有出沒地圖」;
+    //    掉落實際上要打倒最終階才拿得到 → 出沒地圖沿用鏈根(玩家去那張圖就會遇到),掉落則整條鏈併進鏈根。
+    var chainDropsOf = {};   // 鏈根 id → 後續各階 id[]
+    for (var rid in DB.mobs) {
+      if (!DB.mobs[rid].transformTo || !mobToMaps[rid]) continue;   // 只從「在出怪池裡」的鏈根往下走
+      var seen = {}, t = DB.mobs[rid].transformTo, chain = [];
+      seen[rid] = 1;
+      while (t && DB.mobs[t] && !seen[t]) {
+        seen[t] = 1; chain.push(t);
+        if (!mobToMaps[t]) mobToMaps[t] = mobToMaps[rid].slice();   // 後續階沿用鏈根的出沒地圖
+        t = DB.mobs[t].transformTo;
+      }
+      chainDropsOf[rid] = chain;
+    }
     for (var id in DB.mobs) {
       var mob = DB.mobs[id];
       // 去重:原作者的地圖怪物清單可能把同一隻怪列兩次(如 windwood 重複列杜賓狗),否則出沒地圖會出現兩個同名
@@ -183,14 +197,22 @@
       // 目前 6 張:MOB_DROPS、黑暗武器(DARK_WEAPON_DROPS)、三階黑精靈水晶(DARK_CRYSTAL_DROPS)、龍騎士(DRAGON_DROPS)、戰士印記(WARRIOR_DROPS)、記憶水晶(MEM_DROPS·幻術士法術書)。
       // 都用「怪物名」當 key、格式 [[id,%]]。任何表裡的職業限定試煉道具(TRIAL_ITEM_CLASS)一律附註「🔒僅X」;非限定道具(書板/鎖鏈劍/戰士印記/記憶水晶等全職可掉)→trialClassNote 回 null、不附註。
       function _tagged(list) { return (list || []).map(function (e) { return [e[0], e[1], trialClassNote(e[0])]; }); }
-      var raw = [].concat(
-        _tagged((typeof MOB_DROPS !== 'undefined') ? MOB_DROPS[mob.n] : null),
-        _tagged((typeof DARK_WEAPON_DROPS !== 'undefined') ? DARK_WEAPON_DROPS[mob.n] : null),
-        _tagged((typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[mob.n] : null),
-        _tagged((typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null),
-        _tagged((typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[mob.n] : null),
-        _tagged((typeof MEM_DROPS !== 'undefined') ? MEM_DROPS[mob.n] : null)
-      );
+      function _allTables(nm) {
+        return [].concat(
+          _tagged((typeof MOB_DROPS !== 'undefined') ? MOB_DROPS[nm] : null),
+          _tagged((typeof DARK_WEAPON_DROPS !== 'undefined') ? DARK_WEAPON_DROPS[nm] : null),
+          _tagged((typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[nm] : null),
+          _tagged((typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[nm] : null),
+          _tagged((typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[nm] : null),
+          _tagged((typeof MEM_DROPS !== 'undefined') ? MEM_DROPS[nm] : null)
+        );
+      }
+      var raw = _allTables(mob.n);
+      (chainDropsOf[id] || []).forEach(function (cid) {   // 變身鏈:後續階的掉落併進鏈根
+        _allTables(DB.mobs[cid].n).forEach(function (e) {
+          if (!raw.some(function (x) { return x[0] === e[0]; })) raw.push(e);
+        });
+      });
       var drops = raw
         .map(function (e) { return [e[0], itemNameOf(e[0]), e[1], e[2]]; })   // [id, 名稱, 機率%, 附註]
         .filter(function (d) { return DB.items[d[0]]; });
@@ -403,6 +425,14 @@
         (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_mystic_mage', req: req, yield: 1, note: '消耗 +7 以上的「' + (r.srcName || r.src) + '」；成品為 +0 白板，不繼承強化值／詞綴／屬性' });
       });
     }
+    // 🔥 滅魔系列:宙斯之熔岩高崙客製製作(另吃一件 +7 以上的抗魔法鏈甲,不在 CRAFT_RECIPES 裡)
+    if (typeof SLAYER_RECIPES !== 'undefined' && SLAYER_RECIPES) {
+      SLAYER_RECIPES.forEach(function (r) {
+        if (!r || !r.result) return;
+        var req = (r.mats || []).concat([{ id: 'arm_69', cnt: 1, plus7: true }]);
+        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_zeus_golem', req: req, yield: 1, note: '另需消耗 +7 以上的「抗魔法鏈甲」×1；成品為 +0 白板' });
+      });
+    }
   }
   function buildNpcInfo() {
     _npcInfo = {};
@@ -535,10 +565,15 @@
     _trialBy = {};
     var put = function (id, label) { if (id && !_trialBy[id]) _trialBy[id] = label; };
     try { for (var c in TRIAL_50_CFG) { var t = TRIAL_50_CFG[c]; (t.rewards || []).forEach(function (r) { put(r.id || r, npcWithTown(t.npc) + ' 的 50 級試煉：以「' + (t.exMatNm || '指定材料') + '」兌換'); }); } } catch (e) {}
-    try { for (var k in DARK_TRIAL_CFG) { var c2 = DARK_TRIAL_CFG[k]; put(c2.reward, npcWithTown(c2.npc) + '：以「' + (c2.reqName || '指定道具') + '」兌換'); } } catch (e) {}
-    try { for (var k2 in SHENIEN_EX) (SHENIEN_EX[k2].rewards || []).forEach(function (id) { put(id, '希蓮恩（希培利亞村莊）試煉兌換'); }); } catch (e) {}
-    try { for (var k3 in WARRIOR_EX) (WARRIOR_EX[k3].rewards || []).forEach(function (id) { put(id, '多文（海音）戰士試煉兌換'); }); } catch (e) {}
-    try { for (var k4 in PROCEL_EX) (PROCEL_EX[k4].rewards || []).forEach(function (id) { put(id, '普洛凱爾（貝希摩斯）龍騎士兌換'); }); } catch (e) {}
+    // 職業試煉 15/30/45：達等級後向 NPC 接取，指定怪物必定掉試煉道具,集齊回去交付換獎勵
+    try {
+      for (var tq in TRIAL_Q) {
+        var q = TRIAL_Q[tq];
+        var reqNm = (q.reqs || []).map(function (r) { return itemNameOf(r[0]) + (r[1] > 1 ? ' ×' + r[1] : ''); }).join('、');
+        var lbl = npcWithTown(q.npc) + ' 的 ' + q.lv + ' 級試煉（限' + (_CLS_CN[q.cls] || q.cls) + '）：交付 ' + (reqNm || '指定試煉道具');
+        (q.rewards || []).forEach(function (id) { put(id, lbl); });
+      }
+    } catch (e) {}
     try { YURIA_REWARDS.forEach(function (r) { put(r.id, '尤麗婭（說話之島）：以「歐林的日記本」兌換（三選一）'); }); } catch (e) {}
     try { YURIA_HATIN_REWARDS.forEach(function (r) { put(r.id, '尤麗婭（說話之島）：以「黑暗哈汀的日記本」兌換（六選一）'); }); } catch (e) {}   // 👹 隱藏的魔族武器
     try { SHIMIZHE_REWARDS.forEach(function (id) { put(id, '希米哲（海賊島村莊）：以「兒子的信＋遺骸＋肖像畫」各 1 兌換（五選一・無限次）'); }); } catch (e) {}   // 🏴‍☠️ 藍海賊裝備
@@ -602,10 +637,6 @@
     if (d.type === 'wpn') {
       var spd = (d.spd != null) ? d.spd : 1.0;
       spdLine = '<div style="line-height:1.8;margin:4px 0;"><span class="text-orange-300">攻擊速度: 每 ' + spd + ' 秒一次（數值越低攻擊越快）</span></div>';
-      // 強化最終傷害上限:依稀有度分五檔(讀遊戲 wpnEnCurveMax,作者調整分檔自動跟上);noEnhance 武器不能強化故不顯示
-      if (!d.noEnhance && typeof wpnEnCurveMax === 'function') {
-        spdLine += '<div style="line-height:1.8;margin:4px 0;"><span class="text-amber-300">強化最終傷害: +20 時最高 ×' + wpnEnCurveMax(d).toFixed(2) + '（依稀有度分檔 ×1.50～×2.50，越強化倍率越高）</span></div>';
-      }
     }
     var priceLine = d.p ? '<div class="m-dex-craft-mats" style="color:#cbd5e1;">賣店價：' + Math.floor(d.p * 0.3).toLocaleString() + ' 金幣</div>' : '';
     // 取得方式:手動補(itemAcquire)/ 歐西里斯寶箱 / 中性句;製作、商店、查掉落鈕沿用
@@ -798,8 +829,8 @@
       '進化玩法（一般型態 Lv30↑ 用果實進化）見小百科「帶寵物」分頁。'
     ] },
     { id: 'areadrop', title: '🌿 區域額外掉落（妖精森林周邊、眠龍洞穴 1~3 樓）', keys: ['米索莉', '精靈玉', '元素石'], lines: [
-      '該區所有怪：粗糙的米索莉塊／精靈玉／元素石 各 20%',
-      '學會「世界樹的呼喚」則各 30%',
+      '該區所有怪：精靈玉 20%；粗糙的米索莉塊／元素石 各 2%',
+      '學會「世界樹的呼喚」則為 精靈玉 30%；粗糙的米索莉塊／元素石 各 3%',
       '會受「席琳的世界 ×3」加成'
     ] },
     { id: 'blackstone', title: '⛏ 黑魔石（黑暗妖精素材）', keys: ['黑魔石'], lines: [

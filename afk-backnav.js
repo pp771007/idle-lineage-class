@@ -1,15 +1,18 @@
 /* ============================================================================
  * afk-backnav.js — 手機「返回鍵 / 返回手勢」回首頁
  *
- * 需求:在「選擇存檔位(載入進度 / 新遊戲)」與「創角」這兩個子畫面,按 Android 返回鍵 /
+ * 需求:在「角色選擇(載入進度 / 新遊戲)」與「創角」這兩個子畫面,按 Android 返回鍵 /
  *   iOS 返回手勢時 → 回到首頁主選單,而不是離開頁面 / 關掉 PWA。
  *
  * 作法(History API,完全不改作者碼,只包住作者的畫面切換函式 + 聽 popstate):
- *   - 進入子畫面(openSlotSelect / showCreation)後補一個 history「攔截狀態」→ 讓返回有東西可 pop。
- *   - 使用者按返回(popstate)且目前在子畫面 → 呼叫作者原生返回(slotBackToMenu / backToMenu)回首頁。
- *   - 使用者改用畫面上的「返回」鈕、或選存檔位進了遊戲(slotBackToMenu/backToMenu/startGame/loadGame)
- *     → 同步把攔截狀態 pop 掉,免 history 殘留、免在首頁/遊戲中多一次「空返回」。
- *   整個子流程(選存檔位→創角)只押一個攔截狀態,故從創角按一次返回即直接回首頁(與原生返回鈕一致)。
+ *   - 每次畫面切換後 syncTrap():「人在子畫面就恰好押一格 history 攔截狀態,回到首頁/進遊戲就退掉那格」。
+ *   - 使用者按返回(popstate)且目前在子畫面 → 呼叫作者原生返回(loadBackToMenu / backToMenu)退一層。
+ *   返回鍵的每一層都對齊畫面上「返回」鈕的行為:創角 →(backToMenu)角色選擇 →(loadBackToMenu)首頁。
+ *   ⚠ 因此創角退回角色選擇後「還在子畫面」,必須再押回一格,否則下一次返回就直接關掉 PWA。
+ *
+ * ⚠ 掛的函式名/面板 id 要跟著上游走:上游把選角畫面換成卡片式的 #load-select-panel + openLoadSelect/
+ *   loadBackToMenu 後,舊的 openSlotSelect/#slot-select-panel 整組不存在 → install() 抓不到函式會安靜
+ *   停用(輪詢 40 次後放棄),返回鍵直接關掉 PWA、沒有任何錯誤訊息。同步上游後要順手確認這幾個名字還在。
  *
  * 範圍:只在手機啟用(桌機瀏覽器返回鍵維持原生行為);非子畫面(首頁 / 遊戲中)一律放行原生行為。
  *   遊戲中的「回首頁」另由 afk-mobile 的 🚪登出鈕處理,不在本檔範圍。
@@ -32,7 +35,7 @@
       || navigator.standalone === true;
   }
 
-  var SUBS = ['slot-select-panel', 'creation-panel'];
+  var SUBS = ['load-select-panel', 'creation-panel'];
   function vis(id) { var e = document.getElementById(id); return !!(e && !e.classList.contains('hidden')); }
   function subVisible() { for (var i = 0; i < SUBS.length; i++) if (vis(SUBS[i])) return true; return false; }
 
@@ -49,10 +52,16 @@
     try { history.back(); } catch (e) { ignorePop = false; }
   }
 
-  function routeHome() {
-    // 依目前所在子畫面呼叫作者原生返回(兩者都會回到 #main-menu)
+  // 人在子畫面就恰好押著一格攔截狀態,否則退掉——每次畫面切換後呼叫,history 永遠跟畫面一致
+  function syncTrap() {
+    if (!isMobile()) return;
+    if (subVisible()) pushTrap(); else consumeTrap();
+  }
+
+  function routeBack() {
+    // 依目前所在子畫面呼叫作者原生返回(與畫面上的「返回」鈕同一層邏輯:創角→角色選擇→首頁)
     if (vis('creation-panel') && typeof window.backToMenu === 'function') window.backToMenu();
-    else if (vis('slot-select-panel') && typeof window.slotBackToMenu === 'function') window.slotBackToMenu();
+    else if (vis('load-select-panel') && typeof window.loadBackToMenu === 'function') window.loadBackToMenu();
   }
 
   window.addEventListener('popstate', function () {
@@ -67,7 +76,8 @@
     if (st && (st.afkBack || st.afkLayer)) return;
     if (subVisible()) {
       trapped = false;                  // 瀏覽器已 pop 掉我們的攔截狀態
-      routeHome();
+      routeBack();
+      syncTrap();                       // 退一層後若還在子畫面(創角→角色選擇)要再押回去
     }
     // 非子畫面(首頁 / 遊戲中):不攔,放行原生行為
   });
@@ -78,31 +88,31 @@
     if (typeof orig !== 'function' || orig.__afkBack) return;
     var w = function () {
       var r = orig.apply(this, arguments);
-      try { if (isMobile() && subVisible()) pushTrap(); } catch (e) {}
+      try { syncTrap(); } catch (e) {}
       return r;
     };
     w.__afkBack = true; window[name] = w;
   }
-  // 包住「用按鈕回首頁 / 進遊戲」的函式 → 同步 pop 掉攔截狀態(保持 history 與畫面一致)
+  // 包住「用按鈕退一層 / 進遊戲」的函式 → 同步 history(離開子畫面才 pop;創角→角色選擇仍在子畫面,那格要留著)
   function wrapLeave(name) {
     var orig = window[name];
     if (typeof orig !== 'function' || orig.__afkBack) return;
     var w = function () {
       var r = orig.apply(this, arguments);
-      try { consumeTrap(); } catch (e) {}
+      try { syncTrap(); } catch (e) {}
       return r;
     };
     w.__afkBack = true; window[name] = w;
   }
 
   function install() {
-    if (typeof window.openSlotSelect !== 'function') return false;
-    wrapEnter('openSlotSelect');   // 首頁 → 選擇存檔位
-    wrapEnter('showCreation');     // 選存檔位 → 創角
-    wrapLeave('slotBackToMenu');   // 選存檔位「返回」鈕 → 首頁
+    if (typeof window.openLoadSelect !== 'function') return false;
+    wrapEnter('openLoadSelect');   // 首頁 → 角色選擇
+    wrapEnter('showCreation');     // 角色選擇 → 創角
+    wrapLeave('loadBackToMenu');   // 角色選擇「返回」鈕 → 首頁
     wrapLeave('backToMenu');       // 創角「返回」鈕 → 首頁
     wrapLeave('startGame');        // 創角 → 進遊戲
-    wrapLeave('loadGame');         // 選存檔位(載入)→ 進遊戲
+    wrapLeave('loadGame');         // 角色選擇(載入)→ 進遊戲
     return true;
   }
 

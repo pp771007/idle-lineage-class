@@ -6,7 +6,8 @@
  *
  * 行為（比照我方 main 設計）：
  *   - 遊戲內有一個勾選框「傳送控制戒指自動找BOSS」(比照舊 main 的 #set-teleport-boss)，勾了才自動。
- *     插在設定面板「藥水不足自動買」(#set-auto-buy-pot) 下方；狀態存 localStorage afk_bossring_on(預設開)。
+ *     插在設定面板「藥水不足自動買」(#set-auto-buy-pot) 下方；狀態**依存檔位(角色)分開**存
+ *     localStorage afk_bossring_on_<slot>(沒設定過時沿用舊的全域鍵 afk_bossring_on，預設開)。
  *   - 只在「線上前景遊玩」跑（離線快速結算 state.ff 期間不套用；跟遇 BOSS 自動逃離互斥＝有王就不瞬移）。
  *   - 持有傳送控制戒指、場上無 BOSS、非排除地圖（軍王之室/攻城/時空裂痕/排名攀登/遺忘之島）、手動瞬移抑制期外，
  *     且背包有瞬移卷軸 → 自動 useItem(卷軸, 非silent) → 上游的 hasTeleportRing() 讓下一次生怪必定 BOSS。
@@ -21,9 +22,42 @@
         return;
     }
 
-    var LS = 'afk_bossring_on';
-    function isOn() { try { var v = localStorage.getItem(LS); return v === null ? true : v === '1'; } catch (e) { return true; } }   // 預設開(保留原本一律自動的行為)
-    function setOn(v) { try { localStorage.setItem(LS, v ? '1' : '0'); } catch (e) {} }
+    // 設定依存檔位(角色)分開:同一個帳號的不同角色想不想自動找王往往不一樣
+    //   (主力帶戒指要自動找,練功號沒戒指或在低階圖不想燒卷軸)。寫法比照 afk-autobuy。
+    //   舊的全域鍵 afk_bossring_on 當「還沒各自設定過」時的預設,玩家原本關掉的不會突然變回開。
+    var LS_OLD = 'afk_bossring_on';
+    function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1; }
+    function prefKey() { return 'afk_bossring_on_' + currentSlot; }
+    function legacyOn() { try { var v = localStorage.getItem(LS_OLD); return v === null ? true : v === '1'; } catch (e) { return true; } }   // 預設開(保留原本一律自動的行為)
+    // 🚀 tick 每秒查,快取避免同步 IO;本檔是唯一寫入者,鍵含存檔位 → 切角色自然分開
+    var _cache = {};
+    function isOn() {
+        if (!validSlot()) return legacyOn();
+        if (currentSlot in _cache) return _cache[currentSlot];
+        var v;
+        try { var raw = localStorage.getItem(prefKey()); v = (raw === null) ? legacyOn() : (raw === '1'); } catch (e) { v = legacyOn(); }
+        _cache[currentSlot] = v;
+        return v;
+    }
+    function setOn(v) {
+        if (!validSlot()) return;
+        try { localStorage.setItem(prefKey(), v ? '1' : '0'); _cache[currentSlot] = !!v; } catch (e) {}
+    }
+    // 進到某角色時把勾選框同步成該存檔位的設定(否則會顯示上一個角色的狀態)
+    function restoreForSlot() {
+        var cb = document.getElementById('set-teleport-boss');
+        if (cb) cb.checked = isOn();
+    }
+    ['loadGame', 'startGame'].forEach(function (fn) {
+        var orig = window[fn];
+        if (typeof orig !== 'function' || orig.__afkBossring) return;
+        var w = function () {
+            var r = orig.apply(this, arguments);
+            try { restoreForSlot(); } catch (e) {}
+            return r;
+        };
+        w.__afkBossring = true; window[fn] = w;
+    });
 
     // 遊戲內勾選框：併入 afk-autobuy 的「🔌 外掛」框、放在「自動購買魔法卷軸(魔法屏障)」下方(單一外掛區)。
     // autobuy 框不在(被外掛開關關掉/未注入)時退回舊錨點(#set-auto-buy-pot 下方)。idempotent、定期確保還在。
@@ -45,7 +79,7 @@
         }
         var lbl = document.createElement('label');
         lbl.className = 'cursor-pointer flex items-center gap-2';
-        lbl.innerHTML = '<input type="checkbox" id="set-teleport-boss" class="w-4 h-4"><span class="text-rose-300">傳送控制戒指自動找BOSS</span><span class="text-xs text-slate-500">需帶戒指·離線不套用</span>';
+        lbl.innerHTML = '<input type="checkbox" id="set-teleport-boss" class="w-4 h-4"><span class="text-rose-300">傳送控制戒指自動找BOSS</span><span class="text-xs text-slate-500">需帶戒指·離線不套用·每角色分開</span>';
         var barrier = document.getElementById('set-auto-buy-magicbarrier');
         var abBox = barrier && barrier.closest('#afk-autobuy-box');
         if (abBox) {

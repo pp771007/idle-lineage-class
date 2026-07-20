@@ -1,5 +1,5 @@
 {
-  "reconciledUpstreamCommit": "f0c9a4ef12450ec86f1be7cb85cb21c106fa4a3e",
-  "reconciledAt": "2026-07-16 18:35 (UTC+8)",
-  "note": "🔄 2026-07-19 改鏡像架構,錨點語意換成「上游 commit」(舊 reconciledIndexCommit=我方 b01895e2 已作廢)。初始錨點=f0c9a4ef(上游 v3.4.83)=舊 main 最後一輪選擇性移植+小百科對齊的上游終點。⚠️ 轉換期一次性任務未完成:①舊時代各輪『未移植/略過』項目(翻 upstream-reviews/*.md 移植狀態欄)如今已全數隨鏡像進遊戲,但從沒進過小百科,首次 /update-wiki 要掃;②f0c9a4ef..現行 syncedUpstreamCommit(v3.4.83→v3.5.79,含日出之國/潘朵拉遺物市場/白目玩家/正義值等)也全未反映。兩項做完才把此旗標拿掉。"
+  "reconciledUpstreamCommit": "e176dd74ea5be100a9cff12536a74a93060645f8",
+  "reconciledAt": "2026-07-20 13:24 (UTC+8)",
+  "note": "上游 v3.6.36。✅ 轉換期一次性任務已完成：舊 upstream-reviews/*.md 五份報告的「未移植/略過」項已全數掃過並補齊，之後不必再翻舊報告。本輪逐檔對過 f0c9a4ef..e176dd74（30 檔、約 7900 行）：血盟頁整頁重寫；新增「遺物市場」「PVP／性向值」「日出之國」三分頁；修正強化/經典模式/屬性詞綴/月光爆裂/區域掉落/相消術/出血/城堡佔領等錯誤數據；dex 修好試煉索引(改讀 TRIAL_Q)、補滅魔配方與變身鏈掉落合併、補玩家 NPC 兩條特殊掉落。"
 }

@@ -350,12 +350,23 @@
       }).join('\n          ');
     }));
 
-    jobs.push(hashRecords().then(function (h) {
-      out.對帳記錄 = '怪物 ' + (h.anim === null ? '❌ 無記錄(下次載入會整包重抓!)' : h.anim + ' 隻') +
-        ' / 圖片 ' + (h.img === null ? '❌ 無記錄' : h.img + ' 張');
-    }));
+    // 「怪物無記錄」有兩種完全不同的成因,講錯會嚇到人:
+    //   (a) 真的沒對過 → 下次載入每隻怪都對不上 → 整包清掉重抓(要示警)
+    //   (b) 圖桶大到 cache.keys() 拋 Operation too large → reconcileAnim 在寫記錄前就早退
+    //       → 記錄永遠是空的,但它同時也一張都沒清(不會重抓,只是這台永遠對不了動畫的帳)
+    //   (b) 要靠 SW 回報的 skipped 才分得出來,而那則訊息是非同步進來的 → 先占位,
+    //   等 Promise.all 之後(ANIM_RECON 已到齊)再填,才不會誤報也不會打亂欄位順序。
+    var HASH = null;
+    out.對帳記錄 = '(計算中)';
+    jobs.push(hashRecords().then(function (h) { HASH = h; }));
 
     return Promise.all(_jobs).then(function () {
+      out.對帳記錄 = !HASH ? '❌ 讀取失敗' :
+        ('怪物 ' + (HASH.anim !== null ? HASH.anim + ' 隻'
+          : (ANIM_RECON && ANIM_RECON.skipped)
+            ? '⏭️ 尚未建立(逐怪對帳被跳過,見下方;沒清任何圖、不會重抓)'
+            : '❌ 無記錄(下次載入會整包重抓!)') +
+         ' / 圖片 ' + (HASH.img === null ? '❌ 無記錄' : HASH.img + ' 張'));
       put('逐怪對帳', function () {
         if (!ANIM_RECON) return '(這次載入沒收到回報)';
         if (ANIM_RECON.skipped) return '⏭️ 跳過 —— ' + ANIM_RECON.skipped + '(✅ 修正版 SW 生效中:沒清任何圖)';

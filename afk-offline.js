@@ -28,6 +28,19 @@
   var CAP_MS           = CAP_HOURS * 3600 * 1000;
   var HEARTBEAT_MS     = 5 * 1000;              // 活著時多久蓋一次時間戳
   var CKPT_MS          = 5 * 1000;              // 💾 結算檢查點間隔(真實毫秒):每滿就把已結算收益 saveGame＋錨點推進到已結算時點;結算被中斷最多丟這麼久的量
+  // ⚠ iOS 上「結算到一半變白畫面」= Safari 把整個分頁回收掉。檢查點是最可疑的記憶體來源:
+  //   每次都把整份存檔明文寫進 localStorage,並再 postMessage 一份給壓縮 Worker(結構化複製=再一份),
+  //   主執行緒還留著 _lzWorkerRaw 那份參照直到 Worker 回訊。存檔大(背包幾萬筆)時壓縮跟不上,
+  //   多份數 MB 字串就會同時卡在記憶體;若 localStorage 配額被撐爆(iOS 每 origin 約 5MB),
+  //   核心還會退回「主執行緒同步壓縮」——那是秒級的整頁凍結。
+  //   對策:壓縮還沒消化完就跳過這一輪(背壓),但最多跳到 CKPT_MAX_MS 就一定補存一次。
+  //   ⚠ 不把基本間隔拉長:檢查點正是「結算中被系統殺掉也不會整晚白算」的保命機制,
+  //     在「已經會被殺」的裝置上拉長間隔等於每次被殺丟更多進度,只在真的有記憶體壓力時才退讓。
+  var CKPT_MAX_MS      = 30 * 1000;             // 不論背壓多嚴重,超過這麼久一定補存一次(保命上限)
+  // 壓縮 Worker 還有幾份存檔沒消化完(核心 js/00 的 _lzWorkerRaw;它可能被重新指派,每次重讀)
+  function lzBacklog() {
+    try { var raw = window._lzWorkerRaw; return raw ? Object.keys(raw).length : 0; } catch (e) { return 0; }
+  }
   var OVERLAY_MIN_TICK = 3000;                  // 補跑超過這麼多 tick 才顯示進度遮罩(約 5 分鐘)
   // 「每段最多跑這麼久就 await raf 讓出一次」＝畫面更新間隔(進度遮罩只在讓出時重繪、期間頁面凍結)。
   //   值小→讓出多、畫面順但等影格開銷大、結算慢;值大→相反。故依「要補跑的時間長短」動態取值:
@@ -36,11 +49,22 @@
   var SLICE_MAX_MS     = 250;                   // 長離線:讓出少、結算快
   var SLICE_SHORT_TICK = 3000;                  // ≤5 分鐘(=遮罩門檻)以下一律用最小值(順)
   var SLICE_LONG_TICK  = 36000;                 // ≥1 小時一律用最大值(快);兩者之間線性內插
+  // 手機切片上限收斂:250ms 一段代表整頁只有 ~4fps、觸控最慢要等 250ms 才有反應,
+  //   玩家很容易以為當掉而切走或殺掉 App(切走在 iOS 反而更容易整頁被回收)。
+  //   代價只有讓出開銷從 ~6% 變 ~10%,換來進度條會動、長按放棄按得動。
+  var SLICE_MAX_TOUCH_MS = 160;
+  function sliceMaxMs() {
+    try {
+      var touch = ('ontouchstart' in window) || (window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+      return touch ? SLICE_MAX_TOUCH_MS : SLICE_MAX_MS;
+    } catch (e) { return SLICE_MAX_MS; }
+  }
   function sliceFor(totalTicks) {
+    var maxMs = sliceMaxMs();
     if (totalTicks <= SLICE_SHORT_TICK) return SLICE_MIN_MS;
-    if (totalTicks >= SLICE_LONG_TICK) return SLICE_MAX_MS;
+    if (totalTicks >= SLICE_LONG_TICK) return maxMs;
     var f = (totalTicks - SLICE_SHORT_TICK) / (SLICE_LONG_TICK - SLICE_SHORT_TICK);
-    return Math.round(SLICE_MIN_MS + f * (SLICE_MAX_MS - SLICE_MIN_MS));
+    return Math.round(SLICE_MIN_MS + f * (maxMs - SLICE_MIN_MS));
   }
   // tick 數 → 友善時間字串(進度遮罩顯示「已結算 X / 共 Y」用)
   function fmtCatchupTime(ticks) {
@@ -151,6 +175,15 @@
       try { w.postMessage({ gap: gap }); } catch (e) { fin(); }
     });
   }
+  // 結算進行中時指向當下那一輪的檢查點函式(結束時清成 null)。切到背景 / 關掉 App 前先存一次:
+  //   iOS 在背景會直接回收整個分頁(玩家看到的就是回來變白畫面),等下一次定時檢查點就來不及。
+  var _ckptNow = null;
+  function ckptOnLeave() { var f = _ckptNow; if (typeof f === 'function') f(); }
+  try {
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') ckptOnLeave(); });
+    window.addEventListener('pagehide', ckptOnLeave);
+  } catch (e) {}
+
   // 補跑每段之間的「讓出」:前景 rAF(順、快);背景 Worker 溫和節拍(續跑不卡、不榨乾 CPU)。
   function pace(sliceMs) {
     var hidden = (typeof document !== 'undefined' && document.visibilityState === 'hidden');
@@ -884,6 +917,14 @@
         keysUsed: isKing ? Math.max(0, kingKeysBefore - countKingKeys()) : 0
       };
     }
+    // 切到背景 / 關掉 App 前主動存一次:iOS 在背景更容易被系統直接丟掉整個分頁,
+    //   靠下一次定時檢查點就來不及(等於白算)。結算結束時要記得解除,別讓它留著指向舊的閉包。
+    _ckptNow = function () {
+      try {
+        if (!timing || !timing.closeTs || done <= 0 || player.dead || !state.running) return;
+        doCheckpoint();
+      } catch (e) {}
+    };
     function doCheckpoint() {
       try {
         if (typeof saveGame === 'function') saveGame();   // ff 下 logSys 靜音,不會洗「進度已儲存」;saveGame 尾端的 offlineStamp 被 catchingUp 擋掉,不影響錨點
@@ -984,8 +1025,12 @@
           }
         }
         if (withOverlay) updateOverlay(done / totalTicks, done, totalTicks);
-        if (timing && timing.closeTs && done > 0 && !player.dead && state.running &&
-            (performance.now() - _ckptLastMs) >= CKPT_MS) doCheckpoint();   // 💾 分段檢查點(見上方宣告)
+        // 💾 分段檢查點(見上方宣告):間隔依結算長短動態;壓縮 Worker 還沒消化完就先跳過(背壓,
+        //    避免多份數 MB 存檔字串同時堆在記憶體),但拖過 CKPT_MAX_MS 一定補存一次。
+        if (timing && timing.closeTs && done > 0 && !player.dead && state.running) {
+          var sinceCkpt = performance.now() - _ckptLastMs;
+          if (sinceCkpt >= CKPT_MAX_MS || (sinceCkpt >= CKPT_MS && !lzBacklog())) doCheckpoint();
+        }
         await pace(sliceMs);   // 前景 rAF / 背景 Worker 溫和節拍(切走也續算)
         // 「長按放棄剩餘收益」按滿 HOLD_MS → 設旗標跳出(已算到的收益本就累積保留,等同撞死即停)
         if (_holdStart && (performance.now() - _holdStart) >= HOLD_MS) _abortCatchup = true;
@@ -997,6 +1042,7 @@
       console.error('[AFK] 離線補跑發生例外，已中止:', e);
     } finally {
       killTicker();   // 補跑結束(完成/死亡/例外)→ 關掉背景節拍器 Worker,不殘留
+      _ckptNow = null;   // 解除「切到背景先存一次」的鉤子(閉包已失效)
       settleDeadMobs();
     }
 

@@ -41,7 +41,7 @@ const logs = [];
 //   故它單獨在「手機模擬」那一輪驗,桌機那輪不列入(否則桌機永遠等不到它、smoke 假性失敗)。
 // afk-battlehud 桌機也會 init(只是 CSS 讓它不顯示)→ 放 need 即可;它取代的是核心手機版 #mobile-vitals。
 const needMobileOnly = [];   // afk-mobile 重寫成薄殼後在桌機也會 hooks OK(見下方 need)→不需獨立手機輪要求
-const need = ['[AFK]', '[AFK-mobile]', '[AFK-backnav]', '[AFK-battlehud]', '[AFK-mapbar]', '[AFK-slotinfo]', '[AFK-dex]', '[AFK-wiki]', '[AFK-syncinfo]', '[AFK-statpts]', '[AFK-pwa]', '[AFK-storage]', '[AFK-history]', '[AFK-diag]', '[AFK-mobname]', '[AFK-training]', '[AFK-itemsearch]', '[AFK-eqlist]', '[AFK-npclist]', '[AFK-skin]'];
+const need = ['[AFK]', '[AFK-mobile]', '[AFK-backnav]', '[AFK-battlehud]', '[AFK-mapbar]', '[AFK-slotinfo]', '[AFK-dex]', '[AFK-wiki]', '[AFK-syncinfo]', '[AFK-statpts]', '[AFK-pwa]', '[AFK-storage]', '[AFK-history]', '[AFK-reissueid]', '[AFK-diag]', '[AFK-mobname]', '[AFK-training]', '[AFK-itemsearch]', '[AFK-eqlist]', '[AFK-npclist]', '[AFK-skin]'];
 const seen = (list) => list.every((n) => logs.some((l) => l.includes(n) && l.includes('hooks OK')));
 
 // ⚠ 不用 waitUntil:'networkidle':作者新版(.49 起)加了背景音樂 assets/bgm/*.mp3，<audio> 媒體串流會讓網路

@@ -69,8 +69,6 @@
     d.innerHTML =
       '<div class="ms-row ms-row1">' +
         '<span class="ms-seg ms-name"><b id="ms-name">--</b></span>' +
-        // 🔮 席琳標記緊跟暱稱:金幣位數一大第一列就會換行,靠右的話會被擠到第二列落單
-        '<span class="ms-seg ms-sherine" id="ms-sherine" style="display:none"></span>' +
         '<span class="ms-seg ms-lv">Lv <b id="ms-lv">--</b></span>' +
         '<span class="ms-seg ms-ac">防 <b id="ms-ac">--</b></span>' +
         '<span class="ms-seg ms-mr">魔防 <b id="ms-mr">--</b></span>' +
@@ -79,6 +77,8 @@
       '<div class="ms-row ms-row2">' +
         '<div class="ms-bar ms-hp"><i class="ms-bar-fill" id="ms-hp-bar"></i><span class="ms-bar-txt"><b>HP</b> <span id="ms-hp">--</span></span></div>' +
         '<div class="ms-bar ms-mp"><i class="ms-bar-fill" id="ms-mp-bar"></i><span class="ms-bar-txt"><b>MP</b> <span id="ms-mp">--</span></span></div>' +
+        // 🔮 席琳標記放血條右邊(＝分家版王冠的位置);血條是 flex:1 自動讓出這一格的寬度
+        '<span class="ms-seg ms-sherine" id="ms-sherine" style="display:none"></span>' +
       '</div>' +
       '<div id="ms-exp"></div>';
     return d;
@@ -105,7 +105,7 @@
       '#m-status #ms-ac,#m-status #ms-mr{color:#bfdbfe;font-size:14px;}',
       '#m-status .ms-gold{color:#fbbf24;font-weight:bold;}',
       /* 🔮 席琳標記靠右;只換字色不換整條底色 */
-      '#m-status .ms-sherine{margin-left:-4px;font-weight:bold;font-size:14px;color:#c4b5fd;text-shadow:0 0 6px rgba(196,181,253,.85);}',
+      '#m-status .ms-sherine{flex:0 0 auto;font-weight:bold;font-size:14px;color:#c4b5fd;text-shadow:0 0 6px rgba(196,181,253,.85);}',
       '#m-status .ms-sherine.ms-sherine-mad{color:#fca5a5;text-shadow:0 0 7px rgba(248,113,113,.9);}',
       '#m-status .ms-row2{gap:8px;}',
       '#m-status .ms-bar{position:relative;flex:1 1 0;min-width:0;height:20px;overflow:hidden;border:1px solid #5f5148;border-radius:2px;background:#15151b;}',

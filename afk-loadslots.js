@@ -32,7 +32,9 @@
     //    故這裡自己給可見樣式(不吃背景圖的圈),四頁以上才對得起來;.active 的光暈仍由核心規則負責(特異度較高)。
     var css = '#load-page-tabs{width:max-content !important;min-width:0 !important;height:auto !important;gap:8px !important;justify-content:center !important;padding:0 6px !important;flex-wrap:nowrap !important;}'
         + '#load-page-tabs button{position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;min-width:34px;'
-        + 'color:#e6d4a4;background:rgba(12,10,8,.82);border:1px solid rgba(180,139,65,.62);border-radius:50%;font:700 15px Georgia,serif;text-shadow:0 1px 2px #000;}'
+        + 'color:#e6d4a4;background:rgba(12,10,8,.82);border:1px solid rgba(180,139,65,.62);border-radius:50%;font-weight:700;font-family:Georgia,serif;text-shadow:0 1px 2px #000;}'
+        // ⚠ 刻意不設 font-size:手機直式本來就正常(核心那條 media query 給 18px),我們這條排在後面,
+        //   一寫死字級就會把「原本沒壞的手機」一起改小。只補「原本缺的可見性」,不動已經對的東西。
         + '#load-page-tabs button::after{content:none !important;}';
     var st = document.createElement('style'); st.id = 'afk-loadslots-css'; st.textContent = css;
     (document.head || document.documentElement).appendChild(st);

@@ -400,7 +400,7 @@
       MYSTICWAND_RECIPES.forEach(function (r) {
         if (!r || !r.result) return;
         var req = [{ id: r.src, cnt: 1, plus7: true }].concat(mwMats);
-        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_mystic_mage', req: req, yield: 1, note: '消耗 +7 以上的「' + (r.srcName || r.src) + '」；成品為 +0 白板，不繼承強化值／詞綴／屬性（傳統模式：比照其他製作，成品自帶隨機強化值）' });
+        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_mystic_mage', req: req, yield: 1, note: '消耗 +7 以上的「' + (r.srcName || r.src) + '」；成品為 +0 白板，不繼承強化值／詞綴／屬性' });
       });
     }
   }
@@ -831,7 +831,7 @@
       '機率<b>會吃掉落倍率</b>：席琳的世界 <b>×3</b>、瘋狂的席琳世界 <b>×5</b>、恩賜怪 <b>×10</b>；<b>經典模式不打折</b>（不受 ×1/10，照原機率掉）',
       '遺物<b>無法強化</b>，也<b>不會</b>帶祝福／詛咒、屬性／遠古詞綴或席琳套裝效果——數值永遠固定',
       '不會出現在潘朵拉黑市／抽獎池；能給哪些職業用，以裝備卡上標示的職業為準',
-      '取得任何遺物會登錄「<b>遺物收集冊</b>」（遊戲內「收藏」面板第 4 本；進度依一般／經典／傳統／經＋傳四種模式組合各自一份、與倉庫同規則；只記錄進度、無全收集加成）',
+      '取得任何遺物會登錄「<b>遺物收集冊</b>」（遊戲內「收藏」面板第 4 本；進度依一般／經典兩種模式各自一份、與倉庫同規則；只記錄進度、無全收集加成）',
       '自動賣出<b>預設保護遺物</b>不賣（可在自動賣出設定關閉；對單件設「永遠販賣」則照賣）'
     ] }
   ];

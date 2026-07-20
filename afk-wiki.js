@@ -276,35 +276,6 @@
     ['弓 / 遠距', '走遠距離的命中與傷害、可觸發連射，但需要箭矢。']
   ];
 
-  // 🏛️ 傳統模式「裝備自帶強化值」分布：即時讀 index.html 的 TRAD_EN_TABLES 計算(作者改權重自動跟上)
-  function tradEnhTableHTML() {
-    if (typeof TRAD_EN_TABLES === 'undefined') return '';
-    var th = 'style="text-align:left;padding:4px 6px;border-bottom:1px solid #475569;"';
-    var thc = 'style="text-align:center;padding:4px 6px;border-bottom:1px solid #475569;"';
-    var td = 'style="padding:4px 6px;"', tdc = 'style="text-align:center;padding:4px 6px;"';
-    function stat(tbl) {
-      var tot = 0, ev = 0, p0 = 0, p11 = 0, mx = 0;
-      tbl.forEach(function (e) { tot += e[1]; ev += e[0] * e[1]; if (e[0] === 0) p0 += e[1]; if (e[0] >= 11) p11 += e[1]; if (e[0] > mx) mx = e[0]; });
-      return { ev: ev / tot, p0: p0 / tot * 100, p11: p11 / tot * 100, mx: mx };
-    }
-    function rng(a, b, dec) {
-      var x = dec ? a.toFixed(1) : String(Math.round(a)), y = dec ? b.toFixed(1) : String(Math.round(b));
-      return (x === y) ? x : (x + '~' + y);
-    }
-    var rows = [['武器', 'wpn'], ['防具', 'arm'], ['飾品', 'acc']].map(function (g) {
-      var ks = Object.keys(TRAD_EN_TABLES).filter(function (k) { return k.indexOf(g[1]) === 0; });
-      if (!ks.length) return '';
-      var ss = ks.map(function (k) { return stat(TRAD_EN_TABLES[k]); });
-      var ev = ss.map(function (s) { return s.ev; }), p0 = ss.map(function (s) { return s.p0; }), p11 = ss.map(function (s) { return s.p11; });
-      var mx = Math.max.apply(null, ss.map(function (s) { return s.mx; }));
-      return '<tr><td ' + td + '>' + g[0] + '</td><td ' + tdc + '>+' + mx + '</td><td ' + tdc + '>約 ' + rng(Math.min.apply(null, ev), Math.max.apply(null, ev), true) +
-        '</td><td ' + tdc + '>' + rng(Math.min.apply(null, p0), Math.max.apply(null, p0)) + '%</td><td ' + tdc + '>' + Math.round(Math.max.apply(null, p11)) + '%</td></tr>';
-    }).join('');
-    return '<table style="width:100%;border-collapse:collapse;margin:4px 0;font-size:13px;color:#cbd5e1;"><thead><tr>' +
-      '<th ' + th + '>部位</th><th ' + thc + '>自帶上限</th><th ' + thc + '>平均</th><th ' + thc + '>+0（無強化）</th><th ' + thc + '>+11 以上</th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table>';
-  }
-
   // ===== 戰鬥機制(本檔維護;白話講清楚傷害怎麼算) ============================
   var COMBAT_SECTIONS = [
     // ── 一、你的核心數值怎麼來 ──
@@ -520,14 +491,6 @@
       '🕊️ <b>損失的經驗可以買回來</b>：亞丁的「<b>聖使阿卡塔</b>」（只有經典模式看得到）會記下你每次死亡<b>實際損失</b>的經驗，最多留 <b>10 筆</b>（滿了擠掉最舊的）。每筆可花「<b>死亡時等級 × 死亡時等級 × 1000</b>」金幣，買回<b>該筆損失的一半</b>（例：Lv50 陣亡 → 250 萬金幣換回一半）。買回會正常升級；扣到 0% 的死亡不留紀錄（本來就沒失去經驗）。',
       '功能限制：<b>無法賦予裝備祝福</b>（象牙塔·碧恩）、<b>無法進行職業精通</b>（威頓村·漢）、<b>無法進入「席琳的世界」</b>。',
       '戰鬥簡化：經典模式<b>停用大量武器特效與被動</b>——共鳴、魔擊、連射、反擊、居合、穿透、切割、出血、鈍擊、盾牌格檔、雙刀「雙刃」、鋼爪「額外重擊」，以及騎士的看破／殺戮。一切回歸最樸素的天堂式戰鬥。'
-    ]},
-    { t: '🏛️ 傳統模式（硬核：拿掉「自己強化」）', lines: [
-      '<b>創角時和經典各自獨立勾選</b>（不必先勾經典也能單勾傳統），<b>選了就永久、建立後無法關閉</b>。於是模式共有四種組合：<b>一般／經典／傳統／經典＋傳統</b>，存檔位顏色與角色面板標記各不同（傳統＝淡紫🏛️、經典＋傳統＝青綠⚔🏛️）。傳統只改下面這幾條，是否同時吃經典懲罰看你有沒有一起勾經典。',
-      '<b>① 沒有「自己強化」</b>：強化鈕與快速強化全部隱藏，所有武器／防具／飾品都不能自己 +1。',
-      '<b>② 改成「裝備自帶強化值」</b>：既然不能自己強化，<b>怪物掉落／潘朵拉黑市／製作</b>出的武器／防具／飾品會<b>隨機自帶一個已強化值</b>；<b>商店購買、試煉／任務兌換的裝備一律 +0</b>，寵物裝備、箭矢、材料、古老系列也都 +0。自帶值<b>偏低、隨機</b>，越高越罕見；<b>安定值越高（高階）的裝備分布越好</b>：' + tradEnhTableHTML(),
-      '此外「失去魔力的巴列斯／巴風特魔杖」用靈魂之球喚回時，傳統模式會<b>附一個隨機強化值</b>（一般／經典則維持 +0）；<b>歐西里斯寶箱開出的底比斯裝備</b>也比照掉落，傳統模式自帶隨機強化值。',
-      '<b>③ 施法卷軸只有「經典＋傳統」才全面消失</b>：單純「一般＋傳統」<b>照常</b>能拿到對武器／盔甲／飾品施法的卷軸（怪掉、黑市、寶箱、兌換都在），供<b>碧恩賦予祝福、飾品卷軸升級</b>用——只是沒有「自己強化」那個面板。<b>經典＋傳統</b>才會像舊版那樣任何來源都拿不到卷軸（連帶隱藏肯特城兌換 NPC 伊賽馬利、入盟不發卷軸見面禮）。',
-      '<b>④ 倉庫與圖鑑依模式組合各自獨立</b>：一般／經典／傳統／經典＋傳統<b>四種組合各一份</b>倉庫、卡片收集冊、裝備收集冊，互不共通；<b>傭兵也只能招募「同一種組合」的存檔</b>。'
     ]},
     { t: '⌨️ 鍵盤快捷鍵（桌機）', blocks: [
       { t: 'p', p: '進入遊戲後可用；焦點在輸入框時不觸發，登入／選角畫面無效。' },
@@ -1332,7 +1295,6 @@
     if (npc.darkOnly) t.push('<span class="m-npc-tag" style="color:#c084fc;">🌑 黑暗妖精限定</span>');
     if (npc.classicOnly) t.push('<span class="m-npc-tag" style="color:#fbbf24;">⚔ 只有經典模式看得到</span>');
     if (npc.classicHide) t.push('<span class="m-npc-tag" style="color:#fca5a5;">經典模式不出現</span>');
-    if (npc.traditionalHide) t.push('<span class="m-npc-tag" style="color:#fca5a5;">經典+傳統模式隱藏</span>');
     return t.length ? '　' + t.join('　') : '';
   }
   function renderNpc() {
@@ -2046,7 +2008,7 @@
       '<b>無法強化</b>，也<b>不會</b>帶祝福／詛咒、屬性／遠古詞綴或席琳套裝效果——撿到什麼樣就永遠什麼樣。',
       '不會出現在潘朵拉黑市／抽獎池。能給哪些職業用，以每件裝備標示的職業為準。',
       '有專屬新部位「<b>脛甲</b>」（盔甲之下的額外防具格，目前只有遺物）。',
-      '取得任何遺物會登錄「<b>遺物收集冊</b>」（遊戲內「收藏」面板第 4 本；進度依一般／經典／傳統／經＋傳四種模式組合各自一份、與倉庫同規則；只記錄進度、無全收集加成）。',
+      '取得任何遺物會登錄「<b>遺物收集冊</b>」（遊戲內「收藏」面板第 4 本；進度依一般／經典兩種模式各自一份、與倉庫同規則；只記錄進度、無全收集加成）。',
       '自動賣出<b>預設保護遺物</b>不賣（可在自動賣出設定關閉；對單件設「永遠販賣」則照賣）。'
     ].map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('') + '</div>';
     var buckets = {};
@@ -2161,7 +2123,7 @@
       html += '<div class="m-wiki-sub">🔮 ' + mwWhere + '（鋼鐵瑪那魔杖・客製）</div>';
       html += MYSTICWAND_RECIPES.map(function (r) {
         var mats = itemName(r.src) + '（須 +7 以上）×1' + (mwMats.length ? '、' + mwMats.map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') : '');
-        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + mwWhere + ' 製作　材料：' + esc(mats) + '（成品為 <b>+0</b> 白板，不繼承來源魔杖的強化值／詞綴／屬性；傳統模式比照其他製作，成品自帶隨機強化值）</div>';
+        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + mwWhere + ' 製作　材料：' + esc(mats) + '（成品為 <b>+0</b> 白板，不繼承來源魔杖的強化值／詞綴／屬性）</div>';
       }).join('');
     }
     return html;
@@ -2434,7 +2396,7 @@
       ['招得到誰', '你<b>其他存檔格</b>（共 16 格）有角色的格；目前所在格與空格不能招'],
       ['費用', '<b>角色等級 × 10000 金幣</b>；解除或「全員退出」<b>不退費</b>'],
       ['同時上場', '一般職業<b>最多 3 名</b>；<b>王族</b>隨魅力提升＝<b>3＋魅力÷15，最多 7 名</b>（魅力 60 即達 7）'],
-      ['遊戲模式', '一般／經典／傳統／經＋傳<b>四組各自獨立</b>，只能招<b>同組合</b>的存檔']
+      ['遊戲模式', '一般／經典<b>各自獨立</b>，只能招<b>同模式</b>的存檔']
     ]) });
 
     // 2. 戰力怎麼算(3 條重點)
@@ -2506,8 +2468,8 @@
     return note + c1 + c2 + c3 + c4 + c5 + c6 + c7;
   }
 
-  // ===== 遊戲模式(本檔手動維護;一般/經典/傳統 差異比較;以遊戲程式實際邏輯為準) ============
-  //   何時要更新:原作者改了經典/傳統的數值或停用清單(grep js/ 的 classicMode / traditionalMode)時,回來改這裡。
+  // ===== 遊戲模式(本檔手動維護;一般/經典 差異比較;以遊戲程式實際邏輯為準) ============
+  //   何時要更新:原作者改了經典的數值或停用清單(grep js/ 的 classicMode)時,回來改這裡。
   function renderMode() {
     var th = 'style="text-align:left;padding:5px 8px;border-bottom:1px solid #475569;color:#e2e8f0;font-weight:bold;"';
     var thc = 'style="text-align:center;padding:5px 8px;border-bottom:1px solid #475569;color:#e2e8f0;font-weight:bold;"';
@@ -2517,51 +2479,44 @@
     var NO = '<span style="color:#f87171;font-weight:bold;">✗</span>';
     function tbl(rows) {
       return '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;"><thead><tr>' +
-        '<th ' + th + '>項目</th><th ' + thc + '>一般</th><th ' + thc + '>經典</th><th ' + thc + '>傳統</th><th ' + thc + '>經＋傳</th></tr></thead><tbody>' + rows + '</tbody></table>';
+        '<th ' + th + '>項目</th><th ' + thc + '>一般</th><th ' + thc + '>經典</th></tr></thead><tbody>' + rows + '</tbody></table>';
     }
-    function r(item, a, b, c, d) { return '<tr><td ' + td + '>' + item + '</td><td ' + tdc + '>' + a + '</td><td ' + tdc + '>' + b + '</td><td ' + tdc + '>' + c + '</td><td ' + tdc + '>' + d + '</td></tr>'; }
+    function r(item, a, b) { return '<tr><td ' + td + '>' + item + '</td><td ' + tdc + '>' + a + '</td><td ' + tdc + '>' + b + '</td></tr>'; }
     function card(title, inner) { return '<div class="m-wiki-card"><div class="m-wiki-name">' + title + '</div>' + inner + '</div>'; }
     var BAD = function (s) { return '<b style="color:#fca5a5">' + s + '</b>'; };
     var GOOD = function (s) { return '<b style="color:#86efac">' + s + '</b>'; };
 
-    var note = '<div class="m-wiki-note">經典與傳統在<b>創角時各自獨立勾選</b>、<b>選了就永久不能改</b>，可單開也可一起開，於是有<b>一般／經典／傳統／經典＋傳統</b>四種組合。下面只列「和一般不一樣」的地方；資料以遊戲程式實際邏輯為準。</div>';
+    var note = '<div class="m-wiki-note">經典模式在<b>創角時勾選</b>、<b>選了就永久不能改</b>。下面只列「和一般不一樣」的地方；資料以遊戲程式實際邏輯為準。</div>';
 
-    var c1 = card('📉 經驗 · 金幣 · 掉率 · 死亡（這些懲罰只看有沒有開「經典」）', tbl(
-      r('經驗值', '100%', BAD('50%'), '100%', BAD('50%')) +
-      r('撿到金幣', '100%', BAD('50%'), '100%', BAD('50%')) +
-      r('掉寶率', '100%', BAD('10%（1/10）'), '100%', BAD('10%')) +
-      r('死亡懲罰', '無', BAD('扣 5% 該級經驗'), '無', BAD('扣 5% 該級經驗'))
-    ) + '<div class="m-wiki-desc" style="margin-top:6px;">・<b>單開傳統（一般＋傳統）不吃這些懲罰</b>，經驗／金幣／掉率與一般相同；要打折得一起開經典。掉寶率 ×1/10 <b>不影響「職業試煉／任務道具」與「遺物」</b>，<b>卡瑞的屠龍劍</b>也維持 100% 必掉。</div>');
+    var c1 = card('📉 經驗 · 金幣 · 掉率 · 死亡', tbl(
+      r('經驗值', '100%', BAD('50%')) +
+      r('撿到金幣', '100%', BAD('50%')) +
+      r('掉寶率', '100%', BAD('10%（1/10）')) +
+      r('死亡懲罰', '無', BAD('扣 5% 該級經驗'))
+    ) + '<div class="m-wiki-desc" style="margin-top:6px;">・掉寶率 ×1/10 <b>不影響「職業試煉／任務道具」與「遺物」</b>，<b>卡瑞的屠龍劍</b>也維持 100% 必掉。</div>');
 
-    var c2 = card('🛠️ 強化 · 裝備（只看有沒有開「傳統」）', tbl(
-      r('自己手動強化（快速強化）', OK, OK, NO + '（隱藏）', NO + '（隱藏）') +
-      r('裝備的強化值怎麼來', '自己強化', '自己強化', GOOD('自帶隨機'), GOOD('自帶隨機')) +
-      r('施法卷軸（怪物·黑市·寶箱·兌換）', OK, OK, OK, NO + '（全消失）')
-    ) + '<div class="m-wiki-desc" style="margin-top:6px;">・傳統＝沒有「自己強化」面板，掉落／兌換／製作／<b>歐西里斯寶箱開出</b>的裝備<b>自帶一個隨機強化值</b>；商店買、試煉兌換的一律 +0。<b>單開傳統照常有施法卷軸</b>（供碧恩賦予祝福、飾品卷軸升級）；<b>只有「經典＋傳統」</b>才任何來源都拿不到卷軸（連帶隱藏肯特城兌換伊賽馬利）。</div>');
-
-    var c3 = card('⚔️ 停用的戰鬥特性／被動（只有「經典」會停用）', tbl(
-      r('武器特性：穿透·切割·出血·鈍擊·連射·反擊·居合·共鳴·魔擊·魔爆·雙刃·鋼爪額外重擊', OK, NO, OK, NO) +
-      r('騎士被動：看破·殺戮（普攻機率倍傷）', OK, NO, OK, NO) +
-      r('盾牌格檔（受傷減免）', OK, NO, OK, NO) +
-      r('敵人對你「看破」造成雙倍傷害', '會', GOOD('不會'), '會', GOOD('不會'))
+    var c3 = card('⚔️ 停用的戰鬥特性／被動（經典會停用）', tbl(
+      r('武器特性：穿透·切割·出血·鈍擊·連射·反擊·居合·共鳴·魔擊·魔爆·雙刃·鋼爪額外重擊', OK, NO) +
+      r('騎士被動：看破·殺戮（普攻機率倍傷）', OK, NO) +
+      r('盾牌格檔（受傷減免）', OK, NO) +
+      r('敵人對你「看破」造成雙倍傷害', '會', GOOD('不會'))
     ));
 
     var c4 = card('🏛️ 系統 · NPC · 其他', tbl(
-      r('席琳神殿（進入·世界排名）', OK, NO, OK, NO) +
-      r('席琳結晶兌換遺骸（伊奧／菈克希絲）', OK, NO, OK, NO) +
-      r('碧恩（象牙塔）：賦予祝福卷軸（屬性／遠古）', OK, NO, OK, NO) +
-      r('漢：職業精通', OK, NO, OK, NO) +
-      r('肯特城兌換 NPC（伊賽馬利）', OK, OK, OK, NO) +
-      r('共用倉庫', '一般組', '經典組', '傳統組', '經＋傳組') +
-      r('傭兵（招募你其他存檔角色）', '招一般組', '招經典組', '招傳統組', '招經＋傳組')
+      r('席琳神殿（進入·世界排名）', OK, NO) +
+      r('席琳結晶兌換遺骸（伊奧／菈克希絲）', OK, NO) +
+      r('碧恩（象牙塔）：賦予祝福卷軸（屬性／遠古）', OK, NO) +
+      r('漢：職業精通', OK, NO) +
+      r('共用倉庫', '一般組', '經典組') +
+      r('傭兵（招募你其他存檔角色）', '招一般組', '招經典組')
     ));
 
     var c5 = card('🎴 卡片 · 裝備收集冊', tbl(
-      r('卡片掉率', '100%', GOOD('同一般'), '100%', GOOD('同一般')) +
-      r('收集冊進度共用範圍', '一般組', '經典組', '傳統組', '經＋傳組')
-    ) + '<div class="m-wiki-desc" style="margin-top:6px;">・卡片掉率<b>不吃經典 ×1/10</b>。卡片／裝備／道具／遺物四本收集冊都<b>跟倉庫同規則</b>：四種組合<b>各自獨立一份</b>（切到別的組合＝另一份進度）。詳細玩法見「收藏-怪物」「收藏-裝備」「收藏-道具」分頁。</div>');
+      r('卡片掉率', '100%', GOOD('同一般')) +
+      r('收集冊進度共用範圍', '一般組', '經典組')
+    ) + '<div class="m-wiki-desc" style="margin-top:6px;">・卡片掉率<b>不吃經典 ×1/10</b>。卡片／裝備／道具／遺物四本收集冊都<b>跟倉庫同規則</b>：一般與經典<b>各自獨立一份</b>（切到另一種模式＝另一份進度）。詳細玩法見「收藏-怪物」「收藏-裝備」「收藏-道具」分頁。</div>');
 
-    return note + c1 + c2 + c3 + c4 + c5;
+    return note + c1 + c3 + c4 + c5;
   }
 
   function renderCombat() {
@@ -2929,22 +2884,22 @@
 
   // ---- 收藏三分頁(裝備/道具/怪物)的「模式」切換:收集進度依「模式組合」共用桶存放,
   //      同模式角色共用一份 → 直接切模式看各份進度(全部唯讀,絕不寫桶) ----
-  var COLL_MODE_CN = { '': '一般', '_classic': '經典', '_tradonly': '傳統', '_trad': '經典＋傳統' };
-  var COLL_MODES = [['', '一般'], ['_classic', '經典'], ['_tradonly', '傳統'], ['_trad', '經典＋傳統']];
+  var COLL_MODE_CN = { '': '一般', '_classic': '經典' };
+  var COLL_MODES = [['', '一般'], ['_classic', '經典']];
   // 預設不選(state.collMode===null):避免還沒探索到的內容被缺項清單爆雷,點了模式才顯示進度、再點一次收合
   function collModeRow() {
     var cur = state.collMode;
     return '<div class="m-wiki-mfilter">' + COLL_MODES.map(function (m) {
       return '<button type="button" class="m-wiki-mfbtn' + (m[0] === cur ? ' on' : '') + '" data-collmode="' + m[0] + '">' + m[1] + '</button>';
     }).join('') + '</div>' +
-    '<div class="m-wiki-charsel-hint" style="margin:0 2px 8px;">想看收集進度與缺什麼，點上面你在玩的模式（⚠️ 會列出全部收藏，怕被爆雷就別點；再點一次收合）。收集進度「同模式角色共用」一份、四種模式各自獨立。</div>';
+    '<div class="m-wiki-charsel-hint" style="margin:0 2px 8px;">想看收集進度與缺什麼，點上面你在玩的模式（⚠️ 會列出全部收藏，怕被爆雷就別點；再點一次收合）。收集進度「同模式角色共用」一份、一般與經典各自獨立。</div>';
   }
   // 讀選定模式的三本共用收藏桶;該模式＝目前載入角色的模式時,改用記憶體即時值(較新)
   function collBuckets() {
     var suf = state.collMode;
     var modeName = COLL_MODE_CN[suf];
     if (typeof player !== 'undefined' && player && player.cls && typeof modeSuffix === 'function' &&
-        modeSuffix(!!player.classicMode, !!player.traditionalMode) === suf) {
+        modeSuffix(!!player.classicMode) === suf) {
       return { card: player.cardDex || {}, equip: player.equipDex || {}, misc: player.miscDex || {}, relic: player.relicDex || {}, mode: modeName };
     }
     function rd(base) { try { var s = _lzGet(base + suf); if (s) { var o = JSON.parse(s); if (o && typeof o === 'object') return o; } } catch (e) {} return {}; }

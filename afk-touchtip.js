@@ -71,14 +71,20 @@
         } catch (e) {}
     }
 
+    // 「我們叫出過框」的旗標:捲動/觸控事件量很大,不能每次都去查 DOM。
+    //   沒叫過就一定不用收(核心自己 hover 叫出來的由核心自己收),直接早退。
+    var shown = false;
+    var _tipEl = null;
     function tipVisible() {
         try {
-            var el = document.querySelector(TIP_SEL);
+            if (!_tipEl || !_tipEl.isConnected) _tipEl = document.querySelector(TIP_SEL);
+            var el = _tipEl;
             return !!(el && el.style.display !== 'none' && el.offsetWidth > 0);
         } catch (e) { return false; }
     }
 
     function hideTip() {
+        shown = false;
         if (!document.body) return;
         fireMouseMove(document.body, 0, 0);   // 目標不是 tip-host → 核心委派自己收框
     }
@@ -87,7 +93,7 @@
         timer = null;
         fireMouseMove(host, x, y);
         // 核心沒把框叫出來(資料查不到/條件不符)就當作沒發生:不攔 click,讓該格原本的操作照常
-        if (tipVisible()) guardUntil = Date.now() + LP_GUARD_MS;
+        if (tipVisible()) { shown = true; guardUntil = Date.now() + LP_GUARD_MS; }
     }
 
     function injectCSS() {
@@ -104,7 +110,7 @@
         // 新的一次觸控開始 → 上一次長按的攔截窗結束。要攔的假滑鼠事件是長按放開後「馬上」補送的,
         //   中間不會夾新的 touchstart;不清掉的話長按看完資料後 0.9 秒內想點別的鈕會被整個吃掉。
         guardUntil = 0;
-        if (tipVisible()) hideTip();   // 再按一下畫面任一處就收起
+        if (shown && tipVisible()) hideTip();   // 再按一下畫面任一處就收起(只收我們自己叫出來的)
         var t = e.touches && e.touches[0];
         if (!t) return;
         var host = e.target && e.target.closest ? e.target.closest(HOST_SEL) : null;
@@ -123,7 +129,8 @@
     document.addEventListener('touchend', clearTimer, { passive: true, capture: true });
     document.addEventListener('touchcancel', clearTimer, { passive: true, capture: true });
     // 捲動(清單自己捲、頁面捲)一律放棄長按並收框;scroll 不冒泡,要用 capture 才收得到
-    document.addEventListener('scroll', function () { clearTimer(); if (tipVisible()) hideTip(); }, { passive: true, capture: true });
+    // ⚠ 捲動事件量很大:先看便宜的旗標,沒叫出過框就什麼都不做,不要每次都查 DOM
+    document.addEventListener('scroll', function () { clearTimer(); if (shown && tipVisible()) hideTip(); }, { passive: true, capture: true });
 
     // 🚨 長按已顯示資料 → 攔掉隨後那組滑鼠事件(見檔頭)。capture 階段掛在 document,
     //    才擋得住格子上 inline 的 onclick(事件根本到不了目標)。

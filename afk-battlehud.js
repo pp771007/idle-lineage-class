@@ -37,7 +37,15 @@
   //   afk-mobile 也量了同一個橫幅(--orig-bar-h)並把 #game-screen 整個下移,但那支可以被玩家關掉——
   //   讀它的變數等於「別人關了我就被蓋住」。故這裡自己找、自己算,兩支各自成立、互不依賴。
   //   算法是「橫幅底緣超出 #game-screen 頂端多少」→ afk-mobile 已讓位時差值為 0,不會重複讓位。
+  // 找到過就記著:整支的成本都在這裡(走一遍 body 子節點 + 每個 getComputedStyle),
+  //   而橫幅是外部注入後就固定的節點。節點被移掉才重找。
+  var _banner = null;
   function findBanner() {
+    if (_banner && _banner.isConnected) return _banner;
+    _banner = findBannerScan();
+    return _banner;
+  }
+  function findBannerScan() {
     var els = document.body ? document.body.children : [];
     for (var i = 0; i < els.length; i++) {
       var e = els[i], s;
@@ -59,6 +67,21 @@
     if (strip.style.top !== v) strip.style.top = v;
     // 角色資訊彈窗是 fixed 貼視窗 → 要的是橫幅在視窗內的絕對底緣
     document.documentElement.style.setProperty('--afk-hud-bar-h', barBottom + 'px');
+  }
+
+  // 節流版:最多每 FIT_MIN_MS 量一次,期間內的重複請求併成一次(尾端補跑,不會漏掉最後那次變動)
+  var FIT_MIN_MS = 300;
+  var _fitLast = 0, _fitPending = null;
+  function fitTopThrottled() {
+    var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    var wait = FIT_MIN_MS - (now - _fitLast);
+    if (wait <= 0) { _fitLast = now; fitTop(); return; }
+    if (_fitPending) return;
+    _fitPending = setTimeout(function () {
+      _fitPending = null;
+      _fitLast = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      fitTop();
+    }, wait);
   }
 
   // 剛切到遊戲畫面時版面還在安頓(橫幅圖載入、afk-mobile 讓位、字型換行)→ 隔幾個時間點各量一次
@@ -272,7 +295,9 @@
       w.__afkHud = true; window[fn] = w;
     });
     try {
-      if (window.ResizeObserver) new ResizeObserver(fitTop).observe(gs);   // 版面高度變動(橫幅換行/讓位)自動跟上
+      // ⚠ 要節流:#game-screen 的高度會隨戰鬥內容(日誌、清單)一直變,不節流等於每次變動都跑一次
+      //   findBanner()——那支要走一遍 body 子節點並對每個做 getComputedStyle(強制重算樣式),很貴。
+      if (window.ResizeObserver) new ResizeObserver(fitTopThrottled).observe(gs);
     } catch (e) {}
     console.log('[AFK-battlehud] hooks OK — 手機戰鬥狀態列已取代上游 #mobile-vitals。');
   }

@@ -68,7 +68,7 @@
         { id: 'wiki', name: '小百科', desc: '首頁入口：職業/裝備/機制/地圖等資料', group: '查詢與資訊' },
         { id: 'slotinfo', name: '選角附加資訊', desc: '選存檔位顯示席琳世界狀態', group: '查詢與資訊' },
         { id: 'loadslots', name: '選角 16 格分頁', desc: '卡片式選角分頁擴充到 16 格(上游原生只有 8 格)', group: '查詢與資訊' },
-        { id: 'history', name: '離線掛機紀錄', desc: '設定選單：最近離線結算紀錄', group: '查詢與資訊' },
+        { id: 'history', name: '離線掛機紀錄', desc: '設定選單：最近離線結算紀錄', group: '查詢與資訊', locked: '離線快速結算暫停使用中，不會再產生新紀錄，故一併隱藏。' },
         { id: 'diag', name: '快取診斷', desc: '設定選單：回報問題用的取證工具', group: '查詢與資訊' },
         { id: 'autobuy', name: '自動購買魔法屏障', desc: '魔法屏障卷軸耗盡自動補貨（肉已被上游移除；箭矢/藥水上游原生已有）', group: '自動化' },
         { id: 'training', name: '木人場', desc: '自動化分頁「🔌 外掛」列開啟：量測真實 DPS', group: '遊戲玩法' },

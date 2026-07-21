@@ -54,7 +54,10 @@ function _wcSpawnNpc() {
         name: entry.n,
         persona: _wcPick(WC_PERSONAS),
         cls: _wcPick(clsKeys),
+        avatar: entry.avatar,
+        levelOffset: Number.isFinite(Number(entry.levelOffset)) ? Number(entry.levelOffset) : 0,
         alignmentValue: _lockedAlign,
+        clanId: entry.clanId || null,
         clanName: entry.clanName || '',
         clanLeader: !!entry.clanLeader,
         thanked: false,
@@ -790,7 +793,9 @@ const WC_TOPICS = [
                 '遺物非常稀有，別特地去farm，掛久了自然會遇到。',
                 '想指定拿就去潘朵拉黑市搜索，100 顆龍鑽一次，未知遺物那個選項還保證是你圖鑑沒有的。',
                 '遺物不能強化也不能祝福，拿到什麼就是什麼。',
-                '別看遺物就以為一定強，有幾件是負面效果，看清楚說明再穿。'
+                '別看遺物就以為一定強，有幾件是負面效果，看清楚說明再穿。',
+                '最近又傳出一批新遺物：迷宮惡魔的瞥視、斬首的巨大鐮刀、十字墓碑盾、古代法師的隨手小抄那些，散在巴風特、西斯、墳墓守護者、遺忘之島跟底比斯的怪身上，機率低到別抱期待。',
+                '新遺物裡有幾件很妙：鎖鏈衣要配輕盔甲才有加成、百變化身要變身才生效、隨手小抄戴著就多一招寒冰尖刺可以自動施放。'
             ];
         }
     },
@@ -971,7 +976,7 @@ const WC_TOPICS = [
             return [
                 '角色管理在登入畫面：要先刪除角色才能創新或匯入，匯出進度也在那邊，記得定期備份。',
                 '版本更新後畫面怪怪的、圖沒換新，就按 Ctrl+Shift+R 硬重載，把快取的舊檔清掉。',
-                '分頁切到背景或關閉後不會補跑戰鬥；在一般狩獵區累積實戰樣本後，離線滿 5 分鐘會按最近每分鐘收益的 70% 結算經驗與金幣，最多 12 小時，不會抽裝備、卡片、頭目或 PVP 獎勵。',
+                '分頁切到背景後，回到遊戲會逐 tick 真實補跑戰鬥；真正關閉網頁則在累積實戰樣本、離線滿 1 分鐘後結算，最多 12 小時，可取得裝備、卡片與曾實際擊敗過的隨機頭目獎勵，但不模擬 PVP 或活動事件。',
                 '存檔會自動進行，也可以手動點儲存；角色突然不見先確認瀏覽器沒清除網站資料，有匯出檔就能救回來。',
                 '倉庫搜尋輸入兩個字以上就會做模糊搜尋，名字記不完整也找得到。',
                 '匯出會帶角色、倉庫跟龍之鑽石；匯入時照選項還原倉庫與寵物資料，隊伍狀態會整理避免跨角色出戰錯亂。',
@@ -1770,6 +1775,65 @@ function _wcMatchTopic(q) {
     return best;
 }
 
+// 世界頻道群嘲採片段組合判定：允許中間插字、英文大小寫與空白差異，但不讓單一「PK／垃圾」誤觸發。
+const WC_MASS_TAUNT_PATTERNS = [
+    { all:['在座', '各位', '垃圾'] },
+    { all:['有種'], any:['來pk', 'pk啊', 'pk阿', '來單挑', '出來單挑', '出來打', '來戰'] },
+    { all:['有膽'], any:['來pk', '來單挑', '出來單挑', '出來打', '來戰'] },
+    { all:['不服'], any:['來pk', '來單挑', '出來單挑', '出來打', '來戰'] },
+    { all:['一群'], any:['沒用', '廢物', '垃圾', '孬種', '嫩咖'] },
+    { all:['見一個'], any:['殺一個', '砍一個', '打一個'] },
+    { all:['看到一個'], any:['殺一個', '砍一個', '打一個'] },
+    { all:['來一個'], any:['殺一個', '砍一個', '打一個'] },
+    { all:['你們'], any:['都是垃圾', '都是廢物', '全是垃圾', '全是廢物', '都沒用'] },
+    { all:['全部'], any:['一起上', '都來', '都是垃圾', '都是廢物', '都沒用'] },
+    { all:['全頻'], any:['垃圾', '廢物', '沒用', '來pk', '來戰'] }
+];
+const WC_MASS_TAUNT_REPLIES = [
+    '你很勇喔，等等別躲安全區。', '一次點名整個頻道，你今天是不想好好練功了。', '嘴這麼大，裝備最好也有這麼硬。',
+    '報座標，我想看看你本人有沒有這麼秋。', '這句我記下來了，出村記得看背後。', '先把回卷放快捷鍵，你等等會需要。',
+    '你是嫌仇家太少，特地來頻道補名單？', '講完別下線，我等等親自問候。', '全頻都敢嗆，看來你很有自信。',
+    '希望你的血條跟嘴一樣耐打。', '等一下躺地上時也要維持這個氣勢。', '你這句話成功讓我今天有事做了。',
+    '很好，我正愁找不到人試刀。', '頻道我看到了，接下來看你能跑幾張圖。', '別急著道歉，先把藥水補滿。',
+    '敢講就別龜村，外面見。', '你最好真的有本事，不然這句會很貴。', '我本來在掛機，現在有新目標了。',
+    '這麼想出名，我幫你把名字記牢。', '你不是在聊天，你是在替自己發懸賞。', '等等被堵別說人多欺負人少。',
+    '我就喜歡你這種主動報名的。', '放心，我會讓你知道誰才是垃圾。', '你先站著別動，我很快就到。',
+    '這句有種，等等看你本人有沒有種。', '紅水多帶一點，別第一下就回村。', '全頻一起得罪，效率確實很高。',
+    '我沒惹你，你倒先把戰帖送來了。', '有膽再說一次，最好順便報練功點。', '今天不找你聊聊，這頻道都要看不起我。',
+    '嘴砲先算你贏，實戰等等再結算。', '我已經截到了，你想裝沒說過也來不及。', '村口等你，別突然說要睡了。',
+    '好大的口氣，希望不是靠復活撐出來的。', '你成功把和平頻道變成約戰頻道了。', '等我看到你，希望你還笑得出來。'
+];
+function _wcIsMassTaunt(q) {
+    q = String(q || '').toLowerCase().replace(/[\s　，。！？!?、,.；;：:「」『』（）()]/g, '');
+    return WC_MASS_TAUNT_PATTERNS.some(pattern => {
+        let allHit = !pattern.all || pattern.all.every(key => q.indexOf(key) >= 0);
+        let anyHit = !pattern.any || pattern.any.some(key => q.indexOf(key) >= 0);
+        return allHit && anyHit;
+    });
+}
+function _wcTriggerMassTaunt() {
+    let count = 5 + Math.floor(Math.random() * 6);   // 5~10 人
+    let replies = WC_MASS_TAUNT_REPLIES.slice();
+    for (let i = replies.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [replies[i], replies[j]] = [replies[j], replies[i]];
+    }
+    let chaseChanged = false;
+    let clanHatred = Object.create(null);
+    for (let i = 0; i < count; i++) {
+        let id = _wcSpawnNpc();
+        let npc = _wcNpcs[id];
+        if (!npc) continue;
+        logWorld(`<span class="wc-mock">${_wcNameHtml(id)}：${_wcEsc(replies[i % replies.length])}</span>`);
+        if (_wcAddGrudge(npc, { silent:true, deferSave:true })) chaseChanged = true;
+        if (npc.clanId) clanHatred[npc.clanId] = (clanHatred[npc.clanId] || 0) + 1;
+    }
+    if (typeof npcClanAdjustHatred === 'function') {
+        Object.keys(clanHatred).forEach(clanId => npcClanAdjustHatred(clanId, clanHatred[clanId]));
+    }
+    if (chaseChanged && typeof saveGame === 'function') saveGame();
+}
+
 // ================= 💬 發問主流程 =================
 function worldChannelAsk() {
     let input = document.getElementById('world-input');
@@ -1786,6 +1850,10 @@ function worldChannelAsk() {
     let myName = (typeof player !== 'undefined' && player && player.name) ? player.name : '你';
     let myAlignment = (typeof player !== 'undefined' && player) ? player.alignmentValue : 0;
     logWorld(`<span class="wc-ask">${_wcStaticNameHtml(myName, myAlignment)}：${_wcEsc(q)}</span>`);
+    if (_wcIsMassTaunt(q)) {
+        _wcTriggerMassTaunt();
+        return;
+    }
 
     let topic = _wcMatchTopic(q);
     let n = 1 + Math.floor(Math.random() * 3);             // 每次隨機 1~3 人回覆
@@ -1936,26 +2004,35 @@ function worldChannelThank(id) {
     } catch (e) {}
 }
 // 記仇：寫進白目玩家名單（結構比照 js/24 _startWandererChase：n／avatar／alignmentValue／until）
-function _wcAddGrudge(npc) {
+function _wcAddGrudge(npc, opts) {
+    opts = opts || {};
     try {
-        if (typeof player === 'undefined' || !player || !player.cls) return;
+        if (typeof player === 'undefined' || !player || !player.cls) return false;
         if (!Array.isArray(player.trollPlayers)) player.trollPlayers = [];
-        if (player.trollPlayers.some(t => t && t.n === npc.name)) return;
+        if (player.trollPlayers.some(t => t && t.n === npc.name)) return false;
         let male = Math.random() < 0.5;
         let avatarByCls = { royal: male ? '王子' : '公主', knight: male ? '男騎士' : '女騎士', mage: male ? '男法師' : '女法師',
             elf: male ? '男妖精' : '女妖精', dark: male ? '男黑暗妖精' : '女黑暗妖精', dragon: male ? '男龍騎士' : '女龍騎士',
             warrior: male ? '男戰士' : '女戰士', illusion: male ? '男幻術士' : '女幻術士' };
+        let avatar = (typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[npc.avatar])
+            ? npc.avatar
+            : (avatarByCls[npc.cls] || (male ? '男戰士' : '女戰士'));
         player.trollPlayers.push({
             n: npc.name,
-            avatar: avatarByCls[npc.cls] || (male ? '男戰士' : '女戰士'),
+            avatar: avatar,
             source: 'worldChannel',
             wcGrudge: true,
             alignmentValue: (typeof pvpLockedAlignment === 'function') ? pvpLockedAlignment(npc.name, npc.alignmentValue) : _wcAlignmentValue(npc.alignmentValue),   // 🔒 v3.6.81 沿用初次發言鎖住的值
+            levelOffset: Number.isFinite(Number(npc.levelOffset)) ? Number(npc.levelOffset) : 0,
+            clanId: npc.clanId || null,
+            clanName: npc.clanName || '',
+            clanLeader: !!npc.clanLeader,
             until: Date.now() + 2 * 60 * 60 * 1000
         });
-        logWorld(`<span class="text-rose-400 font-bold">[${_wcStaticNameHtml(npc.name, npc.alignmentValue)}] 惡狠狠地記住了你……</span>`);
-        if (typeof saveGame === 'function') saveGame();
-    } catch (e) {}
+        if (!opts.silent) logWorld(`<span class="text-rose-400 font-bold">[${_wcStaticNameHtml(npc.name, npc.alignmentValue)}] 惡狠狠地記住了你……</span>`);
+        if (!opts.deferSave && typeof saveGame === 'function') saveGame();
+        return true;
+    } catch (e) { return false; }
 }
 
 // ---- 輸入列：Enter 送出（⚠️ 中文注音組字中的 Enter 是「選字」，必須用 isComposing 擋掉，否則打不出中文）----

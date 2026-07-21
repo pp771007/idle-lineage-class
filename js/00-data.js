@@ -1,6 +1,6 @@
 ﻿/** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v3.7.17';   // 🏷️ 版本號：末段 0~99 線性遞增，達 100 進位（中位 +1、末段歸 0）
+const GAME_VERSION = 'v3.7.21';   // 🏷️ 版本號：末段 0~99 線性遞增，達 100 進位（中位 +1、末段歸 0）
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -890,6 +890,25 @@ const DB = {
         // 🥚 v3.6.62 遺物第二十一批（2 件·0.0001% 單怪掉落）：破滅蛋／災厄蛋＝補完四蜥蜴的取得管道（PET_BOOK 早已定義·此前只有詛咒/厄運兩顆蛋有來源）。分派見 js/08 RELIC_EGG_PETS 表
         "relic_doomsday_egg":      { n: "充滿破滅氣息的蛋", type: "etc", relic: true, eff: "doomsdayegg", req: "all", p: 10000, c: "text-purple-300", gachaWeight: 0, d: "【遺物】遺忘之島飛龍守著的蛋，殼上翻湧著揮之不去的破滅氣息。使用後獲得 破滅蜥蜴（自動存入寵物保管；寵物保管已滿時無法使用、蛋不會消失）。" },
         "relic_calamity_egg":      { n: "充滿災厄氣息的蛋", type: "etc", relic: true, eff: "calamityegg", req: "all", p: 10000, c: "text-purple-300", gachaWeight: 0, d: "【遺物】深淵地靈周身塵土凝成的蛋，殼上沉積著揮之不去的災厄氣息。使用後獲得 災厄蜥蜴（自動存入寵物保管；寵物保管已滿時無法使用、蛋不會消失）。" },
+        // 🏺 v3.7.20 遺物第二十二批（18 件·各 0.0001% 單怪掉落）
+        "relic_maze_demon_glare":  { n: "迷宮惡魔的瞥視",     type: "wpn", w2h: true, relic: true, noEnhance: true, dmgS: 22, dmgL: 24, hit: 14, dmgBonus: 14, eff: "crush", ignHardSkin: true, atkSpdPct: 30, missGrazeRate: 100, grazeDmgPct: 30, req: "royal,knight,illusion,dragon,warrior", p: 10000, gachaWeight: 0, d: "【遺物】迷宮深處惡魔的瞥視凝成的雙手鈍器，被盯上的獵物無處可逃。重擊（一般限定）；貫穿；攻擊速度增加 30%；一般攻擊未命中時改為挫傷，造成 30% 傷害（挫傷不會爆擊）。" },
+        "relic_lining_chainshirt": { n: "盔甲內襯鎖鏈衣",     type: "arm", slot: "tshirt", relic: true, noEnhance: true, ac: 6, liningChain: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】穿在盔甲底下的細密鎖鏈衣，替輕便的護甲補上第二層防線。若裝備防禦 6 以下的盔甲（含未強化 AC-0～AC-6），額外獲得 AC-10 與 MR+10。" },
+        "relic_icefang_armguard":  { n: "冰牙虎臂甲",         type: "arm", slot: "shield", armguard: { stat: "none", base: 0, th: [0, 0, 0] }, relic: true, noEnhance: true, ac: 0, dex: 2, extraHit: 5, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】冷酷冰原老虎的獠牙磨成的臂甲，握武器的手穩得像結了冰。敏捷 +2、額外命中 +5。臂甲（裝於副手，可與雙手武器並用）。" },
+        "relic_powder_arrow":      { n: "無限火藥爆裂矢",     type: "wpn", isArrow: true, noConsume: true, relic: true, noEnhance: true, dmgS: 8, dmgL: 14, onHitEleDmg: { dmg: 50, ele: "fire", rate: 10 }, req: "royal,knight,elf,mage,dark,illusion,dragon", p: 10000, gachaWeight: 0, d: "【遺物】填滿火藥的爆裂箭矢，射出後總會自己回到箭筒。裝備在箭矢欄位，視同箭矢但不會被消耗；裝備遠距離武器時，一般攻擊命中有 10% 機率追加 50 點火屬性傷害（固定值，不受魔法傷害影響）。" },
+        "relic_lizardlord_crown":  { n: "蜥蜴領主的王冠",     type: "arm", slot: "helm", relic: true, noEnhance: true, ac: 7, cha: 1, petHpAll: 100, petMpRAll: 5, petMdmgAll: 3, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】統領蜥蜴的王冠，戴上後所有寵物都對你俯首聽命。寵物 HP+100、MP 自然恢復量 +5、魔法傷害 +3；魅力 +1。" },
+        "relic_steelmonk_staff":   { n: "鋼鐵僧侶的錫杖",     type: "wpn", w2h: true, isWand: true, relic: true, noEnhance: true, dmgS: 18, dmgL: 18, hit: 15, dmgBonus: 16, eff: "magicstrike", ignHardSkin: true, atkSpdPct: 30, str: 5, procHealSkill: { skId: "sk_regen", rate: 5 }, req: "mage", p: 10000, gachaWeight: 0, d: "【遺物】鋼鐵僧侶隨身的錫杖，環音每一響都同時是祝禱與重擊。魔擊（一般限定）；貫穿；攻擊速度增加 30%；一般攻擊命中時 5% 機率觸發體力回復術；力量 +5。" },
+        "relic_elder_obsidian_orb":{ n: "長老的黑曜水晶球",   type: "arm", slot: "shield", relic: true, noEnhance: true, ac: 8, block: 10, int: 3, mr: 10, mpR: 10, crushTornado: true, req: "mage,illusion", p: 10000, gachaWeight: 0, d: "【遺物】黑長者懷中的黑曜水晶球，球心封存著一整場風暴。格檔 10（一般限定）；智力 +3、MR+10、MP 自然恢復量 +10；被重擊時，對敵方全體施放龍捲風。" },
+        "relic_myriad_avatar":     { n: "百變化身",           type: "arm", slot: "gloves", relic: true, noEnhance: true, ac: 8, polyAtkSpdPct: 20, polyAllStats: 2, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】變形怪首領蛻下的表皮製成的手套，戴上的人連骨相都跟著改變。變身時：攻擊速度增加 20%、全屬性 +2。" },
+        "relic_unsealed_baphomet_wand": { n: "解除封印的巴風特魔杖", type: "wpn", isWand: true, relic: true, noEnhance: true, dmgS: 7, dmgL: 6, hit: 20, dmgBonus: 17, ignHardSkin: true, mdmg: 3, extraMp: 3, procDualSkill: { skn: "熾焰地裂術", rate: 25, parts: [[4, 20, "earth"], [4, 20, "fire"]] }, req: "mage,illusion", p: 10000, gachaWeight: 0, d: "【遺物】掙脫封印的巴風特魔杖，杖中的魔神之力再無拘束。共鳴（一般限定）；貫穿；魔法傷害 +3、額外魔法點數 +3；攻擊時 25% 機率觸發熾焰地裂術（必定命中，對目標同時造成地屬性與火屬性魔法傷害，受魔法傷害影響）。" },
+        "relic_sphinx_black_wing": { n: "人面獅身的漆黑羽翼", type: "arm", slot: "cloak", relic: true, noEnhance: true, ac: 7, er: 5, drPerEr: 5, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】黑斯芬克斯的漆黑羽翼，展開便讓謎語與刀鋒都失了準頭。ER+5；傷害減免+（ER÷5）。" },
+        "relic_overlook_thunder":  { n: "俯瞰大地的雷電",     type: "acc", slot: "amulet", relic: true, noEnhance: true, ac: 2, auraSkill: { skId: "sk_thunder_storm", interval: 100 }, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】尼荷斯俯瞰大地的目光化作項鍊，雷雲永遠跟在配戴者頭頂。每 10 秒觸發一次雷霆風暴。" },
+        "relic_elmore_greatsword": { n: "艾爾摩古戰場巨劍",   type: "wpn", w2h: true, relic: true, noEnhance: true, dmgS: 20, dmgL: 17, hit: 14, dmgBonus: 17, eff: "cleave", dblStrikeRate: 3, req: "royal,knight,dragon", p: 10000, gachaWeight: 0, d: "【遺物】自艾爾摩古戰場出土的巨劍，劍身還記得千軍萬馬的殺伐。切割（一般限定）；一般攻擊有 3% 機率造成 2 倍傷害。" },
+        "relic_warrior_blackblade":{ n: "戰士的漆黑之劍",     type: "wpn", relic: true, noEnhance: true, dmgS: 16, dmgL: 10, hit: 19, dmgBonus: 14, traumaProc: { pct: 5, dur: 6, maxStacks: 2, dmg: 5 }, req: "knight,dragon", p: 10000, gachaWeight: 0, d: "【遺物】暗黑火焰戰士的漆黑之劍，每道劍痕都久久無法癒合。反擊（一般限定）；居合（一般限定）；一般攻擊命中有 5% 機率使目標陷入創傷：受到的所有物理傷害 +5，持續 6 秒，最多 2 層。" },
+        "relic_cyclops_dollsuit":  { n: "獨眼巨人的手製娃娃裝", type: "arm", slot: "armor", relic: true, noEnhance: true, ac: 5, mr: 7, mpR: 7, dr: 7, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】獨眼巨人笨拙縫製的娃娃裝，針腳歪斜卻縫進了滿滿的守護。MR+7、MP 自然恢復量 +7、傷害減免 +7。" },
+        "relic_beheading_scythe":  { n: "斬首的巨大鐮刀",     type: "wpn", w2h: true, relic: true, noEnhance: true, dmgS: 21, dmgL: 26, hit: 13, dmgBonus: 13, eff: "cleave", crushInstakill: { cdSec: 3, healHp: 30 }, req: "royal,knight,dragon", p: 10000, gachaWeight: 0, d: "【遺物】死神西斯的巨大鐮刀，刀刃劃過之處連呼吸都被收割。切割（一般限定）；重擊時，若目標等級比自己低且非頭目怪物則觸發即死（每 3 秒最多 1 次）；觸發即死時自身恢復 30 HP。" },
+        "relic_treasured_carrot":  { n: "珍藏的巨大胡蘿蔔",   type: "arm", slot: "cloak", relic: true, noEnhance: true, ac: 1, cha: 3, petDmgAll: 5, petHitAll: 5, petMdmgAll: 1, summonDmg: 5, summonHit: 5, summonMdmg: 1, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】曼波兔珍藏多年的巨大胡蘿蔔，背在身上就是所有夥伴的精神支柱。魅力 +3；寵物與召喚物額外傷害 +5、額外命中 +5、魔法傷害 +1。" },
+        "relic_cross_tombshield":  { n: "十字墓碑盾",         type: "arm", slot: "shield", relic: true, noEnhance: true, ac: 12, dr: 5, undeadImmune: { cdSec: 5 }, req: "royal,knight", p: 10000, gachaWeight: 0, d: "【遺物】墳墓守護者騎士扛著的十字墓碑，亡者的爪牙無法傷及碑後之人。傷害減免 +5；免疫不死族的傷害（每 5 秒最多觸發 1 次）。" },
+        "relic_mage_scrap_note":   { n: "古代法師的隨手小抄", type: "acc", slot: "ring", relic: true, noEnhance: true, ac: 0, grantSkills: ["sk_frost_spike"], grantSkillsEquipOnly: true, req: "mage,illusion", p: 10000, gachaWeight: 0, d: "【遺物】古代法師隨手寫下的咒文小抄，紙上寒氣至今未散。裝備者可在自動技能施展 寒冰尖刺（水屬性單體魔法傷害，對非頭目怪物 50% 機率冰凍，視為 10 級法師法術）。" },
         "clk_elf": { n: "精靈斗篷", type: "arm", slot: "cloak", ac: 1, req: "all", safe: 6, p: 900, gachaWeight: 100 },
         "clk_oasis": { n: "歐西斯斗篷", type: "arm", slot: "cloak", ac: 0, req: "all", safe: 4, p: 15, gachaWeight: 100 },
         "arm_86": { n: "侏儒斗篷", type: "arm", slot: "cloak", ac: 0, req: "all", safe: 4, p: 18, gachaWeight: 100 },
@@ -2759,6 +2778,9 @@ const DB = {
         "sk_sleep_mist": { n: "沉睡之霧", type: "atk", tier: 9, reqM: 36, mp: 40, dmgType: "magic", target: "all", status: { kind: "sleep", pbase: 100, dur: 8 } },
         "sk_thunder_storm": { n: "雷霆風暴", type: "atk", tier: 9, reqM: 36, mp: 48, dmgType: "magic", ele: "wind", target: "all", multiDmg: [[2, 10], [2, 10], [2, 10], [2, 10], [2, 10], [2, 10], [2, 10], [2, 10]] },
         "sk_fire_storm": { n: "火風暴", type: "atk", tier: 9, reqM: 36, mp: 48, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[4, 10], [4, 10], [4, 10], [4, 10]] },
+        // 🏺 v3.7.20 寒冰尖刺（遺物 古代法師的隨手小抄 grantSkills 專屬·無魔法書=不可自然學會）：單體水屬性，
+        //    對非頭目 50% 固定機率冰凍（status.pct=固定機率擲骰·頭目由 BOSS_IMMUNE 擋·見 applyMobStatus）；視為 10 級法師法術（tier:10 吃階級係數）
+        "sk_frost_spike": { n: "寒冰尖刺", type: "atk", tier: 10, reqM: 40, mp: 30, dmgType: "magic", ele: "water", dmgDice: [4, 20], status: { kind: "freeze", force: true, pct: 50, dur: 4 } },
 
         // 十階魔法 (Lv 40)
         "sk_meteor": { n: "流星雨", type: "atk", tier: 10, reqM: 40, mp: 60, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9], [2, 9]] },

@@ -103,6 +103,15 @@ function recomputeStats() {
         if (d.str === _mx) d.str += 1; if (d.dex === _mx) d.dex += 1; if (d.con === _mx) d.con += 1;
         if (d.int === _mx) d.int += 1; if (d.wis === _mx) d.wis += 1; if (d.cha === _mx) d.cha += 1; } }
 
+    // 🏺 v3.7.20 百變化身（手套 polyAllStats/polyAtkSpdPct）：變身時全屬性+N＋攻速+N%。
+    //    置於 Phase 1 段（上限夾擠前）→ 屬性實際吃進衍生值（HP/近傷/命中）；變身判定＝套裝變身或藥水變身進行中（與下方 _polyForm 同式）。
+    { let _mag = (p.eq && p.eq.gloves) ? DB.items[p.eq.gloves.id] : null;
+      if (_mag && _mag.polyAllStats && (p._setPoly || ((p.buffs && p.buffs.poly > 0) && p.poly))) {
+          let _mn = _mag.polyAllStats;
+          d.str += _mn; d.dex += _mn; d.con += _mn; d.int += _mn; d.wis += _mn; d.cha += _mn;
+          d.atkSpdPct += (_mag.polyAtkSpdPct || 0);
+      } }
+
     // 🎯 六維屬性效果上限 100（v3.1.51 由 80 拓展）：效果表(getStr/Dex/Int/Con/Wis... 系列·js/01)已依 60→80 段曲線鏡射設定到 100，超過 100 無對應能力。
     //    故在此(Phase 1 加總完、Phase 2 換算前)把最終屬性夾擠至 ≤100：
     //    ① 讓 HP/MP 線性成長(getConGrowth/getWisGrowth·原本無上限)亦止於 100；② 資訊欄(讀 d.str)顯示不超過 100，避免玩家誤會配更高有加成。
@@ -395,7 +404,7 @@ d.mr += (baseMr + bonusMr);
     if (p.cls === 'knight' || p.cls === 'royal' || p.cls === 'warrior') {
         (p.inv || []).forEach(it => {
             let _gd = DB.items[it.id];
-            if (_gd && _gd.grantSkills) {
+            if (_gd && _gd.grantSkills && !_gd.grantSkillsEquipOnly) {
                 _gd.grantSkills.forEach(sk => {
                     if (!player.grantedSkills.includes(sk)) player.grantedSkills.push(sk);
                     if (!player.skills.includes(sk)) player.skills.push(sk);
@@ -552,6 +561,11 @@ d.mr += (baseMr + bonusMr);
 
     // 🏺 v3.5.27 黑騎士的精銳長槍＋鎧衛隊的漆黑塔盾 同時裝備：近距離傷害 +15（格檔100%／經典模式亦可格檔＝js/04 受擊路徑）
     if (p.eq && p.eq.wpn && p.eq.wpn.id === 'relic_bk_lance' && p.eq.shield && p.eq.shield.id === 'relic_guard_towershield') d.meleeDmg += 15;
+    // 🏺 v3.7.20 盔甲內襯鎖鏈衣（T恤 liningChain）：裝備「防禦 6 以下」盔甲（def ac 0~6·ac 欄正值=AC−X）→ 額外 AC-10、MR+10（p 參數化→傭兵換身自動鏡像）
+    if (p.eq && p.eq.tshirt && p.eq.armor) {
+        let _lct = DB.items[p.eq.tshirt.id], _lca = DB.items[p.eq.armor.id];
+        if (_lct && _lct.liningChain && _lca && (_lca.ac || 0) >= 0 && (_lca.ac || 0) <= 6) { d.ac -= 10; d.mr += 10; }
+    }
 
     // 變形卷軸變身依目前武器分流：遠距離武器只能使用遠距離變身，其餘（含空手）只能使用近距離變身。
     // 換武器時 calcStats 會立即重抽相符類型；套裝／武器強制變身 _setPoly 仍保留原本專屬形態。
@@ -631,6 +645,10 @@ d.mr += (baseMr + bonusMr);
     if(p.buffs.sk_dragon_bloodlust > 0) spdMult *= (1/1.15);   // 🐉 血之渴望：攻速+15%（速度×1.15；與加速/覺醒/變身相乘疊加）
     // 🌟 v3.0.100 玩家攻擊也吃「傭兵提供的幻覺攻擊光環」(化身+10/歐吉+4傷+4命/巫妖+2魔傷)：玩家自身幻覺已由上方 buff 迴圈套入 d·此處只補「傭兵來源」(teamIlluAura(p) 已排除玩家自身避免雙算)·限玩家(_recomputingAlly=false·傭兵走 alliesTick 注入)。傭兵化身狀態變動時由 allyMaintainBuffs 觸發 calcStats 刷新此段。
     if (!_recomputingAlly && typeof teamIlluAura === 'function') { let _mia = teamIlluAura(p); if (_mia) { d.extraDmg += _mia.ed; d.extraHit += _mia.eh; d.magicDmg += _mia.md; } }
+    // 🏺 人面獅身的漆黑羽翼（drPerEr）：傷害減免 +（完整 ER ÷ N）。ER 的迴避效益遞減由 effResistPct 處理，此處不設上限。
+    if (p.eq) { for (let _dk in p.eq) { let _de = p.eq[_dk]; if (!_de) continue; let _dd = DB.items[_de.id];
+        if (_dd && _dd.drPerEr) d.dr += Math.floor(Math.max(0, d.er) / _dd.drPerEr); } }
+
     // 原版方向魔法公式拆分：INT 提供 SP 封頂 33；其餘 extraMp 才列為道具／套裝／增益 SP。
     // 用未封頂的 INT 原始提供量扣除，避免 INT 100 多出的 2 點被誤判成道具 SP。
     let _rawIntSp = Math.max(0, getIntExtraMp(d.int));

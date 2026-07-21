@@ -775,11 +775,30 @@ function _npcClanApplyHatredLocked(clan, delta) {
     }
 }
 
+// 世界頻道等非戰鬥事件共用的 NPC 血盟仇恨入口；只改隱藏仇恨，不套用擊殺士氣或掉落結算。
+function npcClanAdjustHatred(clanId, delta, p) {
+    let role = p || (typeof player !== 'undefined' ? player : null);
+    let amount = Math.trunc(Number(delta) || 0);
+    if (!clanId || !amount || !role || !role.cls) return { ok:false, missing:true };
+    let mode = clanModeKey(role);
+    npcClanEnsureWorld(role);
+    let result = _clanWithLock(st => {
+        let world = st.npcWorlds[mode];
+        let clan = world && _npcClanById(world, String(clanId));
+        if (!clan) return { commit:false, missing:true };
+        let before = clan.hatred;
+        _npcClanApplyHatredLocked(clan, amount);
+        return { hatred:clan.hatred, changed:clan.hatred !== before };
+    });
+    if (result && result.ok) delete _npcClanWarCache[mode];
+    return result;
+}
+
 function _npcClanEventLog(events) {
     (events || []).forEach(event => {
         if (!event) return;
         if (event.type === 'dissolve' && typeof logSys === 'function') {
-            logSys(`<span class="text-cyan-300 font-bold">【世界頻道】</span><span class="text-slate-200">NPC 血盟「${clanEsc(event.name)}」宣布解散：${clanEsc(event.reason)}</span>`);
+            logSys(`<span class="text-cyan-300 font-bold">【世界頻道】</span><span class="text-slate-200">血盟「${clanEsc(event.name)}」宣布解散：${clanEsc(event.reason)}</span>`);
         } else if (event.type === 'mercy' && typeof logSys === 'function') {
             logSys(`<span class="text-amber-300">NPC 血盟「${clanEsc(event.name)}」已失去戰意，主動解除敵對。</span>`);
         }

@@ -103,6 +103,8 @@ function _sumCountFor(name, owner) {   // 數量：floor((魅力+6)/div)·上限
 //   → 戒指加召的第 6 隻也是全額單價（總傷 6/5×基準）——隻數只增不稀釋，任何一隻的數值不受其他隻影響。
 //   🧙 v3.2.27 魅力曲線：隊伍基準=(39+0.09×魅力×玩家等級)×(1+階級×6%)。
 //   → 50級滿編無精通召喚略勝無精靈精通的強力精靈；階級倍率同時保證 68級單隻仍高於所有低階滿編（含第6隻）。
+// 🏺 v3.7.20 珍藏的巨大胡蘿蔔（summonMdmg）：掃 owner 全裝備欄的「召喚物魔法傷害+N」，併入 dmgMult 的 magicDmg 基底
+function _sumOwnerMdBonus(owner) { let s = 0; if (owner && owner.eq) { for (let k in owner.eq) { let e = owner.eq[k]; if (!e) continue; let d = DB.items[e.id]; if (d && d.summonMdmg) s += d.summonMdmg; } } return s; }
 function _sumScaledHit(mobLv, tierIdx, mastery, owner) {
     owner = owner || player;
     const lv = Math.max(1, owner.lv || 1);
@@ -138,7 +140,7 @@ function _sumDerive(mob, owner) {
     const mastery = (owner.mastery === 'm_summon');   // 🧙 召喚精通沿用：傷害×1.2、命中+5
     return {
         flat, dice, aspd: m.aspd,
-        dmgMult: (mastery ? 1.2 : 1) * (1 + Math.min(12, Math.max(0, (owner.d && owner.d.magicDmg) || 0)) / 80),
+        dmgMult: (mastery ? 1.2 : 1) * (1 + Math.min(12, Math.max(0, ((owner.d && owner.d.magicDmg) || 0) + _sumOwnerMdBonus(owner))) / 80),   // 🏺 v3.7.20 +summonMdmg
         hit: _sumScaledHit(m.lv, tierIdx, mastery, owner),
         ac: 10 - Math.floor(m.lv / 4),   // 被打時的防禦（越低越難被命中）
         dr: Math.floor(m.lv / 10)
@@ -175,7 +177,7 @@ function _zmbDerive(s, owner) {
     const mastery = (owner.mastery === 'm_summon');   // 🧙 召喚精通沿用：造屍術隨從傷害×1.2、命中+5
     return {
         flat, dice, aspd: ZOMBIE_ASPD,
-        dmgMult: (mastery ? 1.2 : 1) * (1 + Math.min(12, Math.max(0, (owner.d && owner.d.magicDmg) || 0)) / 80),
+        dmgMult: (mastery ? 1.2 : 1) * (1 + Math.min(12, Math.max(0, ((owner.d && owner.d.magicDmg) || 0) + _sumOwnerMdBonus(owner))) / 80),   // 🏺 v3.7.20 +summonMdmg
         hit: _sumScaledHit(s.lv, tierIdx, mastery, owner),
         ac: 10 - Math.floor(s.lv / 4),
         dr: Math.floor(s.lv / 10)
@@ -382,6 +384,7 @@ function summonV2AttackOnce(s, d, t, owner) {
     if (!((r === 20) || (r !== 1 && hv >= r))) { if (typeof vfxMiss === 'function') vfxMiss(t); logCombat(`<span class="text-purple-300">${s.form}</span> 的攻擊未命中。`, 'miss'); return; }
     let dmg = ((r === 20 ? d.dice : roll(1, d.dice)) + d.flat + _sgb.dmg) * _attackMult + (_ia ? _ia.ed : 0);
     dmg = Math.max(1, Math.floor(dmg) - (t.dr || 0));
+    dmg += traumaPhysicalBonus(t);
     dmg = Math.max(1, Math.floor(dmg * _ownerDmgMult));
     markBossPhysicalHit(t);
     t.curHp -= dmg; if (typeof terrorVisageOnDamage === 'function') terrorVisageOnDamage(t, dmg, 'melee'); t.justHit = 'normal'; mobWake(t);   // 🌅 巨大骷髏：召喚物一般攻擊視為近距離

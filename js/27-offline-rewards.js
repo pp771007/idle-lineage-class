@@ -1,13 +1,13 @@
 // ===== 真正離線收益（獨立於戰鬥 tick，不補幀、不模擬戰鬥）=====
 // 公式：同地圖最近實戰每分鐘產出 × 可結算分鐘 × 70%。
-// 最短離線 1 分鐘、最多結算 12 小時；依實戰怪物組成抽取一般掉落與卡片。
-// 頭目、PVP、任務專用品與活動事件不做離線抽取，避免事件重複觸發。
-// 混合制：「真正關閉網頁後重開」走 70% 離線收益；切分頁、縮小與 bfcache 還原走 100% 一次結算。
+// 最短離線 1 分鐘、最多結算 12 小時；依實戰怪物組成抽取一般掉落、卡片與已證明可擊敗的隨機頭目。
+// PVP、任務專用品與活動事件不做離線抽取，避免事件重複觸發。
+// 混合制：「真正關閉網頁後重開」走 70% 離線收益；切分頁、縮小與 bfcache 還原由 gameLoop 逐 tick 真實補跑。
 // 若玩家在背景中直接關頁，關頁前的背景時間另存並於下次載入批次結算，離線收益只從真正關頁時刻開始。
 (function () {
     'use strict';
 
-    const OFFLINE_VERSION = 3;
+    const OFFLINE_VERSION = 4;
     const OFFLINE_MIN_MS = 1 * 60 * 1000;
     const OFFLINE_MAX_MS = 12 * 60 * 60 * 1000;
     const OFFLINE_EFFICIENCY = 0.70;
@@ -20,6 +20,7 @@
     const OFFLINE_MAX_EXP_PER_MIN = 1e12;
     const OFFLINE_MAX_GOLD_PER_MIN = 1e10;
     const OFFLINE_MAX_MOB_PROFILES = 80;
+    const OFFLINE_MAX_BOSS_PROFILES = 40;
     const OFFLINE_STORE_PREFIX = 'lineage_idle_offline_v1_';
 
     let _offlineRuntime = null;
@@ -164,6 +165,38 @@
             mob.sherineMad ? 1 : 0, mob.grace ? 1 : 0].join('|');
     }
 
+    function _offlineBossProfile(raw) {
+        if (!raw || typeof raw !== 'object' || !raw.n) return null;
+        let wins = Math.max(0, Math.floor(_offlineFinite(raw.wins, 0)));
+        if (!wins) return null;
+        return {
+            n: String(raw.n).slice(0, 100),
+            wins: Math.min(1e9, wins),
+            lv: Math.max(1, Math.floor(_offlineFinite(raw.lv, 1))),
+            race: String(raw.race || ''),
+            transformTo: raw.transformTo ? String(raw.transformTo) : '',
+            sherine: raw.sherine === true,
+            sherineMad: raw.sherineMad === true,
+            grace: raw.grace === true,
+            avgKillMs: _offlineClamp(raw.avgKillMs, TICK_MS, OFFLINE_MAX_MS),
+            expPerKill: _offlineClamp(raw.expPerKill, 0, OFFLINE_MAX_EXP_PER_MIN),
+            goldPerKill: _offlineClamp(raw.goldPerKill, 0, OFFLINE_MAX_GOLD_PER_MIN),
+            petExpPerKill: _offlineClamp(raw.petExpPerKill, 0, OFFLINE_MAX_EXP_PER_MIN),
+            allyExpPerKill: _offlineClamp(raw.allyExpPerKill, 0, OFFLINE_MAX_EXP_PER_MIN),
+            updatedAt: Math.max(0, Math.floor(_offlineFinite(raw.updatedAt, 0)))
+        };
+    }
+
+    function _offlineBossProfiles(raw) {
+        if (!Array.isArray(raw)) return [];
+        let result = [];
+        for (let i = 0; i < raw.length && result.length < OFFLINE_MAX_BOSS_PROFILES; i++) {
+            let boss = _offlineBossProfile(raw[i]);
+            if (boss) result.push(boss);
+        }
+        return result;
+    }
+
     function _offlineProfile(raw) {
         if (!raw || typeof raw !== 'object' || !raw.map) return null;
         return {
@@ -176,6 +209,7 @@
             allyExpPerMin: _offlineClamp(raw.allyExpPerMin, 0, OFFLINE_MAX_EXP_PER_MIN),
             sampleMs: Math.max(0, Math.floor(_offlineFinite(raw.sampleMs, 0))),
             mobs: _offlineMobProfiles(raw.mobs),
+            bosses: _offlineBossProfiles(raw.bosses),
             sampleKills: Math.max(0, Math.floor(_offlineFinite(raw.sampleKills, 0))),
             updatedAt: Math.max(0, Math.floor(_offlineFinite(raw.updatedAt, 0)))
         };
@@ -257,7 +291,7 @@
         if (typeof isSiegeArea === 'function' && isSiegeArea(map)) return false;
         if (typeof KING_ROOMS !== 'undefined' && KING_ROOMS && KING_ROOMS[map]) return false;
         if (typeof PURE_BOSS_MAPS !== 'undefined' && Array.isArray(PURE_BOSS_MAPS) && PURE_BOSS_MAPS.includes(map)) return false;
-        if (/^pride_f\d+$/.test(map) || map === 'rift_battle' || String(map).indexOf('oblivion_') === 0) return false;
+        if (/^pride_f\d+$/.test(map) || map === 'rift_battle') return false;
         return true;
     }
 
@@ -266,7 +300,7 @@
         if (typeof player === 'undefined' || !player || !player.cls || player.dead) return false;
         if (typeof mapState === 'undefined' || !mapState || !_offlineValidHuntMap(mapState.current)) return false;
         if (player.siege && player.siege.active) return false;
-        if (state.prideClimb || state.riftRun || state.oblivion) return false;
+        if (state.prideClimb || state.riftRun) return false;
         if (!profile || profile.map !== String(mapState.current) || profile.killsPerMin <= 0) return false;
         if (_offlineRuntime && _offlineRuntime.map === String(mapState.current) && _offlineRuntime.lastKillAt > 0 &&
             now - _offlineRuntime.lastKillAt > OFFLINE_RECENT_KILL_MS) return false;
@@ -278,6 +312,19 @@
         if (mob.boss || mob.trollPlayer || mob.siegeEnemy || mob.pledgeEnemy || mob.noAutoTeleport) return false;
         if (mob.race === '血盟' || mob.race === '建築' || !(Number(mob.exp) > 0)) return false;
         return true;
+    }
+
+    function _offlineValidBoss(mob, map) {
+        if (!mob || mob._dead || !mob.boss || !_offlineValidHuntMap(map)) return false;
+        if (mob.trollPlayer || mob.siegeEnemy || mob.pledgeEnemy || mob.noAutoTeleport) return false;
+        if (mob.race === '血盟' || mob.race === '建築' || !(Number(mob.exp) > 0)) return false;
+        let pool = typeof DB !== 'undefined' && DB.maps && Array.isArray(DB.maps[map]) ? DB.maps[map] : [];
+        return pool.some(id => {
+            let root = DB.mobs && DB.mobs[id];
+            if (!root || !root.boss) return false;
+            let finalMob = _offlineFinalMob(root);
+            return finalMob && finalMob.n === mob.n;
+        });
     }
 
     function _offlineExpProgress(lv, exp) {
@@ -330,6 +377,46 @@
         }
     }
 
+    function _offlineRecordBossKill(mob, map, expGain, goldGain, petExpGain, allyExpGain, now) {
+        let st = _offlineEnsureState();
+        if (!st || !mob) return;
+        let previous = _offlineProfileForMap(st, map) || {
+            map: String(map), mapName: _offlineMapName(map), expPerMin: 0, goldPerMin: 0,
+            killsPerMin: 0, petExpPerMin: 0, allyExpPerMin: 0, sampleMs: 0,
+            mobs: [], bosses: [], sampleKills: 0, updatedAt: 0
+        };
+        let bosses = _offlineBossProfiles(previous.bosses);
+        let old = bosses.find(row => row.n === mob.n) || null;
+        let weight = old ? Math.min(20, old.wins) : 0;
+        let avg = (oldValue, sample) => (Math.max(0, _offlineFinite(oldValue, 0)) * weight +
+            Math.max(0, _offlineFinite(sample, 0))) / (weight + 1);
+        let bornAt = Math.max(0, _offlineFinite(mob._bornMs, 0));
+        let killMs = bornAt > 0 ? now - bornAt : 1000;
+        killMs = _offlineClamp(killMs, TICK_MS, OFFLINE_MAX_MS);
+        let next = _offlineBossProfile({
+            n: mob.n,
+            wins: (old ? old.wins : 0) + 1,
+            lv: mob.lv,
+            race: mob.race,
+            transformTo: mob.transformTo,
+            sherine: !!mob._sherine,
+            sherineMad: !!mob._sherineMad,
+            grace: !!mob._grace,
+            avgKillMs: avg(old && old.avgKillMs, killMs),
+            expPerKill: avg(old && old.expPerKill, expGain),
+            goldPerKill: avg(old && old.goldPerKill, goldGain),
+            petExpPerKill: avg(old && old.petExpPerKill, petExpGain),
+            allyExpPerKill: avg(old && old.allyExpPerKill, allyExpGain),
+            updatedAt: now
+        });
+        bosses = bosses.filter(row => row.n !== mob.n);
+        if (next) bosses.unshift(next);
+        _offlineRememberProfile(st, Object.assign({}, previous, {
+            bosses: bosses.slice(0, OFFLINE_MAX_BOSS_PROFILES),
+            updatedAt: now
+        }));
+    }
+
     function _offlineCommitProfile(now, st) {
         st = st || _offlineEnsureState();
         if (!st) return null;
@@ -353,6 +440,7 @@
             allyExpPerMin: rt.allyExp / mins,
             sampleMs: elapsed,
             mobs: Object.keys(rt.mobKills).map(k => rt.mobKills[k]),
+            bosses: previous ? previous.bosses : [],
             sampleKills: rt.kills,
             updatedAt: now
         });
@@ -497,6 +585,19 @@
         return Object.keys(byKey).map(k => byKey[k]).slice(0, OFFLINE_MAX_MOB_PROFILES);
     }
 
+    function _offlineBossPool(map) {
+        if (typeof DB === 'undefined' || !DB.maps || !DB.mobs || !Array.isArray(DB.maps[map])) return [];
+        let byName = Object.create(null);
+        DB.maps[map].forEach(id => {
+            let root = DB.mobs[id];
+            if (!root || !root.boss || root.trollPlayer || root.siegeEnemy || root.pledgeEnemy || root.noAutoTeleport) return;
+            let mob = _offlineFinalMob(root);
+            if (!mob || mob.race === '血盟' || mob.race === '建築' || !(Number(mob.exp) > 0)) return;
+            byName[mob.n] = true;
+        });
+        return Object.keys(byName);
+    }
+
     function _offlineMobPlan(profile, kills) {
         kills = Math.max(0, Math.floor(_offlineFinite(kills, 0)));
         if (!kills) return [];
@@ -554,6 +655,42 @@
             let value = values[Math.floor(Math.random() * values.length)];
             result[value] = (result[value] || 0) + 1;
         }
+        return result;
+    }
+
+    function _offlineBossPlan(profile, normalKills, elapsedMs) {
+        let result = {
+            rows: [], kills: 0, timeMs: 0, exp: 0, gold: 0, petExp: 0, allyExp: 0
+        };
+        let map = profile && profile.map;
+        let pool = _offlineBossPool(map);
+        let proofs = _offlineBossProfiles(profile && profile.bosses);
+        normalKills = Math.max(0, Math.floor(_offlineFinite(normalKills, 0)));
+        elapsedMs = Math.max(0, Math.floor(_offlineFinite(elapsedMs, 0)));
+        if (!pool.length || !proofs.length || !normalKills || !elapsedMs) return result;
+
+        let chance = map === 'elder_room' ? 0.05 : 0.01;
+        let encounters = _offlineBinomial(normalKills, chance);
+        if (!encounters) return result;
+        let split = _offlineSplitUniform(pool, encounters);
+        let remainingMs = elapsedMs;
+        pool.forEach(name => {
+            let requested = Math.max(0, Math.floor(_offlineFinite(split[name], 0)));
+            let proof = proofs.find(row => row.n === name);
+            if (!requested || !proof) return;
+            let perKillMs = _offlineClamp(proof.avgKillMs, TICK_MS, OFFLINE_MAX_MS);
+            let count = Math.min(requested, Math.floor(remainingMs / perKillMs));
+            if (!count) return;
+            let spent = Math.floor(perKillMs * count);
+            remainingMs = Math.max(0, remainingMs - spent);
+            result.rows.push({ mob: proof, kills: count });
+            result.kills += count;
+            result.timeMs += spent;
+            result.exp += Math.floor(proof.expPerKill * count);
+            result.gold += Math.floor(proof.goldPerKill * count);
+            result.petExp += Math.floor(proof.petExpPerKill * count);
+            result.allyExp += Math.floor(proof.allyExpPerKill * count);
+        });
         return result;
     }
 
@@ -721,9 +858,12 @@
         }
     }
 
-    function _offlineRollLoot(profile, kills) {
+    function _offlineRollLoot(profile, kills, bossPlan) {
         let loot = { items: Object.create(null), cards: Object.create(null), itemCount: 0, cardCount: 0 };
         _offlineMobPlan(profile, kills).forEach(row => _offlineRollMobLoot(row.mob, row.kills, profile.map, loot));
+        if (bossPlan && Array.isArray(bossPlan.rows)) {
+            bossPlan.rows.forEach(row => _offlineRollMobLoot(row.mob, row.kills, profile.map, loot));
+        }
         try { if (typeof autoSortInventory === 'function') autoSortInventory(); } catch (e) {}
         return loot;
     }
@@ -801,6 +941,7 @@
                     '<span>獲得經驗</span><b style="color:#86efac;">' + result.exp.toLocaleString() + '</b>' +
                     '<span>獲得金幣</span><b style="color:#fde047;">' + result.gold.toLocaleString() + '</b>' +
                     '<span>擊殺怪物</span><b style="color:#c4b5fd;">' + result.kills.toLocaleString() + '</b>' +
+                    (result.bossKills > 0 ? '<span>擊殺頭目</span><b style="color:#fca5a5;">' + result.bossKills.toLocaleString() + '</b>' : '') +
                     '<span>掉落物品</span><b style="color:#fef08a;">' + result.itemCount.toLocaleString() + '</b>' +
                     '<span>怪物卡片</span><b style="color:#93c5fd;">' + result.cardCount.toLocaleString() + '</b>' +
                 '</div>' +
@@ -879,12 +1020,22 @@
     function _offlineGrantBatch(source, profile, elapsed, rawElapsed, efficiency, options) {
         options = options || {};
         let now = options.now || _offlineNow();
-        let exp = _offlineRewardAmount(profile.expPerMin, elapsed, efficiency);
-        let gold = _offlineRewardAmount(profile.goldPerMin, elapsed, efficiency);
-        let kills = _offlineRewardAmount(profile.killsPerMin, elapsed, efficiency);
-        let petExp = _offlineRewardAmount(profile.petExpPerMin, elapsed, efficiency);
-        let allyExp = _offlineRewardAmount(profile.allyExpPerMin, elapsed, efficiency);
-        let loot = kills > 0 ? _offlineRollLoot(profile, kills) : { items: {}, cards: {}, itemCount: 0, cardCount: 0 };
+        let previewKills = _offlineRewardAmount(profile.killsPerMin, elapsed, efficiency);
+        let bossPlan = options.allowBosses ? _offlineBossPlan(profile, previewKills, elapsed) :
+            { rows: [], kills: 0, timeMs: 0, exp: 0, gold: 0, petExp: 0, allyExp: 0 };
+        let huntElapsed = Math.max(0, elapsed - bossPlan.timeMs);
+        let normalKills = _offlineRewardAmount(profile.killsPerMin, huntElapsed, efficiency);
+        let exp = Math.min(Number.MAX_SAFE_INTEGER,
+            _offlineRewardAmount(profile.expPerMin, huntElapsed, efficiency) + bossPlan.exp);
+        let gold = Math.min(Number.MAX_SAFE_INTEGER,
+            _offlineRewardAmount(profile.goldPerMin, huntElapsed, efficiency) + bossPlan.gold);
+        let kills = Math.min(Number.MAX_SAFE_INTEGER, normalKills + bossPlan.kills);
+        let petExp = Math.min(Number.MAX_SAFE_INTEGER,
+            _offlineRewardAmount(profile.petExpPerMin, huntElapsed, efficiency) + bossPlan.petExp);
+        let allyExp = Math.min(Number.MAX_SAFE_INTEGER,
+            _offlineRewardAmount(profile.allyExpPerMin, huntElapsed, efficiency) + bossPlan.allyExp);
+        let loot = kills > 0 ? _offlineRollLoot(profile, normalKills, bossPlan) :
+            { items: {}, cards: {}, itemCount: 0, cardCount: 0 };
         let safeRoom = Number.MAX_SAFE_INTEGER - Math.max(0, Number(player.gold) || 0);
         gold = Math.min(gold, Math.max(0, safeRoom));
         if ((player.lv || 1) < 100 && exp > 0) {
@@ -921,6 +1072,7 @@
             exp: exp,
             gold: gold,
             kills: kills,
+            bossKills: bossPlan.kills,
             items: loot.items,
             cards: loot.cards,
             itemCount: loot.itemCount,
@@ -934,6 +1086,7 @@
         } else if (typeof logSys === 'function') {
             logSys('<span class="text-amber-300 font-bold">' + label + '：</span>經驗 ' + exp.toLocaleString() +
                 '、金幣 ' + gold.toLocaleString() + '、擊殺怪物 ' + kills.toLocaleString() +
+                (bossPlan.kills > 0 ? ('（含頭目 ' + bossPlan.kills.toLocaleString() + '）') : '') +
                 '、掉落物 ' + loot.itemCount.toLocaleString() + '、卡片 ' + loot.cardCount.toLocaleString() + '。');
         }
         if (options.showModal) _offlineShowSummary(result);
@@ -1020,6 +1173,7 @@
             return _offlineGrantBatch(source, profile, elapsed, rawElapsed, OFFLINE_EFFICIENCY, {
                 now: now,
                 label: '離線收益',
+                allowBosses: true,
                 advanceCombatTime: false,
                 showModal: true
             });
@@ -1034,17 +1188,55 @@
         window.killMob = function (idx) {
             let map = typeof mapState !== 'undefined' && mapState ? String(mapState.current || '') : '';
             let mob = mapState && mapState.mobs ? mapState.mobs[idx] : null;
-            // ⏩ v3.6.95 補跑（state.ff）期間的擊殺不進離線取樣：補幀是把數小時壓縮在幾秒內重放，
-            //    餵進取樣會把「每分鐘擊殺/經驗/金幣速率」灌爆 → 之後關頁的離線收益跟著爆炸。
-            let valid = !(typeof state !== 'undefined' && state && state.ff) && _offlineValidMob(mob, map);
-            let beforeGold = valid ? Math.max(0, Number(player.gold) || 0) : 0;
-            let beforeProgress = valid ? _offlineExpProgress(player.lv, player.exp) : 0;
-            let partyExp = valid ? _offlineExpectedPartyExp(mob) : { pet: 0, ally: 0 };
+            // 真實補跑（state.ff）會逐 tick 正常給獎，但不能拿壓縮執行的牆鐘時間建立離線速率或 BOSS 擊殺時間證明。
+            let foreground = !(typeof state !== 'undefined' && state && state.ff);
+            let validMob = foreground && _offlineValidMob(mob, map);
+            let validBoss = foreground && _offlineValidBoss(mob, map);
+            let tracked = validMob || validBoss;
+            let beforeGold = tracked ? Math.max(0, Number(player.gold) || 0) : 0;
+            let beforeProgress = tracked ? _offlineExpProgress(player.lv, player.exp) : 0;
+            let partyExp = tracked ? _offlineExpectedPartyExp(mob) : { pet: 0, ally: 0 };
+            let bossPetBefore = null;
+            let bossAllyBefore = null;
+            if (validBoss) {
+                try {
+                    if (typeof _ffPetProgressSum === 'function') bossPetBefore = _ffPetProgressSum();
+                    if (typeof _ffAllyProgress === 'function' && Array.isArray(player.allies)) {
+                        bossAllyBefore = player.allies.reduce((sum, ally) =>
+                            sum + (ally ? _ffAllyProgress(ally) : 0), 0);
+                    }
+                } catch (e) {
+                    bossPetBefore = null;
+                    bossAllyBefore = null;
+                }
+            }
             let result = _offlineOriginalKillMob.apply(this, arguments);
-            if (valid && mob && mob._dead) {
+            if (tracked && mob && mob._dead) {
                 let afterProgress = _offlineExpProgress(player.lv, player.exp);
-                _offlineRecordKill(mob, map, afterProgress - beforeProgress,
-                    Math.max(0, (Number(player.gold) || 0) - beforeGold), partyExp.pet, partyExp.ally, _offlineNow());
+                let now = _offlineNow();
+                let expGain = afterProgress - beforeProgress;
+                let goldGain = Math.max(0, (Number(player.gold) || 0) - beforeGold);
+                if (validBoss) {
+                    let petGain = partyExp.pet;
+                    let allyGain = partyExp.ally;
+                    try {
+                        if (bossPetBefore != null && typeof _ffPetProgressSum === 'function') {
+                            petGain = Math.max(0, _ffPetProgressSum() - bossPetBefore);
+                        }
+                        if (bossAllyBefore != null && typeof _ffAllyProgress === 'function' && Array.isArray(player.allies)) {
+                            let allyAfter = player.allies.reduce((sum, ally) =>
+                                sum + (ally ? _ffAllyProgress(ally) : 0), 0);
+                            allyGain = Math.max(0, allyAfter - bossAllyBefore);
+                        }
+                    } catch (e) {}
+                    try {
+                        _offlineRecordBossKill(mob, map, expGain, goldGain, petGain, allyGain, now);
+                    } catch (e) {
+                        try { console.warn('[offline] boss profile update failed', e); } catch (_) {}
+                    }
+                } else {
+                    _offlineRecordKill(mob, map, expGain, goldGain, partyExp.pet, partyExp.ally, now);
+                }
             }
             return result;
         };

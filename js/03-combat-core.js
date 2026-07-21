@@ -180,6 +180,7 @@ function _dpsCreditDot(src, amt) {   // DoT 依施加者標記歸因：'player'/
 }
 
 function gameLoop() {
+    if (_ffResumeTimer !== null && _tickDebt >= TICK_MS) return;   // 快速續跑已排程時，忽略一般 100ms 計時器插隊
     // 🛡️ 反盜用：非官方網域時橫幅若被移除則自動重掛（官方/本機為快取布林值判定，成本可忽略）
     if (typeof _origEnforce === 'function') _origEnforce();
     let now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -193,8 +194,9 @@ function gameLoop() {
 
     // 🔀 v3.6.95 混合制：背景期間（分頁還開著）不跑也不清帳——時間由 js/01 的 visibilitychange 錨點
     //    在回前景時整段記入 _tickDebt，這裡的補跑路徑再全額償還（補幀）。真正關閉網頁＝js/27 離線收益。
-    if (typeof document !== 'undefined' && document.hidden) return;
+    if (typeof document !== 'undefined' && document.hidden) { _ffCancelScheduledLoop(); return; }
     if (!state.running || player.dead) {
+        _ffCancelScheduledLoop();
         _tickDebt = 0;
         _ffAcc = null;
         _ffErrorStreak = 0;
@@ -220,31 +222,18 @@ function gameLoop() {
 
     // ⏩ 補跑路徑（v3.6.95 重建 v3.2.78 時間預算榨乾制）：每次呼叫最多吃 FF_BUDGET_MS 計算時間就讓步，
     //    未還完的債留待下次呼叫（每 16 tick 量一次 performance.now·FF_HARD_CAP 保底防單次過量）。
-    //    state.ff＝全域補跑閘（VFX/動畫/日誌/逐次重繪與存檔全部受抑制）；ffSmall＝≤2 秒小補跑放行擊殺特效/名條。
-    if (!_ffAcc) _ffAcc = { t0: Date.now(), ticks: 0, gold: (player.gold || 0), items: {} };   // ⏩ 補跑摘要：跨呼叫累計（還清時結算顯示）
-    // 🎁 補跑期間 logSys 靜音 → 逐項「獲得物品:」訊息全被吞掉；沿用 v3.6.86 前舊制：每批補跑前後
-    //    快照背包數量、以淨增量累積到 _ffAcc.items，還清時以「掛機期間獲得：」格式統一輸出一次。
-    let _invBefore = {};
-    try { player.inv.forEach(i => { _invBefore[i.id] = (_invBefore[i.id] || 0) + i.cnt; }); } catch (e) {}
-    // 🔬 抽樣快轉（用戶拍板）：積欠超過 FF_SAMPLE_MIN_TICKS（10 分鐘）時改抽樣模擬——每執行 1 個真 tick
-    //    抵 FF_SAMPLE_N 個 tick 的債，本批所得（經驗/金幣/道具/傭兵/寵物經驗）以前後差 ×(N-1) 補足倍率；
-    //    債降回門檻內自動恢復逐 tick 全模擬（收尾 10 分鐘精確·場面狀態銜接正常）。
-    //    近似範圍：藥水消耗/buff 時序/任務計數/卡片/收集冊維持 1×不放大；掉落總量期望值與全模擬一致、僅顆粒變粗。
-    let _sampleN = owed > FF_SAMPLE_MIN_TICKS ? FF_SAMPLE_N : 1;
-    let _smpExp0 = 0, _smpGold0 = 0, _smpAlly0 = null, _smpPet0 = 0;
-    if (_sampleN > 1) {
-        _smpExp0 = _ffExpProgress();
-        _smpGold0 = Math.max(0, Number(player.gold) || 0);
-        _smpAlly0 = Array.isArray(player.allies) ? player.allies.map(a => a ? _ffAllyProgress(a) : 0) : [];
-        _smpPet0 = _ffPetProgressSum();
+    //    state.ff＝全域補跑閘（VFX/動畫/音效/日誌/逐次重繪與存檔全部受抑制）；ffSmall 保留相容但固定 false。
+    if (!_ffAcc) {
+        _ffAcc = { t0: Date.now(), ticks: 0, gold: (player.gold || 0), invStart: _ffInventoryCounts() };   // ⏩ 整段補跑只在起點與終點各掃一次背包
+        try { if (typeof _vfxClearAll === 'function') _vfxClearAll(); } catch (e) {}   // 補跑只保留最終收益，立即釋放尚未播完的戰鬥特效
     }
+    // 真實補跑固定每次只抵 1 tick，不抽樣放大任何收益。
     state.ff = true;
-    state.ffSmall = owed <= 20;
+    state.ffSmall = false;   // 真實補跑一律略過動畫；小補跑也只保留最終畫面與收益
     let ran = 0, budget0 = now;
-    // 🔬 抽樣批只還「超出門檻的部分」（留 FF_SAMPLE_MIN_TICKS 給之後的全模擬批）——否則單批就可能把債抵到 0，跳過精確收尾
-    let _burstMax = _sampleN > 1 ? Math.max(0, owed - FF_SAMPLE_MIN_TICKS) : owed;
+    let _burstMax = owed;
     try {
-        while (ran * _sampleN < _burstMax && ran < FF_HARD_CAP) {
+        while (ran < _burstMax && ran < FF_HARD_CAP) {
             let tickError = null;
             state.inTick = true;
             try {
@@ -262,17 +251,16 @@ function gameLoop() {
                 try { console.error('[catchup] tick failed', tickError); } catch (e) {}
                 break;
             }
+            if (player.dead) break;   // 真實補跑戰敗即停止；死亡後的背景時間不得繼續產生收益
             _ffErrorStreak = 0;
             if ((ran & 15) === 0) {
                 let t = (typeof performance !== 'undefined' ? performance.now() : Date.now());
                 if (t - budget0 >= FF_BUDGET_MS) break;
             }
         }
-        // 🔬 抽樣批所得補倍：state.ff 仍為 true（gainItem/logSys 靜音）；tick 中途出錯也照補已跑掉的部分
-        if (_sampleN > 1 && ran > 0) _ffApplySampleExtras(_sampleN, _smpExp0, _smpGold0, _smpAlly0, _smpPet0, _invBefore);
     } finally {
-        _tickDebt = Math.max(0, _tickDebt - ran * TICK_MS * _sampleN);   // 🔬 每個真 tick 抵 _sampleN 個 tick 的債
-        _ffAcc.ticks += ran * _sampleN;   // 摘要顯示的是「補上的真實時長」＝償還的債
+        _tickDebt = Math.max(0, _tickDebt - ran * TICK_MS);
+        _ffAcc.ticks += ran;
         if (_ffErrorStreak >= FF_ERROR_STREAK_MAX) {
             _tickDebt = 0;
             _ffAcc.aborted = true;
@@ -280,15 +268,7 @@ function gameLoop() {
         state.ff = false;
         state.ffSmall = false;
     }
-    // 🎁 將本批補跑的背包淨增量併入累積（含被消耗者的負值；輸出時只列淨正值）——tick 拋例外也照併，已入袋的不漏記
-    try {
-        let _invAfter = {};
-        player.inv.forEach(i => { _invAfter[i.id] = (_invAfter[i.id] || 0) + i.cnt; });
-        new Set([...Object.keys(_invBefore), ...Object.keys(_invAfter)]).forEach(id => {
-            let d = (_invAfter[id] || 0) - (_invBefore[id] || 0);
-            if (d !== 0) _ffAcc.items[id] = (_ffAcc.items[id] || 0) + d;
-        });
-    } catch (e) {}
+    if (player.dead) _tickDebt = 0;   // 進入下方統一收尾與最終重繪，不留下死亡後的補跑債務
     if (_tickDebt < TICK_MS) {   // 補跑完畢
         let _acc = _ffAcc;
         let _longCatchup = !!(_acc && _acc.ticks >= 30);
@@ -314,9 +294,11 @@ function gameLoop() {
                 logSys('<span class="text-cyan-300 font-bold">⏩ 掛機補跑完成：</span>已補上 ' + _dur + ' 的進度' + (_gd > 0 ? ('，金幣 +' + _gd.toLocaleString()) : '') + '。');
                 // 🎁 v3.6.86 前舊格式（用戶指示恢復）：補跑期間獲得物品彙整輸出（物品名依稀有度上色·頓號串接·只列淨正值）
                 let _gains = [];
-                for (let id in (_acc.items || {})) {
-                    if (_acc.items[id] > 0 && DB.items[id]) _gains.push({ id: id, n: _acc.items[id] });
-                }
+                let _invAfter = _ffInventoryCounts();
+                new Set([...Object.keys(_acc.invStart || {}), ...Object.keys(_invAfter)]).forEach(id => {
+                    let n = (_invAfter[id] || 0) - ((_acc.invStart || {})[id] || 0);
+                    if (n > 0 && DB.items[id]) _gains.push({ id: id, n: n });
+                });
                 if (_gains.length) {
                     logSys(`<span class="sys-item-gain">掛機期間獲得：` + _gains
                         .map(g => `<span class="${getItemColor({ id: g.id, en: 0 })} font-bold">${DB.items[g.id].n} ×${g.n}</span>`)
@@ -330,20 +312,37 @@ function gameLoop() {
         _ffAcc = null;
         _ffErrorStreak = 0;
     } else {
-        flushTickRender();
+        _ffScheduleNext();   // 尚未還清：讓出短暫時間後立即續跑，不等待下一次 100ms 主迴圈
     }
 }
-// ⏩ v3.6.95 補跑參數：預算 40ms/次（保留 60ms 給點擊/繪製）·硬上限 6000 tick/次·前景單次 elapsed 上限 5 分鐘
-const FF_BUDGET_MS = 40;
+// ⏩ 補跑專用快速排程：每批最多運算 80ms、讓出 8ms 後續跑；仍逐 tick 真實結算。
+const FF_BUDGET_MS = 80;
+const FF_YIELD_MS = 8;
 const FF_HARD_CAP = 6000;
 const FF_MAX_ELAPSED_MS = 300000;
 const FF_ERROR_STREAK_MAX = 3;
 let _ffAcc = null;   // 補跑摘要累計（跨多次 gameLoop 呼叫·還清時歸零）
 let _ffErrorStreak = 0;
+let _ffResumeTimer = null;
 
-// 🔬 抽樣快轉參數：積欠超過 10 分鐘（6000 tick）改抽樣（1 真 tick 抵 10 tick）；門檻內維持逐 tick 全模擬
-const FF_SAMPLE_MIN_TICKS = 6000;
-const FF_SAMPLE_N = 10;
+function _ffScheduleNext() {
+    if (_ffResumeTimer !== null || _tickDebt < TICK_MS || !state || !state.running || !player || player.dead) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
+    _ffResumeTimer = setTimeout(function () {
+        _ffResumeTimer = null;
+        if (_tickDebt >= TICK_MS && state && state.running && player && !player.dead) gameLoop();
+    }, FF_YIELD_MS);
+}
+function _ffCancelScheduledLoop() {
+    if (_ffResumeTimer !== null) clearTimeout(_ffResumeTimer);
+    _ffResumeTimer = null;
+}
+function _ffInventoryCounts() {
+    let counts = {};
+    try { (player.inv || []).forEach(i => { counts[i.id] = (counts[i.id] || 0) + (Number(i.cnt) || 0); }); } catch (e) {}
+    return counts;
+}
+
 // 經驗「總累積進度」（exp＋已升等級需求總和）：跨升級仍單調，前後差＝實得經驗（升級瞬間也算得對）
 function _ffExpProgress() {
     let lv = Math.max(1, Math.min(100, Math.floor(Number(player.lv) || 1)));
@@ -371,62 +370,14 @@ function _ffPetProgressSum() {
     } catch (e) {}
     return sum;
 }
-// 🔬 把抽樣批的所得補足到 N 倍（前後差 ×(N-1) 追加）：道具走 gainItem（沿用併疊/鎖定/祝福規則·此時 state.ff=true 訊息靜音）、
-//    傭兵升級規則鏡像 js/27 _offlineApplyAllyExp、寵物交給 petsGainExp（自帶均分/等級上限/升級）。消耗（負增量）刻意維持 1×。
-function _ffApplySampleExtras(mult, exp0, gold0, ally0, pet0, invBefore) {
-    let k = mult - 1;
-    try {   // 玩家經驗
-        let d = _ffExpProgress() - exp0;
-        if (d > 0 && (player.lv || 1) < 100) {
-            player.exp = Math.max(0, Number(player.exp) || 0) + Math.floor(d * k);
-            if (typeof checkLvUp === 'function') checkLvUp();
-        }
-    } catch (e) {}
-    try {   // 金幣
-        let d = Math.max(0, Number(player.gold) || 0) - gold0;
-        if (d > 0) player.gold = Math.min(Number.MAX_SAFE_INTEGER, (Number(player.gold) || 0) + Math.floor(d * k));
-    } catch (e) {}
-    try {   // 隊上傭兵：各自增量 ×k
-        if (Array.isArray(player.allies) && Array.isArray(ally0)) player.allies.forEach((a, i) => {
-            if (!a || a._downed || (a.lv || 1) >= 100) return;
-            let d = _ffAllyProgress(a) - (ally0[i] || 0);
-            if (d <= 0) return;
-            let extra = Math.floor(d * k);
-            a.exp = Math.max(0, Number(a.exp) || 0) + extra;
-            a._expGained = Math.max(0, Number(a._expGained) || 0) + extra;
-            let levels = 0;
-            while ((a.lv || 1) < 100 && a.exp >= getExpReq(a.lv)) {
-                a.exp -= getExpReq(a.lv);
-                a.lv++;
-                if (a.lv >= 50) a.bonus = (a.bonus || 0) + 1;
-                levels++;
-            }
-            if ((a.lv || 1) >= 100) a.exp = 0;
-            if (levels > 0 && typeof _allyLevelRecompute === 'function') { try { _allyLevelRecompute(a); } catch (e) {} }
-        });
-    } catch (e) {}
-    try {   // 出戰寵物：總增量 ×k 交給 petsGainExp（其均分 ≈ 各寵原增量 ×k）
-        let d = _ffPetProgressSum() - pet0;
-        if (d > 0 && typeof petsGainExp === 'function') petsGainExp(Math.floor(d * k));
-    } catch (e) {}
-    try {   // 道具：淨正增量 ×k 走 gainItem
-        let after = {};
-        player.inv.forEach(i => { after[i.id] = (after[i.id] || 0) + i.cnt; });
-        new Set([...Object.keys(invBefore), ...Object.keys(after)]).forEach(id => {
-            let d = (after[id] || 0) - (invBefore[id] || 0);
-            if (d > 0 && DB.items[id] && typeof gainItem === 'function') { try { gainItem(id, d * k); } catch (e) {} }
-        });
-    } catch (e) {}
-}
-
 // 🛡️ 絕對屏障：與世界隔絕——無法攻擊/施法/用道具、不自然恢復、不受任何傷害（持續期間 player.buffs.sk_abs_barrier>0）
 function inAbsBarrier() { return !!(player.buffs && player.buffs.sk_abs_barrier > 0); }
 // 🚀 重繪合併：tick 進行中(state.inTick)時 updateUI/renderMobs 只標記 dirty，於 tick 結尾 flushTickRender() 統一重繪一次，
 //   避免單一 tick 內(玩家＋多傭兵＋持續傷害＋特效＋擊殺)重複重繪十數次；tick 外(點擊/裝備/用道具/開面板)維持立即重繪、體感不變。
 let _uiDirty = false, _mobsDirty = false;
-function updateUI() { if (state.inTick) { _uiDirty = true; return; } _uiDirty = false; _updateUIImpl(); }
-function renderMobs() { if (state.inTick) { _mobsDirty = true; return; } _mobsDirty = false; _renderMobsImpl(); }
-function flushTickRender() { if (_uiDirty) { _uiDirty = false; _updateUIImpl(); } if (_mobsDirty) { _mobsDirty = false; _renderMobsImpl(); } }
+function updateUI() { if (state.inTick || (typeof catchupActive === 'function' && catchupActive())) { _uiDirty = true; return; } _uiDirty = false; _updateUIImpl(); }
+function renderMobs() { if (state.inTick || (typeof catchupActive === 'function' && catchupActive())) { _mobsDirty = true; return; } _mobsDirty = false; _renderMobsImpl(); }
+function flushTickRender() { if (typeof catchupActive === 'function' && catchupActive()) return; if (_uiDirty) { _uiDirty = false; _updateUIImpl(); } if (_mobsDirty) { _mobsDirty = false; _renderMobsImpl(); } }
 // 🚀 怪物卡互動穩定：① 滑鼠所在怪的 uid 以 JS 追蹤(_hoverMobUid)、每次重繪都重新套用「顯示名字」class→避免重繪(每 tick 換掉 #mob-list 內容)使 :hover 瞬間失效造成名字一直閃；② 按住怪物卡期間(_mobPointerDown)延後重繪→避免 mousedown↔mouseup 之間整列被換掉使點擊切換目標失效。
 let _hoverMobUid = null, _mobPointerDown = false, _mobRebuildPending = false;
 function _applyHoverName() {   // 依 _hoverMobUid 即時切換各卡名字顯示(不整列重繪)
@@ -2026,7 +1977,7 @@ function spawnMob(idx) {
 
     applySherineGrace(idx);   // 🔮 席琳的恩賜：1% 機率場上一隻一般怪變恩賜怪（與時空裂痕共用 applySherineGrace）
     if (base.boss && typeof vfxBossEntrance === 'function') { try { vfxBossEntrance(mapState.mobs[idx]); } catch (e) {} }   // 🐉 頭目出場特效＋螢幕震動（cosmetic·v3.4.95 起全頭目通用：名單有專屬配色/稱號·未註冊者依屬性配色·吃 __vfxOff/補跑）
-    renderMobs();
+    if (!state.ff) renderMobs();
 }
 
 function getMobColor(mobLv) {
@@ -2164,6 +2115,7 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     let _ignHard = !!(_cw && _cw.ignHardSkin);   // 🗡️ 貫穿（暗黑十字弓）：攻擊無視硬皮額外減傷（主攻擊與連射皆走本函式 → 一併涵蓋）
     let inner = Math.floor(nearFar * critMult) + player.d.extraDmg - ((target.dr || 0) + (_ignHard ? 0 : mobHardSkin(target)) + ((target._siegeDrEnd > state.ticks) ? (target._siegeDrVal || 0) : 0));   // 堅固防護：怪物傷害減免；🔧 硬皮：額外物理減傷（貫穿時不扣）
     inner = Math.max(1, inner);
+    if (target._trauma && target._trauma.until > state.ticks) inner += (target._trauma.dmg || 5) * (target._trauma.s || 1);   // 🏺 v3.7.20 創傷（戰士的漆黑之劍）：目標受到的所有物理傷害 +5×層數（玩家物理樞紐·傭兵側 allyStrikeRoll 另掛）
 
     // 固定傷害（屬性/特效，於最低1之後加上）
     let fixed = 0;
@@ -2195,7 +2147,7 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     if (player._giltasFuryUntil > state.ticks && _swingId === 'wpn_giltas_sword') fixed += (typeof pvpEvilBonus === 'function' ? pvpEvilBonus(10) : 0);
 
     let _outDmg = inner + fixed;
-    if (graze) _outDmg = Math.max(1, Math.floor(_outDmg * 0.5));   // 擦傷：最終傷害剩 50%
+    if (graze) _outDmg = Math.max(1, Math.floor(_outDmg * (((_cw && _cw.grazeDmgPct) || 50) / 100)));   // 擦傷：最終傷害剩 50%；🏺 v3.7.20 迷宮惡魔的瞥視 grazeDmgPct:30 → 挫傷剩 30%
     _outDmg = Math.max(1, Math.floor(_outDmg * fragileMult(target)));   // 🔮 脆弱（白鳥5）：受所有來源傷害 +20%
     _outDmg = Math.max(1, Math.floor(_outDmg * wpnEnFinalMult(wpnInst || player.eq.wpn)));   // 🔧 武器強化最終傷害倍率；🛡️ v2.6.69 審計#14：有傳 wpnInst（如迅猛雙斧副手揮擊傳 offwpn）就用「該武器自身」的強化與分級，不再硬吃主手倍率
     _outDmg = Math.max(1, Math.floor(_outDmg * rlFuryMult()));   // 🔮 紅獅5/5(×1.2)＋😡狂怒5/5：最終傷害（普攻及所有走本函式的物理攻擊：反擊/居合/看破/連擊/連射/穿透/魔擊/物理技能）
@@ -2212,6 +2164,7 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     if (player.statuses && player.statuses.broken > 0) _outDmg = Math.max(1, Math.floor(_outDmg * 0.8));   // 🐍 壞物術（特產易碎泥偶自傷）：期間玩家一般攻擊物理傷害 -20%
     let _dualX2 = false;   // ⚔️ 雙刀內建特性：一般攻擊命中(非擦傷) 5% 機率最終傷害×2（🎮 經典模式停用）
     if (_natRoll && !graze && !player.classicMode && getWeaponTags(_swingId).includes('雙刀') && Math.random() < 0.05) { _dualX2 = true; _outDmg = Math.max(1, _outDmg * 2); }
+    if (_natRoll && !graze && _cw && _cw.dblStrikeRate && Math.random() * 100 < _cw.dblStrikeRate) { _dualX2 = true; _outDmg = Math.max(1, _outDmg * 2); }   // 🏺 v3.7.20 艾爾摩古戰場巨劍：一般攻擊 3% 機率 2 倍傷害（沿用 dualx2 標記顯示「×2」·非一般限定=經典亦觸發）
     markBossPhysicalHit(target);
     return { dmg: _outDmg, hit: true, heavy: heavy, crit: isCrit, graze: graze, crush: crush, dualx2: _dualX2, ranged: isRanged };
 }
@@ -2263,7 +2216,7 @@ function consumeArrow() {
 }
 
 // ===== 法杖共鳴：裝備指定魔法杖時，一般攻擊(不論命中與否)有 智力/60 機率免費施展光箭 =====
-const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta', 'wpn_red_crystalwand', 'wpn_laia_wand', 'wpn_icequeen_wand', 'wpn_demon_scythe', 'wpn_darkmage_wand', 'wpn_baphomet_wand', 'wpn_illu_wand', 'wpn_demon_wand_hidden', 'wpn_dark_crystalball', 'wpn_steel_manawand_blue', 'relic_amp_staff', 'relic_elder_thunder', 'relic_cerberus_wand', 'relic_evillizard_eye', 'relic_lightbeam_wand', 'relic_warlock_grimoire', 'relic_windking_roar', 'relic_rockmage_secret', 'wpn_onmyoji_fan', 'relic_sr_kyuubi_wand', 'relic_water_orb'];   // 🏺 v3.5.27 水靈的魔力珠亦共鳴（一般限定＝wandLightArrowProc 開頭 classicMode 早退）   // 🌅 日出之國：陰陽師的扇子（傳說）＋九尾妖狐的怒火（遺物）亦共鳴   // 🏺 遺物 安普長老的拐杖／長老的雷電能量／三頭犬魔杖／邪惡蜥蜴的眼瞳／光束強化魔杖／風精靈王的狂嘯／破岩法師的秘術亦共鳴 // 🔮 幻術士魔杖：共鳴（👹 隱藏的魔族魔杖亦共鳴；🏴‍☠️ 漆黑水晶球亦共鳴）   // 🏅 共鳴：含蕾雅魔杖／冰之女王魔杖／惡魔鐮刀／黑法師之杖／🔧巴風特魔杖（👑惡魔王魔杖已改為魔爆 eff:magicburst）
+const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta', 'wpn_red_crystalwand', 'wpn_laia_wand', 'wpn_icequeen_wand', 'wpn_demon_scythe', 'wpn_darkmage_wand', 'wpn_baphomet_wand', 'wpn_illu_wand', 'wpn_demon_wand_hidden', 'wpn_dark_crystalball', 'wpn_steel_manawand_blue', 'relic_amp_staff', 'relic_elder_thunder', 'relic_cerberus_wand', 'relic_evillizard_eye', 'relic_lightbeam_wand', 'relic_warlock_grimoire', 'relic_windking_roar', 'relic_rockmage_secret', 'wpn_onmyoji_fan', 'relic_sr_kyuubi_wand', 'relic_water_orb', 'relic_unsealed_baphomet_wand'];   // 🏺 v3.7.20 解除封印的巴風特魔杖亦共鳴   // 🏺 v3.5.27 水靈的魔力珠亦共鳴（一般限定＝wandLightArrowProc 開頭 classicMode 早退）   // 🌅 日出之國：陰陽師的扇子（傳說）＋九尾妖狐的怒火（遺物）亦共鳴   // 🏺 遺物 安普長老的拐杖／長老的雷電能量／三頭犬魔杖／邪惡蜥蜴的眼瞳／光束強化魔杖／風精靈王的狂嘯／破岩法師的秘術亦共鳴 // 🔮 幻術士魔杖：共鳴（👹 隱藏的魔族魔杖亦共鳴；🏴‍☠️ 漆黑水晶球亦共鳴）   // 🏅 共鳴：含蕾雅魔杖／冰之女王魔杖／惡魔鐮刀／黑法師之杖／🔧巴風特魔杖（👑惡魔王魔杖已改為魔爆 eff:magicburst）
 function wandLightArrowProc(target) {
     if (player.classicMode) return;   // 🎮 經典模式：停用共鳴
     let wpn = player.eq.wpn;
@@ -2397,7 +2350,17 @@ function relicAuraTick() {
     let _auraSrcs = [{ eq: player.eq, tag: '' }];
     (player.allies || []).forEach(a => { if (a && !a._downed && (a.curHp || 0) > 0 && a.eq) _auraSrcs.push({ eq: a.eq, tag: `協力·${a._allyName}·` }); });
     for (let _s of _auraSrcs) for (let k in _s.eq) {
-        let e = _s.eq[k]; if (!e) continue; let d = DB.items[e.id]; if (!d || !d.auraDmg) continue;
+        let e = _s.eq[k]; if (!e) continue; let d = DB.items[e.id];
+        // 🏺 v3.7.20 俯瞰大地的雷電（auraSkill）：每 interval tick 免費施放一次指定法術（procFreeMagicSkill 走玩家魔傷係數·
+        //    target:'all' 技能自動掃全場；傭兵持有亦觸發但傷害仍以玩家衍生值結算、計入玩家 DPS——與 auraDmg 光環同口徑）。
+        if (d && d.auraSkill && d.auraSkill.skId && (state.ticks % (d.auraSkill.interval || 100)) === 0) {
+            let _fm = mapState.mobs.find(m => m && m.curHp > 0 && !m._dead);
+            if (_fm && typeof procFreeMagicSkill === 'function') {
+                logCombat(`<span class="font-bold" style="color:#facc15;text-shadow:0 0 6px #ca8a04;">【${_s.tag}${d.n}】</span>雷雲翻湧，${DB.skills[d.auraSkill.skId] ? DB.skills[d.auraSkill.skId].n : ''}傾瀉而下！`, 'player-special');
+                procFreeMagicSkill(_fm, d.auraSkill.skId, 0, false, d);
+            }
+        }
+        if (!d || !d.auraDmg) continue;
         let a = d.auraDmg, iv = a.interval || 20, dmg = a.dmg || 0;
         if (dmg <= 0 || (state.ticks % iv) !== 0) continue;
         let names = [];

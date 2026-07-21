@@ -458,6 +458,10 @@
   var killTally = null;   // 📜 非 null 時(只在補跑中)累計各怪擊殺數 {怪名:次數};線上遊玩為 null → killMob 的計數判斷零開銷
   var gainTally = null;   // ⚡ 非 null 時(只在補跑中)累計各物品獲得數 {物品id:數量};供快速結算把「淨變化」還原成「真實消耗」(消耗=期初+獲得−期末)
   var _forceNoFast = false;   // 🧪 debug:forceCatchup(mins, true) 可強制全模擬(A/B 比對快速結算保真度用)
+  // ⚡ 結算期間擋「核心逐殺觸發的 saveGame」(killMob 每殺一隻頭目就存檔一次,無 ff 守衛;
+  //   大存檔的 JSON.stringify+壓縮是結算的大宗成本——頭目密集圖 24h 可達數百次)。
+  //   檢查點與結算尾自己要存時暫時放行(見 doCheckpoint);錨點不動,被擋掉的段落中斷了也只是重算,不丟收益。
+  var _saveSquelch = false;
   async function runCatchup(totalTicks, withOverlay, huntMap, prePride, preObl, timing) {
     if (catchingUp) return;
     catchingUp = true;
@@ -466,6 +470,17 @@
     window.__afkKillTally = killTally;   // 核心 killMob/gainItem 在結算期間經這兩個計數(平時 null → 零開銷)
     window.__afkGainTally = gainTally;
     var prevFf0, prevInTick0;   // 先宣告在 try 外:例外時 finally 才有得還原
+    var _perfT0 = performance.now(), _realSimTicks = 0, _fastEvents = 0;   // ⏱ 診斷:結算耗時與組成(玩家回報「結算慢」時看這行就知道卡在哪段)
+    // ⚡ 結算期間 gainItem 一律帶 deferUi=true(上游 v3.6.97 為批次發獎新增的第 6 參):
+    //   跳過每次獲得的 autoSortInventory——它以 state.ticks 節流(每 100 拍),快速段一個事件就跳幾十拍
+    //   → 幾乎每殺必觸發全背包排序,24h 累計近萬次。結算尾統一排一次(見落點後)。renderTabs 本就被 ff 擋,無差。
+    var _giDefer = null;
+    if (typeof window.gainItem === 'function') {
+      _giDefer = window.gainItem;
+      window.gainItem = function (id, cnt, silent, forceNormal, affixOld) {
+        return _giDefer.call(this, id, cnt, silent, forceNormal, affixOld, true);
+      };
+    }
     try {   // 🛡️ 全程包死:任何一步丟例外都不可讓 catchingUp 卡在 true——否則同頁面之後所有角色載入都會靜默跳過結算(2026-07-10 修)
 
     // 🎯 魔物追蹤:until 是牆鐘時間,離線中過期的話補跑時 spawnMob 的「until > Date.now()」整段不成立
@@ -919,7 +934,8 @@
     };
     function doCheckpoint() {
       try {
-        if (typeof saveGame === 'function') saveGame();   // ff 下 logSys 靜音,不會洗「進度已儲存」;saveGame 尾端的 offlineStamp 被 catchingUp 擋掉,不影響錨點
+        var _sq = _saveSquelch; _saveSquelch = false;   // ⚡ 檢查點是「該存的存檔」:暫時放行 saveGame 擋板
+        try { if (typeof saveGame === 'function') saveGame(); } finally { _saveSquelch = _sq; }   // ff 下 logSys 靜音,不會洗「進度已儲存」;saveGame 尾端的 offlineStamp 被 catchingUp 擋掉,不影響錨點
         stampCore(timing.closeTs + done * TICK_MS);       // 錨點=已結算到的時間點(絕不用 now,剩餘離線時間才不會被吃掉)
         recordHistory(buildHistRec());                    // 已結算部分先寫進離線紀錄(同 closeTs 覆寫,不會多筆)
       } catch (eCk) {}
@@ -927,6 +943,7 @@
     }
     // ═══ 分段檢查點(宣告結束) ═══════════════════════════════════════════════
 
+    _saveSquelch = true;   // ⚡ 補跑迴圈期間擋核心逐殺 saveGame(檢查點/結算尾照存,見 doCheckpoint 與迴圈後)
     try {
       while (done < totalTicks && !_abortCatchup) {
         if (player.dead || !state.running) { died = !!player.dead; break; }
@@ -943,7 +960,7 @@
             if (fastBossUid != null) {   // 🐲 BOSS 對打中:逐拍真模擬(死亡由外層撞死即停接手;打不動就照實耗完時間)
               tick();
               settleDeadMobs();
-              done++;
+              done++; _realSimTicks++;
               var _hpB = (player.mhp > 0) ? (player.hp / player.mhp) : 1;
               if (_hpB < fastBossMinHp) fastBossMinHp = _hpB;
               var _bAlive = mapState.mobs.some(function (x) { return x && x.uid === fastBossUid && !x._dead; });   // 事件驅動:BOSS 可能在任一格位,依 uid 掃全場
@@ -971,6 +988,7 @@
             // ⚡ 快速段:一次一個事件(出怪排程推進/一批真實獎勵管線)。
             //   失敗分兩種:消耗品斷貨(_dryHit)=戰局質變 → 重新取樣(固定 70% 門檻)評估「沒藥的新戰局」,
             //   撐得穩就回快速;其他(出怪異常等)→ 安全網,永久退回全模擬。
+            _fastEvents++;
             if (!fastEventStep()) {
               if (_dryHit) {
                 _dryHit = false;
@@ -993,7 +1011,7 @@
           }
           tick();
           settleDeadMobs();
-          done++;
+          done++; _realSimTicks++;
           if (fastEligible && !fastOff) {   // 取樣段:記錄最低血量+「場上有怪」拍數(純戰鬥耗時)+死亡事件數(AOE 同拍多殺=1 事件),窗滿就評估要不要切快速
             if (mapState.mobs.some(function (m) { return m && !m._dead; })) busyTicks++;
             var _ks = tallySum(killTally);
@@ -1033,6 +1051,7 @@
       _runErr = e;
       console.error('[AFK] 離線補跑發生例外，已中止:', e);
     } finally {
+      _saveSquelch = false;   // ⚡ 迴圈結束(完成/死亡/例外)即解除擋板:落點/結算尾的 saveGame 要照常運作
       killTicker();   // 補跑結束(完成/死亡/例外)→ 關掉背景節拍器 Worker,不殘留
       _ckptNow = null;   // 解除「切到背景先存一次」的鉤子(閉包已失效)
       settleDeadMobs();
@@ -1100,8 +1119,16 @@
       var kingKeysUsed = Math.max(0, kingKeysBefore - countKingKeys());
       kingInfo = { keysUsed: kingKeysUsed, kills: kingKeysUsed + (kingLeftRoom ? 1 : 0), depleted: kingLeftRoom };
     }
+    if (_giDefer) { window.gainItem = _giDefer; _giDefer = null; }   // ⚡ 還原 gainItem(解除強制 deferUi);之後的獲得恢復即時排序/重繪
+    try { if (typeof autoSortInventory === 'function') autoSortInventory(); } catch (e) {}   // 結算期間跳過的背包排序,在此統一補一次(內含玩家開關與節流判斷)
     if (climbSegs && climbSegs.length) summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
     else summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap, kingInfo);   // 遺忘之島:用實際結束地圖顯示地圖名;軍王之室:附帶擊敗輪數/鑰匙消耗摘要
+    // ⏱ 耗時診斷(只在有感結算時印):玩家回報「結算慢」時,這行直接指出時間花在真模擬還是快速段
+    if (done > 0 && (performance.now() - _perfT0) > 1000) {
+      var _perfSec = ((performance.now() - _perfT0) / 1000).toFixed(1);
+      try { logSys('<span class="text-slate-400">⏱ 結算耗時 ' + _perfSec + ' 秒（真模擬 ' + fmt(_realSimTicks) + ' 拍、快速事件 ' + fmt(_fastEvents) + ' 次）</span>'); } catch (e) {}
+      console.info('[AFK] ⏱ 結算耗時 ' + _perfSec + 's（真模擬 ' + _realSimTicks + ' 拍、快速事件 ' + _fastEvents + ' 次）');
+    }
     if (_runErr) {   // 結算中途拋例外 → 把死因印出來(見上方 catch);沒這行的話玩家只看得到「離線掛機 0 分鐘」,完全不知道發生什麼事
       var _eEsc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
       var _eMsg = _eEsc((_runErr && _runErr.message) ? _runErr.message : _runErr);
@@ -1137,6 +1164,8 @@
       try { if (typeof logSys === 'function') logSys('<span class="text-red-400">離線結算發生錯誤而提前中止，已保留結算到目前為止的收益。</span>'); } catch (e2) {}
     } finally {
       killTicker();                                        // 冪等:正常路徑內層 finally 已關過
+      _saveSquelch = false;                                // 保險:例外路徑也不可讓 saveGame 擋板卡住(否則之後線上全部存不了檔)
+      if (_giDefer) { window.gainItem = _giDefer; _giDefer = null; }   // 保險:例外路徑也要還原 gainItem(正常路徑已還原 → 此處不動作)
       killTally = null; gainTally = null;                  // 回到「線上不計數」狀態
       window.__afkKillTally = null; window.__afkGainTally = null;
       if (prevFf0 !== undefined && state.ff !== prevFf0) { state.ff = prevFf0; state.inTick = prevInTick0; }   // 例外時的保險還原(正常路徑已還原 → 此處不動作)
@@ -1277,7 +1306,10 @@
   (function installOfflineHooks() {
     if (typeof saveGame === 'function') {
       var _save = saveGame;
-      window.saveGame = function () { var r = _save.apply(this, arguments); try { stamp(); } catch (e) {} return r; };
+      window.saveGame = function () {
+        if (_saveSquelch) return;   // ⚡ 結算迴圈期間擋核心逐殺存檔(頭目擊殺後 saveGame 無 ff 守衛);檢查點/結算尾經 doCheckpoint 放行
+        var r = _save.apply(this, arguments); try { stamp(); } catch (e) {} return r;
+      };
     }
     if (typeof changeMap === 'function') {
       var _cm = changeMap;

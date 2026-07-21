@@ -27,6 +27,7 @@
         if (id === 'oblivion_island') return '遺忘之島';
         if (id === 'oblivion_travel') return '遺忘之島途中';
         if (id === 'rift_battle') return '時空裂痕';
+        if (id === 'arena_pvp') return '決鬥競技場';   // ⚔️ 上游 v3.7.4 存檔 PvP 用圖(不在 MAP_CATEGORIES,查不到中文名)
         if (typeof SANCTUARY_MAP_NAMES !== 'undefined' && SANCTUARY_MAP_NAMES[id]) return SANCTUARY_MAP_NAMES[id];   // 🌑 黑暗妖精聖地 3 隱藏圖（js/11 定義）
         if (typeof HIDDEN_AREA_NAMES !== 'undefined' && HIDDEN_AREA_NAMES[id]) return HIDDEN_AREA_NAMES[id];   // 🏛️ 隱藏狩獵區域
         var pf = /^pride_f(\d+)$/.exec(id); if (pf) return '傲慢之塔 ' + pf[1] + ' 樓';

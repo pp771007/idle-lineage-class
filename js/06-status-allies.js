@@ -2694,6 +2694,7 @@ function allyTryHeal(ally) {
 //   ・安全線=0／無設定＝關閉；隊長無該藥水：若勾「自動購買藥水」→ 傭兵喝藥水也會觸發自動補貨（v2.6.43·補到 100 瓶）、否則略過。只認 val 型治癒藥水（紅/橙/白），加速/勇敢等無 val 藥水不喝。
 function allyTryPotion(ally) {
     if (!ally || ally._downed) return;
+    if (typeof pvpArenaPotionBlocked === 'function' && pvpArenaPotionBlocked()) return;   // 🚫 v3.7.17 決鬥中禁治癒藥水（傭兵決鬥時本來就在場邊·此閘為保險）
     let thr = allyPotHpPct(ally);   // 🍶 v2.6.4：喝藥水門檻(獨立·回退舊 _hpSafePct)
     if (thr <= 0) return;                                   // 門檻=0＝關閉
     if ((ally._potCd || 0) > 0) return;                     // 冷卻中

@@ -1,6 +1,6 @@
-/** 遊戲核心資料庫 */
+﻿/** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v3.7.3';   // 🏷️ 版本號：末段 0~99 線性遞增，達 100 進位（中位 +1、末段歸 0）；v3.6.102 依此規則換算＝v3.7.2，本次 +1
+const GAME_VERSION = 'v3.7.17';   // 🏷️ 版本號：末段 0~99 線性遞增，達 100 進位（中位 +1、末段歸 0）
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -2493,6 +2493,16 @@ const DB = {
 				{ id: "npc_mother", n: "迷幻森林之母", title: "試煉", type: "quest", d: "迷幻森林的守護之母，她的恩賜只賜予能洗淨黑暗之人。主持妖精的 30 級試煉：達等級後接取任務，淨化受詛咒的書，一次完成領取全部恩賜。" }
             ]
         },
+		"town_gludin": {
+            n: "古魯丁村莊",
+            npcs: [
+                { id: "npc_arena", n: "巴魯特", title: "鬥技場管理者", type: "arena", d: "古魯丁港口的退役鬥士，如今替往來的冒險者安排決鬥。可產生你的「對戰名片」交給其他玩家，或貼上對方的名片後由他安排場地——決鬥不給經驗與金幣，只記錄勝負戰績；落敗方完全無損失——不扣經驗、不掉裝備、不影響性向值，也無須祈求復活。任一方倒下即分出勝負，接著可自行選擇留在競技場再戰，或回古魯丁村莊。" },
+                { id: "npc_wh_gludin", n: "凱倫", title: "倉庫", type: "warehouse", d: "凱倫在港邊的庫房裡清點著往來的貨物，替你存放物品與金幣，四個存檔角色共用。" },
+                { id: "npc_lucy", n: "露西", title: "雜貨商人", type: "shop", d: "露西的攤子就擺在通往碼頭的路上，出海遠行前該備的東西一樣不缺。販售各種日常消耗品。" },
+                { id: "npc_ally_gludin", n: "傭兵公會", title: "協力", type: "ally", d: "傭兵公會替你牽起命運的絲線，召喚其他存檔位的角色一起作戰。" },
+                { id: "npc_austin", n: "奧斯丁", title: "寵物保管", type: "petstore", d: "看慣了碼頭來去的旅人，奧斯丁願替他們照看捕獲的寵物。最多保管 32 隻（同模式角色共通）；可在此讓寵物出戰、鎖定、放生，或讓等級 30 以上「一般型態」的寵物進化——用進化果實→對應高等，或用勝利果實→黃金龍（兩種果實都帶著時可自選）；高等型態與黃金龍皆為最終型態。" }
+            ]
+        },
 		"town_gludio": {
             n: "燃柳村",
             npcs: [
@@ -2908,6 +2918,9 @@ const DB = {
     },
 
     maps: {
+        // ⚔️ 決鬥競技場（js/28 存檔 PvP）：出怪池刻意留空＝不會自動出怪，只有按下「挑戰」才由 pvpArenaStart 生成對手。
+        //    spawn 路徑取到 undefined base 會在 js/03 早退（if(!base) return;），故空池安全無副作用。
+        "arena_pvp": [],
         "pirate_wild": ["nm_035", "nm_003", "doberman", "pirate_wildpoison", "pirate_lizardrage", "pirate_wildfang", "pirate_wilddemon", "pirate_lizardhigh", "pirate_bluetail", "pirate_parrot", "pirate_chest", "wild_tiger", "wild_koreapup", "wild_raccoon"],
         "pirate_dungeon": ["pirate_lizardrage", "pirate_lizardhigh", "pirate_skeleton", "pirate_lizardheavy", "pirate_skelsoldier", "pirate_skelblade", "pirate_skelchief", "pirate_drake"],
         "training": ["orc", "goblin", "orc_archer", "gremlin"],

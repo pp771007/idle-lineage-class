@@ -511,6 +511,9 @@
         #battle-view.area-fit .mob-target:not(.boss-slot) .mob-img-inner.mob-anim.mob-anim-big img { max-height: 185px !important; }
         /* 🏰 v3.3.8 攻城建築(城門/守護塔)固定站位：脫離站立帶 flex 流·絕對定位於整個 800×450 背景框(#battle-view 已 position:relative→容器塊＝整個框而非底部 242px 站立帶)。left/top 由 SIEGE_BUILD_POS inline 提供·translate(-50%,-50%) 卡片置中錨定；height 242 維持頭目 sprite 尺寸(justify-content:center→sprite 落在卡片中心≈錨點)。城門對齊背景城門處、守護塔置中。 */
         #battle-view.area-fit .mob-target.siege-fixed { position: absolute; height: 242px; width: auto; min-width: 96px; transform: translate(-50%, -50%); z-index: 4; }
+        /* ⚔️ v3.7.14 決鬥對手固定站位：幾何與 .siege-fixed 相同（絕對定位於 800×450 框·卡片中心錨點），
+           唯一差別是 z-index 1 < #player-morph-sprite 的 2 —— 對手站得比玩家遠(偏上)，重疊時必須被玩家擋住景深才對。 */
+        #battle-view.area-fit .mob-target.duel-fixed { position: absolute; height: 242px; width: auto; min-width: 96px; transform: translate(-50%, -50%); z-index: 1; }
         /* 🔻 v3.1.65 溢框動畫怪(MOB_ANIM_SMALL·js/09 加 .mob-anim-small·如希爾黛斯)：整體 max-height 降至 85%(較上方 100% 多一個 class → 特異性勝出)。本體+_s+_w 三層同吃此上限→等比縮小逐幀對齊；技能特效(anchored)依本體 rect 縮放→亦同步縮小。腳底對齊(object-position bottom)不變。修 v3.0.68 裁畫布過緊致 attack/death 撐到頂緣「超出圖片框」。 */
         #battle-view.area-fit .mob-target:not(.boss-slot):not(.boss-zoom) .mob-img-inner.mob-anim.mob-anim-small img { max-height: 85% !important; }
         /* 🧝 v3.0.46 玩家變身戰鬥 sprite（js/09 _playerMorphApply 懶建）：狩獵區最下方中間偏左·原生像素三層(影子 multiply/本體/武器 screen)。
@@ -2274,8 +2277,11 @@ button.classic-skill-cell { cursor:pointer; }
 }
 
 /* ===== Unified floating-window palette ===== */
+/* ⚔️ v3.7.12 決鬥競技場的兩個視窗(#pvp-arena-modal 挑戰面板／#pvp-result-modal 勝負結果)一併納入
+   這套皮膚——原本 js/28 自帶深藍＋紅框的 inline 配色，與全遊戲的炭黑＋暗銅浮動視窗格格不入。 */
 :is(#autosell-rule-modal, #autosell-preview-modal, #poly-modal, #osiris-box-modal,
     #summon-select-overlay, #pet-evo-overlay, #pet-gear-overlay,
+    #pvp-arena-modal, #pvp-result-modal,
     #card-book, #equip-book, #misc-book, #relic-book, #collection-panel) {
     background: rgba(12, 11, 15, .80) !important;
     backdrop-filter: blur(3px);
@@ -2284,6 +2290,7 @@ button.classic-skill-cell { cursor:pointer; }
 :is(#autosell-rule-modal .as-box, #autosell-preview-modal > div,
     #poly-modal > div, #osiris-box-modal > div,
     #summon-select-overlay > div, #pet-evo-overlay > div, #pet-gear-overlay > div,
+    #pvp-arena-modal > div, #pvp-result-modal > div,
     #card-book > div, #equip-book > div, #misc-book > div, #relic-book > div,
     #collection-panel > div, #modal-compare, #item-modal > div:not(#modal-compare)) {
     color: #e5e1dc !important;
@@ -2309,6 +2316,7 @@ button.classic-skill-cell { cursor:pointer; }
 #autosell-rule-modal .as-head,
 #autosell-preview-modal strong,
 :is(#poly-modal, #osiris-box-modal, #summon-select-overlay, #pet-evo-overlay, #pet-gear-overlay) h2,
+#pvp-arena-modal h3,
 #town-interaction-container h3 {
     color: #e7d2a7 !important;
     text-shadow: 1px 1px 0 #000, 0 0 5px rgba(177,132,84,.30) !important;
@@ -2320,12 +2328,14 @@ button.classic-skill-cell { cursor:pointer; }
 }
 :is(#card-book-body, #equip-book-body, #misc-book-body, #relic-book-body) [class*="bg-slate-"],
 #warehouse-window-content [class*="bg-slate-"],
+:is(#pvp-arena-modal, #pvp-result-modal) [class*="bg-slate-"],
 #tab-audit [class*="bg-slate-"],
 #tab-clan [class*="bg-slate-"] {
     background-color: #292832 !important;
 }
 :is(#card-book-body, #equip-book-body, #misc-book-body, #relic-book-body) [class*="border-slate-"],
 #warehouse-window-content [class*="border-slate-"],
+:is(#pvp-arena-modal, #pvp-result-modal) [class*="border-slate-"],
 #tab-audit [class*="border-slate-"],
 #tab-clan [class*="border-slate-"] {
     border-color: #594638 !important;
@@ -2334,6 +2344,7 @@ button.classic-skill-cell { cursor:pointer; }
 :is(#card-book, #equip-book, #misc-book, #relic-book, #collection-panel,
     #autosell-rule-modal, #autosell-preview-modal,
     #poly-modal, #osiris-box-modal, #summon-select-overlay,
+    #pvp-arena-modal, #pvp-result-modal,
     #pet-evo-overlay, #pet-gear-overlay, #town-interaction-container) button {
     color: #eee7dc !important;
     border-color: #765036 !important;
@@ -2343,6 +2354,7 @@ button.classic-skill-cell { cursor:pointer; }
 :is(#card-book, #equip-book, #misc-book, #relic-book, #collection-panel,
     #autosell-rule-modal, #autosell-preview-modal,
     #poly-modal, #osiris-box-modal, #summon-select-overlay,
+    #pvp-arena-modal, #pvp-result-modal,
     #pet-evo-overlay, #pet-gear-overlay, #town-interaction-container) button:hover:not(:disabled) {
     color: #fff0d8 !important;
     border-color: #ad8052 !important;
@@ -2416,16 +2428,20 @@ button.classic-skill-cell { cursor:pointer; }
 #autosell-rule-modal select,
 #town-interaction-container input,
 #town-interaction-container select,
+#town-interaction-container textarea,
+:is(#pvp-arena-modal, #pvp-result-modal) :is(input, select, textarea),
 #tab-audit input,
 #tab-clan input {
     color: #eee9e1 !important;
-    border-color: #665449 !important;
+    border: 1px solid #665449 !important;
     background: #19181e !important;
 }
 #autosell-rule-modal input:focus,
 #autosell-rule-modal select:focus,
 #town-interaction-container input:focus,
 #town-interaction-container select:focus,
+#town-interaction-container textarea:focus,
+:is(#pvp-arena-modal, #pvp-result-modal) :is(input, select, textarea):focus,
 #tab-audit input:focus,
 #tab-clan input:focus { border-color: #b18454 !important; outline: none; }
 

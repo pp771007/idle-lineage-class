@@ -941,7 +941,8 @@ function autoActions() {
     let potId = document.getElementById('set-pot').value;
     let potThr = parseInt(document.getElementById('set-hp-pot').value) || 0;
     
-    if (hpPct <= potThr && player.cds.pot <= 0) {
+    let _duelNoPot = (typeof pvpArenaPotionBlocked === 'function') && pvpArenaPotionBlocked();   // 🚫 v3.7.17 決鬥中禁治癒藥水（連「自動購買」一併跳過，免得在場上狂買卻喝不到）
+    if (!_duelNoPot && hpPct <= potThr && player.cds.pot <= 0) {
         let item = player.inv.find(i => i.id === potId);
         if (item) useItem(item.uid, true);
         else if (document.getElementById('set-auto-buy-pot').checked) {

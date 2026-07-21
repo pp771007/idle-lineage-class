@@ -66,7 +66,8 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     sunrise_east: 'assets/area/1920x1080/日出之國東之地.jpg',
     sunrise_west: 'assets/area/1920x1080/日出之國西之地.jpg',
     sunrise_north: 'assets/area/1920x1080/日出之國北之地.jpg',   // 🌅 日出之國四區（時空裂痕·日本風 1920×1080）
-    pirate_wild: 'assets/area/古魯丁.jpg',          // 🏴‍☠️ 海賊島（野外·借用古魯丁背景）
+    arena_pvp: 'assets/area/1920x1080/決鬥競技場.jpg',   // ⚔️ v3.7.13 決鬥競技場（不在 MAP_CATEGORIES→mapDisplayName 回 null·同名圖走不到，逐張指定完整路徑）
+    pirate_wild: 'assets/area/古魯丁.jpg',      // 🏴‍☠️ 海賊島（野外·借用古魯丁背景）
     pirate_dungeon: 'assets/area/說話之島地監1樓.jpg' // 🏴‍☠️ 海賊島地監（借用說話之島地監1樓背景）
 };
 const CATEGORY_AREA_BG = { wild: 'assets/area/村莊周邊.jpg', dungeon: 'assets/area/地監.jpg', siege: 'castle.png', tower: 'assets/area/傲慢之塔.jpg', rift: 'Rift.png' };   // 🆕 野外/地監/傲慢之塔狩獵使用 area-fit；攻城/裂痕有 SPECIAL_AREA_BG 新圖時同樣使用 area-fit，只有退回舊 castle.png/Rift.png 時維持舊版面。🗼 塔狩獵=傲慢之塔.jpg，入口安全區另由 TOWN_AREA_BG.tower 保留 TowerofInsolence.png 不變；🏛️ 底比斯3圖另由 SPECIAL_AREA_BG 覆寫（底比斯沙漠.jpg／底比斯.jpg）
@@ -87,6 +88,8 @@ const TOWN_AREA_BG = { village: 'village.png', castle: 'castle.png', tower: 'Tow
 //   AREA_1920＝目前資料夾內既有檔名(單一真相·同步判定·無探測閃爍)。狩獵區同名圖＋fallback 圖，凡名稱在此集合者一律優先取 1920x1080 版；安全區走下方 TOWN_BG_1920 逐城對應。
 //   ⚠️日後新增 assets/area/1920x1080/ 的圖，檔名(不含 .jpg)務必加進本集合才會被採用（否則退回舊 assets/area/ 或分類 fallback）。
 const AREA_1920 = new Set(['亞丁城鎮','伊娃王國','傲慢之塔','傲慢之塔11~20樓','傲慢之塔1樓','傲慢之塔21~30樓','傲慢之塔2~10樓','傲慢之塔31~40樓','傲慢之塔41~50樓','傲慢之塔51~60樓','傲慢之塔61~70樓','傲慢之塔71~80樓','傲慢之塔81~90樓','傲慢之塔91~100樓','冥法軍王之室','冥法軍訓練場','古代巨人之墓','古魯丁','古魯丁地監1樓','古魯丁地監2樓','古魯丁地監3樓','古魯丁地監4樓','古魯丁地監5樓','古魯丁地監6樓','古魯丁地監7樓','國境要塞','地下通道1樓','地下通道2樓','地下通道3樓','地監','地監深層','城鎮周邊','夢幻之島','大洞穴隱遁者村莊地區','奇岩','奇岩地監1樓','奇岩地監2樓','奇岩地監3樓','奇岩地監4樓','奇岩城鎮','妖精森林周邊','妖精森林村莊','妖魔森林','威頓村莊','安塔瑞斯','安塔瑞斯棲息地','巴拉卡斯','巴拉卡斯巢穴','希培利亞','席琳神殿','底比斯','底比斯 歐西里斯祭壇','底比斯 沙漠','底比斯 金字塔內部','底比斯沙漠','拉斯塔巴德','拉斯塔巴德地下洞穴1樓','拉斯塔巴德地下洞穴2樓','拉斯塔巴德地下洞穴3樓','拉斯塔巴德正門','提卡爾 庫庫爾坎祭壇','提卡爾神廟地區','提卡爾神廟地區深處','新兵修練場','時空裂痕入口','暗影神殿','暗殺軍王之室','村莊周邊','格蘭肯神殿．長老之室','森林','歐瑞','歐瑞村莊','歐瑞雪原','歐瑞雪壁','水晶洞穴','水晶洞穴1樓','水晶洞穴2樓','水晶洞穴3樓','沉默洞穴','沉默洞穴周邊','沙漠','沙漠地監1樓','沙漠地監2樓','沙漠地監3樓','沙漠地監4樓','法令軍王之室','法利昂','法利昂洞穴','洞窟','海賊島','海賊島地監','海賊島村莊','海音','海音城鎮','火龍窟','炎魔謁見所','燃柳村莊','眠龍洞穴1樓','眠龍洞穴2樓','眠龍洞穴3樓','精靈墓穴','肯特','艾爾摩','艾爾摩激戰地','荒野','螞蟻洞穴1樓','螞蟻洞穴2樓','螞蟻洞窟1樓','螞蟻洞窟2樓','說話之島周邊','說話之島地監1樓','說話之島地監2樓','說話之島村莊','說話之島港口','象牙塔','象牙塔4樓','象牙塔5樓','象牙塔6樓','象牙塔7樓','象牙塔8樓','象牙塔深層','象牙塔（1~3樓）','貝希摩斯','軍王之室','遺忘之島','銀騎士地區','銀騎士村莊','鏡子森林','風木','魔族神殿','魔獸訓練場','魔獸軍王之室','黃昏山脈','黑魔法研究室','龍之谷','龍之谷地監1樓','龍之谷地監2樓','龍之谷地監3樓','龍之谷地監4樓','龍之谷地監5樓','龍之谷地監6樓','龍之谷地監深層']);
+AREA_1920.add('古魯丁村莊');
+AREA_1920.add('決鬥競技場');
 ['肯特外門區','肯特內城','風木外門區','風木內城','海音外門區','海音內城','時空裂痕戰場','日出之國城墎','日出之國東之地','日出之國西之地','日出之國北之地'].forEach(name => AREA_1920.add(name));
 function areaBg1920(name) { return (name && AREA_1920.has(name)) ? ('assets/area/1920x1080/' + name + '.jpg') : null; }   // 名稱→1920 路徑(存在才回傳)
 function upgradeAreaPath(path) { if (!path) return path; let m = /^assets\/area\/([^\/]+)\.jpg$/.exec(path); return (m && AREA_1920.has(m[1])) ? ('assets/area/1920x1080/' + m[1] + '.jpg') : path; }   // 舊 assets/area/<名>.jpg fallback 路徑就地升級到 1920×1080(若有新圖)；非此格式(如 castle.png)原樣
@@ -94,7 +97,7 @@ function upgradeAreaPath(path) { if (!path) return path; let m = /^assets\/area\
 const TOWN_BG_1920 = {
     town_aden: '亞丁城鎮', town_giran: '奇岩城鎮', town_heine: '海音城鎮', town_oren: '歐瑞村莊',
     town_kent_castle: '肯特城', town_windwood_castle: '風木城', town_heine_castle: '海音城',
-    town_elf: '妖精森林村莊', town_talking: '說話之島村莊', town_gludio: '燃柳村莊', town_witon: '威頓村莊',
+    town_elf: '妖精森林村莊', town_talking: '說話之島村莊', town_gludio: '燃柳村莊', town_gludin: '古魯丁村莊', town_witon: '威頓村莊',
     town_hyperia: '希培利亞', town_silver_knight: '銀騎士村莊', town_ivory_tower: '象牙塔（1~3樓）',
     town_sherine: '席琳神殿', town_silent: '沉默洞穴', town_behemoth: '貝希摩斯', town_flame_audience: '炎魔謁見所',
     town_pride: '傲慢之塔1樓', town_rift: '時空裂痕入口', town_pirate_village: '海賊島村莊',

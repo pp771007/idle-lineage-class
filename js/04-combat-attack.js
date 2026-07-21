@@ -1406,14 +1406,21 @@ function pvpChaoticDeathItemLoss() {
 function killPlayer() {
     player.hp = 0;
     player.dead = true; // 保持死亡狀態，停止遊戲計時
-    let _pvpKillers = mapState.mobs.filter(m => m && m.trollPlayer);
-    if (_pvpKillers.length && typeof pvpOnPlayerDeath === 'function') pvpOnPlayerDeath(_pvpKillers);
-    if (player.trollPlayers && player.trollPlayers.length) {   // 😤 被白目玩家擊殺(場上有白目即視為其戰果)：仇恨解除·離場；🐛 v3.5.74 稽核修#3：付費復仇追殺(pvpRevenge/noExpire)不因死亡解除（10 萬不蒸發·之後仍會遭遇）
-        let _tn = mapState.mobs.filter(m => m && m.trollPlayer).map(m => m.n);
-        if (_tn.length) {
-            let _n0 = player.trollPlayers.length;
-            player.trollPlayers = player.trollPlayers.filter(t => t && (t.pvpRevenge || t.noExpire || !_tn.includes(t.n)));
-            if (player.trollPlayers.length !== _n0) logSys("<span class=\"text-rose-300\">白目玩家心滿意足地離開了……</span>");
+    // ⚔️ v3.7.9 決鬥落敗＝完全無損失（用戶拍板）：決鬥贏沒有獎勵，輸也不該有真實損失。
+    //    以下全部跳過——性向/復仇名單結算、紅名噴裝、經典經驗損失、復活按鈕（結束後由 js/28 自動送回古魯丁）。
+    //    ⚠️ 決鬥對手帶 trollPlayer 標記，不擋的話會被當成一次真的白目玩家擊殺來結算。
+    //    ⚠️ 閘門單一真相＝js/28 `pvpArenaDeathExempt()`（決鬥進行中 ＋ 人在競技場，兩者同時成立才豁免）。
+    let _duelDeath = (typeof pvpArenaDeathExempt === 'function') && pvpArenaDeathExempt();
+    if (!_duelDeath) {
+        let _pvpKillers = mapState.mobs.filter(m => m && m.trollPlayer);
+        if (_pvpKillers.length && typeof pvpOnPlayerDeath === 'function') pvpOnPlayerDeath(_pvpKillers);
+        if (player.trollPlayers && player.trollPlayers.length) {   // 😤 被白目玩家擊殺(場上有白目即視為其戰果)：仇恨解除·離場；🐛 v3.5.74 稽核修#3：付費復仇追殺(pvpRevenge/noExpire)不因死亡解除（10 萬不蒸發·之後仍會遭遇）
+            let _tn = mapState.mobs.filter(m => m && m.trollPlayer).map(m => m.n);
+            if (_tn.length) {
+                let _n0 = player.trollPlayers.length;
+                player.trollPlayers = player.trollPlayers.filter(t => t && (t.pvpRevenge || t.noExpire || !_tn.includes(t.n)));
+                if (player.trollPlayers.length !== _n0) logSys("<span class=\"text-rose-300\">白目玩家心滿意足地離開了……</span>");
+            }
         }
     }
     // 死亡時清除所有召喚物與召喚 buff（迷魅術/造屍術/召喚屬性精靈/召喚強力屬性精靈一致處理），
@@ -1442,11 +1449,13 @@ function killPlayer() {
         saveGame();
         return;
     }
-    pvpChaoticDeathItemLoss();
+    if (!_duelDeath) pvpChaoticDeathItemLoss();   // ⚔️ 決鬥落敗不噴裝（即使是紅名）
     let msg = "你的角色已經死亡。（死亡不損失經驗值。）";
     let _siegeDeath = (typeof isSiegeArea === 'function' && typeof mapState !== 'undefined' && mapState && isSiegeArea(mapState.current));
     // 🎮 經典模式：死亡損失「該等級最大經驗」的 5%（v3.0.15 由 10% 調降·per-level 進度，最多扣到該等級 0% → 不會降等）
-    if (player.classicMode && !_siegeDeath) {
+    if (_duelDeath) {
+        msg = '你在決鬥中倒下了。<span class="text-emerald-300">（決鬥落敗：不損失經驗、不掉落裝備、不影響性向值）</span>';
+    } else if (player.classicMode && !_siegeDeath) {
         let _lossCap = Math.floor((getExpReq(player.lv) || 0) * 0.05);
         let _before = player.exp;
         player.exp = Math.max(0, player.exp - _lossCap);
@@ -1466,9 +1475,11 @@ function killPlayer() {
     logSys(`<span class="text-red-500 font-bold text-lg">${msg}</span>`);
     logCombat(`你的角色已經死亡。`, 'enemy');
     
-    // 重新顯示「祈求復活」按鈕
-    document.getElementById('btn-revive').classList.remove('hidden');
-    updateReviveInPlaceBtn();   // 視條件顯示「原地復活」按鈕
+    // 重新顯示「祈求復活」按鈕（⚔️ 決鬥落敗除外：改由 js/28 的決鬥結果視窗處理——選「繼續」就地整備、選「回村莊」送回古魯丁，兩條路都會解除死亡，不必也不該手動復活）
+    if (!_duelDeath) {
+        document.getElementById('btn-revive').classList.remove('hidden');
+        updateReviveInPlaceBtn();   // 視條件顯示「原地復活」按鈕
+    }
     updateUI();
 }
 

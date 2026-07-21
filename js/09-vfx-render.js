@@ -1265,6 +1265,9 @@ function _renderMobsImpl() {
                 let _bp = SIEGE_BUILD_POS[m.n];
                 _scat = ` style="left:${_bp.left}%;top:${_bp.top}%;"`;   // 覆蓋散佈：改用固定 left/top(卡片中心錨點·siege-fixed 提供 position:absolute + translate(-50%,-50%))
                 _sfCls = ' siege-fixed';
+            } else if (m._pvpDuelFoe && typeof PVP_DUEL_FOE_POS !== 'undefined') {
+                _scat = ` style="left:${PVP_DUEL_FOE_POS.left}%;top:${PVP_DUEL_FOE_POS.top}%;"`;   // ⚔️ v3.7.14 決鬥對手：同一套絕對定位(duel-fixed)，覆蓋隨機散佈→每場站位完全一致
+                _sfCls = ' duel-fixed';
             }
             // 🌑 v2.7.17 真實影子 sprite 圖層：本體圖層下疊一層同步影子 img（idle_s_0 為初始貼圖·_mobAnimApply 逐幀同步）；同時隱藏 CSS 橢圓（比照烙印影子）
             let _spriteShadow = MOB_ANIM_NAMES.has(m.n) && (typeof MOB_ANIM_SPRITE_SHADOW !== 'undefined') && MOB_ANIM_SPRITE_SHADOW.has(m.n);
@@ -1366,6 +1369,11 @@ const MOB_YLIFT = { '法利昂': 30 };   // 法利昂（水龍·本體在 375×2
 // 🏰 v3.3.8 攻城建築固定站位（用戶：城門依背景圖放在城門處·守護塔置中·兩者位置固定）。
 //    座標＝卡片中心點 %（相對整個 800×450 背景框·siege-fixed 以 translate(-50%,-50%) 置中錨定；#battle-view 已 position:relative）。
 //    城門逐城依 *_outer 背景圖 gate 位置（肯特外門區/風木外門區/海音外門區.jpg 內城門偏左上）；守護塔一律區域正中央。⚠️微調＝改此表數字（left 越小越靠左·top 越小越靠上）。
+// ⚔️ v3.7.14 決鬥對手固定站位（用戶：釘在中央、玩家稍微右上方，兩人剛好面對面）。
+//   座標＝卡片中心錨點的 left/top 百分比（同 SIEGE_BUILD_POS 機制·CSS .duel-fixed 提供絕對定位）。
+//   ⚠️ 面對面是「位置決定」的：對手 sprite 走 assets/anim/玩家* 恆左向，玩家 sprite 由 _class3Facing
+//      依目標卡片 rect 判左右——只要對手釘在玩家右邊，玩家就會自動轉成 R，兩邊自然對看。
+const PVP_DUEL_FOE_POS = { left: 58, top: 70 };
 const SIEGE_BUILD_POS = {
     '肯特城門': { left: 40, top: 33 }, '風木城門': { left: 41, top: 23 }, '海音城門': { left: 39, top: 23 },
     '肯特守護塔': { left: 50, top: 48 }, '風木守護塔': { left: 50, top: 48 }, '海音守護塔': { left: 50, top: 48 }

@@ -2,8 +2,8 @@
 // 公式：同地圖最近實戰每分鐘產出 × 可結算分鐘 × 70%。
 // 最短離線 1 分鐘、最多結算 12 小時；依實戰怪物組成抽取一般掉落與卡片。
 // 頭目、PVP、任務專用品與活動事件不做離線抽取，避免事件重複觸發。
-// 🔀 混合制：「真正關閉網頁後重開」才走離線收益；切分頁、縮小與 bfcache 還原都由 js/01＋js/03 全額補跑。
-//    若玩家在背景中直接關頁，關頁前的背景時間會另存為補跑債，離線收益只從真正關頁時刻開始，避免兩軌混算。
+// 混合制：「真正關閉網頁後重開」走 70% 離線收益；切分頁、縮小與 bfcache 還原走 100% 一次結算。
+// 若玩家在背景中直接關頁，關頁前的背景時間另存並於下次載入批次結算，離線收益只從真正關頁時刻開始。
 (function () {
     'use strict';
 
@@ -27,6 +27,7 @@
     let _offlineSettling = false;
     let _offlineInternalSave = false;
     let _offlineRestoredCatchupKey = '';
+    let _offlineLastBatchSavedOk = false;
     // ⚠️ 背景分頁期間任何存檔（js/01 每 5 分鐘自動存檔在背景仍會觸發）都不得把 awaySince／
     //    checkpoint.lastActive 往後推，否則離線時長永遠湊不滿 1 分鐘下限、資格也會因
     //    「最後擊殺超過 5 分鐘」被翻成 false → 回前景永遠結不了帳。
@@ -410,10 +411,14 @@
             _offlineStorageRemove(key);
             return false;
         }
-        if (typeof queueCatchupMs !== 'function' || !queueCatchupMs(ms)) return false;
         _offlineRestoredCatchupKey = key;
-        if (typeof deferCatchupSave === 'function') deferCatchupSave();
-        return true;
+        _offlineLastBatchSavedOk = false;
+        if (typeof window.offlineSettleCatchup !== 'function' || !window.offlineSettleCatchup(ms, 'restore')) {
+            _offlineRestoredCatchupKey = '';
+            return false;
+        }
+        // 先成功儲存角色資料才刪除待結算憑證；失敗時保留到下一次成功存檔再提交。
+        return _offlineLastBatchSavedOk ? _offlineCommitRestoredCatchup() : true;
     }
 
     function _offlineCommitRestoredCatchup() {
@@ -749,6 +754,36 @@
         return (h ? h + ' 小時 ' : '') + m + ' 分鐘';
     }
 
+    function _offlineFormatCatchupDuration(ms) {
+        let seconds = Math.max(0, Math.round(_offlineFinite(ms, 0) / 1000));
+        return seconds >= 60 ? Math.floor(seconds / 60) + ' 分 ' + (seconds % 60) + ' 秒' : seconds + ' 秒';
+    }
+
+    function _offlineCatchupGainRows(loot) {
+        let rows = [];
+        Object.keys(loot.items || {}).forEach(id => {
+            let count = Math.max(0, Math.floor(_offlineFinite(loot.items[id], 0)));
+            if (!count) return;
+            let def = typeof DB !== 'undefined' && DB.items ? DB.items[id] : null;
+            let color = 'text-yellow-200';
+            try { if (typeof getItemColor === 'function') color = getItemColor({ id: id, en: 0 }); } catch (e) {}
+            rows.push('<span class="' + color + ' font-bold">' + _offlineEsc((def && def.n) || id) + ' ×' + count.toLocaleString() + '</span>');
+        });
+        let tierName = { 1: '普卡', 2: '銀卡', 3: '金卡' };
+        Object.keys(loot.cards || {}).forEach(key => {
+            let count = Math.max(0, Math.floor(_offlineFinite(loot.cards[key], 0)));
+            if (!count) return;
+            let cut = key.indexOf('|'), tier = Number(key.slice(0, cut)), name = key.slice(cut + 1);
+            let id = '';
+            try { if (typeof cardId === 'function') id = cardId(name, tier); } catch (e) {}
+            let def = id && typeof DB !== 'undefined' && DB.items ? DB.items[id] : null;
+            let color = 'text-sky-200';
+            try { if (id && typeof getItemColor === 'function') color = getItemColor({ id: id, en: 0 }); } catch (e) {}
+            rows.push('<span class="' + color + ' font-bold">' + _offlineEsc((def && def.n) || (name + ' ' + (tierName[tier] || '卡片'))) + ' ×' + count.toLocaleString() + '</span>');
+        });
+        return rows;
+    }
+
     function _offlineShowSummary(result) {
         let old = document.getElementById('offline-reward-modal');
         if (old) old.remove();
@@ -765,7 +800,7 @@
                 '<div style="display:grid;grid-template-columns:1fr auto;gap:8px 14px;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:12px;">' +
                     '<span>獲得經驗</span><b style="color:#86efac;">' + result.exp.toLocaleString() + '</b>' +
                     '<span>獲得金幣</span><b style="color:#fde047;">' + result.gold.toLocaleString() + '</b>' +
-                    '<span>推定擊殺</span><b style="color:#c4b5fd;">' + result.kills.toLocaleString() + '</b>' +
+                    '<span>擊殺怪物</span><b style="color:#c4b5fd;">' + result.kills.toLocaleString() + '</b>' +
                     '<span>掉落物品</span><b style="color:#fef08a;">' + result.itemCount.toLocaleString() + '</b>' +
                     '<span>怪物卡片</span><b style="color:#93c5fd;">' + result.cardCount.toLocaleString() + '</b>' +
                 '</div>' +
@@ -776,15 +811,178 @@
         document.body.appendChild(overlay);
     }
 
-    function _offlineSettle(reason) {
-        if (_offlineSettling || _offlineLoading || typeof document === 'undefined' || document.hidden) return false;
-    function _offlineRewardAmount(ratePerMin, elapsedMs) {
+    function _offlineRewardAmount(ratePerMin, elapsedMs, efficiency) {
         let value = Math.max(0, Number(ratePerMin) || 0) * Math.max(0, Number(elapsedMs) || 0) /
-            60000 * OFFLINE_EFFICIENCY;
-        // 只消除 12 小時 × 70% 這類二進位浮點尾差，不改變一般小數的向下取整規則。
+            60000 * _offlineClamp(efficiency, 0, 1);
+        // 消除整段比例運算的二進位浮點尾差，不改變一般小數的向下取整規則。
         return Math.max(0, Math.floor(value + 1e-7));
     }
 
+    function _offlineReduce(obj, key, amount) {
+        if (!obj || !(Number(obj[key]) > 0)) return false;
+        let before = Number(obj[key]);
+        obj[key] = Math.max(0, before - amount);
+        return before > 0 && obj[key] === 0;
+    }
+
+    // 一次結算仍要讓相對時間狀態經過同樣時長，但不執行攻擊、受傷、動畫或事件 tick。
+    function _offlineAdvanceCombatTime(elapsedMs) {
+        let ticks = Math.max(0, Math.floor(_offlineFinite(elapsedMs, 0) / TICK_MS));
+        let seconds = Math.max(0, Math.floor(_offlineFinite(elapsedMs, 0) / 1000));
+        if (!ticks || typeof player === 'undefined' || !player) return;
+        if (typeof state !== 'undefined' && state) {
+            state.ticks = Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Number(state.ticks) || 0) + ticks);
+            state.pDmgTick = 0;
+            state.pOffDmgTick = 0;
+            state._pStunCycle = false;
+        }
+        if (player.manualCd) Object.keys(player.manualCd).forEach(k => _offlineReduce(player.manualCd, k, ticks));
+        let statusValues = new Set(['poisonDmg','poisonTick','burnDmg','burnTick','scaldDmg','scaldTick','bleedDmg','bleedTick','armorBreakPct']);
+        if (player.statuses) Object.keys(player.statuses).forEach(k => {
+            if (!statusValues.has(k)) _offlineReduce(player.statuses, k, ticks);
+        });
+        if (player.cds) {
+            ['atkSk','healSk','purifySk','convertSk','castLock'].forEach(k => _offlineReduce(player.cds, k, ticks));
+            if (player.cds.healSkillCds) Object.keys(player.cds.healSkillCds).forEach(k => _offlineReduce(player.cds.healSkillCds, k, ticks));
+            _offlineReduce(player.cds, 'pot', seconds);
+        }
+        _offlineReduce(player, 'reviveScrollCd', seconds);
+        _offlineReduce(player, 'magicShieldCd', seconds);
+        _offlineReduce(player, '_waterVitalCd', seconds);
+        if (player.buffs) Object.keys(player.buffs).forEach(k => _offlineReduce(player.buffs, k, seconds));
+        if (player.hots) Object.keys(player.hots).forEach(k => {
+            let hot = player.hots[k];
+            if (!hot || !(hot.ticksLeft > 0)) { delete player.hots[k]; return; }
+            let interval = Math.max(1, Math.floor(_offlineFinite(hot.interval, 1)));
+            let first = Math.max(1, Math.floor(_offlineFinite(hot.cd, interval)));
+            if (ticks < first) { hot.cd = first - ticks; return; }
+            let pulses = 1 + Math.floor((ticks - first) / interval);
+            hot.ticksLeft = Math.max(0, hot.ticksLeft - pulses);
+            if (!hot.ticksLeft) delete player.hots[k];
+            else hot.cd = interval - ((ticks - first) % interval);
+        });
+        (Array.isArray(player.allies) ? player.allies : []).forEach(ally => {
+            if (!ally) return;
+            if (ally._downed) { _offlineReduce(ally, '_reviveCd', ticks); return; }
+            if (ally.statuses) Object.keys(ally.statuses).forEach(k => {
+                if (!statusValues.has(k)) _offlineReduce(ally.statuses, k, ticks);
+            });
+            ['_potCd','_atkSkillCd','_healCastCd','_convertSkillCd','_purifySkillCd','_atkCd','_offAtkCd','_cleaveTicks','_crushFuryTicks']
+                .forEach(k => _offlineReduce(ally, k, ticks));
+            if (ally._healSkillCds) Object.keys(ally._healSkillCds).forEach(k => _offlineReduce(ally._healSkillCds, k, ticks));
+            _offlineReduce(ally, '_waterVitalCd', seconds);
+            if (ally.buffs) Object.keys(ally.buffs).forEach(k => _offlineReduce(ally.buffs, k, seconds));
+            try { if (typeof _allyLevelRecompute === 'function') _allyLevelRecompute(ally); } catch (e) {}
+        });
+    }
+
+    function _offlineGrantBatch(source, profile, elapsed, rawElapsed, efficiency, options) {
+        options = options || {};
+        let now = options.now || _offlineNow();
+        let exp = _offlineRewardAmount(profile.expPerMin, elapsed, efficiency);
+        let gold = _offlineRewardAmount(profile.goldPerMin, elapsed, efficiency);
+        let kills = _offlineRewardAmount(profile.killsPerMin, elapsed, efficiency);
+        let petExp = _offlineRewardAmount(profile.petExpPerMin, elapsed, efficiency);
+        let allyExp = _offlineRewardAmount(profile.allyExpPerMin, elapsed, efficiency);
+        let loot = kills > 0 ? _offlineRollLoot(profile, kills) : { items: {}, cards: {}, itemCount: 0, cardCount: 0 };
+        let safeRoom = Number.MAX_SAFE_INTEGER - Math.max(0, Number(player.gold) || 0);
+        gold = Math.min(gold, Math.max(0, safeRoom));
+        if ((player.lv || 1) < 100 && exp > 0) {
+            player.exp = Math.max(0, Number(player.exp) || 0) + exp;
+            if (typeof checkLvUp === 'function') checkLvUp();
+        } else {
+            exp = 0;
+        }
+        player.gold = Math.max(0, Number(player.gold) || 0) + gold;
+        if (petExp > 0 && typeof petsGainExp === 'function') {
+            try { petsGainExp(petExp); } catch (e) {}
+        }
+        _offlineApplyAllyExp(allyExp);
+        if (kills > 0 && typeof pvpChangeAlignment === 'function') pvpChangeAlignment(kills);
+        if (options.advanceCombatTime) _offlineAdvanceCombatTime(elapsed);
+
+        _offlineResetRuntime(typeof mapState !== 'undefined' && mapState ? mapState.current : '');
+        _offlinePrepareSnapshot(now);
+        try { if (typeof calcStats === 'function') calcStats(); } catch (e) {}
+        try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
+        try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
+        let savedOk = false;
+        _offlineInternalSave = true;
+        try { savedOk = _offlineOriginalSaveGame() === true; } finally { _offlineInternalSave = false; }
+        _offlineLastBatchSavedOk = savedOk;
+        let label = options.label || '離線收益';
+        if (!savedOk && typeof logSys === 'function') {
+            logSys('<span class="text-red-400 font-bold">' + label + '已套用至目前畫面，但存檔失敗，請立即再按一次存檔。</span>');
+        }
+        let result = {
+            mapName: source.mapName || profile.mapName || source.map,
+            elapsedMs: elapsed,
+            capped: options.showModal === true && rawElapsed > OFFLINE_MAX_MS,
+            exp: exp,
+            gold: gold,
+            kills: kills,
+            items: loot.items,
+            cards: loot.cards,
+            itemCount: loot.itemCount,
+            cardCount: loot.cardCount
+        };
+        if (typeof logSys === 'function' && options.catchupFormat) {
+            logSys('<span class="text-cyan-300 font-bold">⏩ 掛機補跑完成：</span>已補上 ' +
+                _offlineFormatCatchupDuration(elapsed) + ' 的進度' + (gold > 0 ? ('，金幣 +' + gold.toLocaleString()) : '') + '。');
+            let gains = _offlineCatchupGainRows(loot);
+            if (gains.length) logSys('<span class="sys-item-gain">掛機期間獲得：' + gains.join('、') + '</span>');
+        } else if (typeof logSys === 'function') {
+            logSys('<span class="text-amber-300 font-bold">' + label + '：</span>經驗 ' + exp.toLocaleString() +
+                '、金幣 ' + gold.toLocaleString() + '、擊殺怪物 ' + kills.toLocaleString() +
+                '、掉落物 ' + loot.itemCount.toLocaleString() + '、卡片 ' + loot.cardCount.toLocaleString() + '。');
+        }
+        if (options.showModal) _offlineShowSummary(result);
+        return true;
+    }
+
+    function _offlineSettleCatchup(elapsedMs, reason) {
+        if (_offlineSettling || _offlineLoading || typeof document === 'undefined' || document.hidden) return false;
+        if (typeof player === 'undefined' || !player || !player.cls || typeof state === 'undefined' || !state.running) return true;
+        let rawElapsed = Math.max(0, Math.floor(_offlineFinite(elapsedMs, 0)));
+        if (rawElapsed < TICK_MS) return true;
+        _offlineLastBatchSavedOk = false;
+        _offlineSettling = true;
+        try {
+            let now = _offlineNow();
+            let elapsed = rawElapsed;
+            let saved = _offlineEnsureState();
+            let map = typeof mapState !== 'undefined' && mapState ? String(mapState.current || '') : '';
+            let profile = _offlineProfileForMap(saved, map);
+            _offlineHiddenAt = 0;
+            // 沒有合格實戰樣本時仍消耗背景時間與狀態，不退回逐 tick 補跑。
+            if (!saved || !saved.eligible || saved.map !== map || !profile || profile.killsPerMin <= 0) {
+                _offlineAdvanceCombatTime(elapsed);
+                _offlineResetRuntime(map);
+                _offlinePrepareSnapshot(now);
+                try { if (typeof calcStats === 'function') calcStats(); } catch (e) {}
+                try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
+                try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
+                _offlineInternalSave = true;
+                try { _offlineLastBatchSavedOk = _offlineOriginalSaveGame() === true; } catch (e) {}
+                finally { _offlineInternalSave = false; }
+                return true;
+            }
+            if (!_offlineWriteClaimAt(now)) return false;
+            return _offlineGrantBatch(saved, profile, elapsed, rawElapsed, 1, {
+                now: now,
+                label: '掛機結算',
+                advanceCombatTime: true,
+                catchupFormat: true,
+                showModal: false
+            });
+        } finally {
+            _offlineSettling = false;
+        }
+    }
+    window.offlineSettleCatchup = _offlineSettleCatchup;
+
+    function _offlineSettle(reason) {
+        if (_offlineSettling || _offlineLoading || typeof document === 'undefined' || document.hidden) return false;
         if (typeof player === 'undefined' || !player || !player.cls || typeof state === 'undefined' || !state.running) return false;
         _offlineSettling = true;
         try {
@@ -817,65 +1015,17 @@
                 _offlinePrepareSnapshot(now);
                 return false;
             }
-
-            let exp = _offlineRewardAmount(profile.expPerMin, elapsed);
-            let gold = _offlineRewardAmount(profile.goldPerMin, elapsed);
-            let kills = _offlineRewardAmount(profile.killsPerMin, elapsed);
-            let petExp = _offlineRewardAmount(profile.petExpPerMin, elapsed);
-            let allyExp = _offlineRewardAmount(profile.allyExpPerMin, elapsed);
-            if (!exp && !gold && !kills && !petExp && !allyExp) return false;
-
             // 先占用時間區間，避免同角色多分頁或重新匯入同一快照重複領取。
             if (!_offlineWriteClaimAt(now)) return false;
-            let loot = kills > 0 ? _offlineRollLoot(profile, kills) : { items: {}, cards: {}, itemCount: 0, cardCount: 0 };
-            let safeRoom = Number.MAX_SAFE_INTEGER - Math.max(0, Number(player.gold) || 0);
-            gold = Math.min(gold, Math.max(0, safeRoom));
-            if ((player.lv || 1) < 100 && exp > 0) {
-                player.exp = Math.max(0, Number(player.exp) || 0) + exp;
-                if (typeof checkLvUp === 'function') checkLvUp();
-            } else {
-                exp = 0;
-            }
-            player.gold = Math.max(0, Number(player.gold) || 0) + gold;
-            if (petExp > 0 && typeof petsGainExp === 'function') {
-                try { petsGainExp(petExp); } catch (e) {}
-            }
-            _offlineApplyAllyExp(allyExp);
-            if (kills > 0 && typeof pvpChangeAlignment === 'function') pvpChangeAlignment(kills);
-
-            _offlineResetRuntime(typeof mapState !== 'undefined' && mapState ? mapState.current : '');
-            _offlinePrepareSnapshot(now);
-            try { if (typeof calcStats === 'function') calcStats(); } catch (e) {}
-            try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
-            try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
-            let savedOk = false;
-            _offlineInternalSave = true;
-            try { savedOk = _offlineOriginalSaveGame() === true; } finally { _offlineInternalSave = false; }
-            if (!savedOk && typeof logSys === 'function') {
-                logSys('<span class="text-red-400 font-bold">離線收益已套用至目前畫面，但存檔失敗，請立即再按一次存檔。</span>');
-            }
-            let result = {
-                mapName: source.mapName || profile.mapName || source.map,
-                elapsedMs: elapsed,
-                capped: rawElapsed > OFFLINE_MAX_MS,
-                exp: exp,
-                gold: gold,
-                kills: kills,
-                items: loot.items,
-                cards: loot.cards,
-                itemCount: loot.itemCount,
-                cardCount: loot.cardCount
-            };
-            if (typeof logSys === 'function') {
-                logSys('<span class="text-amber-300 font-bold">離線收益：</span>經驗 ' + exp.toLocaleString() +
-                    '、金幣 ' + gold.toLocaleString() + '、推定擊殺 ' + kills.toLocaleString() +
-                    '、掉落物 ' + loot.itemCount.toLocaleString() + '、卡片 ' + loot.cardCount.toLocaleString() + '。');
-            }
-            _offlineShowSummary(result);
-            return true;
+            return _offlineGrantBatch(source, profile, elapsed, rawElapsed, OFFLINE_EFFICIENCY, {
+                now: now,
+                label: '離線收益',
+                advanceCombatTime: false,
+                showModal: true
+            });
         } finally {
-            try { _offlineRestorePendingCatchup(); } catch (e) {}
             _offlineSettling = false;
+            try { _offlineRestorePendingCatchup(); } catch (e) {}
         }
     }
 
@@ -931,7 +1081,9 @@
             if (!_offlineInternalSave && !_offlineLoading && typeof player !== 'undefined' && player && player.cls) {
                 _offlinePrepareSnapshot(_offlineNow());
             }
-            return _offlineOriginalSaveGame.apply(this, arguments);
+            let result = _offlineOriginalSaveGame.apply(this, arguments);
+            if (result === true && _offlineRestoredCatchupKey) _offlineCommitRestoredCatchup();
+            return result;
         };
     }
 

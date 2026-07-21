@@ -2,7 +2,7 @@
 const MAP_CATEGORIES = {
     village: [
         {v:'town_silver_knight',t:'銀騎士村'}, {v:'town_elf',t:'妖精森林'}, {v:'town_talking',t:'說話之島'},
-        {v:'town_gludio',t:'燃柳村'}, {v:'town_giran',t:'奇岩'}, {v:'town_heine',t:'海音'},
+        {v:'town_gludio',t:'燃柳村'}, {v:'town_gludin',t:'古魯丁村莊'}, {v:'town_giran',t:'奇岩'}, {v:'town_heine',t:'海音'},
         {v:'town_oren',t:'歐瑞村莊'}, {v:'town_aden',t:'亞丁',c:'#facc15'}, {v:'town_ivory_tower',t:'象牙塔'}, {v:'town_witon',t:'威頓村'},
         {v:'town_sherine',t:'席琳神殿',c:'#4ade80',classicHide:true}, {v:'town_silent',t:'沉默洞穴',c:'#a78bfa'}, {v:'town_hyperia',t:'希培利亞村莊',c:'#c084fc'}, {v:'town_behemoth',t:'貝希摩斯',c:'#f59e0b'}, {v:'town_flame_audience',t:'炎魔謁見所',c:'#ff6b35',questReq:'demonTemple',affinityReq:1000}, {v:'town_elder_council',t:'長老會議廳',c:'#a5b4fc'}
     ],
@@ -38,7 +38,7 @@ const MAP_CATEGORIES = {
         {v:'shadow_temple',t:'暗影神殿',c:'#7c3aed',keyHoldReq:'item_shadow_temple_key',affinityReq:1000}
     ],
     special: [
-        {v:'training',t:'新兵修練場'}, {v:'dream_island',t:'夢幻之島'},
+        {v:'training',t:'新兵修練場'}, {v:'dream_island',t:'夢幻之島'},   // ⚔️ 決鬥競技場刻意不列選單：入口＝古魯丁村莊「鬥技場管理者 巴魯特」（js/28 pvpArenaEnter 臨時補 option 傳送）
         {v:'king_baranka_room',t:'魔獸軍王之室',c:'#f87171',needKey:'item_king_key'},
         {v:'law_king_room',t:'法令軍王之室',c:'#f87171',needKey:'item_king_key'},
         {v:'necro_king_room',t:'冥法軍王之室',c:'#f87171',needKey:'item_king_key'},
@@ -103,7 +103,7 @@ const MAP_REGIONS = [
         {v:'elf_grave', t:'精靈墓穴'}, {v:'hidden_cave', t:'大洞穴隱遁者村莊地區'}
     ]},
     { key: 'gludin', label: '古魯丁', maps: [
-        {v:'gludio', t:'古魯丁周邊'},
+        {v:'town_gludin', t:'古魯丁村莊'}, {v:'gludio', t:'古魯丁周邊'},
         {v:'zone_06', t:'古魯丁地監1樓'}, {v:'zone_07', t:'古魯丁地監2樓'}, {v:'zone_08', t:'古魯丁地監3樓'}, {v:'zone_09', t:'古魯丁地監4樓'}, {v:'zone_10', t:'古魯丁地監5樓'}, {v:'zone_11', t:'古魯丁地監6樓'}, {v:'zone_12', t:'古魯丁地監7樓'}
     ]},
     { key: 'kent', label: '肯特', castleCity: 'kent', castleAt: 0, maps: [
@@ -517,6 +517,11 @@ function updatePrideFloorIndicator() {
         if (cat) cat.classList.add('hidden');   // 🌀 裂痕內鎖定左右選單，只能用「回村」離開
     } else if (isHiddenArea(cur)) {
         ind.textContent = '🏛️ ' + HIDDEN_AREA_NAMES[cur];   // 🏛️ 隱藏狩獵區域：右地圖選單消失、改顯示對應名稱（只能用「回村」離開、或在區內傳送重置怪物）
+        ind.classList.remove('hidden');
+        if (sel) sel.classList.add('hidden');
+        if (cat) cat.classList.add('hidden');
+    } else if (cur === 'arena_pvp') {
+        ind.textContent = '⚔️ 決鬥競技場';   // ⚔️ v3.7.13 決鬥競技場（不在 MAP_CATEGORIES·入口＝古魯丁巴魯特）：比照隱藏區域＝左右下拉全隱藏、只顯示地名（離場走「回村」或結果視窗的「回村莊」）
         ind.classList.remove('hidden');
         if (sel) sel.classList.add('hidden');
         if (cat) cat.classList.add('hidden');
@@ -1710,6 +1715,8 @@ function interactNPC(npcId, townId) {
     // 根據 NPC 的類型，載入不同的 UI
     if (npc.type === 'shop' || npc.id === 'npc_gilen') {
         renderTownShop(contentDiv, npc.id);
+    } else if (npc.id === 'npc_arena') {   // ⚔️ 鬥技場管理者 巴魯特：存檔 PvP 對戰名片／決鬥競技場（古魯丁村莊·js/28）
+        renderPvpArenaNPC(contentDiv);
     } else if (npc.id === 'npc_arkata') {   // 🕊️ 聖使阿卡塔：死亡經驗買回（亞丁·經典限定）
         renderArkataBuyback(contentDiv);
     } else if (npc.id === 'npc_obel' || npc.id === 'npc_hert' || npc.id === 'npc_diren') {   // 🔧 赫特＝風木城、帝倫＝海音城的魔物追蹤（同奧貝勒）
@@ -1787,7 +1794,7 @@ function interactNPC(npcId, townId) {
         renderAllyNPC(contentDiv);
     } else if (npc.type === 'warehouse') {
         renderWarehouseNPC(contentDiv);   // 🔧 v2.6.77 正常情況已在 interactNPC 開頭早退開浮動倉庫；此分支僅剩 openWarehouseWindow 不存在時的舊式後備
-    } else if (npc.id === 'npc_baowu') {
+    } else if (npc.type === 'petstore') {   // 🐾 v3.7.7 改依 type 分派（包武／奧斯丁共用同一個保管桶）——新增寵物保管 NPC 不必再回來加 id
         try { if (typeof _petRosterResync === 'function') _petRosterResync(); } catch (e) {}   // 🔄 開啟寵物保管前先與共用桶同步（顯示別角色最新裝備/出戰狀態·防過期鏡像）
         renderPetStorageNPC(contentDiv);
     } else if (npc.id === 'npc_isba') {
@@ -1858,6 +1865,7 @@ const NPC_SPR_FIXED = {
     npc_skvati: '2801', npc_saedia: '2820', npc_shenien: '6899', npc_bartel: '6757', npc_sphere: '6690',
     npc_dantes_lord: '5454', npc_atelier: '1768',   // 🌑 v3.3.33 長老會議廳：真‧冥皇丹特斯＝骸骨王座／亞提利歐＝矮人鐵匠（用戶指定·同炎魔鐵匠外型 1768）
     npc_arkata: '2141',   // 🕊️ v3.4.73 聖使阿卡塔（亞丁·經典限定·死亡經驗買回）
+    npc_arena: '1305',    // ⚔️ v3.7.5 鬥技場管理者 巴魯特（古魯丁村莊·甲冑武人外型·決鬥競技場入口）
     // 魔物追蹤三兄弟共用 cray；港口/寵物保管等亦可指定
     npc_obel: '1049', npc_hert: '1049', npc_diren: '1049'
 };
@@ -1885,7 +1893,8 @@ const NPC_SPR_FEMALE_POOL = ['949', '1307', '3858', '98', '6804'];
 const NPC_FEMALE_IDS = new Set([
     'npc_shenien', 'npc_yuria', 'npc_lachesis', 'npc_moliya', 'npc_moli', 'npc_saedia',
     'npc_brudica', 'npc_sherine', 'npc_io', 'npc_masha', 'npc_doll_merchant',
-    'npc_lumiel'   // 🚺 v3.3.6 海音 琉米埃爾＝女性外型
+    'npc_lumiel',   // 🚺 v3.3.6 海音 琉米埃爾＝女性外型
+    'npc_lucy'      // 🚺 v3.7.7 古魯丁 露西（雜貨商人）＝女性外型
 ]);
 
 function _npcSpriteKey(npc, usedSet) {
@@ -1947,6 +1956,9 @@ const TOWN_NPC_SPOTS = {
     town_oren: [[63, 52], [53, 29], [45, 55], [33, 49], [77, 59], [22, 72]],
     // 燃柳村莊：歐斯=鍛造屋前院(火爐鐵砧旁)
     town_gludio: [[62, 36]],
+    // 古魯丁村莊(港口村)：巴魯特=廣場中左空地｜凱倫=左側藍屋大宅前石板路｜露西=左下攤棚前路面｜傭兵公會=廣場中右｜奧斯丁=水井左下石地
+    //   ⚠️[50,58] 是叫賣玩家固定點（TOWN_WANDERING_BUYER_SPOTS.town_gludin 同座標），NPC 一律避開。
+    town_gludin: [[38, 58], [23, 46], [33, 81], [70, 55], [48, 36]],
     // 威頓村莊(火山村)：馬沙=大宅階梯前｜漢=村中央｜客盧亞=左上屋簷攤棚｜宙斯之熔岩高崙=左下鍛造爐(自家熔爐)｜魔法娃娃商人=右下屋前｜艾斯倫=右側貨箱堆旁
     town_witon: [[70, 37], [48, 52], [27, 40], [13, 72], [66, 79], [77, 48]],
     // 希培利亞(天空神殿)：倉管=左上殿門階梯｜史菲爾=上方大殿門前｜巴特爾=右側步道橋頭｜希蓮恩=中央圓形圖紋
@@ -1984,7 +1996,7 @@ const TOWN_NPC_SPOTS = {
 };
 // 🏴 叫賣玩家只會在這些安全區出現。獨立保留站位，避免在原始 NPC 格位用盡後回繞並貼近人物或落到場景物件上。
 const TOWN_WANDERING_BUYER_SPOTS = {
-    town_silver_knight: [55, 60], town_talking: [53, 60], town_elf: [54, 48], town_gludio: [50, 60],
+    town_silver_knight: [55, 60], town_talking: [53, 60], town_elf: [54, 48], town_gludio: [50, 60], town_gludin: [50, 58],
     town_giran: [48, 48], town_heine: [43, 64], town_oren: [54, 70], town_aden: [60, 62],
     town_elder_council: [38, 60], town_pride: [62, 70], town_rift: [30, 50], town_ivory_tower: [69, 63],
     town_witon: [52, 68], town_silent: [54, 72], town_hyperia: [57, 68], town_behemoth: [52, 72],

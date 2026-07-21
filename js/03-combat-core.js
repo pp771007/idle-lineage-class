@@ -795,7 +795,12 @@ function tick() {
         if(m.curHp <= 0) continue;   // 反擊使該怪在自己回合內死亡 → 跳過後續魔法施放
         if(m.st && (m.st.vacuum > 0 || m.st.magicseal > 0)) continue; // 真空 / 魔法封印：無法施放技能
         if(!m._magCd) m._magCd = {};
-        _dpsReactWrap(() => ['mag','mag2','mag3','mag4','mag5'].forEach(mk => {   // 🌑 v3.3.33 mag4：吉爾塔斯第四技（血壁空間）；😤 v3.6.20 mag5：二模板法師第五技（究極光裂術）；🎯 DPS：怪物施法引發的玩家受擊反應（鏡反射等）歸玩家
+        // 🔮 v3.7.16 決鬥法師對手：先問 js/28「本 tick 已就緒的法術中傷害最高的是哪一招」→ 那一招必放且先放。
+        //   ⚠️ 只有 `_pvpDuelFoe` 且職業為法師會拿到非 null，其餘怪物 _magBest 恆 null＝完全照舊。
+        let _magBest = (m._pvpDuelFoe && typeof pvpDuelBestSpellKey === 'function') ? pvpDuelBestSpellKey(m) : null;
+        let _magKeys = ['mag','mag2','mag3','mag4','mag5'];
+        if (_magBest) _magKeys = [_magBest].concat(_magKeys.filter(k => k !== _magBest));   // 最高傷害排最前（玩家若被這招打死，後面的就不用放了）
+        _dpsReactWrap(() => _magKeys.forEach(mk => {   // 🌑 v3.3.33 mag4：吉爾塔斯第四技（血壁空間）；😤 v3.6.20 mag5：二模板法師第五技（究極光裂術）；🎯 DPS：怪物施法引發的玩家受擊反應（鏡反射等）歸玩家
             if(!m[mk]) return;
             if(m[mk].reqAlign != null && pvpClampAlignment(m._pvpAlignment || 0) < m[mk].reqAlign) return;   // ⚖️ v3.6.20 性向門檻技（究極光裂術≥500）：未達＝視同沒有此技（不進冷卻）
             // 檢查發動機率
@@ -804,7 +809,7 @@ function tick() {
                  m._magCd[mk]--;
                  if(m._magCd[mk] <= 0) {
                      m._magCd[mk] = m[mk].cd;
-                     if(Math.random() <= m[mk].chance) {
+                     if(mk === _magBest || Math.random() <= m[mk].chance) {   // 🔮 v3.7.16 決鬥法師的「本輪最高傷害法術」跳過發動機率＝必放（其餘技能照原機率）
                          if(!player.dead) castMobMagic(m, m[mk]);   // 🤝 Phase4：攻擊型魔法可依全體名單/仇恨權重打玩家或傭兵
                      }
                  }

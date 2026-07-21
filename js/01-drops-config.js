@@ -1264,6 +1264,26 @@ function queueCatchupMs(ms) {
     return true;
 }
 
+// 背景分頁回前景改走一次性結算，不把數小時重新拆成數萬個戰鬥 tick。
+function settleBackgroundMs(ms, reason) {
+    ms = Math.max(0, Number(ms) || 0);
+    _loopLast = _perfNow();
+    _tickDebt = 0;
+    _ffSavePending = false;
+    if (ms < TICK_MS) return true;
+    if (typeof window !== 'undefined' && typeof window.offlineSettleCatchup === 'function') {
+        try {
+            if (window.offlineSettleCatchup(ms, reason || 'visibility') !== false) return true;
+        }
+        catch (e) { console.warn('background batch settlement failed', e); }
+    }
+    // 模組異常時不恢復逐 tick 長時間補跑，避免再次讓分頁卡住。
+    if (typeof logSys === 'function') {
+        logSys('<span class="text-red-400 font-bold">掛機一次結算失敗，本次未進行補跑，請重新整理後再試。</span>');
+    }
+    return false;
+}
+
 // 統一啟動遊戲計時器：先清除既有的，再重新註冊，確保整個工作階段只會有一組計時器
 function startGameTimers() {
     if (_gameLoopId !== null) clearInterval(_gameLoopId);
@@ -1280,31 +1300,30 @@ function startGameTimers() {
 
 function _perfNow() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
 function _resetGameLoopClock() { _loopLast = _perfNow(); _tickDebt = 0; _ffSavePending = false; }
-// 🔀 v3.6.95 背景時間錨點：切到背景記下時刻，回前景把「整段背景時間」一次記入 _tickDebt → gameLoop 補跑償還。
-//    ⚠️ 不靠背景中節流的 setInterval 逐次累積——Chrome 省電/凍結分頁時計時器可能完全不觸發，靠它會漏帳；
-//    錨點法對「節流」與「凍結」一視同仁。若背景中直接關頁，js/27 會保存尚未補跑的背景債，並從關頁時刻才開始離線收益。
+// 背景時間錨點：切到背景記下時刻，回前景交給 js/27 以 100% 實戰取樣率一次結算。
+// 不依賴背景中可能被 Chrome 節流或凍結的 setInterval，也不再逐 tick 重播動畫與戰鬥。
 let _ffHiddenAt = (typeof document !== 'undefined' && document.hidden) ? _perfNow() : 0;
 if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) { if (!_ffHiddenAt) _ffHiddenAt = _perfNow(); return; }
         let _now = _perfNow();
         let _anchor = _ffHiddenAt; _ffHiddenAt = 0;
-        _loopLast = _now;   // 回前景：時鐘重設（背景段不經 elapsed 路徑、由下行整段入帳）
+        _loopLast = _now;
         if (_anchor > 0 && typeof state !== 'undefined' && state.running && typeof player !== 'undefined' && player && player.cls && !player.dead) {
-            queueCatchupMs(Math.max(0, _now - _anchor));
+            settleBackgroundMs(Math.max(0, _now - _anchor), 'visibility');
         }
     });
 }
 if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('pageshow', function (ev) {
-        // bfcache 的頁面與 JS 記憶體仍存在，屬於「網頁還開著」：保留並補上整段背景時間。
+        // bfcache 的頁面與 JS 記憶體仍存在，視為背景掛機並一次結算。
         if (ev && ev.persisted) {
             let _now = _perfNow();
             let _anchor = _ffHiddenAt;
             _ffHiddenAt = 0;
             _loopLast = _now;
             if (_anchor > 0 && typeof state !== 'undefined' && state.running && typeof player !== 'undefined' && player && player.cls && !player.dead) {
-                queueCatchupMs(Math.max(0, _now - _anchor));
+                settleBackgroundMs(Math.max(0, _now - _anchor), 'bfcache');
             }
             return;
         }

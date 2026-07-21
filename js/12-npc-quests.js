@@ -352,7 +352,13 @@ function _syncSharedFromStorage(ev){
     if (mergeSharedIntoPlayer(ev.key === ck ? 'card' : (ev.key === ek ? 'equip' : (ev.key === rk ? 'relic' : 'misc')))) _refreshAfterDexSync();
 }
 if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('storage', _syncSharedFromStorage);
-function _whStackFind(arr, it){ return ((it.en||0)===0 && !it.lock) ? arr.find(x => !x.lock && (x.en||0)===0 && sameItemSig(x, it)) : null; }   // 🔧 架構#3：統一簽章比對
+// 🔧 架構#3：統一簽章比對。
+// 🔒 v3.6.92 改為「可併入鎖定堆疊」（與背包端 gainItem 同口徑·用戶拍板「再次獲得直接合併同一格」）：
+//    同簽章永遠只有一格，任一方鎖定→合併後整疊鎖定（旗標傳遞統一走 _whStackAbsorb）。
+// ⚠️ 巨靈願望戒指(gw)每只的三個願望各自獨立，而 itemSig 不含 gw → 必須顯式排除，
+//    否則存入/取出會把兩只不同願望的戒指併成一疊、其中一份願望資料就此消失。
+function _whStackFind(arr, it){ return ((it.en||0)===0 && !it.gw) ? arr.find(x => (x.en||0)===0 && !x.gw && sameItemSig(x, it)) : null; }
+function _whStackAbsorb(stack, src, n){ stack.cnt += n; if(src && src.lock){ stack.lock = true; stack.junk = false; } }   // 合併時保護狀態只會擴散、不會遺失
 // 🗑️ 自動販賣暫態旗標不屬於倉庫（那是每次背包工作階段的狀態）。存入與取出都清掉，否則
 //    帶著早已過期 junkSince 的物品一回到背包就會被下一次 10 秒掃描直接賣掉＝零寬限期。
 //    取出時一併清，可順便治好既有存檔中已經帶著舊旗標躺在倉庫裡的物品。
@@ -401,7 +407,7 @@ function whOneClickDeposit(){
         let stack = _whStackFind(w.items, cur);
         if(!stack && w.items.length >= WH_MAX){ full = true; break; }
         player.inv.splice(idx, 1);
-        if(stack){ stack.cnt += cur.cnt; } else { w.items.push(_whClearJunkState(cur)); whSigs.add(whSig(cur)); }
+        if(stack){ _whStackAbsorb(stack, cur, cur.cnt); } else { w.items.push(_whClearJunkState(cur)); whSigs.add(whSig(cur)); }
         deposited++;
     }
     if(!whTxnCommit(w, _txn)){ renderTabs(true); updateUI(); renderWarehouseNPC(document.getElementById('interaction-content')); return; }
@@ -438,10 +444,10 @@ function whDeposit(uidv, qty){
     if(!stack && w.items.length >= WH_MAX){ logSys(`<span class="text-red-400">倉庫已滿（上限 ${WH_MAX} 格）。</span>`); return; }
     if(qty >= total){          // 全部存入
         player.inv.splice(idx, 1);
-        if(stack) stack.cnt += total; else w.items.push(_whClearJunkState(it));
+        if(stack) _whStackAbsorb(stack, it, total); else w.items.push(_whClearJunkState(it));
     } else {                   // 部分存入：背包留下剩餘
         it.cnt = total - qty;
-        if(stack) stack.cnt += qty; else w.items.push(_whClearJunkState({ ...it, uid: uid(), cnt: qty }));
+        if(stack) _whStackAbsorb(stack, it, qty); else w.items.push(_whClearJunkState({ ...it, uid: uid(), cnt: qty }));
     }
     if(!whTxnCommit(w, _txn)){ renderTabs(true); updateUI(); renderWarehouseNPC(document.getElementById('interaction-content')); return; }
     renderTabs(true); updateUI();
@@ -464,12 +470,12 @@ function whWithdraw(uidv, qty){
         if(!it.uid || player.inv.some(x => x.uid === it.uid)) it.uid = uid();
         _whClearJunkState(it);
         let stack = _whStackFind(player.inv, it);
-        if(stack) stack.cnt += total; else player.inv.push(it);
+        if(stack) _whStackAbsorb(stack, it, total); else player.inv.push(it);
     } else {                   // 部分取出：倉庫留下剩餘
         it.cnt = total - qty;
         let moved = _whClearJunkState({ ...it, uid: uid(), cnt: qty });
         let stack = _whStackFind(player.inv, moved);
-        if(stack) stack.cnt += qty; else player.inv.push(moved);
+        if(stack) _whStackAbsorb(stack, moved, qty); else player.inv.push(moved);
     }
     if(!whTxnCommit(w, _txn)){ renderTabs(true); updateUI(); renderWarehouseNPC(document.getElementById('interaction-content')); return; }
     // 🗡️🧰 收集冊：只有角色與倉庫都成功寫入後才登錄，避免失敗交易留下未實際取得的圖鑑進度。
@@ -552,7 +558,7 @@ function renderWarehouseNPC(div){
     let _ns = document.getElementById('wh-store-list'); if(_ns) _ns.scrollTop = _whStoreScroll;
 }
 // 🚫 v3.2.17 舊「包武項圈保管」(PET_STORAGE_MAX=8/petStoreDeposit/petStoreWithdraw/renderPetStorageNPC) 已隨項圈系統移除——
-// 新寵物保管（上限20·同模式共通·出戰/鎖定/放生/進化）＝js/22-pets.js 的 renderPetStorageNPC（同名接手·js/11 路由不變）。
+// 新寵物保管（上限＝PET_STORAGE_MAX·同模式共通·出戰/鎖定/放生/進化）＝js/22-pets.js 的 renderPetStorageNPC（同名接手·js/11 路由不變）。
 // ===== 血盟 NPC：由玩家創立的盟主提供攻城入口 =====
 function renderPledgeNPC(div, faction) {
     _activePanel = null;

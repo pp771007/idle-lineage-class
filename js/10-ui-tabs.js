@@ -626,6 +626,11 @@ const WEAPON_TAGS = {
     wpn_6: ['矛'], wpn_7: ['矛'], wpn_12: ['矛'], wpn_15: ['矛'], wpn_18: ['矛'],   // 🔱 v3.5.8 補齊天堂槍類漏標：巴迪須/柴刀/貝卡合金/吉薩原掉「雙手劍」fallback、露西錘被「錘」字誤歸雙手鈍器→動態/攻速/出血全錯（穿透 eff＝矛系標配可佐證）
     wpn_14: ['矛'], wpn_16: ['矛'], wpn_demonking_spear: ['矛'], wpn_ancient_spear: ['矛'],   // 🔱 v3.5.8 闊矛/戟/惡魔王矛/古代神之槍：家族原靠名稱 regex 已對·補 tag 讓 weaponHasBleed 一致取得矛系出血
     relic_bk_lance: ['矛'],   // 🏺 v3.5.27 黑騎士的精銳長槍：單手矛（無 w2h→矛系出血·無穿透·符合 v3.5.20 規則）
+    // 🏺 v3.6.44 遺物第十九批武器 tag（鎖鏈劍 relic_cold_blueflame 靠 chainsword 旗標自判免 tag）
+    relic_earthshatter_sword: ['單手劍'], relic_gale_fistblade: ['鋼爪'], relic_hellfire_hammer: ['單手鈍器'], relic_blood_ritual_dagger: ['匕首'],
+    relic_scorch_greatsword: ['雙手劍'], relic_bloodknight_dual: ['雙刀'], relic_elmo_spear: ['矛'],
+    // 🏺 v3.6.47 遺物第二十批（鎖鏈劍 relic_lava_nozzle 靠 chainsword 旗標自判免 tag；雙手鈍器 tag 自帶貫穿）
+    relic_crusher_hammer: ['雙手鈍器'],
     wpn_20: ['單手鈍器'], wpn_10: ['單手鈍器'], wpn_13: ['單手鈍器'], wpn_alien: ['單手鈍器'], wpn_1: ['單手鈍器'], wpn_2: ['單手鈍器'], wpn_ancient_axe: ['單手鈍器'], wpn_warrior_trial_axe: ['單手鈍器'], wpn_master_axe: ['單手鈍器'], wpn_demon_axehead: ['單手鈍器'], wpn_iron_axehead: ['單手鈍器'], wpn_giant_axehead: ['單手鈍器'],   // 🔧 古代神之斧／試煉斧頭／大匠的斧頭／魔物的斧頭／鐵斧頭／巨人的斧頭：單手鈍器（鈍擊）
     wpn_2hsword: ['雙手劍'], wpn_dragonslayer: ['雙手劍'], wpn_official_2h: ['雙手劍'],   // 🔧 雙手劍類型標註
     // 🔧 重擊特效武器標註為「雙手鈍器」
@@ -934,10 +939,12 @@ function dedupeGeneratedTooltipEffects(effects, d, options) {
     });
 }
 
+const GENIE_WISH_LABEL = { hp60: 'HP +60', mp30: 'MP +30', md3: '近距離傷害 +3', rd3: '遠距離傷害 +3', mdmg2: '魔法傷害 +2', sp6: '額外魔法點數 +6', hpr10: 'HP 自然恢復量 +10', mpr5: 'MP 自然恢復量 +5', dr3: '傷害減免 +3', ac3: 'AC -3', mr6: 'MR +6', str1: '力量 +1', dex1: '敏捷 +1', int1: '智力 +1', wis1: '精神 +1', con1: '體質 +1', cha1: '魅力 +1' };   // 🏺 v3.6.44 巨靈的三個願望
 function buildItemDescHTML(item) {
     let d = DB.items[item.id];
     if(!d) return '';
     let desc = tooltipItemDescription(d, item.id);
+    if (item.gw && Array.isArray(item.gw)) desc += `<br><span class="text-amber-300 font-bold">✦ 許下的三個願望：</span><br>` + item.gw.map(w => `<span class="text-amber-200">・${GENIE_WISH_LABEL[w] || w}</span>`).join('<br>');   // 🏺 v3.6.44 巨靈的三個願望：顯示實體抽定的能力
     // 🔮 席琳套裝效果：寫在資訊欄（綠色標題＋淺綠加成說明），不冠在名稱前
     // ⚠️v3.1.68 套裝效果改由「席琳遺骸」承載：遺骸(d.remains)照常列加成；一般裝備上的舊詞綴補註「不再計入」提示（顯示保留·可由菈克希絲拆分）
     if (item.seteff) {
@@ -1212,6 +1219,13 @@ function buildItemDescHTML(item) {
         let eleName = { fire:'火', water:'水', wind:'風', earth:'地' }[_aff.ele];
         let counterName = { fire:'地', water:'火', wind:'水', earth:'風' }[_aff.ele];
         desc += `<br><span class="c-attr-${attrCanon(item.attr)}">${_aff.n}（屬性第${_aff.tier}階）：額外傷害+${_aff.dmg}、額外魔法點數+${_aff.mp}，一般攻擊轉為${eleName}屬性（剋${counterName} ×1.4）。</span>`;   // 🔥 v3.0.77 五階制
+    }
+    let _attrMagic = getAttrMagicProc(item);
+    if (_attrMagic) {
+        let _attrMagicName = (DB.skills[_attrMagic.skId] && DB.skills[_attrMagic.skId].n) || _attrMagic.skId;
+        let _attrMagicStars = '★'.repeat(_attrMagic.star);
+        let _attrMagicRateNote = _attrMagic.star > 1 ? `（基礎 ${_attrMagic.baseRate}% × ${_attrMagic.star}）` : '';
+        desc += `<br><span class="text-yellow-300 font-bold">${_attrMagicStars} 屬性附加魔法：攻擊時 ${_attrMagic.rate}% 機率觸發${_attrMagicName}${_attrMagicRateNote}。</span>`;
     }
 
     // 🪄 授予技能（力量／敏捷／治癒魔法頭盔等 grantSkills 裝備）：列出可額外使用的魔法。
@@ -2139,6 +2153,20 @@ function toggleLock(uid) {
     if (item) {
         item.lock = !item.lock;
         if (item.lock) item.junk = false;   // 鎖定自動解除廢品勾選
+        // 🔒 v3.6.92 上鎖／解鎖後都併回同簽章的另一疊（取代 v3.6.57 的「僅解鎖時併回未鎖疊」）：
+        //    現行不變量＝同簽章永遠只有一格（gainItem／倉庫／載入合併同口徑），舊存檔留下的分裂在此收斂。
+        //    ⚠️ 剛「解鎖」時只找未鎖定的對象——若併進鎖定疊會被 _whStackAbsorb 式的保護擴散重新鎖回去，
+        //       玩家的解鎖動作等於當場失效；剛「上鎖」則可併入任何一疊（結果本來就是整疊鎖定）。
+        //    ⚠️ 巨靈的三個願望(gw)每只戒指的願望各自獨立，永不合併（sameItemSig 不含 gw，須顯式排除）。
+        if (!item.gw) {
+            let host = player.inv.find(i => i !== item && !i.gw && (item.lock || !i.lock) && sameItemSig(i, item));
+            if (host) {
+                host.cnt = (host.cnt || 1) + (item.cnt || 1);
+                if (item.lock) { host.lock = true; host.junk = false; }   // 保護狀態只會擴散、不會遺失
+                player.inv.splice(player.inv.indexOf(item), 1);
+                item = host;
+            }
+        }
         openModal(item, false);
         renderTabs();
     }
@@ -2214,23 +2242,33 @@ function renderPvpTab() {
     let align = (typeof pvpClampAlignment === 'function') ? pvpClampAlignment(player.alignmentValue) : (Number(player.alignmentValue) || 0);
     let color = (typeof pvpAlignmentColor === 'function') ? pvpAlignmentColor(align) : '#fff';
     let label = (typeof pvpAlignmentLabel === 'function') ? pvpAlignmentLabel(align) : '中立';
-    let cost = (typeof PVP_REVENGE_COST !== 'undefined') ? PVP_REVENGE_COST : 100000;
+    let clanConflict = typeof npcClanEncounterProfile === 'function' ? npcClanEncounterProfile(player) : null;
+    let warForced = clanConflict ? clanConflict.forcePvp : (typeof npcClanWarActive === 'function' && npcClanWarActive(player));
+    if (warForced) player.pvpOn = true;
     let pvpOn = !!player.pvpOn;
     let pvpBoxCls = pvpOn ? 'bg-red-950/70 border-red-600' : 'bg-slate-900/80 border-slate-700';
     let pvpTextCls = pvpOn ? 'text-red-300' : 'text-slate-100';
     let pvpHintCls = pvpOn ? 'text-red-200' : 'text-slate-400';
+    let pvpHint = '開啟後，野外戰鬥有 1% 機率遭遇玩家 NPC。';
+    if (clanConflict && clanConflict.hasMutual) {
+        pvpHint = '雙方互宣：同模式角色強制開啟 PVP，野外遭遇率為 3%，其中 80% 為互宣血盟。';
+    } else if (clanConflict && clanConflict.hasPlayerOnly) {
+        pvpHint = '玩家單方面宣戰：同模式角色強制開啟 PVP，野外遭遇率維持 1%，其中 50% 為宣戰血盟。';
+    } else if (clanConflict && clanConflict.hasNpcOnly) {
+        pvpHint = 'NPC單方面宣戰：即使關閉 PVP，野外仍有 1% 機率遭遇該敵盟。';
+    }
     let rows = (player.pvpRevengeList || []).map((r, i) => {
         let a = (typeof pvpClampAlignment === 'function') ? pvpClampAlignment(r.alignmentValue) : (Number(r.alignmentValue) || 0);
         let n = (typeof pvpNameHtml === 'function') ? pvpNameHtml(r.n, a, 'font-bold') : `<span class="font-bold">${_pvpTabEsc(r.n)}</span>`;
         let chasing = player.trollPlayers && player.trollPlayers.some(t => t && t.n === r.n && (t.pvpRevenge || t.noExpire));
-        let disabled = (chasing || player.gold < cost) ? 'disabled' : '';   // 🐛 v3.5.74 稽核修#1：追殺中一併鎖定按鈕（原只擋金幣不足→重按每次白扣 10 萬）
+        let disabled = chasing ? 'disabled' : '';   // 🐛 v3.5.74 稽核修#1：追殺中一併鎖定按鈕（防重按重複建立追殺）
         let _nArg = encodeURIComponent(r.n).replace(/'/g, '%27');   // 🐛 v3.5.74 稽核修#2：onclick 改帶名字（名單於戰鬥中可能移除位移·index 會指錯人）
         return `<div class="bg-slate-900/80 border border-slate-700 rounded p-3 flex items-center justify-between gap-3">
             <div class="min-w-0">
                 <div class="truncate">${n}</div>
                 <div class="text-xs text-slate-500 mt-1">${_pvpTabEsc(r.avatar || '男戰士')}・死亡紀錄 ${Math.max(1, Number(r.deaths) || 1)}${chasing ? '・追殺中' : ''}</div>
             </div>
-            <button class="btn shrink-0 px-3 py-2 text-sm font-bold ${disabled ? 'opacity-50' : 'bg-red-900 hover:bg-red-800 border-red-600 text-red-100'}" ${disabled} onclick="pvpRevenge(decodeURIComponent('${_nArg}'))">${chasing ? '追殺中' : '復仇 100,000'}</button>
+            <button class="btn shrink-0 px-3 py-2 text-sm font-bold ${disabled ? 'opacity-50' : 'bg-red-900 hover:bg-red-800 border-red-600 text-red-100'}" ${disabled} onclick="openPvpRevengeTauntMenu(decodeURIComponent('${_nArg}'),event)">${chasing ? '追殺中' : '嗆他'}</button>
         </div>`;
     }).join('');
     div.innerHTML = `
@@ -2246,9 +2284,9 @@ function renderPvpTab() {
             <div class="${pvpBoxCls} border rounded p-3">
                 <label class="flex items-center justify-between gap-3 cursor-pointer">
                     <span class="font-bold ${pvpTextCls}">是否開啟 PVP</span>
-                    <input type="checkbox" class="w-5 h-5 accent-red-600" ${pvpOn ? 'checked' : ''} onchange="setPvpMode(this.checked)">
+                    <input type="checkbox" class="w-5 h-5 accent-red-600" ${pvpOn ? 'checked' : ''} ${warForced ? 'disabled' : ''} onchange="setPvpMode(this.checked)">
                 </label>
-                <div class="text-xs ${pvpHintCls} mt-2">開啟後，野外戰鬥有 1% 機率遭遇玩家 NPC。</div>
+                <div class="text-xs ${pvpHintCls} mt-2">${pvpHint}</div>
             </div>
             <div class="flex items-center justify-between">
                 <div class="font-bold text-amber-200">復仇名單</div>
@@ -2259,22 +2297,153 @@ function renderPvpTab() {
 }
 function setPvpMode(on) {
     if (typeof pvpEnsureState === 'function') pvpEnsureState();
+    if (!on && typeof npcClanWarActive === 'function' && npcClanWarActive(player)) {
+        player.pvpOn = true;
+        renderPvpTab();
+        return;
+    }
     player.pvpOn = !!on;
     saveGame();
     renderPvpTab();
 }
-function pvpRevenge(i) {
+const PVP_REVENGE_TAUNT_LINES = [
+    '剛剛那刀我記住了，現在換你準備回村。',
+    '殺我一次很開心？等一下看你還笑不笑得出來。',
+    '別急著補紅水，我已經在找你了。',
+    '你剛剛很會打，現在換我很會嘴。',
+    '剛殺完就想裝沒事？出來把帳算一算。',
+    '你那一下不是實力，是我剛好分心。',
+    '偷到一條命很爽是不是？準備還兩條。',
+    '我復活不是為了練功，是為了找你。',
+    '你剛剛下手很快，等等逃跑也記得快一點。',
+    '躺一次不代表輸，讓你躺回去才算結束。',
+    '我回村補完了，換你回村報到了。',
+    '別躲了，剛剛不是很勇？',
+    '剛剛那場算你撿到，下一場算我討回來。',
+    '你最好祈禱我找不到你。',
+    '我不是來討公道，我是來討你。',
+    '剛剛殺我那麼用力，現在別裝路過。',
+    '你那名字我已經標記了，別想混在人群裡。',
+    '你殺的是我的角色，不是我的脾氣。',
+    '我死一次，你等一下死到記得我名字。',
+    '別急著下線，我還沒講完。',
+    '剛剛讓你表演完了，現在輪到我。',
+    '你這筆帳我先寫在武器上。',
+    '你敢殺，我就敢追。',
+    '少躲安全區，剛剛不是很有種？',
+    '這次不收裝，我收你。',
+    '你剛剛打得像偷襲，等等我讓你知道什麼叫正面。',
+    '別以為殺一次就能裝高手。',
+    '我回來了，你的好日子結束了。',
+    '你剛剛那一下值多少？我用死亡紀錄跟你算。',
+    '先別慶祝，復仇名單才剛開張。',
+    '剛剛讓你拿一顆頭，現在我要拿回整場面子。',
+    '你殺我可以，別後悔我開始記仇。',
+    '剛剛那次算你運氣好，這次我不會讓你有第二句台詞。',
+    '我不是輸不起，我是專門回來讓你輸一次。',
+    '你剛剛砍得很爽吧？等等換我讓你體驗。',
+    '別急著換地圖，我已經把你名字圈起來了。',
+    '你以為我倒下就結束？我只是回村拿藥水。',
+    '這筆帳不靠系統記，我自己記。',
+    '剛剛那場你先手，下一場我先開嘴。',
+    '別躲在人群後面，剛剛殺人的氣勢拿出來。',
+    '你敢讓我躺，我就敢讓你排隊復活。',
+    '我現在不是找怪，是找你。',
+    '你剛剛那刀很吵，等等我讓你安靜。',
+    '別裝沒看到，復仇名單第一個就是你。',
+    '我回來不是為了報仇而已，是為了讓你知道別亂殺。',
+    '你剛剛殺得很漂亮，等等死得也要漂亮一點。',
+    '這次不用喊價，我直接收你的人頭。',
+    '剛剛那一下我認了，接下來你也要認。',
+    '你先別跑，讓我看看你剛剛那股勇氣還剩多少。',
+    '殺完人就想當路人？名字都紅到我眼裡了。'
+];
+let _pvpRevengeTauntMenu = null, _pvpRevengeTauntMenuHandler = null, _pvpRevengeTauntChoiceState = null;
+function _pvpRevengeTauntArg(name) {
+    return encodeURIComponent(String(name || '')).replace(/'/g, '%27');
+}
+function _pvpRevengeTauntPickThree() {
+    let pool = PVP_REVENGE_TAUNT_LINES.slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        let tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+    }
+    return pool.slice(0, 3);
+}
+function _closePvpRevengeTauntMenu() {
+    if (_pvpRevengeTauntMenu && _pvpRevengeTauntMenu.parentNode) _pvpRevengeTauntMenu.parentNode.removeChild(_pvpRevengeTauntMenu);
+    _pvpRevengeTauntMenu = null;
+    _pvpRevengeTauntChoiceState = null;
+    if (_pvpRevengeTauntMenuHandler) {
+        try { document.removeEventListener('click', _pvpRevengeTauntMenuHandler); } catch (e) {}
+        _pvpRevengeTauntMenuHandler = null;
+    }
+}
+function _mountPvpRevengeTauntMenu(menu, ev) {
+    document.body.appendChild(menu);
+    let x = ev && Number.isFinite(ev.clientX) ? ev.clientX : Math.round(window.innerWidth / 2);
+    let y = ev && Number.isFinite(ev.clientY) ? ev.clientY : Math.round(window.innerHeight / 2);
+    let rect = menu.getBoundingClientRect();
+    menu.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + 'px';
+    menu.style.top = Math.max(8, Math.min(y + 8, window.innerHeight - rect.height - 8)) + 'px';
+    _pvpRevengeTauntMenu = menu;
+    setTimeout(() => {
+        if (_pvpRevengeTauntMenu !== menu) return;
+        _pvpRevengeTauntMenuHandler = e => {
+            if (!_pvpRevengeTauntMenu || !_pvpRevengeTauntMenu.contains(e.target)) _closePvpRevengeTauntMenu();
+        };
+        document.addEventListener('click', _pvpRevengeTauntMenuHandler);
+    }, 0);
+}
+function openPvpRevengeTauntMenu(i, ev) {
+    if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+    }
+    if (typeof pvpEnsureState === 'function') pvpEnsureState();
+    _closePvpRevengeTauntMenu();
+    let list = player.pvpRevengeList || [];
+    let r = (typeof i === 'string') ? list.find(x => x && x.n === i) : list[i];
+    if (!r) return;
+    if (player.trollPlayers && player.trollPlayers.some(t => t && t.n === r.n && (t.pvpRevenge || t.noExpire))) { renderPvpTab(); return; }
+    let a = (typeof pvpClampAlignment === 'function') ? pvpClampAlignment(r.alignmentValue) : (Number(r.alignmentValue) || 0);
+    let nameHtml = (typeof pvpNameHtml === 'function') ? pvpNameHtml(r.n, a, 'font-bold') : `<span class="font-bold">${_pvpTabEsc(r.n)}</span>`;
+    let choices = _pvpRevengeTauntPickThree();
+    _pvpRevengeTauntChoiceState = { name: r.n, choices: choices, createdAt: Date.now() };
+    let arg = _pvpRevengeTauntArg(r.n);
+    let esc = (typeof _trollEncounterEsc === 'function') ? _trollEncounterEsc : _pvpTabEsc;
+    let menu = document.createElement('div');
+    menu.id = 'pvp-revenge-taunt-menu';
+    menu.className = 'pvp-kill-whisper-menu';
+    menu.innerHTML =
+        `<div class="pvp-kill-whisper-heading">選一句嗆 ${nameHtml}</div>` +
+        choices.map((line, index) =>
+            `<button type="button" onclick="pvpRevenge(decodeURIComponent('${arg}'),${index})">${esc(line)}</button>`
+        ).join('');
+    _mountPvpRevengeTauntMenu(menu, ev);
+}
+function pvpRevenge(i, choiceIndex) {
     if (typeof pvpEnsureState === 'function') pvpEnsureState();
     let list = player.pvpRevengeList || [];
     let r = (typeof i === 'string') ? list.find(x => x && x.n === i) : list[i];   // 🐛 v3.5.74 稽核修#2：以名字定位（index 僅舊呼叫相容）
-    let cost = (typeof PVP_REVENGE_COST !== 'undefined') ? PVP_REVENGE_COST : 100000;
-    if (!r || player.gold < cost) return;
-    if (player.trollPlayers && player.trollPlayers.some(t => t && t.n === r.n && (t.pvpRevenge || t.noExpire))) { renderPvpTab(); return; }   // 🐛 v3.5.74 稽核修#1：追殺中不重複扣款（雙保險·UI 已 disable）
-    player.gold -= cost;
+    if (!r) return;
+    if (player.trollPlayers && player.trollPlayers.some(t => t && t.n === r.n && (t.pvpRevenge || t.noExpire))) { renderPvpTab(); return; }   // 🐛 v3.5.74 稽核修#1：追殺中不重複建立追殺（雙保險·UI 已 disable）
+    let active = _pvpRevengeTauntChoiceState;
+    let line = active && active.name === r.n && Date.now() - active.createdAt < 5 * 60 * 1000
+        ? active.choices[Math.max(0, Math.floor(Number(choiceIndex) || 0))]
+        : _pvpRevengeTauntPickThree()[0];
+    _closePvpRevengeTauntMenu();
     if (typeof pvpMarkForChase === 'function') pvpMarkForChase(r);
-    if (typeof logPvpRevengeTrashTalk === 'function') logPvpRevengeTrashTalk(r);
-    else if (typeof logTrollEncounterTrashTalk === 'function') logTrollEncounterTrashTalk(r.n);
-    logSys(`<span class="text-red-300 font-bold">你花費 ${cost.toLocaleString()} 金幣，對 ${_pvpTabEsc(r.n)} 發起復仇追殺。</span>`);
+    let a = (typeof pvpClampAlignment === 'function') ? pvpClampAlignment(r.alignmentValue) : (Number(r.alignmentValue) || 0);
+    let nameHtml = (typeof pvpNameHtml === 'function') ? pvpNameHtml(r.n, a, 'font-bold') : `<span class="font-bold">${_pvpTabEsc(r.n)}</span>`;
+    let esc = (typeof _trollEncounterEsc === 'function') ? _trollEncounterEsc : _pvpTabEsc;
+    if (typeof logSys === 'function') {
+        logSys(`<span class="wander-chat-out"><span class="wander-chat-arrow">-&gt;</span> <span class="wander-chat-target">[${nameHtml}]</span> ${esc(line)}</span>`);
+        let replies = (typeof PVP_KILL_WHISPER_REVENGE_REPLIES !== 'undefined') ? PVP_KILL_WHISPER_REVENGE_REPLIES : [];
+        let reply = (replies.length && typeof _trollEncounterPick === 'function') ? _trollEncounterPick(replies) : '來啊，誰怕誰。';
+        logSys(`<span class="wander-chat-in"><span class="wander-chat-speaker">[${nameHtml}]</span> ${esc(reply)}</span>`);
+    }
+    logSys(`<span class="text-red-300 font-bold">你對 ${_pvpTabEsc(r.n)} 嗆聲，對方再次開始追殺你。</span>`);
     saveGame();
     updateUI();
     renderPvpTab();

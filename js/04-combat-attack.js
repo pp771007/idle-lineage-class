@@ -67,8 +67,12 @@ function playerAttack() {
         if (wpn && wpn.procInstakill) {
             let _pk = wpn.procInstakill;
             let _thp = target.hp || 1;   // 🐍 獻祭：先取被消滅敵人最大HP（即死後 target.hp 仍為滿值）
-            if ((!_pk.maxLv || target.lv <= _pk.maxLv) && (!_pk.hpBelow || target.curHp <= Math.max(1, Math.floor((target.hp || 1) * _pk.hpBelow))) && tryInstakill(target, { p: _pk.p, tag: _pk.tag || null }, wpn.n, mapState.targetIdx)) {   // 🏺 v3.1.80 來自陰影的刺劍 hpBelow：僅對 HP 低於 N% 的目標觸發（tryInstakill 內建頭目免疫）
+            if ((!_pk.maxLv || target.lv <= _pk.maxLv) && (!_pk.hardOnly || (target.hardSkinMax || 0) > 0) && (!_pk.hpBelow || target.curHp <= Math.max(1, Math.floor((target.hp || 1) * _pk.hpBelow))) && tryInstakill(target, { p: _pk.p, tag: _pk.tag || null }, wpn.n, mapState.targetIdx)) {   // 🏺 v3.1.80 來自陰影的刺劍 hpBelow：僅對 HP 低於 N% 的目標觸發（tryInstakill 內建頭目免疫）；🔨 v3.6.47 粉碎鎚 hardOnly：僅對硬皮怪觸發
                 if (_pk.healPct) { player.hp = Math.min(player.mhp, player.hp + Math.max(1, Math.floor(_thp * _pk.healPct))); updateUI(); }   // 🐍 阿茲特獻祭亡靈：即死後恢復被消滅敵人 HP% (對頭目 tryInstakill 內建免疫)
+                if (_pk.hasteSec) {   // 🔨 v3.6.47 重裝戰士的粉碎鎚：觸發即死後攻速 +20% 持續 hasteSec 秒（js/02 消費 _crushFuryUntil·js/03 到期重算·經典亦生效比照即死本體）
+                    player._crushFuryUntil = state.ticks + _pk.hasteSec * 10; calcStats();
+                    logCombat(`<span class="text-orange-300 font-bold">【${wpn.n}】</span>粉碎的快感讓你揮舞得更快了！（攻擊速度 +20%，${_pk.hasteSec} 秒）`, 'player-special');
+                }
                 return;
             }
         }
@@ -128,6 +132,9 @@ function playerAttack() {
         if (wpn && wpn.raceFlat && target.race === wpn.raceFlat.race) result.dmg = result.dmg + (wpn.raceFlat.add || 0);   // 🏺 遺物 上古蜘蛛之爪：一般攻擊對特定種族（動物）造成額外固定傷害 +N
         if (wpn && wpn.eleBonusDmg && target.e === wpn.eleBonusDmg.ele) result.dmg += (wpn.eleBonusDmg.add || 0);   // 🏺 兇殘惡鬼的毒牙：對特定屬性敵人額外固定傷害 +N（如對風屬性+10）
         if (wpn && wpn.immParalyzeBonusDmg && (target.boss || target.immParalyze || target.immStun)) result.dmg += wpn.immParalyzeBonusDmg;   // 🏺 屍毒之針：對免疫麻痺（頭目/免疫）目標額外固定傷害 +N
+        if (wpn && wpn.slowScaleDmg) result.dmg += Math.max(0, Math.floor((((player.d && player.d.aspd) || 0) - 0.10) / 0.05));   // 🏺 v3.6.44 大地碎裂劍：攻速極限 0.10 秒為基準·攻擊間隔每慢 0.05 秒近傷 +1
+        var _dmgBeforeMainMult = result.dmg;   // 🏺 v3.6.44 艾爾摩尖頭槍：穿透波及傷害以「主目標加成前」為基準
+        if (wpn && wpn.pierceMainMult) result.dmg = Math.max(1, Math.floor(result.dmg * wpn.pierceMainMult));   // 🏺 v3.6.44 艾爾摩尖頭槍：一般攻擊主目標傷害 ×1.3
         target.curHp -= result.dmg;
         if (wpn && wpn.bonespike && (target._bonespike || 0) > 0 && target.curHp > 0) { let _bs = target._bonespike * 20; target._bonespike = 0; target.curHp -= _bs; target._spellHurt = true; mobWake(target); logCombat(`<span class="font-bold" style="color:#e5e7eb;text-shadow:0 0 6px #6b7280;">【骨刺爆裂】</span>引爆目標身上的骨刺，額外造成 ${_bs} 點固定傷害。`, 'player-special'); }   // 🏺 骸骨意志之弓：一般攻擊引爆所有骨刺（每層 20 固定傷害）
         reflectWallOnDamage(target, result.dmg, result.ranged ? 'ranged' : 'melee', null);   // 🌑 血壁空間（吉爾塔斯）：反彈同等傷害給攻擊方
@@ -143,6 +150,9 @@ function playerAttack() {
         if (wpn && wpn.procHealFlat && result.dmg > 0 && Math.random() * 100 < wpn.procHealFlat.rate) { player.hp = Math.min(player.mhp, player.hp + wpn.procHealFlat.hp); logCombat(`<span class="text-emerald-300 font-bold">【${wpn.n}】</span>恢復了 ${wpn.procHealFlat.hp} 點 HP。`, 'heal'); }   // 🏺 v3.1.80 處刑人的護身斧：一般攻擊命中 3% 機率恢復 10 HP
         if (wpn && wpn.procBurn && target.curHp > 0 && (!wpn.procBurn.rate || Math.random() * 100 < wpn.procBurn.rate)) target._burnDot = { left: (wpn.procBurn.dur || 6) * 10, dmg: wpn.procBurn.dmg || 10, tick: (wpn.procBurn.tick || 1) * 10 };   // 🏺 熔岩灼燒的雙拳：命中附加灼燒 DoT（每秒 dmg 火傷、持續 dur 秒·刷新）
         if (wpn && wpn.procPoisonPct && target.curHp > 0 && result.dmg > 0) { if (!target.st) target.st = newMobStatus(); let _ppd = Math.max(1, Math.floor(result.dmg * (wpn.procPoisonPct.pct || 50) / 100)); target.st.poison = (wpn.procPoisonPct.dur || 6) * 10; target.st.poisonTick = 10; target.st.poisonStacks = 1; target.st.poisonUnit = _ppd; target.st.poisonDmg = _ppd; target.st.poisonSrc = 'player'; }   // 🌅 遺物 毒鵺的黑尾：命中附加「每秒該次傷害 pct%」中毒（最多 1 層·dur 秒·刷新覆蓋）
+        if (wpn && wpn.windbladeProc && target.curHp > 0 && Math.random() * 100 < wpn.windbladeProc) { target.bleeds = target.bleeds || []; target._bleedCap = Math.max(target._bleedCap || 0, 5); while (target.bleeds.length >= target._bleedCap) target.bleeds.shift(); target.bleeds.push({ dmg: 10, ticksLeft: 60 }); target._bleedSrc = 'player'; logCombat(`<span class="font-bold text-emerald-300">【風刃】</span>疾風割裂目標，陷入出血（每秒 10 點·6 秒）。`, 'player-special'); }   // 🏺 v3.6.44 疾風拳刃：3% 觸發風刃出血
+        if (wpn && wpn.hardskinFireProc && target.curHp > 0 && _mainHardSkin > 0) { let _hf = Math.max(1, Math.floor(Math.max(1, target.curHp * 0.01) * elementCounterMult('fire', target.e))); target.curHp -= _hf; if (typeof terrorVisageOnDamage === 'function') terrorVisageOnDamage(target, _hf, 'magic'); target.justHit = 'fire'; target._spellHurt = true; logCombat(`<span class="font-bold" style="color:#fb923c;text-shadow:0 0 6px #dc2626;">【業火】</span>業火灼穿硬皮，額外造成 ${_hf} 點火屬性魔法傷害。`, 'player-special'); if (target.curHp <= 0) { let _hfIdx = mapState.mobs.findIndex(x => x && x.uid === target.uid); if (_hfIdx !== -1) killMob(_hfIdx); } }   // 🏺 v3.6.44 業火鍛造鎚：命中有硬皮的敵人→額外目標剩餘 HP 1% 火魔傷
+        if (wpn && wpn.hpOnHit && result.dmg > 0) player.hp = Math.min(player.mhp, player.hp + wpn.hpOnHit);   // 🏺 v3.6.44 嗜血騎士的雙刀：一般攻擊命中恢復 HP
         // 🔧 黑暗妖精：附加劇毒（命中 50%／劇毒精通 100% 使目標中毒：每秒該次攻擊 60%／劇毒精通 200% 傷害，持續 5 秒，最多 1 層，取較高傷害並刷新持續時間）
         if (player.buffs && player.buffs.sk_dark_poison > 0 && target.curHp > 0 && Math.random() < (hasMastery('d_poison') ? 1 : 0.5)) {
             if (!target.st) target.st = newMobStatus();
@@ -176,6 +186,7 @@ function playerAttack() {
                 let _pTargets = hasMastery('k_pierce') ? otherIdx : [otherIdx[Math.floor(Math.random() * otherIdx.length)]];
                 // 🏅 穿透精通：發動穿透時該次傷害 100% 無視硬皮值（把主目標被硬皮扣減的量加回）
                 let _pierceDmg = result.dmg;
+                if (wpn.pierceSubMult) _pierceDmg = Math.max(1, Math.floor(_dmgBeforeMainMult * wpn.pierceSubMult));   // 🏺 v3.6.44 艾爾摩尖頭槍：波及目標傷害 −10%（以主目標加成前為基準）
                 if (hasMastery('k_pierce') && _mainHardSkin > 0) _pierceDmg += _mainHardSkin;
                 _pTargets.forEach(exIdx => {
                     let exT = mapState.mobs[exIdx];
@@ -396,6 +407,30 @@ function _fireProcPool() {
     if (!_FIRE_PROC_POOL) _FIRE_PROC_POOL = Object.keys(DB.skills).filter(function(id){ let s = DB.skills[id]; return s && s.type === 'atk' && s.ele === 'fire' && (s.dmgDice || s.multiDmg) && !s.summon; });
     return _FIRE_PROC_POOL;
 }
+// 第5階屬性武器的實例附加魔法。傷害／異常技能沿用免費武器施法公式；
+// 神聖疾走直接套既有 buff 與互斥規則，不耗 MP、不要求已學會。
+function applyAttrMagicBuff(owner, skId, sourceLabel) {
+    let sk = DB.skills[skId];
+    if (!owner || !sk || sk.type !== 'buff') return;
+    owner.buffs = owner.buffs || {};
+    let otherId = skId === 'sk_holy_dash' ? 'sk_elf_winddash' : (skId === 'sk_elf_winddash' ? 'sk_holy_dash' : null);
+    let changed = !(owner.buffs[skId] > 0) || !!(otherId && owner.buffs[otherId] > 0);
+    if (typeof applyMoveDashBuffMutex === 'function') applyMoveDashBuffMutex(owner, skId);
+    else if (otherId) owner.buffs[otherId] = 0;
+    owner.buffs[skId] = sk.dur || 1;
+    if (owner === player && changed && typeof calcStats === 'function') calcStats();
+    if (changed) logCombat(`<span class="font-bold text-yellow-300">【${sourceLabel}·${sk.n}】</span>武器魔法發動。`, 'player-special');
+}
+function playerAttrMagicProc(target, inst, wpn) {
+    let proc = (typeof getAttrMagicProc === 'function') ? getAttrMagicProc(inst) : null;
+    if (!proc || Math.random() * 100 >= proc.rate) return;
+    let sk = DB.skills[proc.skId];
+    if (!sk) return;
+    if (sk.type === 'buff') { applyAttrMagicBuff(player, proc.skId, wpn.n); return; }
+    let t = (target && target.curHp > 0) ? target : null;
+    if (!t) { let alive = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead); if (alive.length) t = alive[Math.floor(Math.random() * alive.length)]; }
+    if (t) procFreeMagicSkill(t, proc.skId, capWpnEn(inst.en), false, wpn);
+}
 // 🌑 武器附帶狀態技能 proc（惡魔王武器・疾病術）：攻擊時 rate% 對目標施放指定技能的異常狀態（走 applyMobStatus，含魔法命中抵抗）；玩家與傭兵共用
 function applyWeaponProcStatusSkill(target, cfg) {
     if (!cfg) return;
@@ -469,6 +504,7 @@ function weaponSpellProc(target, attackHit, instOverride) {
     let inst = instOverride || player.eq.wpn;
     let wpn = inst ? DB.items[inst.id] : null;
     if (!wpn) return;
+    playerAttrMagicProc(target, inst, wpn);   // ★ 屬性卷軸附加魔法：攻擊時判定，命中與否皆可觸發
     if (wpn.procOnHit && !attackHit) return;   // 🏺 長老的雷電能量：僅一般攻擊實際命中才觸發極道落雷
     if (wpn.procPoison) applyWeaponProcPoison(target, wpn.procPoison, wpnEnFinalMult(inst));   // 🔧 死亡之指：攻擊時毒咒（吃武器強化最終倍率）
     if (wpn.procBurstPoison) applyWeaponBurstPoison(target, wpn.procBurstPoison, capWpnEn(inst.en), wpnEnFinalMult(inst));   // 💥 破壞雙刀/鋼爪：攻擊時猛爆劇毒（吃武器強化最終倍率）
@@ -576,7 +612,7 @@ function procFreeMagicSkill(t, skId, en, areaHit, sourceItem, illusionRecoverMp)
         // 🔧 魔導精通同屬性傷害×2 已移除(2026-07 用戶要求)
         total += Math.max(1, Math.floor(d * fragileMult(t)));
     });
-    total = Math.floor(total * enhanceWpnFinalMult(en, player.eq.wpn && DB.items[player.eq.wpn.id]));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
+    total = Math.floor(total * enhanceWpnFinalMult(en, (sourceItem && sourceItem.type === 'wpn') ? sourceItem : (player.eq.wpn && DB.items[player.eq.wpn.id])));   // 🔧 武器強化 +11~+20：使用實際觸發武器（含副手／屬性附加魔法）
     if (total > 0) total = Math.max(1, Math.floor(total * equipSkillDmgMult(sk, skId)));   // 🏺 遺物 特定技能傷害倍率（觸發路徑：冰之女王魔杖觸發的冰錐等亦吃暴走兔胡蘿蔔 ×1.5）
     if (total > 0) total = illusionMagicDmg(total, true, illusionRecoverMp !== false);   // 🔮 全體免費施法只在第一個目標回MP；5件仍逐目標生效
     if (total > 0) {
@@ -966,6 +1002,8 @@ function _enemyPhysicalAttackInner(mob, idx, stunChance = 0, atkDmg = null, atkD
 
         totalDmg -= player.d.dr; // 傷害減免（已含增幅防禦）
         totalDmg -= randomDr;    // 隨機減免
+        totalDmg -= stoneEssenceDr();   // 🏺 v3.6.44 石化魔法的精髓：石化精髓 buff 期間傷害減免 +50
+        if ((player._hardSkinPool || 0) > 0) { totalDmg -= 2; player._hardSkinPool--; }   // 🏺 v3.6.44 守護獸的難題：有硬皮值時受到一般攻擊傷害 -2 並消耗 1 點（每5秒回1·上限20·js/03 tick）
         // 🔧 百分比受傷「增加」效果（冰凍/破壞盔甲）：仍各自相乘
         if(player.statuses.freeze > 0) {
             totalDmg = Math.floor(totalDmg * 1.5);                              // 冰凍中：受到物理傷害 +50%
@@ -1125,8 +1163,12 @@ function mercAggroWeight(c) {
     if (c.cls === 'elf' || c.cls === 'dark' || c.cls === 'royal') return 4 + _agB;          // 近戰輕裝（v3.2.81 3→4）
     return 1 + _agB;
 }
+// 🏺 v3.6.44 石化魔法的精髓（relic_petrify_essence·頭盔）：受石化→石化時間減半＋10 秒「石化精髓」buff（DR+50/MR+50·runtime 欄位不入檔）
+function stoneEssenceMr() { return ((player._stoneEssUntil || 0) > state.ticks) ? 50 : 0; }
+function stoneEssenceDr() { return ((player._stoneEssUntil || 0) > state.ticks) ? 50 : 0; }
+function hasStoneEssenceHelm() { return !!(player.eq && player.eq.helm && (DB.items[player.eq.helm.id] || {}).stoneEssence); }
 // 🐾 v3.2.82 寵物被攻擊權重（物理/魔法受害者池共用）：預設吃 PET_KIND_WEIGHT（phys4/spec3/mag2）；PET_AGGRO_OVERRIDE 個別覆寫（用戶指定杜賓狗系/狼系物理寵降為 3）。
-const PET_AGGRO_OVERRIDE = { '杜賓狗': 3, '高等杜賓狗': 3, '狼': 3, '高等狼': 3 };
+const PET_AGGRO_OVERRIDE = { '杜賓狗': 3, '高等杜賓狗': 3, '狼': 3, '高等狼': 3, '災厄蜥蜴': 5 };   // 🦎 v3.6.43 災厄蜥蜴＝坦型（用戶規格受擊權重 5）
 function petAggroWeight(p) { if (!p) return 2; if (PET_AGGRO_OVERRIDE[p.form] != null) return PET_AGGRO_OVERRIDE[p.form]; let d = (typeof PET_BOOK !== 'undefined') && PET_BOOK[p.form]; return (d && PET_KIND_WEIGHT[d.kind]) || 2; }
 // 🧙 v3.2.82 召喚物被攻擊權重（物理/魔法受害者池共用）：召喚術/造屍術＝4·屬性精靈＝3。
 function summonAggroWeight(s) { return (s && (s.skId === 'sk_elf_summon' || s.skId === 'sk_elf_summon2')) ? 3 : 4; }
@@ -1339,11 +1381,12 @@ function pvpChaoticDeathItemLoss() {
     if (!candidates.length) return;
     let pick = candidates[Math.floor(Math.random() * candidates.length)];
     let name = (typeof getItemFullName === 'function') ? getItemFullName(pick.item) : (DB.items[pick.item.id] ? DB.items[pick.item.id].n : pick.item.id);
-    // 🗃️ v3.5.74 遺失紀錄（用戶拍板）：系統背後保存完整物品快照 player.pvpLostItems（含強化/詞綴/屬性·上限 50 筆·目前無 UI·供未來復原機制使用）
+    // 🗃️ v3.5.74 遺失紀錄：保存完整物品快照 player.pvpLostItems（含強化/詞綴/屬性）
+    //    🕊️ v3.6.84 接上聖使阿卡塔「裝備贖回」（1000 龍鑽指定贖回一件）→ 上限依用戶規格改為 **5 件**，滿了淘汰最舊。
     try {
         if (!Array.isArray(player.pvpLostItems)) player.pvpLostItems = [];
         player.pvpLostItems.push({ t: Date.now(), from: pick.kind, slot: pick.kind === 'eq' ? pick.slot : null, item: JSON.parse(JSON.stringify(Object.assign({}, pick.item, { cnt: 1 }))) });
-        if (player.pvpLostItems.length > 50) player.pvpLostItems = player.pvpLostItems.slice(-50);
+        if (player.pvpLostItems.length > 5) player.pvpLostItems = player.pvpLostItems.slice(-5);
     } catch (e) {}
     if (pick.kind === 'eq') {
         if ((pick.item.cnt || 1) > 1) pick.item.cnt -= 1;
@@ -1813,13 +1856,18 @@ function _applyMobMagicInner(mob, sk) {
     }
     // 🗑️ v3.5.83 移除第二段 self_heal：上方（v3.5.59）的同型分支無條件 return，此處永不可達；sk.heal 已併入上方 fallback。
 
-    // 抗魔係數
-    let mrFactor = mrMult(player.d.mr);
-    
+    // 抗魔係數（🏺 v3.6.44 石化魔法的精髓：石化精髓 buff 期間 MR+50）
+    let mrFactor = mrMult(player.d.mr + stoneEssenceMr());
+
     if(sk.type === 'stone') {
         if(player.d.immStone) return; // 紅騎士盾牌：免疫石化
-        let chance = Math.max(0, ((sk.pbase !== undefined ? sk.pbase : 100) - player.d.mr) / 2);
-        if(Math.random() * 100 < chance && !player.dead) { player.statuses.stone = 60; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，你被石化了！`, 'enemy'); }
+        let chance = Math.max(0, ((sk.pbase !== undefined ? sk.pbase : 100) - player.d.mr - stoneEssenceMr()) / 2);
+        if(Math.random() * 100 < chance && !player.dead) {
+            // 🏺 v3.6.44 石化魔法的精髓：受石化→持續時間減半（60→30）＋獲得石化精髓（DR+50/MR+50·10 秒）
+            let _sd = 60;
+            if (hasStoneEssenceHelm()) { _sd = 30; player._stoneEssUntil = state.ticks + 100; logCombat('<span class="font-bold text-stone-300">【石化精髓】</span>石化魔法被淬鍊為守護之力！（傷害減免 +50、MR +50，10 秒）', 'player-special'); }
+            player.statuses.stone = _sd; logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，你被石化了！`, 'enemy');
+        }
         return;
     }
     if(sk.type === 'paralyze') {
@@ -2228,7 +2276,7 @@ function pledgeBonusDrop(mob, rate) {
     }
     let fullName = getItemFullName(item);
     let colorClass = getItemColor(item);
-    logSys(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 攜帶的 <span class="${colorClass} font-bold">${fullName}</span> 掉落了！`);
+    logSys(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 攜帶的 <span class="${colorClass} font-bold">${fullName}</span> 掉落了！`, (DB.items[item.id] && DB.items[item.id].relic) ? 'relic' : ((DB.items[item.id] && DB.items[item.id].legend) ? 'legend' : ''));   // 📌 v3.6.73 稀有才亮未讀點
 }
 
 // ⚖️ v3.6.16 玩家 NPC 噴裝率依「該 NPC 的性向值」決定（用戶拍板）：越邪惡（負值）掉得越多、越正義（正值）掉得越少。
@@ -2267,7 +2315,7 @@ function playerNpcRelicDrop(mob) {
     let info = gainItem(id, 1, true, false);   // 靜默取得（遺物本就不附詞綴/不強化）→ 下方自行顯示掉落訊息；收集冊登錄由 gainItem 內部處理
     let item = info || { id: id, en: 0, bless: false, anc: false, attr: false, cnt: 1 };
     try { if (typeof vfxRareDrop === 'function') vfxRareDrop(DB.items[id].n); } catch (e) {}   // ✨ 遺物 gachaWeight 恆 0 → 不會被 gainItem 的稀有閃光判定接住，這裡顯式補播
-    logSys(`<span class="text-amber-300 font-bold">✦ 極稀有！</span><span class="${getMobColor(mob.lv)}">${mob.n}</span> 掉落了遺物 <span class="${getItemColor(item)} font-bold">${getItemFullName(item)}</span>！`);
+    logSys(`<span class="text-amber-300 font-bold">✦ 極稀有！</span><span class="${getMobColor(mob.lv)}">${mob.n}</span> 掉落了遺物 <span class="${getItemColor(item)} font-bold">${getItemFullName(item)}</span>！`, 'relic');   // 📌 v3.6.73 遺物→藍色未讀點
 }
 
 // ===== 內建效率/掉落統計（接在 killMob/gainItem，換地圖重置；不靠函數劫持）=====

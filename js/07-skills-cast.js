@@ -366,7 +366,6 @@ function applyMoveDashBuffMutex(owner, sid) {
 }
 
 function castSkillInner(skId) {
-    skId = _fireballMorphId(skId);   // 🏺 烈焰巫師的正式長袍：燃燒的火球→爆裂的火球
     let sk = DB.skills[skId];
     if(!sk) return false;
     if(inAbsBarrier()) return false;   // 🛡️ 絕對屏障：無法施法（自動/手動皆擋）
@@ -391,6 +390,15 @@ function castSkillInner(skId) {
     if(!__granted && (needLv === undefined || player.lv < needLv)) return false;
     if(!__granted && sk.reqEle && player.elfEle !== sk.reqEle) return false;      // 屬性不符
     if(!__granted && sk.reqEleAny && !player.elfEle) return false;                 // 尚未選擇屬性
+
+    // 🏺 烈焰巫師的正式長袍：燃燒的火球→爆裂的火球。
+    // ⚠️ v3.6.65 必須放在**等級/屬性閘之後**：爆裂的火球是「非可學技能」（無 reqM/reqE），
+    //    原本在函式開頭就替換 → skillReqLv 回 undefined → 上面那道閘直接 return false ＝穿上長袍後火球完全放不出來。
+    //    閘門要驗的是玩家實際學會的「燃燒的火球」，替換只作用於後續的傷害/MP/特效。
+    {
+        let _morph = _fireballMorphId(skId);
+        if (_morph !== skId) { skId = _morph; sk = DB.skills[skId]; }
+    }
 
     // 🔧 黑暗妖精：會心一擊（消耗 HP 50% + 剩餘所有 MP；傷害 = 重擊一般攻擊(無視硬皮)×爆擊×(消耗MP佔上限%×10)；對血盟 x2）
     if (sk.darkCrit) {
@@ -540,25 +548,32 @@ function castSkillInner(skId) {
             if (sk.hpCost) player.hp = Math.max(1, player.hp - effHpCost(sk));
             let layers = t.weakExpose || 0, bonus = layers > 0 ? 10 * layers : 0;
             let consume = layers > 0 && !hasMastery('k_weakness');   // 🏅 弱點精通：屠宰者不消耗弱點曝光
-            let times = sk.hits || 3, total = 0, log = [], applied = false;
+            let _slRand = !!wpn.slaughterRandom;   // 🏺 v3.6.44 凜冽的青色火炎：屠宰者變成攻擊 5 次·每擊隨機攻擊場上任意目標（各目標吃自身弱點曝光層數）
+            let times = wpn.slaughterHits || sk.hits || 3, total = 0, log = [], applied = false;
+            let _slHitSet = [];   // random 模式：吃到弱點加成的目標（收尾統一消耗）
             for (let h = 0; h < times; h++) {
-                if (t.curHp <= 0) break;
-                let dice = t.s === 'L' ? wpn.dmgL : wpn.dmgS;
-                let res = getPhysicalDmg(dice, t, wpn, null);
-                if (!res.hit) { if (typeof vfxMiss === 'function') vfxMiss(t); log.push('Miss'); continue; }
+                let ht = t;
+                if (_slRand) { let _alive = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead); if (!_alive.length) break; ht = _alive[Math.floor(Math.random() * _alive.length)]; }
+                if (ht.curHp <= 0) { if (_slRand) continue; break; }
+                let _hl = _slRand ? (ht.weakExpose || 0) : layers, _hb = _hl > 0 ? 10 * _hl : 0;
+                let dice = ht.s === 'L' ? wpn.dmgL : wpn.dmgS;
+                let res = getPhysicalDmg(dice, ht, wpn, null);
+                if (!res.hit) { if (typeof vfxMiss === 'function') vfxMiss(ht); log.push('Miss'); continue; }
                 let dmg = res.dmg;
-                if (bonus > 0) { dmg += bonus; applied = true; }   // 🐉 弱點曝光：成功觸發後，一次施放的三刀「每一擊命中」都吃 +10/層（不再僅首擊）
-                dmg = Math.floor(dmg * weakExposeDmgMult(t));   // 🏅 鎖刃精通：每層弱點曝光最終傷害+10%
+                if (_hb > 0) { dmg += _hb; applied = true; if (_slRand && !_slHitSet.includes(ht)) _slHitSet.push(ht); }   // 🐉 弱點曝光：每一擊命中都吃 +10/層
+                dmg = Math.floor(dmg * weakExposeDmgMult(ht));   // 🏅 鎖刃精通：每層弱點曝光最終傷害+10%
                 if (sk.hpCost && player._setDragonblood5) dmg = Math.max(1, Math.floor(dmg * 1.2));   // 🐉 龍血5/5：HP消耗技傷害+20%（屠宰者＝物理HP消耗技·與魔法路徑 js/07 一致）
-                t.curHp -= dmg; t.justHit = getWpnEle(player.eq.wpn, wpn); total += dmg; mobWake(t);
-                if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(t, dmg, 'melee', null);   // 🌑 v3.4.14 血壁空間：屠宰者每擊＝近距離技能直擊反射（玩家傭兵一致）
-                if (player.dead) { if (consume && applied) t.weakExpose = 0; return true; }   // ☠️ v3.5.87 反射反殺：死後中止後續斬擊與擊殺結算　⚡ v3.5.89 早退前補做弱點曝光消耗（否則玩家已吃到 +10/層加成、目標層數卻沒清）
-                log.push(dmg + (res.heavy ? '(重)' : ''));
-                if (t.curHp > 0) wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true, player.classicMode);
+                ht.curHp -= dmg; ht.justHit = getWpnEle(player.eq.wpn, wpn); total += dmg; mobWake(ht);
+                if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(ht, dmg, 'melee', null);   // 🌑 v3.4.14 血壁空間：屠宰者每擊＝近距離技能直擊反射（玩家傭兵一致）
+                if (player.dead) { if (consume && applied) t.weakExpose = 0; if (_slRand) _slHitSet.forEach(m => { if (!hasMastery('k_weakness')) m.weakExpose = 0; }); return true; }   // ☠️ v3.5.87 反射反殺：死後中止後續斬擊與擊殺結算　⚡ 早退前補做弱點曝光消耗
+                log.push(dmg + (res.heavy ? '(重)' : '') + (_slRand ? `→${ht.n}` : ''));
+                if (ht.curHp > 0) wearHardSkin(ht, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true, player.classicMode);
+                if (_slRand && ht.curHp <= 0) { let _ki = mapState.mobs.findIndex(x => x && x.uid === ht.uid); if (_ki !== -1) killMob(_ki); }   // random 模式：逐擊結算擊殺（下一擊重抽活目標）
             }
-            if (consume && applied) t.weakExpose = 0;
-            if (total > 0) { logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，連續斬擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 [${log.join(', ')}] 共 ${total} 點傷害${bonus > 0 ? `（弱點曝光 每擊+${bonus}）` : ''}。`, 'skill'); if (t.curHp <= 0) killMob(mapState.targetIdx); else renderMobs(); }
-            else logCombat(`施放 ${sk.n} 未命中 <span class="${getMobColor(t.lv)}">${t.n}</span>。`, 'miss');
+            if (consume && applied && !_slRand) t.weakExpose = 0;
+            if (_slRand) _slHitSet.forEach(m => { if (!hasMastery('k_weakness')) m.weakExpose = 0; });   // 🏅 弱點精通不消耗
+            if (total > 0) { logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，${_slRand ? `亂舞斬擊造成 [${log.join(', ')}] 共 ${total} 點傷害` : `連續斬擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 [${log.join(', ')}] 共 ${total} 點傷害${bonus > 0 ? `（弱點曝光 每擊+${bonus}）` : ''}`}。`, 'skill'); if (!_slRand && t.curHp <= 0) killMob(mapState.targetIdx); else renderMobs(); }
+            else logCombat(`施放 ${sk.n} 未命中。`, 'miss');
             return true;
         }
         // ⚔️ 咆哮：對所有敵人造成 50+(等級-30) 的固定無屬性傷害（不計 MR / DR / 元素）
@@ -629,7 +644,7 @@ function castSkillInner(skId) {
             } else {
                 dmg = spend;   // 心靈破壞：基礎傷害＝消耗 MP，套統一魔法公式與幻術士專屬階級，無屬性、受 MR
                 let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr; if (t.st && (t.st.confuse > 0 || t.st.panic > 0)) effMr -= 10;
-                dmg = Math.max(1, Math.floor(magicBaseDamage(dmg, player.d, 0, true) * magicDamageCoef(player.d, magicAttrDefense(t, 'none'), sk.tier) * mrMult(Math.max(0, effMr))));
+                dmg = Math.max(1, Math.floor(magicBaseDamage(dmg, player.d, 0, true) * magicDamageCoef(player.d, magicAttrDefense(t, 'none'), sk.tier) * ((player.eq.wpn && (DB.items[player.eq.wpn.id] || {}).spellIgnoreMr) ? 1 : mrMult(Math.max(0, effMr)))));   // 🏺 v3.6.44 血祭儀式短刀：無視魔抗
             }
             dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(player) * wpnEnFinalMult(player.eq.wpn) * elementCounterMult(sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'none', t.e)));   // 🔮 幻術士等級加成 ×(1+等級/50)；🔧 武器強化 +11~+20 最終倍率；⚔️ 屬性剋制(僅武器傷害技吃武器屬性)
             t.curHp -= dmg; t.justHit = sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'magic'; if (!sk.weaponDmg) t._spellHurt = true; mobWake(t);   // 🎬 v3.0.14 純魔法技→hurt(含頭目)
@@ -746,7 +761,7 @@ function castSkillInner(skId) {
                 }
 
                 let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
-                let mrFactor = mrMult(effMr);
+                let mrFactor = (player.eq.wpn && (DB.items[player.eq.wpn.id] || {}).spellIgnoreMr) ? 1 : mrMult(effMr);   // 🏺 v3.6.44 血祭儀式短刀：施放的傷害魔法無視目標魔法抗性
 
                 let dmgArray = sk.multiDmg || (sk.dmgDice ? [[sk.dmgDice[0], sk.dmgDice[1]]] : []);
                 let totalDmg = 0;
@@ -1097,3 +1112,21 @@ function rollAffixesNew() {
 }
 // 🗑️ v3.5.87 移除 rollAffixesOld()：與 rollAffixesNew 早已 byte-identical（新舊詞綴制 v3.1 期合一），
 //    唯一呼叫點 js/08 gainItem 已改恆走 rollAffixesNew；affixOld 參數槽保留（位置相容）但不再分派。
+// 🩸 v3.6.44 血祭儀式短刀：包裝 castSkillInner——施放前後 MP 差＝實際消耗（涵蓋所有自動技能扣款點·手動 manualCast 不包），
+//    自身 HP>200 時受到等同消耗 MP 的固定傷害（HP>200 閘保證不致死）。
+if (typeof castSkillInner === 'function' && !castSkillInner._bloodWrapped) {
+    let _origCastSkillInner = castSkillInner;
+    castSkillInner = function (skId) {
+        let _mpB = player ? player.mp : 0;
+        let r = _origCastSkillInner.apply(this, arguments);
+        try {
+            let _spent = _mpB - player.mp;
+            if (r && _spent > 0 && player.hp > 200 && !player.dead) {
+                let _w = player.eq.wpn && DB.items[player.eq.wpn.id];
+                if (_w && _w.autocastBacklash) { player.hp = Math.max(1, player.hp - _spent); logCombat(`<span class="font-bold text-red-400">【血祭】</span>短刀吸取了你的血肉，受到 ${_spent} 點固定傷害。`, 'enemy'); }
+            }
+        } catch (e) {}
+        return r;
+    };
+    castSkillInner._bloodWrapped = true;
+}

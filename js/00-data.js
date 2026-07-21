@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v3.6.36';
+const GAME_VERSION = 'v3.6.100';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -867,6 +867,29 @@ const DB = {
         "relic_broken_halfhelm": { n: "被敲爛的半邊頭盔", type: "arm", slot: "helm", relic: true, noEnhance: true, ac: 3, immSilence: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】被敲爛只剩半邊的頭盔，罩不住頭顱卻護住了心神——免疫沉默。" },
         "relic_fire_hide":       { n: "黝黑的烈火皮囊", type: "arm", slot: "armor", relic: true, noEnhance: true, ac: 6, firePrisonMult: 2, req: "mage", p: 10000, gachaWeight: 0, d: "【遺物】被烈焰燻得黝黑的皮囊護甲，餘燼與咒火共鳴，使「火牢」造成的傷害加倍。" },
         "relic_ghoul_visage":    { n: "食屍鬼的啃食面容", type: "arm", slot: "helm", relic: true, noEnhance: true, ac: 10, mhp: 30, killHealHp: 30, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】深淵食屍鬼猙獰面容鑄成的頭盔，HP +30；擊殺敵人時吞噬其殘存的生氣，恢復 30 點 HP。" },
+        // ===== 🏺 遺物 第十九批（v3.6.44·用戶規格 15 件）=====
+        "relic_marksman_corset":   { n: "精銳射手的戰鬥束衣", type: "arm", slot: "armor", relic: true, noEnhance: true, ac: 10, rangedHit: 3, dex: 2, er: 5, req: "elf,dark,illusion", p: 10000, gachaWeight: 0, d: "【遺物】深淵精銳射手的貼身戰鬥束衣，收束的皮革讓每一次拉弦都又穩又快。遠距離命中 +3、敏捷 +2、ER +5。" },
+        "relic_earthshatter_sword":{ n: "大地碎裂劍", type: "wpn", relic: true, noEnhance: true, dmgS: 10, dmgL: 11, hit: 13, dmgBonus: 17, req: "royal,knight,mage,elf,dark,dragon", p: 10000, gachaWeight: 0, ignHardSkin: true, ele: "earth", slowScaleDmg: true, d: "【遺物】地靈之主崩解時凝成的巨劍，劍身沉重如山岳。反擊；貫穿；一般攻擊變成地屬性；攻擊速度越慢傷害越高——以 0.10 秒為基準，攻擊間隔每慢 0.05 秒，近距離傷害 +1。" },
+        "relic_gale_fistblade":    { n: "疾風拳刃", type: "wpn", w2h: true, relic: true, noEnhance: true, dmgS: 12, dmgL: 16, hit: 15, dmgBonus: 12, req: "dark", p: 10000, gachaWeight: 0, eff: "combo", comboRate: 70, ignHardSkin: true, atkSpdPct: 35, windbladeProc: 3, d: "【遺物】風靈之主的疾風凝成的拳刃，出手快得只剩殘影。雙擊 70；貫穿；攻擊速度增加 35%；攻擊時 3% 機率觸發風刃，使目標出血（每秒 10 點固定傷害，持續 6 秒）。" },
+        "relic_hellfire_hammer":   { n: "業火鍛造鎚", type: "wpn", relic: true, noEnhance: true, eff: "crush", dmgS: 8, dmgL: 6, hit: 13, dmgBonus: 13, req: "royal,knight,illusion,dragon,warrior", p: 10000, gachaWeight: 0, ignHardSkin: true, hardskinFireProc: true, d: "【遺物】火靈之主的業火鍛成的鐵鎚，專為敲碎頑固的外殼而生。鈍擊；貫穿；命中擁有硬皮值的敵人時，額外造成目標剩餘 HP 1% 的火屬性魔法傷害。" },
+        "relic_pet_devotion":      { n: "珍愛夥伴的執念", type: "acc", slot: "amulet", relic: true, noEnhance: true, ac: 0, petReviveBuff: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】墳墓守護者至死仍護著夥伴的執念。寵物復活後 8 秒內：受到的傷害減少 100%、額外傷害 +8。" },
+        "relic_blood_ritual_dagger":{ n: "血祭儀式短刀", type: "wpn", relic: true, noEnhance: true, dmgS: 7, dmgL: 7, hit: 15, dmgBonus: 12, req: "royal,mage,elf", p: 10000, gachaWeight: 0, autocastBacklash: true, spellIgnoreMr: true, d: "【遺物】血色術士獻祭用的短刀，以持有者的血肉換取穿透一切的咒力。出血；若自身 HP 大於 200，施放自動技能時受到等同消耗 MP 的固定傷害；施放的傷害魔法無視目標魔法抗性。" },
+        "relic_genie_wishes":      { n: "巨靈的三個願望", type: "acc", slot: "ring", relic: true, noEnhance: true, ac: 0, wishRing: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】被恐怖的伊弗利特吞下的許願戒指，獲得時會從諸多能力中隨機許下三個願望（HP/MP/近遠魔傷/SP/自然恢復/減免/AC/MR/六維）。" },
+        "relic_cold_blueflame":    { n: "凜冽的青色火炎", type: "wpn", chainsword: true, w2h: true, relic: true, noEnhance: true, dmgS: 26, dmgL: 26, hit: 16, dmgBonus: 18, req: "dragon", p: 10000, gachaWeight: 0, ignHardSkin: true, ele: "fire", slaughterHits: 5, slaughterRandom: true, d: "【遺物】藍色火焰之靈魂凝成的鎖鏈劍，青焰冷冽卻灼人。弱點曝光；貫穿；一般攻擊變成火屬性；屠宰者變成攻擊 5 次，隨機攻擊場上任意目標。" },
+        "relic_scorch_greatsword": { n: "烈炎燒灼的滾燙巨劍", type: "wpn", w2h: true, relic: true, noEnhance: true, dmgS: 21, dmgL: 24, hit: 15, dmgBonus: 19, req: "royal,knight,dragon", p: 10000, gachaWeight: 0, ignHardSkin: true, ele: "fire", hardWear: 100, d: "【遺物】火焰烈炎獸的體溫燒灼的滾燙巨劍，握柄至今仍燙手。切割；貫穿；一般攻擊變成火屬性；一般攻擊命中時額外削減目標 100 點硬皮值。" },
+        "relic_guardian_riddle":   { n: "守護獸的難題", type: "arm", slot: "cloak", relic: true, noEnhance: true, ac: 8, mr: 5, playerHardSkin: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】斯芬克斯的謎題織成的斗篷，答不出的攻擊都會被外殼擋下。裝備後獲得 30 點硬皮值：有硬皮時受到的一般攻擊傷害 -2 並消耗 1 點；每 5 秒恢復 1 點，上限 20。MR +5。" },
+        "relic_mana_array_boots":  { n: "魔力凝聚的法陣", type: "arm", slot: "boots", relic: true, noEnhance: true, ac: 9, statArray: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】闇黑君王腳下的法陣凝成的長靴，將肉身素質煉成魔力。每 5 點體質增加 1% 攻擊速度、每 5 點敏捷增加 1 點近距離傷害、每 5 點力量增加 1 點遠距離傷害。" },
+        "relic_bloodknight_dual":  { n: "嗜血騎士的雙刀", type: "wpn", w2h: true, relic: true, noEnhance: true, dmgS: 18, dmgL: 12, hit: 18, dmgBonus: 14, req: "dark", p: 10000, gachaWeight: 0, eff: "combo", comboRate: 35, ignHardSkin: true, hpOnHit: 10, mpOnComboHit: 10, d: "【遺物】血騎士的嗜血雙刀，每一刀都渴飲敵人的生命。雙擊 35；貫穿；一般攻擊命中恢復 10 HP；雙擊觸發的追擊命中時恢復 10 MP。" },
+        "relic_cursed_egg":        { n: "充滿詛咒氣息的蛋", type: "etc", relic: true, eff: "cursedegg", req: "all", p: 10000, c: "text-purple-300", gachaWeight: 0, d: "【遺物】骨龍巢穴深處的蛋，殼上纏繞著揮之不去的詛咒氣息。使用後獲得 詛咒蜥蜴（自動存入寵物保管；寵物保管已滿時無法使用、蛋不會消失）。" },
+        "relic_elmo_spear":        { n: "艾爾摩尖頭槍", type: "wpn", w2h: true, relic: true, noEnhance: true, eff: "pierce", pierceChance: 100, dmgS: 17, dmgL: 17, hit: 15, dmgBonus: 15, req: "royal,knight,elf,dragon,warrior", p: 10000, gachaWeight: 0, ignHardSkin: true, pierceMainMult: 1.3, pierceSubMult: 0.9, d: "【遺物】受詛咒的艾爾摩士兵至死緊握的尖頭槍。穿透 100；貫穿；一般攻擊對主目標傷害增加 30%，對穿透波及目標傷害減少 10%。" },
+        "relic_petrify_essence":   { n: "石化魔法的精髓", type: "arm", slot: "helm", relic: true, noEnhance: true, ac: 11, stoneEssence: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】亞力安石化魔法的精髓凝成的頭盔。受到石化狀態時獲得「石化精髓」：傷害減免 +50、MR +50，持續 10 秒；受到的石化狀態持續時間減半。" },
+        // 🏺 v3.6.47 遺物第二十批（3 件·0.0001% 單怪掉落）：熔岩噴嘴=鎖鏈劍旗標自帶弱點曝光+貫穿·火球 proc 走既有 procSkill(procOnHit=僅命中)；粉碎鎚=eff crush 重擊(經典自動停用=一般限定)·procInstakill 擴充 hardOnly/hasteSec（js/04＋js/06 傭兵鏡像）；厄運蛋=鏡像詛咒蛋（js/08 doomegg→js/22 petUseCursedEgg 泛化）
+        "relic_lava_nozzle":       { n: "火山怪獸的熔岩噴嘴", type: "wpn", chainsword: true, w2h: true, relic: true, noEnhance: true, dmgS: 21, dmgL: 21, hit: 18, dmgBonus: 14, int: 2, str: 1, ignHardSkin: true, ele: "fire", procSkill: "sk_fireball", procRateBase: 20, procRatePerEn: 0, procOnHit: true, req: "dragon", p: 10000, gachaWeight: 0, d: "【遺物】烈炎獸噴吐熔岩的噴嘴鍛成的鎖鏈劍，劍身仍殘留著火山的餘溫。弱點曝光；貫穿；一般攻擊變成火屬性；一般攻擊命中時 20% 機率觸發燃燒的火球；智力 +2、力量 +1。" },
+        "relic_doom_egg":          { n: "充滿厄運氣息的蛋", type: "etc", relic: true, eff: "doomegg", req: "all", p: 10000, c: "text-purple-300", gachaWeight: 0, d: "【遺物】飛龍巢中混入的異樣之蛋，殼上盤旋著揮之不去的厄運氣息。使用後獲得 厄運蜥蜴（自動存入寵物保管；寵物保管已滿時無法使用、蛋不會消失）。" },
+        "relic_crusher_hammer":    { n: "重裝戰士的粉碎鎚", type: "wpn", w2h: true, relic: true, noEnhance: true, dmgS: 24, dmgL: 20, hit: 13, dmgBonus: 17, eff: "crush", ignHardSkin: true, procInstakill: { p: 0.01, hardOnly: true, hasteSec: 8 }, req: "knight,illusion,warrior", p: 10000, gachaWeight: 0, d: "【遺物】重裝歐姆戰士的粉碎鎚，連最堅硬的外殼也能一鎚砸穿。重擊（一般限定）；貫穿；一般攻擊命中時 1% 機率使非頭目的硬皮怪立即死亡；觸發即死時攻擊速度 +20%，持續 8 秒。" },
+        // 🥚 v3.6.62 遺物第二十一批（2 件·0.0001% 單怪掉落）：破滅蛋／災厄蛋＝補完四蜥蜴的取得管道（PET_BOOK 早已定義·此前只有詛咒/厄運兩顆蛋有來源）。分派見 js/08 RELIC_EGG_PETS 表
+        "relic_doomsday_egg":      { n: "充滿破滅氣息的蛋", type: "etc", relic: true, eff: "doomsdayegg", req: "all", p: 10000, c: "text-purple-300", gachaWeight: 0, d: "【遺物】遺忘之島飛龍守著的蛋，殼上翻湧著揮之不去的破滅氣息。使用後獲得 破滅蜥蜴（自動存入寵物保管；寵物保管已滿時無法使用、蛋不會消失）。" },
+        "relic_calamity_egg":      { n: "充滿災厄氣息的蛋", type: "etc", relic: true, eff: "calamityegg", req: "all", p: 10000, c: "text-purple-300", gachaWeight: 0, d: "【遺物】深淵地靈周身塵土凝成的蛋，殼上沉積著揮之不去的災厄氣息。使用後獲得 災厄蜥蜴（自動存入寵物保管；寵物保管已滿時無法使用、蛋不會消失）。" },
         "clk_elf": { n: "精靈斗篷", type: "arm", slot: "cloak", ac: 1, req: "all", safe: 6, p: 900, gachaWeight: 100 },
         "clk_oasis": { n: "歐西斯斗篷", type: "arm", slot: "cloak", ac: 0, req: "all", safe: 4, p: 15, gachaWeight: 100 },
         "arm_86": { n: "侏儒斗篷", type: "arm", slot: "cloak", ac: 0, req: "all", safe: 4, p: 18, gachaWeight: 100 },
@@ -2521,8 +2544,8 @@ const DB = {
                 { id: "npc_wh_aden", n: "恬金", title: "倉庫", type: "warehouse", d: "存放物品與金幣，四個存檔角色共用。" },
                 { id: "npc_upni", n: "烏普尼", title: "製作", type: "craft", d: "通曉禁忌符文的烏普尼，能將塔之力封入一紙。以 傲慢之塔傳送符 與 移動卷軸 製作 傲慢之塔支配符。" },
                 { id: "npc_norse", n: "諾斯", title: "寵物裝備製作", type: "craft", d: "獸語匠人諾斯，懂得讓忠犬之牙更加銳利。鍛造寵物裝備，強化你的寵物。" },
-                { id: "npc_baowu", n: "包武", title: "寵物保管", type: "petstore", d: "和善的看護人包武，願替遠行的旅人照看捕獲的寵物。最多保管 20 隻（同模式角色共通）；可在此讓寵物出戰、鎖定、放生，或讓等級 30 以上「一般型態」的寵物進化——用進化果實→對應高等，或用勝利果實→黃金龍（兩種果實都帶著時可自選）；高等型態與黃金龍皆為最終型態。" },
-                { id: "npc_arkata", n: "聖使阿卡塔", title: "死亡經驗買回", type: "pray", classicOnly: true, d: "聖使阿卡塔能以聖光凝聚你死亡時散逸的經驗。每次死亡的實際經驗損失都會被記錄（最多 10 筆），可花費「死亡時等級×等級×1000」金幣，買回該筆損失經驗的 50%。" }   // 🕊️ v3.4.73 經典限定（classicOnly·一般模式死亡不損失經驗故不顯示）
+                { id: "npc_baowu", n: "包武", title: "寵物保管", type: "petstore", d: "和善的看護人包武，願替遠行的旅人照看捕獲的寵物。最多保管 32 隻（同模式角色共通）；可在此讓寵物出戰、鎖定、放生，或讓等級 30 以上「一般型態」的寵物進化——用進化果實→對應高等，或用勝利果實→黃金龍（兩種果實都帶著時可自選）；高等型態與黃金龍皆為最終型態。" },
+                { id: "npc_arkata", n: "聖使阿卡塔", title: "經驗買回・裝備贖回", type: "pray", d: "聖使阿卡塔能以聖光凝聚你死亡時散逸的事物。【裝備贖回】邪惡（紅名）狀態下死亡遺失的裝備會被記錄（最多 5 件），可花費 1000 龍之鑽石指定贖回其中一件。【死亡經驗買回】經典模式限定：每次死亡的實際經驗損失都會被記錄（最多 10 筆），可花費「死亡時等級×等級×1000」金幣，買回該筆損失經驗的 50%。" }   // 🕊️ v3.4.73 起經驗買回；v3.6.84 加裝備贖回並取消 classicOnly（紅名噴裝兩模式皆會發生·經驗買回段落內部仍限經典）
             ]
         },
         "town_elder_council": {   // 🌑 黑暗妖精聖地樞紐（依《黑暗妖精聖地.md》·v3.3.33）

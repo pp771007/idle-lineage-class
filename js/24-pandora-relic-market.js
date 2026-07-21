@@ -9,7 +9,8 @@
     const STORE_VERSION = 3;
     const CHECK_MS = 10 * 60 * 1000;
     const WANDERER_LIFE_MS = 2 * 60 * 60 * 1000;
-    const BROADCAST_MS = 3 * 60 * 1000;
+    const BROADCAST_MS = 5 * 60 * 1000;
+    const GOLD_BROADCAST_OFFSET_MS = 1 * 60 * 1000;   // 龍鑽先喊；金幣延後 1 分鐘，兩者仍各自每 5 分鐘廣播
     const BROADCAST_PIN_MAX = 2;   // 📌 v3.5.77 叫賣訊息常駐在「系統與物品日誌」頂端的最大條數（超出者排隊，前面的人被互動/離場後自動遞補）
     const BOARD_COOLDOWN_MS = 24 * 60 * 60 * 1000;
     const RELIC_SEARCH_COST = 100;
@@ -30,25 +31,6 @@
     const PLAYER_AVATARS = [
         '王子', '公主', '男騎士', '女騎士', '男法師', '女法師', '男妖精', '女妖精',
         '男黑暗妖精', '女黑暗妖精', '男幻術士', '女幻術士', '男龍騎士', '女龍騎士', '男戰士', '女戰士'
-    ];
-    const NAME_PREFIX = ['蒼', '緋', '玄', '墨', '銀', '白', '青', '赤', '紫', '碧', '幽', '夜', '月', '星', '霜', '雪', '風', '雲', '雷', '炎', '燼', '影', '夢', '幻', '孤', '醉', '逆', '零',
-        '煞氣ㄟ', '最愛', '闇の', '覚醒', '邪王', '漆黑', '魔眼', '天上天下', '超高校級', '無敵', '爆裂', '狂氣', '破滅', '終焉', '孤高', '霸氣', 'ㄎㄧㄤ爆', 'ㄅㄧㄤˋ', '神ってる', '真祖',
-        '野獸', '仲夏夜'];
-    const NAME_IMAGE = ['狼', '狐', '龍', '羽', '刃', '劍', '弦', '花', '葉', '海', '川', '山', '嵐', '歌', '月', '星', '塵', '魂', '心', '影', '光', '痕'];
-    const NAME_TITLE = ['行者', '旅人', '浪客', '劍士', '術士', '獵人', '守望者', '歸人', '逐風者', '追月者', '無眠', '未央', '長歌', '無雙',
-        '公主', '王子', '魔王', '霸主', '大人', 'さま', '先輩', '総長', '天才', '救世主', '煞星', '狂戰士', '龍傲天', '夜神', '封弊者', '中二王', 'ㄉㄧㄠ炸天', 'ㄎㄧㄤ王', '本命', '偶像',
-        '前輩', '之夢'];
-    const NAME_SURNAME = ['南宮', '上官', '司徒', '慕容', '東方', '北辰', '長孫', '令狐', '歐陽', '夏侯'];
-    const NAME_GIVEN = ['無月', '長歌', '聽雪', '清風', '流雲', '暮雨', '星河', '青鋒', '白夜', '未央', '若水', '凌霜'];
-    const NAME_CASUAL = ['小隊長', '老玩家', '別打我', '路過', '掛機中', '求組隊', '練功中', '只收不賣', '佛系玩家'];
-    const NAME_SHORT = NAME_PREFIX.concat(NAME_TITLE).filter((name, index, list) => name.length === 2 && list.indexOf(name) === index);
-    const NAME_WRAPPERS = [
-        ['Oo', 'oO'], ['oO', 'Oo'], ['O0', '0O'], ['Xx', 'xX'], ['xX', 'Xx'], ['Xxx', 'xxX'],
-        ['卍', '卍'], ['乂', '乂'], ['一', '一'], ['丨', '丨'], ['灬', '灬'], ['丶', '丶'],
-        ['メ', 'メ'], ['ミ', 'ミ'], ['彡', '彡'], ['艸', '艸'], ['ㄨ', 'ㄨ'], ['★', '★'],
-        ['☆', '☆'], ['◆', '◆'], ['◇', '◇'], ['煞氣a', 'a煞氣'], ['可愛a', 'a可愛'],
-        ['霸氣a', 'a霸氣'], ['最愛a', 'a最愛'], ['闇夜a', 'a闇夜'], ['神之', '之神'],
-        ['惡魔a', 'a惡魔'], ['天使a', 'a天使'], ['戀愛a', 'a戀愛']
     ];
     const SILENCE_COMPLAINTS = [
         '吵死了', '安靜一點', '別再喊了', '不要一直廣播', '別洗了', '可以停一下嗎', '別再洗頻了', '安靜啦',
@@ -237,10 +219,15 @@
     const RELIC_CATEGORIES = {
         weapon: { label: '武器遺物', short: '武器' },
         armor: { label: '防具遺物', short: '防具' },
-        accessory: { label: '飾品遺物', short: '飾品' }
+        accessory: { label: '飾品遺物', short: '飾品' },
+        unknown: { label: '未知遺物', short: '未知' }   // 🥚 v3.6.48 不限類型·必定搜到「圖鑑未收錄」的遺物（武防飾看 relicDex·蛋等道具型看 miscDex）；充滿詛咒/厄運氣息的蛋只進這個池
     };
 
     let _lastBroadcastCycles = Object.create(null);
+    let _wanderBroadcastQueue = [];
+    let _wanderBroadcastQueuedIds = new Set();
+    let _wanderBroadcastTimer = null;
+    let _wanderBroadcastLastAt = 0;
     let _lastMapSignature = '';
     let _classFrameCache = Object.create(null);
     let _wanderingShoutMenu = null;
@@ -431,10 +418,13 @@
         if (!w || typeof player === 'undefined' || !player || !player.cls) return false;
         if (!Array.isArray(player.trollPlayers)) player.trollPlayers = [];
         let old = player.trollPlayers.find(t => t && t.n === w.name);
+        let alignmentValue = (typeof pvpLockAlignment === 'function')
+            ? pvpLockAlignment(w.name, w.alignmentValue, old && old.clanId)
+            : _normalizeAlignmentValue(w.alignmentValue);
         let chase = {
             n: w.name,
             avatar: w.avatar || '男戰士',
-            alignmentValue: _normalizeAlignmentValue(w.alignmentValue),
+            alignmentValue: alignmentValue,
             until: Date.now() + 2 * 60 * 60 * 1000
         };
         if (old && Number.isFinite(Number(old.levelOffset))) chase.levelOffset = old.levelOffset;
@@ -444,6 +434,22 @@
         if (quietResult && !quietResult.gone) _lastBroadcastCycles[w.id] = 'quiet';
         try { if (typeof saveGame === 'function') saveGame(); } catch (e) {}
         return true;
+    }
+
+    function pandoraUpdateWandererAlignment(name, alignmentValue) {
+        name = String(name || '').slice(0, 24);
+        if (!name) return false;
+        let value = _normalizeAlignmentValue(alignmentValue);
+        let result = _withStateLock(st => {
+            let changed = false;
+            (st.wanderers || []).forEach(w => {
+                if (!w || String(w.name || '').slice(0, 24) !== name || w.alignmentValue === value) return;
+                w.alignmentValue = value;
+                changed = true;
+            });
+            return changed ? { alignmentValue:value } : { commit:false, unchanged:true };
+        });
+        return !!(result && result.ok);
     }
 
     function _blockPlayerForWanderer(wandererId) {
@@ -459,6 +465,40 @@
 
     function _makeAlignmentValue(st) {
         return _normalizeAlignmentValue(Math.floor(-32767 + _rand(st, 'wander-alignment') * 65535));
+    }
+
+    // 🛡️ v3.6.80 叫賣收購 NPC 也接血盟世界（比照 js/26 世界頻道）：50% 隨機入 20 個 NPC 血盟之一，無盟者不顯示。
+    //   ⚠️ 採「懶指派」而非建立時寫入：血盟成員資格是**以名字為 key** 存在血盟共用桶（world.memberships），
+    //      第一次查會擲骰並寫入、之後同名一律回傳同一個盟 → 不必動 wanderer 存檔結構，既有的叫賣 NPC 也一起涵蓋。
+    //   ⚠️ 必須傳 noLeader:true：npcClanAssignOpponent 有 8% 機率把對象換成盟主「連名字一起換」，
+    //      而叫賣 NPC 的名字已寫進交易紀錄與已發出的廣播，改名會前後對不上。
+    //   ⚠️ _readState() 每次都回傳新物件 → 不能把結果快取在 w 上，改用名字為鍵的模組層快取（省下每次重繪的共用桶鎖）。
+    let _wandererClanCache = Object.create(null);
+    function _wandererClanName(w) {
+        let n = w && w.name ? String(w.name) : '';
+        if (!n) return '';
+        if (Object.prototype.hasOwnProperty.call(_wandererClanCache, n)) return _wandererClanCache[n];
+        let clan = '';
+        if (typeof npcClanAssignOpponent === 'function' && typeof player !== 'undefined' && player && player.cls) {
+            try {
+                let res = npcClanAssignOpponent({
+                    n: n,
+                    avatar: w.avatar || '男戰士',
+                    alignmentValue: _normalizeAlignmentValue(w.alignmentValue),
+                    levelOffset: 0,
+                    pvpRandom: true
+                }, { noLeader: true });
+                if (res && res.n === n) clan = res.clanName || '';   // 名字被改掉＝非預期，寧可不顯示也不要張冠李戴
+            } catch (e) {}
+        } else {
+            return '';   // 尚未載入角色（血盟世界還沒建立）→ 不快取，等進遊戲後再查
+        }
+        _wandererClanCache[n] = clan;
+        return clan;
+    }
+    function _wandererClanRowHtml(w) {
+        let clan = _wandererClanName(w);
+        return clan ? `<div class="wc-menu-clan">［${_esc(clan)}］</div>` : '';   // 無盟＝整條不輸出
     }
 
     function _wandererNameHtml(w) {
@@ -640,22 +680,9 @@
         let history = new Set(st.nameHistory || []);
         let made = '';
         for (let tries = 0; tries < 12; tries++) {
-            let mode = _rand(st, 'name-mode');
-            if (mode < 0.45) {
-                made = _pick(st, NAME_SHORT, 'name-short');
-            } else if (mode < 0.70) {
-                made = _pick(st, NAME_CASUAL, 'name-casual');
-            } else if (mode < 0.85) {
-                made = _pick(st, NAME_PREFIX, 'name-prefix2') + _pick(st, NAME_GIVEN, 'name-given2');
-            } else if (mode < 0.95) {
-                made = _pick(st, NAME_PREFIX, 'name-prefix') + _pick(st, NAME_IMAGE, 'name-image') + _pick(st, NAME_TITLE, 'name-title');
-            } else {
-                made = _pick(st, NAME_SURNAME, 'name-surname') + _pick(st, NAME_GIVEN, 'name-given');
-            }
-            if (_rand(st, 'name-wrapper-chance') < 0.4) {
-                let wrapper = _pick(st, NAME_WRAPPERS, 'name-wrapper');
-                made = wrapper[0] + made + wrapper[1];
-            }
+            made = (typeof pvpRandomNameWith === 'function')
+                ? pvpRandomNameWith(() => _rand(st, 'name-pvp'))
+                : (typeof pvpRandomName === 'function' ? pvpRandomName() : ('玩家' + Math.floor(_rand(st, 'name-fallback') * 100000)));
             if (!history.has(made)) break;
         }
         st.nameHistory.push(made);
@@ -738,22 +765,67 @@
         return _findWandererForTown(st, townId);
     }
 
+    function _wanderBroadcastGapMs() {
+        return 10000 + Math.floor(Math.random() * 10001);
+    }
+
+    function _queuedLiveWanderer(wandererId) {
+        if (typeof player === 'undefined' || !player || typeof logWorld !== 'function') return null;
+        if (typeof state !== 'undefined' && state && state.ff) return null;
+        let live = _findWanderer(_readState(), wandererId);
+        return _wandererPresent(live) && !live.broadcastStopped ? live : null;
+    }
+
+    function _runWanderBroadcastQueue() {
+        _wanderBroadcastTimer = null;
+        let live = null;
+        while (_wanderBroadcastQueue.length && !live) {
+            let wandererId = _wanderBroadcastQueue.shift();
+            _wanderBroadcastQueuedIds.delete(wandererId);
+            live = _queuedLiveWanderer(wandererId);
+        }
+        if (live) {
+            logWorld(_broadcastLineHTML(live));
+            _wanderBroadcastLastAt = Date.now();
+        }
+        if (!_wanderBroadcastQueue.length) return;
+        _wanderBroadcastTimer = setTimeout(_runWanderBroadcastQueue, _wanderBroadcastGapMs());
+    }
+
+    function _queueWanderBroadcast(w) {
+        let wandererId = String(w && w.id || '');
+        if (!wandererId || _wanderBroadcastQueuedIds.has(wandererId)) return;
+        _wanderBroadcastQueuedIds.add(wandererId);
+        _wanderBroadcastQueue.push(wandererId);
+        if (_wanderBroadcastTimer) return;
+
+        let sinceLast = Date.now() - _wanderBroadcastLastAt;
+        if (!_wanderBroadcastLastAt || sinceLast >= 10000) {
+            _runWanderBroadcastQueue();
+            return;
+        }
+        _wanderBroadcastTimer = setTimeout(_runWanderBroadcastQueue, _wanderBroadcastGapMs());
+    }
+
     function _announceWanderer(w) {
         // ⚠️ 到期守衛放在這裡＝單一真相：tick 路徑（_normalizeState 已濾）與 storage 多開同步路徑共用。
-        //    WANDERER_LIFE_MS(2h) 剛好是 BROADCAST_MS(3min) 的整數倍，cycle 邊界正好落在到期瞬間，
+        //    WANDERER_LIFE_MS(2h) 剛好是 BROADCAST_MS(5min) 的整數倍，cycle 邊界正好落在到期瞬間，
         //    去重必然放行 → 另一分頁寫入時會替「已到期但本頁還沒 tick 清掉」的叫賣者重播喊話。
         if (!_wandererPresent(w) || w.broadcastStopped) return;
         if (typeof player === 'undefined' || !player || typeof logSys !== 'function') return;
         if (typeof state !== 'undefined' && state && state.ff) return;
         let spawnedAt = Math.max(0, Number(w.spawnedAt) || Date.now());
-        let cycle = Math.max(0, Math.floor((Date.now() - spawnedAt) / BROADCAST_MS));
+        let offset = _wandererCurrency(w) === 'gold' ? GOLD_BROADCAST_OFFSET_MS : 0;
+        let elapsed = Date.now() - spawnedAt - offset;
+        if (elapsed < 0) return;
+        let cycle = Math.floor(elapsed / BROADCAST_MS);
         if (_lastBroadcastCycles[w.id] === cycle) return;
         // 📌 v3.5.77 已釘在日誌頂端者不再重複廣播（訊息本來就一直看得到，重播只會洗版）；
-        //    首次到場的喊話仍照舊進日誌，排隊中（第 3 位以後）也維持原本每 3 分鐘的廣播，才不會完全看不到。
+        //    首次到場的喊話仍照舊進日誌，排隊中（第 3 位以後）也維持每 5 分鐘的廣播，才不會完全看不到。
         if (cycle > 0 && _pinnedWandererIds().has(w.id)) { _lastBroadcastCycles[w.id] = cycle; return; }
         _lastBroadcastCycles[w.id] = cycle;
         // 名稱可點擊；可傳送、嘲諷，選擇「吵死了」後只會停止這名玩家後續的廣播。
-        logSys(_broadcastLineHTML(w));
+        _queueWanderBroadcast(w);
     }
 
     // ===== 📌 v3.5.77 叫賣訊息釘選列（用戶指定）=====
@@ -1063,6 +1135,7 @@
         menu.id = 'wandering-shout-menu';
         menu.className = 'wandering-shout-menu';
         menu.innerHTML =
+            _wandererClanRowHtml(w) +   // 🛡️ v3.6.80 點名字時一併顯示血盟（無盟不出現這條）
             `<button type="button" class="wandering-taunt-entry" onclick="openWanderingTauntMenu('${_esc(w.id)}',event)">嘲諷</button>` +
             (w.broadcastStopped ? '' : `<button type="button" onclick="silenceWanderingBuyer('${_esc(w.id)}')">吵死了</button>`) +   // 已靜音者不再顯示「吵死了」
             `<button type="button" onclick="hurryToWanderingBuyer('${_esc(w.id)}')">馬上到</button>`;
@@ -1122,18 +1195,18 @@
         }
         let reply = _buildOfflineNpcReply(w, choice);
         if (typeof logSys === 'function') {
-            logSys(
+            logWorld(
                 `<span class="wander-chat-out"><span class="wander-chat-arrow">-&gt;</span> ` +
                 `<span class="wander-chat-target">[${_wandererNameHtml(w)}]</span> ${_esc(choice.text)}</span>`
             );
-            logSys(
+            logWorld(
                 `<span class="wander-chat-in"><span class="wander-chat-speaker">[${_wandererNameHtml(w)}]</span> ` +
                 `${_esc(reply)}</span>`
             );
         }
         if (Math.random() < _tauntChaseRate(w.alignmentValue)) {
             if (_startWandererChase(w) && typeof logSys === 'function') {
-                logSys(`<span class="text-rose-400 font-bold">[${_wandererNameHtml(w)}] 惡狠狠地記住了你……</span>`);
+                logWorld(`<span class="text-rose-400 font-bold">[${_wandererNameHtml(w)}] 惡狠狠地記住了你……</span>`);
             }
             return;
         }
@@ -1193,18 +1266,18 @@
 
         _lastBroadcastCycles[w.id] = 'quiet';
         if (typeof logSys === 'function') {
-            logSys(
+            logWorld(
                 `<span class="wander-chat-out"><span class="wander-chat-arrow">-&gt;</span> ` +
                 `<span class="wander-chat-target">[${_wandererNameHtml(w)}]</span> ${_esc(complaint)}</span>`
             );
-            logSys(
+            logWorld(
                 `<span class="wander-chat-in"><span class="wander-chat-speaker">[${_wandererNameHtml(w)}]</span> ` +
                 `${_esc(apology)}</span>`
             );
         }
         // 😤 白目玩家系統：NPC 嗆聲回覆→正式版 20% 記仇；若叫賣者是紅名，玩家選「吵死了」必定反嗆並追殺。
         if (_reply.spicy && (forceSpicy || TEST_BUILD || Math.random() < 0.2) && _startWandererChase(w)) {   // 🧪 TEST版：回嗆必定記仇（正式版 20%；紅名 100%）
-            if (typeof logSys === "function") logSys(`<span class="text-rose-400 font-bold">[${_wandererNameHtml(w)}] 惡狠狠地記住了你……</span>`);
+            if (typeof logWorld === "function") logWorld(`<span class="text-rose-400 font-bold">[${_wandererNameHtml(w)}] 惡狠狠地記住了你……</span>`);
         }
     }
 
@@ -1241,7 +1314,7 @@
         _lastBroadcastCycles[w.id] = 'quiet';
 
         if (typeof logSys === 'function') {
-            logSys(
+            logWorld(
                 `<span class="wander-chat-out"><span class="wander-chat-arrow">-&gt;</span> ` +
                 `<span class="wander-chat-target">[${_wandererNameHtml(w)}]</span> 馬上到</span>`
             );
@@ -1317,7 +1390,7 @@
                     <div class="wandering-buyer-avatar">${_esc(w.avatar || '')}</div>
                     <div>
                         <div class="wandering-buyer-line">${_wandererNameHtml(w)}：${buyerVerb} <b>${_esc(_requirementText(w.itemId, w.en))}</b>${buyerAmount}</div>
-                        <div class="wandering-buyer-meta">位於 ${_esc(_townName(w.townId))}・剩餘 ${_remainingText(w.expiresAt - Date.now())}</div>
+                        <div class="wandering-buyer-meta">位於 ${_esc(_townName(w.townId))}・剩餘 ${_remainingText(w.expiresAt - Date.now())}${_wandererClanName(w) ? '・血盟 ' + _esc(_wandererClanName(w)) : ''}</div>
                     </div>
                 </div>
                 <div class="wandering-buyer-offer">
@@ -1471,15 +1544,28 @@
         return ids;
     }
 
+    // 🥚 v3.6.48 未知遺物用：該遺物是否已收錄圖鑑（武防飾→遺物收集冊 relicDex；type:'etc' 蛋等道具型→道具收集冊 miscDex）
+    function _relicDexKnown(id) {
+        let d = DB.items[id] || {};
+        if (d.type === 'etc') return typeof miscDexHas === 'function' && miscDexHas(id);
+        return typeof relicDexHas === 'function' && relicDexHas(id);
+    }
+
     function _makeRelicContract(st, category) {
         let active = new Set();
         st.boards.forEach(b => { if (b.contract && b.contract.relicId) active.add(b.contract.relicId); });
         let owned = _ownedRelicIds();
         let relicPool = Object.keys(DB.items).filter(id => {
             let d = DB.items[id];
-            return _relicCategoryOf(d) === category && !active.has(id) && (TEST_BUILD || !owned.has(id));
+            if (!d || !d.relic || active.has(id)) return false;
+            // 🥚 未知遺物：不限類型（含武防飾＋type:'etc' 蛋——蛋在黑市只有這個管道能搜到）·必定挑「圖鑑未收錄」者
+            if (category === 'unknown') {
+                if (!_relicCategoryOf(d) && d.type !== 'etc') return false;   // 排除既非裝備也非道具型的異常定義
+                return TEST_BUILD || !_relicDexKnown(id);
+            }
+            return _relicCategoryOf(d) === category && (TEST_BUILD || !owned.has(id));
         });
-        if (!relicPool.length) return { error: '此類別目前沒有可搜尋的新遺物。' };
+        if (!relicPool.length) return { error: category === 'unknown' ? '所有遺物都已收錄圖鑑，目前沒有可搜尋的未知遺物。' : '此類別目前沒有可搜尋的新遺物。' };
         let relicId = _pick(st, relicPool, 'relic-target|' + category);
         let craftable = _craftableIds();
         let base = Object.keys(DB.items).filter(id => {
@@ -1599,7 +1685,7 @@
             });
         }
         if (!category && name === '遺物') {
-            _setPandoraNotice('error', '請先從候補選擇武器遺物、防具遺物或飾品遺物。');
+            _setPandoraNotice('error', '請先從候補選擇武器遺物、防具遺物、飾品遺物或未知遺物。');
             _rerenderPandora();
             return true;
         }
@@ -1818,6 +1904,7 @@
     }
 
     window.wanderingBuyerSystemTick = wanderingBuyerSystemTick;
+    window.pandoraUpdateWandererAlignment = pandoraUpdateWandererAlignment;
     window.renderWanderBroadcastPins = renderWanderBroadcastPins;
     window.getWanderingBuyersForTown = getWanderingBuyersForTown;
     window.getWanderingBuyerForTown = getWanderingBuyerForTown;

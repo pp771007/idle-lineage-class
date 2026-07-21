@@ -1024,7 +1024,11 @@ function ensureMaterial(id, count, depth) {
     let need = count - have, y = rec.yield || 1, batches = Math.ceil(need / y);
     for (let req of rec.req) ensureMaterial(req.id, req.cnt * batches, depth + 1);
     for (let req of rec.req) consumeMaterialById(req.id, req.cnt * batches);
-    gainItem(id, batches * y, true, true);
+    // 🔒 v3.6.92 中間物一律落在「未鎖定疊」：gainItem 通則是併入鎖定疊（同簽章只有一格），但這裡產出後
+    //    立刻要被父層 consumeMaterialById 扣掉，而扣料/計數口徑（invCountId·buildPool）都排除鎖定件——
+    //    若併進鎖定疊就會「底層材料被吃掉、中間物卻沒扣」（v3.5.85 修過的帳目錯亂）。殘量待下次載入合併回去。
+    _lockMergeOff = true;
+    try { gainItem(id, batches * y, true, true); } finally { _lockMergeOff = false; }
 }
 // 計算製作 count 個某配方時，缺少的「最底層材料 / 金幣」與數量（遞迴展開中間物）
 function craftReqHtml(reqArr) {

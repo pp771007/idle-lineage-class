@@ -518,7 +518,7 @@
         #player-morph-sprite { position: absolute; bottom: 4px; height: 1px; z-index: 2; pointer-events: none; overflow: visible; }
         #player-morph-sprite img { position: absolute; left: 0; bottom: 0; image-rendering: crisp-edges; image-rendering: pixelated; }
         #player-morph-sprite .pm-shadow { mix-blend-mode: multiply; }
-        /* 🤝 v3.0.70 隊員戰場 sprite（隊員1~3·結構同 #player-morph-sprite·bottom/z-index 由 JS 依 aggro 權重排前後） */
+        /* 🤝 v3.0.70 隊員戰場 sprite（結構同 #player-morph-sprite·bottom/z-index 由 JS 依招募順序固定站位·v3.6.89 取消權重排位） */
         .party-sprite { position: absolute; bottom: 4px; height: 1px; z-index: 2; pointer-events: none; overflow: visible; }
         .party-sprite img { position: absolute; left: 0; bottom: 0; image-rendering: crisp-edges; image-rendering: pixelated; }
         .party-sprite .pm-shadow { mix-blend-mode: multiply; }
@@ -535,6 +535,16 @@
         /* ⚔️ v2.7.22 武器揮動特效層：與影子同定位(絕對·底部置中·native)但疊在本體「前」(DOM 順序在本體 img 之後)＋screen 加亮(金色刀光弧發光) */
         #battle-view .mob-img-inner.mob-anim .mob-anim-weapon,
         #battle-view .mob-img-inner.mob-anim .mob-anim-weapon2 { position: absolute !important; left: 50%; bottom: 0; transform: translateX(-50%); pointer-events: none; mix-blend-mode: screen; }
+        #battle-view .mob-img-inner img.npc-clan-castle-crown {
+            position: absolute !important; z-index: 10 !important;
+            width: 16px !important; height: 12px !important;
+            min-width: 16px !important; min-height: 12px !important;
+            max-width: none !important; max-height: none !important;
+            padding: 0 !important; object-fit: contain;
+            transform: translateX(-50%); pointer-events: none; user-select: none;
+            image-rendering: crisp-edges; image-rendering: pixelated;
+            filter: drop-shadow(0 1px 1px rgba(69,26,3,.95)) drop-shadow(0 0 3px rgba(250,204,21,.82));
+        }
         /* 🌑 v3.0.24 灰白剪影怪(影魔/象牙塔影魔·天堂 silhouette gfx1571)→半透明黑影：brightness(0) 把淺灰白 spr 全轉黑(保留 alpha 軟邊)、opacity 半透明煙感。掛父層→受擊 keyframe 的 brightness 亮度被此層歸零(不閃回灰)、img 的 translateX 晃動照常。 */
         #battle-view .mob-img-inner.mob-shadow-tint { filter: brightness(0); opacity: .62; }
         /* 🙈 怪物名字預設隱藏，滑鼠游標移到「怪物圖片」上才顯示（:has 偵測圖片區 hover；img 為 pointer-events:none→hover 落在 .mob-img-wrap；保留名稱列空間避免版面跳動）。.name-show＝JS 依 _hoverMobUid 套用→跨重繪持續顯示(每 tick 換 innerHTML 時 :hover 會瞬失效，靠它穩住不閃) */
@@ -711,6 +721,14 @@
         #combat-log .text-orange-300, #sys-log .text-orange-300 { color:#c8ad89 !important; }
         #combat-log .crit-hit { color:#d08b80 !important; text-shadow:none !important; }
         #sys-log .sys-item-gain, #sys-log .sys-item-gain * { color:#d5d0a4 !important; filter:none !important; }
+        /* ✦ v3.6.69 物品日誌亮點：只有傳說(橘)與遺物(藍)例外脫離上面那條統一米色壓色。
+           ⚠️ 選擇器必須比 `#sys-log .sys-item-gain *`(1 id+1 class) 更高特異度 → 用 `.sys-item-gain .sys-drop-*`(1 id+2 class)。 */
+        #sys-log .sys-item-gain .sys-drop-rare { font-weight: 700; animation: sysDropPulse 1.6s ease-in-out infinite; }
+        /* ⚠️ text-shadow 必須 !important：上面 705 行有 `#sys-log span { text-shadow:none !important }` 會把光暈整個吃掉（特異度較低但 !important 勝出）。 */
+        /* c-legend／c-relic 一併列入：掛機總結那行(js/01 flushAwaySummary)走 getItemColor，靠這兩個選擇器同樣脫離壓色。 */
+        #sys-log .sys-item-gain .sys-drop-legend, #sys-log .sys-item-gain .c-legend { color:#f0a020 !important; text-shadow: 0 0 5px rgba(240,160,32,.75), 0 0 12px rgba(217,138,4,.55) !important; }
+        #sys-log .sys-item-gain .sys-drop-relic,  #sys-log .sys-item-gain .c-relic  { color:#4cc9f0 !important; text-shadow: 0 0 5px rgba(76,201,240,.75), 0 0 12px rgba(56,189,248,.55) !important; }
+        @keyframes sysDropPulse { 0%,100% { opacity: 1; } 50% { opacity: .72; } }
         #combat-log-panel .cf-pill { filter:saturate(.58) brightness(.92); }
         /* ⚔️ 戰鬥日誌來源過濾：點亮(顯示)/點暗(隱藏) 敵人/玩家/傭兵/召喚/夥伴 */
         .cf-pill { font-size: 0.7rem; font-weight: 700; line-height: 1; padding: 3px 6px; border-radius: 9999px; border: 1px solid; cursor: pointer; user-select: none; transition: opacity .15s, filter .15s; white-space: nowrap; }
@@ -1668,6 +1686,27 @@ button.classic-skill-cell { cursor:pointer; }
     opacity:.72;
     filter:drop-shadow(0 0 14px rgba(235,207,130,.28)) brightness(.86);
 }
+.load-offline-badge {
+    position:absolute;
+    z-index:2;
+    left:50%;
+    top:2.2%;
+    transform:translateX(-50%);
+    pointer-events:none;
+    white-space:nowrap;
+    padding:3px 8px;
+    border:1px solid rgba(74,222,128,.72);
+    border-radius:3px;
+    background:rgba(3,18,12,.88);
+    color:#86efac;
+    box-shadow:0 2px 5px rgba(0,0,0,.82), inset 0 1px 0 rgba(255,255,255,.08);
+    text-shadow:0 1px 2px #000, 0 0 5px rgba(34,197,94,.48);
+    font-family:"Microsoft JhengHei", sans-serif;
+    font-size:14px;
+    font-weight:700;
+    line-height:1.2;
+    letter-spacing:0;
+}
 .load-slot-card.selected::after {
     display:none;
 }
@@ -2049,6 +2088,7 @@ button.classic-skill-cell { cursor:pointer; }
         box-shadow: inset 0 0 20px rgba(0,0,0,.72);
     }
     .load-slot-card img { transform: scale(1.02); }
+    .load-offline-badge { top:6px; padding:2px 6px; font-size:12px; }
     .load-slot-card[data-key="m_warrior"] img,
     .load-slot-card[data-key="f_warrior"] img { transform: scale(1.16); }
     #load-page-tabs {
@@ -2801,6 +2841,12 @@ button.classic-skill-cell { cursor:pointer; }
     color: #f4df9e;
 }
 .wandering-shout-menu .wandering-taunt-entry { color: #f3b5a9; }
+/* 🛡️ v3.6.77 世界頻道點名字時的血盟標頭（無盟不輸出這個元素→不佔位） */
+.wandering-shout-menu .wc-menu-clan {
+    padding: 5px 14px 6px; margin-bottom: 3px;
+    border-bottom: 1px solid rgba(183, 146, 62, .35);
+    color: #a5f3fc; font-size: 12px; font-weight: bold; white-space: nowrap; text-align: left;
+}
 .wandering-shout-menu .wandering-taunt-entry:hover {
     background: rgba(153, 63, 51, .24);
     color: #ffd2c8;
@@ -2847,9 +2893,9 @@ button.classic-skill-cell { cursor:pointer; }
 #sys-log-pins .wander-pin-body { min-width: 0; flex: 1; }
 .wander-chat-out { color: #d3cec6; }
 .wander-chat-arrow { color: #bdb7ac; font-weight: 700; }
-.wander-chat-target { color: #d8c79e; font-weight: 700; }
+.wander-chat-target { color: inherit; font-weight: 700; }
 .wander-chat-in { color: #ddd6d0; }
-.wander-chat-speaker { color: #c8b9ee; font-weight: 700; }
+.wander-chat-speaker { color: inherit; font-weight: 700; }
 .pvp-kill-whisper-name {
     display: inline;
     margin: 0;
@@ -3066,3 +3112,86 @@ button.classic-skill-cell { cursor:pointer; }
         overflow: auto !important;
     }
 }
+
+/* ========== 🗂️🌐 v3.6.50 日誌合併分頁 ＋ 世界頻道 ========== */
+/* 左側面板標題列的「戰鬥日誌／系統日誌」分頁鈕（沿用 cf-pill 的體感，但字大一級好點） */
+.logtab-btn {
+    position: relative; font-size: .82rem; font-weight: 700; line-height: 1; padding: 4px 10px;
+    border-radius: 9999px; border: 1px solid #475569; background: rgba(51,65,85,.35); color: #94a3b8;
+    cursor: pointer; user-select: none; white-space: nowrap; transition: color .15s, background .15s, border-color .15s;
+}
+.logtab-btn:hover { color: #e2e8f0; background: rgba(71,85,105,.55); }
+.logtab-btn.logtab-on { color: #fde68a; border-color: #b45309; background: rgba(120,53,15,.55); }
+/* 未讀點：📌 v3.6.73 改為「只有傳說／遺物掉落」才亮（用戶指示：其餘訊息不顯示紅點）→ 顏色一律由 logtab-dot-legend/relic 指定，
+   底色留著只是保險（沒有稀有度 class 時不會變成透明的隱形點）。 */
+.logtab-dot {
+    position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 9999px;
+    background: #f0a020; box-shadow: 0 0 6px rgba(240,160,32,.9);
+}
+.logtab-dot-legend { background: #f0a020; box-shadow: 0 0 6px rgba(240,160,32,.95), 0 0 12px rgba(217,138,4,.6); }
+.logtab-dot-relic  { background: #4cc9f0; box-shadow: 0 0 6px rgba(76,201,240,.95), 0 0 12px rgba(56,189,248,.6); }
+
+/* 世界頻道輸入列（釘在面板底部，與日誌區同寬） */
+#world-input-row {
+    display: flex; gap: 6px; align-items: center; padding: 7px 9px;
+    border-top: 1px solid rgba(148,163,184,.22); background: rgba(15,23,42,.72);
+    border-bottom-left-radius: .75rem; border-bottom-right-radius: .75rem; flex: 0 0 auto;
+}
+#world-input {
+    flex: 1 1 auto; min-width: 0; font-size: .86rem; padding: 6px 10px; border-radius: 6px;
+    border: 1px solid #475569; background: #0f172a; color: #e2e8f0; outline: none;
+}
+#world-input::placeholder { color: #64748b; }
+#world-input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 2px rgba(14,165,233,.25); }
+#world-send {
+    flex: 0 0 auto; font-size: .82rem; font-weight: 700; padding: 6px 14px; border-radius: 6px;
+    border: 1px solid #0369a1; background: #075985; color: #e0f2fe; cursor: pointer; white-space: nowrap;
+    transition: background .15s;
+}
+#world-send:hover { background: #0369a1; }
+#world-send:disabled { opacity: .45; cursor: default; }
+
+/* 世界頻道訊息：玩家發問／NPC 回覆／嘲笑，NPC 名字可點（開嘲諷·感謝選單） */
+#world-log,
+#world-log .log-entry,
+#world-log .log-entry * {
+    font-family: inherit !important;
+    font-style: normal !important;
+    letter-spacing: 0;
+}
+#world-log .wc-ask { color: #e2e8f0; }
+#world-log .wc-ask .wc-me { font-weight: 700; }
+#world-log .wc-answer { color: #e2e8f0; }
+#world-log .wc-mock { color: #cbd5e1; opacity: .92; }
+#world-log .wc-sys { color: #94a3b8; font-size: .86em; }
+.wc-player-name { font-weight: 700; font-style: normal; }
+.wc-name {
+    font-weight: 700; cursor: pointer; text-decoration: underline dotted rgba(148,163,184,.5);
+    text-underline-offset: 2px;
+}
+.wc-name:hover { text-decoration-color: currentColor; }
+/* 名字點擊後的嘲諷／感謝選單（接在該行下方） */
+.wc-menu { display: flex; gap: 6px; margin: 3px 0 3px 12px; flex-wrap: wrap; }
+.wc-menu button {
+    font-size: .78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px; cursor: pointer;
+    border: 1px solid #475569; background: rgba(51,65,85,.5); color: #cbd5e1; transition: background .15s, color .15s;
+}
+.wc-menu button.wc-taunt { border-color: #b91c1c; color: #fca5a5; background: rgba(127,29,29,.35); }
+.wc-menu button.wc-taunt:hover { background: rgba(153,27,27,.7); color: #fee2e2; }
+.wc-menu button.wc-thank { border-color: #047857; color: #6ee7b7; background: rgba(6,78,59,.35); }
+.wc-menu button.wc-thank:hover { background: rgba(4,120,87,.7); color: #d1fae5; }
+.wc-menu button.wc-cancel:hover { background: rgba(71,85,105,.75); color: #e2e8f0; }
+/* 🌐 世界頻道面板：日誌區可壓縮（min-height:0），輸入列固定不被擠出面板外 */
+#world-log { min-height: 0; }
+/* 🌐 世界頻道版面保護：叫賣釘選列在面板變矮時要能收縮（原本 flex:0 0 auto 會把輸入列擠出面板外），
+   輸入列固定不縮，日誌區吸收剩餘空間。 */
+#syslog-panel #sys-log-pins { flex: 0 1 auto; min-height: 0; max-height: 40%; overflow-y: auto; }
+#world-input-row { flex: 0 0 auto; }
+
+/* 🏴 v3.6.52 血盟外交狀態四色（宣戰列表·全 NPC 血盟）：
+   和平＝藍｜宣戰(我方單方)／對方宣戰(NPC 單方)＝淺紅｜互相宣戰＝深紅（最醒目）。
+   用 ID 選擇器提高權重，避免被 Tailwind utility 平手蓋掉。 */
+#tab-clan .clan-dip-peace,  .clan-dip-peace  { color: #60a5fa; }                                  /* 和平：藍 */
+#tab-clan .clan-dip-war,    .clan-dip-war    { color: #fca5a5; }                                  /* 我方宣戰：淺紅 */
+#tab-clan .clan-dip-enemy,  .clan-dip-enemy  { color: #fca5a5; }                                  /* 對方宣戰：淺紅 */
+#tab-clan .clan-dip-mutual, .clan-dip-mutual { color: #dc2626; text-shadow: 0 0 6px rgba(220,38,38,.55); }   /* 互相宣戰：深紅＋微光 */

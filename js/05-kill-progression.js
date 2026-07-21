@@ -82,7 +82,10 @@ function auditReset() {
 function auditTrackKill(mob) {
     if (!mob || typeof getExpGainMult !== 'function') return;
     // 🪆 必須乘上魔法娃娃 expBonus%（與經驗條實際入帳的 :318-319 同口徑），否則統計頁的「累積經驗／經驗每10分」會系統性低報最多 10%。
-    let g = Math.floor((mob.exp || 0) * (1 + partyExpBonusPct() / 100) / partyExpShareCount() * (1 + (typeof dollFieldVal === 'function' ? dollFieldVal('expBonus') : 0) / 100) * getExpGainMult(player.lv));   // 🤝 v3.0.87 效率統計記主玩家「實得」經驗，與經驗條一致
+    // 📊 v3.6.58 刻意**不乘** getExpGainMult(player.lv)：該倍率在 Lv100 為 0（滿等不入帳），統計頁會整片歸零、
+    //    連「這張圖效率如何」都看不出來。此處改記「同條件下應得的經驗」＝練功效率指標（Lv<100 時倍率恆 1，數字與實得完全相同）。
+    //    ⚠️ 實際入帳仍在 killMob :320（照樣乘 getExpGainMult）——統計是參考值，不是經驗來源，勿把這裡當入帳口徑。
+    let g = Math.floor((mob.exp || 0) * (1 + partyExpBonusPct() / 100) / partyExpShareCount() * (1 + (typeof dollFieldVal === 'function' ? dollFieldVal('expBonus') : 0) / 100));   // 🤝 v3.0.87 效率統計記主玩家該份經驗
     if (g > 0) _audit.exp += g;
     _audit.kills++;
 }
@@ -120,6 +123,8 @@ function renderAuditTab() {
     let gold = (typeof player !== 'undefined' && player) ? ((player.gold || 0) - _audit.gold0) : 0;
     let sf = 10 / (mins || 0.001);
     let exp10 = Math.floor(_audit.exp * sf), gold10 = Math.floor(gold * sf);
+    // 📊 v3.6.58 滿等：經驗不再入帳，但統計仍記「應得經驗」當練功效率指標 → 標註參考值免得誤會成還在升等
+    let expNote = (typeof player !== 'undefined' && player && (player.lv || 1) >= 100) ? '<span class="text-slate-500">（滿等·參考值）</span>' : '';
     let watchHtml = _audit.watch.length ? _audit.watch.map((t, i) => {
         let c = _audit.watchCnt[t] || 0;
         return `<div class="flex justify-between items-center bg-slate-800/60 rounded px-2 py-1"><span>🎯 ${t}：<b class="${c>0?'text-green-400':'text-slate-300'}">${c}</b> 個</span><button onclick="auditRemoveIdx(${i})" class="btn px-2 py-0.5 text-xs bg-red-900 border-red-700 text-red-200">移除</button></div>`;
@@ -158,7 +163,7 @@ function renderAuditTab() {
         </div>
         <div class="text-slate-400 text-xs">已觀測 ${mins.toFixed(2)} 分鐘・擊殺 ${_audit.kills.toLocaleString()}（換地圖會自動重置）</div>
         <div class="grid grid-cols-2 gap-2">
-            <div class="bg-slate-800/60 rounded p-2"><div class="text-slate-400 text-xs">累積經驗</div><div class="text-yellow-300 font-bold text-base">${_audit.exp.toLocaleString()}</div></div>
+            <div class="bg-slate-800/60 rounded p-2"><div class="text-slate-400 text-xs">累積經驗${expNote}</div><div class="text-yellow-300 font-bold text-base">${_audit.exp.toLocaleString()}</div></div>
             <div class="bg-slate-800/60 rounded p-2"><div class="text-slate-400 text-xs">純金幣淨增</div><div class="text-yellow-400 font-bold text-base">${gold.toLocaleString()}</div></div>
             <div class="bg-slate-800/60 rounded p-2"><div class="text-slate-400 text-xs">經驗 / 10分</div><div class="text-amber-300 font-bold text-base">${exp10.toLocaleString()}</div></div>
             <div class="bg-slate-800/60 rounded p-2"><div class="text-slate-400 text-xs">金幣 / 10分</div><div class="text-green-300 font-bold text-base">${gold10.toLocaleString()}</div></div>
@@ -407,6 +412,7 @@ function killMob(idx) {
     if (mob.siegeEnemy && !mob.trollPlayer) pledgeBonusDrop(mob);
     if (mob.trollPlayer) {   // 😤 v3.5.59 白目玩家：擊殺→仇恨解除；10% 裝備掉落（經驗/金幣 0）
         if (!mob._siegePlayer && player.trollPlayers) player.trollPlayers = player.trollPlayers.filter(t => t && t.n !== mob.n);
+        if (!mob._siegePlayer && typeof pvpReleaseAlignLock === 'function') pvpReleaseAlignLock(mob.n);
         logSys(`<span class="text-amber-300 font-bold">你擊敗了 ${_trollDefeatNameHtml(mob)}，${_trollDefeatEnding()}</span>`);
         pledgeBonusDrop(mob, (typeof playerNpcDropRate === 'function') ? playerNpcDropRate(mob) : 0.10);   // ⚖️ v3.6.16 噴裝率依該 NPC 性向值 10%~3%（越邪惡越高·js/04 playerNpcDropRate）
         if (typeof playerNpcRelicDrop === 'function') playerNpcRelicDrop(mob);   // 🏺 v3.6.11 玩家 NPC 額外 0.001% 掉落隨機遺物（獨立判定·不排擠上方 10% 攜帶物）
@@ -549,6 +555,8 @@ function settleDeadMobs() {
         if (mapState.mobs[i] && mapState.mobs[i]._dead) { mapState.mobs[i] = null; if (mapState.spawnAt) mapState.spawnAt[i] = null; changed = true; }
     }
     if (_tgtDied) mapState.targetIdx = -1;
+    if (typeof npcClanGroupBattleActive === 'function' && npcClanGroupBattleActive() &&
+        typeof npcClanGroupBattleFill === 'function') npcClanGroupBattleFill();
     if (changed) renderMobs();
     // 🔧 軍王之室：擊敗頭目（掉落已於 killMob 發放）後處理；補跑期間延後到回到即時再執行。
     //   身上仍有「軍王的鑰匙」→ 留在室內，清空全部怪物，5 秒後消耗 1 把鑰匙從頭復活軍王；

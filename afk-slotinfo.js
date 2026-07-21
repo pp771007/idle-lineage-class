@@ -1,31 +1,19 @@
 /*
  * afk-slotinfo.js — 選角/載入畫面的「額外掛機資訊」掛載外掛(桌機 + 手機共用)
  *
- * 職責:在原作者 openSlotSelect 渲染的存檔鈕「下方附加」📍 目前掛在哪張地圖、⏱ 已掛機多久 兩行。
+ * 職責:在原作者 openSlotSelect 渲染的存檔鈕「下方附加」📍 目前掛在哪張地圖。
+ *   (⏱ 已掛機多久 目前不顯示:資料源 afk_ts_ 由暫停使用中的 afk-offline 心跳蓋,值會凍住;見 read())
  *   只「附加」、絕不清空 → 原作者的單行 label(含經典/傳統標籤與配色)、大頭貼都原封不動,
  *   桌機與手機共用同一份附加邏輯(手機差異純由 afk-mobile.js 的 CSS 處理,不另外重建內容)。
  *   對外仍暴露 window.AFK_SLOTINFO.read(slot) → { mapName, idleText }(純資料、無 DOM)供他人取用。
  *
- * 資料來源:js/offline.js(核心離線掛機)寫的即時地圖記錄 afk_map_<slot>(較準)、最後活躍心跳 afk_ts_<slot>;
- *   讀不到 afk_map_ 就退回存檔 blob 的 ms.current。地圖中文名與離線上限呼叫核心離線模組暴露的 window.__afk。
+ * 資料來源:afk-offline 寫的即時地圖記錄 afk_map_<slot>,讀不到就退回存檔 blob 的 ms.current。
+ *   地圖中文名走 window.__afk.mapName,取不到時原樣顯示 id。
  *
  * 優雅降級:openSlotSelect / __afk 不存在就安靜停用,不弄壞畫面。
  */
 (function () {
   if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('slotinfo')) return;   // 🎚️ 外掛開關:關掉就透明放行原版行為
-  // 把離線毫秒數格式化成「X 天 Y 小時 / X 小時 Y 分 / X 分鐘 / 剛剛」
-  function fmtIdle(ms) {
-    if (ms < 0) ms = 0;
-    var s = Math.floor(ms / 1000);
-    if (s < 60) return '剛剛';
-    var m = Math.floor(s / 60);
-    if (m < 60) return m + ' 分鐘';
-    var h = Math.floor(m / 60), rm = m % 60;
-    if (h < 24) return rm ? (h + ' 小時 ' + rm + ' 分') : (h + ' 小時');
-    var d = Math.floor(h / 24), rh = h % 24;
-    return rh ? (d + ' 天 ' + rh + ' 小時') : (d + ' 天');
-  }
-
   // 唯一資料源:給一個存檔位編號,回「掛機地圖中文名」與「已掛機多久」文字(沒有就回空字串)
   function read(slot) {
     // 存檔解析一次:優先用原作的 _lzGet(解壓 LZ1) + _saveUnwrap(去簽章),才讀得到壓縮存檔的 ms/p。
@@ -42,14 +30,9 @@
     var mapName = '';
     if (mapId) mapName = (window.__afk && typeof window.__afk.mapName === 'function') ? window.__afk.mapName(mapId) : mapId;
 
-    var ts = 0; try { ts = +localStorage.getItem('afk_ts_' + slot) || 0; } catch (e) {}
+    // ⏱ 已掛機時間:資料源 afk_ts_<slot> 由 afk-offline 的心跳蓋,該外掛暫停使用後這個值會凍在最後一次遊玩,
+    //   顯示出來只會是個愈來愈大的假數字 → 整行不顯示。afk-offline 恢復時把這段還原即可。
     var idleText = '';
-    if (ts > 0) {
-      var idleMs = Date.now() - ts;
-      var capH = (window.__afk && window.__afk.capHours) || 24;   // 離線收益上限(小時),讀核心離線模組
-      idleText = '⏱ 已掛機 ' + fmtIdle(idleMs);
-      if (idleMs >= capH * 3600000) idleText += '（收益上限 ' + capH + ' 小時）';   // 顯示真實時間,超過上限時提醒收益封頂
-    }
 
     // 🔮 席琳世界狀態:存於 player.sherineWorld / player.sherineMad(兩者互斥),回 '' / 'world' / 'mad'
     var p = save && save.p;

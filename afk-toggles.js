@@ -29,12 +29,14 @@
                 name: spec.name || spec.id,
                 desc: spec.desc || '',
                 group: spec.group || '其他',
-                def: spec.def !== false   // 預設開；傳 def:false 才預設關
+                def: spec.def !== false,  // 預設開；傳 def:false 才預設關
+                locked: spec.locked || ''  // 非空＝暫時停用：一律當關閉、面板上不可勾，字串是給玩家看的原因
             });
         },
         // 這支外掛現在是否啟用（讀 localStorage，未設過→用預設；讀不到 localStorage→啟用）
         enabled: function (id) {
             var r = find(id), def = r ? r.def : true;
+            if (r && r.locked) return false;   // 暫時停用中：不管 localStorage 存過什麼都當關閉
             try { var v = localStorage.getItem(LS + id); return v === null ? def : v === '1'; }
             catch (e) { return def; }
         },
@@ -75,7 +77,7 @@
         { id: 'storage', name: '設定選單', desc: '首頁 ⚙ 設定鈕與存檔大小檢查', group: '系統與其他' },
         { id: 'powersave', name: '省電模式', desc: '首頁設定→關戰鬥動畫/降畫面更新頻率（補回上游沒有的 2 個省電選項）', group: '系統與其他' },
         { id: 'skin', name: '首頁外掛入口/資訊', desc: '外掛入口整理（桌機收成🔌鈕/手機依原版按鈕樣式直接排列）＋原作者資訊、最後更新時間、巴哈/Line 連結', group: '系統與其他' },
-        { id: 'offline', name: '離線快速結算', desc: '關掉遊戲後回來自動結算掛機收益', group: '遊戲玩法' },
+        { id: 'offline', name: '離線快速結算', desc: '關掉遊戲後回來自動結算掛機收益', group: '遊戲玩法', locked: '因作者持續異動離線收益機制，暫時關閉此功能，改用遊戲原版的離線收益。' },
         { id: 'traditional', name: '傳統模式(偽)', desc: '打到/製作/潘朵拉的裝備自帶隨機強化值（商店除外）；在選角畫面的人物卡右上角勾「傳統」逐角色開關', group: '遊戲玩法' },
         { id: 'dograce', name: '賽狗場', desc: '賭狗小遊戲（自動化分頁「🔌 外掛」列開啟，只賺金幣）', group: '遊戲玩法' }
     ].forEach(api.register);
@@ -118,10 +120,14 @@
                 html += '<div style="font-size:12px;color:#7dd3fc;font-weight:700;margin:12px 4px 6px;">' + esc(g) + '</div>';
                 groups[g].forEach(function (r) {
                     var on = api.enabled(r.id);
-                    html += '<label style="display:flex;align-items:center;gap:12px;padding:9px 10px;border:1px solid #1e293b;border-radius:10px;margin-bottom:6px;cursor:pointer;background:#0b1222;">'
-                        + '<input type="checkbox" data-tgid="' + esc(r.id) + '" ' + (on ? 'checked' : '') + ' style="width:18px;height:18px;flex:none;accent-color:#38bdf8;">'
+                    html += '<label style="display:flex;align-items:center;gap:12px;padding:9px 10px;border:1px solid #1e293b;border-radius:10px;margin-bottom:6px;background:#0b1222;'
+                        + (r.locked ? 'cursor:not-allowed;opacity:.6;' : 'cursor:pointer;') + '">'
+                        + '<input type="checkbox" data-tgid="' + esc(r.id) + '" ' + (on ? 'checked' : '') + (r.locked ? ' disabled' : '')
+                        + ' style="width:18px;height:18px;flex:none;accent-color:#38bdf8;">'
                         + '<span style="flex:1;min-width:0;"><span style="font-weight:600;">' + esc(r.name) + '</span>'
+                        + (r.locked ? '<span style="font-size:11px;color:#fbbf24;margin-left:6px;">暫停使用</span>' : '')
                         + (r.desc ? '<span style="display:block;font-size:11px;color:#94a3b8;margin-top:2px;">' + esc(r.desc) + '</span>' : '')
+                        + (r.locked ? '<span style="display:block;font-size:11px;color:#fbbf24;margin-top:2px;">' + esc(r.locked) + '</span>' : '')
                         + '</span></label>';
                 });
             });

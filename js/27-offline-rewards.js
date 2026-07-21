@@ -1029,16 +1029,6 @@
         }
     }
 
-    // 🔌 加掛版補丁:把本檔的批次擲骰純函式暴露給外掛 afk-offline 的批次結清重用
-    //    (離線掉落規則的單一權威=本檔;上游更新掉落規則,重用端自動跟進)。
-    window.__upOffline = { mobPlan: _offlineMobPlan, rollMobLoot: _offlineRollMobLoot, binomial: _offlineBinomial, mobProfile: _offlineMobProfile };
-    // 🔌 加掛版補丁:離線收益「結算」由外掛 afk-offline 接手(真實戰鬥模擬、撞死即停、有離線紀錄)——以下鉤子/監聽/心跳不安裝。
-    //    玩家在外掛開關關掉「離線快速結算」→ 這裡放行,改由上游這套結算。
-    try {
-        var _afkOfflineOn = localStorage.getItem('afk_toggle_offline');
-        if (_afkOfflineOn === null || _afkOfflineOn === '1') return;   // null=未設過=afk-offline 預設開
-    } catch (e) {}
-
     const _offlineOriginalKillMob = window.killMob;
     if (typeof _offlineOriginalKillMob === 'function') {
         window.killMob = function (idx) {

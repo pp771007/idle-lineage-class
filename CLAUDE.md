@@ -3,7 +3,7 @@
 ## 專案性質與架構（2026-07-19 起・純上游鏡像＋外掛層）
 
 - 網頁放置遊戲。遊戲本體由原作者(巴哈姆特 秋玥)製作,原版:**https://shines871.github.io/idle-lineage-class/**;本站(加掛版):https://pp771007.github.io/idle-lineage-class/。
-- **架構=「上游原版鏡像＋外掛層」**:核心(`js/NN-*.js`、`css/*`、`index.html`、`assets/`、`public/`)永遠是上游原文/原檔的位元組級鏡像;我們的所有功能都在**外掛層**——根目錄 `afk-*.js`(32 支)＋`sw.js`(PWA,上游沒有)＋極少量**錨點式核心補丁**(`scripts/apply-core-patches.mjs`)。
+- **架構=「上游原版鏡像＋外掛層」**:核心(`js/NN-*.js`、`css/*`、`index.html`、`assets/`、`public/`)永遠是上游原文/原檔的位元組級鏡像;我們的所有功能都在**外掛層**——根目錄 `afk-*.js`(39 支)＋`sw.js`(PWA,上游沒有)＋極少量**錨點式核心補丁**(`scripts/apply-core-patches.mjs`)。
 - 歷史一句話:2026-07-06 曾與上游分家獨立維護(直接改核心);2026-07-19 起改回本架構(`rearch-plugins`),核心修改全數退回外掛/補丁,以便隨時整包跟進上游。舊的 3-way 逐功能移植 SOP 已作廢。
 - 上游本機 clone:`D:/otherPersonRepos/idle-lineage-class`。**引用上游做任何判斷前先 `git -C <clone> fetch`**——舊 clone 會讓「上游也是這樣」的結論整個相反(踩過)。
 - 同步狀態記在 `upstream-checkpoint.json`(`syncedUpstreamCommit`=目前鏡像的上游 commit)。
@@ -53,7 +53,7 @@
 
 CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHub schedule**;定時由 `cf-sync-trigger/` 的 Cloudflare Worker Cron Trigger 每天台灣 18:20 打 workflow_dispatch——GitHub 自家 schedule 常延遲 1~2 小時,故不用)做同一件事:ls-remote 比 checkpoint 早退 → 鏡像資產(`rsync --delete`)→ sync 腳本(AFK_SKIP_SMOKE=1)→ smoke → **全綠直推 main(Pages 自動部署)+ 發 Release(tag `vYYYYMMDD-HHMM`,標題帶原作者版本號)**;錨點失效/smoke 紅 → 各開 issue、不推壞版。commit 用路徑白名單 add(CI 臨時裝的 playwright/package.json 不進版控)。**因此 `assets/`、`public/` 下不可放我方獨有檔案**(會被 `--delete` 刪)——外掛需要圖優先引用上游既有檔(例:afk-training 背景用 `assets/area/1920x1080/新兵修練場.jpg`);真的要自有素材就放 assets 之外,或改 workflow 加 exclude。
 
-## 目前的外掛(32 支;載入順序見 `scripts/afk-plugin-block.html`)
+## 目前的外掛(39 支;載入順序見 `scripts/afk-plugin-block.html`)
 
 | 檔案 | 功能 |
 |---|---|
@@ -63,6 +63,9 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 | `afk-offline.js` | **離線掛機整套**(關遊戲才算離線;含快速結算引擎;monkey-patch saveGame/loadGame/changeMap/killMob/gainItem+補丁1) |
 | `afk-mobile.js` | 手機版面薄殼(底部導覽列切三欄、橫幅讓位、浮動日誌;版面用上游原版) |
 | `afk-backnav.js` | 手機返回鍵/手勢在子畫面回上層而不是關 PWA |
+| `afk-battlehud.js` | 手機戰鬥狀態列(取代上游只有 HP/MP 的 #mobile-vitals;自己量橫幅) |
+| `afk-mapbar.js` | 手機冒險地圖標題列壓成兩排(純 CSS,自己判手機) |
+| `afk-nozoom.js` | 手機取消雙擊放大(body touch-action:manipulation;捏合縮放保留) |
 | `afk-slotinfo.js` | 選角卡片疊「掛哪張圖/掛多久」(讀 afk-offline 的 afk_map_/afk_ts_,唯讀) |
 | `afk-loadslots.js` | 卡片式選角擴到 16 格(搭配補丁3) |
 | `afk-dex.js` | 掉落查詢(五張掉落表+特殊掉落 SPECIAL_BLOCKS;`?view=dex` 獨立頁) |
@@ -70,6 +73,7 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 | `afk-storage.js` | 首頁「⚙ 設定」選單(MENU_ITEMS 可擴充)+檢查存檔大小 |
 | `afk-history.js` | 離線掛機紀錄卡片(讀 afk_hist_<slot>,唯讀) |
 | `afk-diag.js` | 快取診斷(全程唯讀;欄位各自包錯;產物自帶版本號) |
+| `afk-reissueid.js` | 換發身分證(角色身分碼重發) |
 | `afk-powersave.js` | 省電模式(關戰鬥動畫/降更新頻率;涵蓋寵/召 ticker=補丁4) |
 | `afk-statpts.js` | 能力值來源分解(能力圖下方單一區塊) |
 | `afk-autobuy.js` | 自動買肉/魔法屏障卷軸補貨(預設開;離線結算共用 `__afkAutobuyCheck`) |
@@ -81,6 +85,9 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 | `afk-npclist.js` | 村莊 NPC 條列式(鏡射地圖 NPC 成列表) |
 | `afk-mobname.js` | 怪物名稱顯示模式三選一(純 CSS+body data 驅動) |
 | `afk-toast.js` | 手機 toast(包 logSys,點擊同步窗內訊息浮現) |
+| `afk-touchtip.js` | 手機長按看資料(技能/商店/製作/收集冊/背包) |
+| `afk-trackinfo.js` | 狀態欄顯示魔物追蹤剩餘時間(包 renderStatusEffects,補一格) |
+| `afk-relicguard.js` | 快速廢品的「全選」跳過遺物(包 quickJunkSelectAll/buildQuickHeader) |
 | `afk-traditional.js` | 傳統模式(偽)/自動衝裝(掉落自帶強化值;靠補丁2 的 `__afkTradRollEn` 鉤子) |
 | `afk-warehouse.js` | 倉庫增強(金幣全存/全取、遺物與席琳遺骸分類) |
 | `afk-dograce.js` | 賽狗場迷你遊戲(奇岩城鎮限定;自製) |

@@ -13,6 +13,8 @@
  *   - 時間切片 + 進度遮罩,長補跑不凍結頁面。
  *   - 💾 分段檢查點:結算每 ~CKPT_MS 就 saveGame 並把錨點推進到「已結算到的時間點」——
  *     結算中被關頁/重整/系統殺掉,下次載入只補剩下沒算的,整晚收益不再無聲蒸發。
+ *   - ⚡⚡ 批次結清:暖身確立組成/殺速/BOSS 安全後,長尾切 5 分鐘塊統計結清(掉落=補丁8 暴露的
+ *     上游 js/27 擲骰、經驗金幣=結算期間實測的每怪名均值)——結算耗時與離線時長脫鉤(24h 秒級)。
  *
  * 掛接點(核心直呼,不再 monkey-patch):
  *   - js/13 loadGame:開頭 offlinePreLoad() 擷取離線錨點 → 載入成功結尾 offlineAfterLoad(pre) 結算。
@@ -458,6 +460,7 @@
   var killTally = null;   // 📜 非 null 時(只在補跑中)累計各怪擊殺數 {怪名:次數};線上遊玩為 null → killMob 的計數判斷零開銷
   var gainTally = null;   // ⚡ 非 null 時(只在補跑中)累計各物品獲得數 {物品id:數量};供快速結算把「淨變化」還原成「真實消耗」(消耗=期初+獲得−期末)
   var _forceNoFast = false;   // 🧪 debug:forceCatchup(mins, true) 可強制全模擬(A/B 比對快速結算保真度用)
+  var _forceNoBatch = false;  // 🧪 debug:forceCatchup(mins, false, true) 停用批次結清、維持事件驅動(A/B 比對批次保真度用)
   // ⚡ 結算期間擋「核心逐殺觸發的 saveGame」(killMob 每殺一隻頭目就存檔一次,無 ff 守衛;
   //   大存檔的 JSON.stringify+壓縮是結算的大宗成本——頭目密集圖 24h 可達數百次)。
   //   檢查點與結算尾自己要存時暫時放行(見 doCheckpoint);錨點不動,被擋掉的段落中斷了也只是重算,不丟收益。
@@ -469,8 +472,13 @@
     gainTally = {};   // ⚡ 本次補跑的獲得計數歸零
     window.__afkKillTally = killTally;   // 核心 killMob/gainItem 在結算期間經這兩個計數(平時 null → 零開銷)
     window.__afkGainTally = gainTally;
+    // ⚡⚡ 批次結清的實測資料 {怪名:{n,expB,shareB,gold}}:killMob 包裝在結算期間逐殺量測——
+    //   expB=寵物經驗份額(=玩家經驗 ÷ 等級倍率,用核心自己的組隊/娃娃函式算)、shareB=傭兵份額、gold=實得金幣。
+    //   只記「真的死了」的擊殺(變身中間階不算),批次段發經驗/金幣全依這份實測,不手抄核心公式的倍率細節。
+    var killStats = {};
+    window.__afkKillStats = killStats;
     var prevFf0, prevInTick0;   // 先宣告在 try 外:例外時 finally 才有得還原
-    var _perfT0 = performance.now(), _realSimTicks = 0, _fastEvents = 0;   // ⏱ 診斷:結算耗時與組成(玩家回報「結算慢」時看這行就知道卡在哪段)
+    var _perfT0 = performance.now(), _realSimTicks = 0, _fastEvents = 0, _batchChunks = 0;   // ⏱ 診斷:結算耗時與組成(玩家回報「結算慢」時看這行就知道卡在哪段)
     // ⚡ 結算期間 gainItem 一律帶 deferUi=true(上游 v3.6.97 為批次發獎新增的第 6 參):
     //   跳過每次獲得的 autoSortInventory——它以 state.ticks 節流(每 100 拍),快速段一個事件就跳幾十拍
     //   → 幾乎每殺必觸發全背包排序,24h 累計近萬次。結算尾統一排一次(見落點後)。renderTabs 本就被 ff 擋,無差。
@@ -567,6 +575,7 @@
     var fastEligible = !isClimb && !isKing && (!isObl || (preObl && preObl.phase === 'island'))
       && totalTicks >= (FAST_SAMPLE_TICKS + FAST_MIN_REMAIN) && !_forceNoFast;
     _forceNoFast = false;   // 🧪 一次性:用過即歸零,不影響之後的真實離線結算
+    var noBatch = _forceNoBatch; _forceNoBatch = false;   // 🧪 一次性,同上(批次結清要整場停用,故收進區域變數)
     var fastMode = false, fastOff = false;   // fastOff = 本次補跑永久退出快速段
     var _dryHit = false;        // 消耗品斷貨旗標:fastAdvance 補不上貨時設起,主迴圈據此走「重取樣」而非永久退出
     var hpFloorFixed = false;   // 斷貨(戰局質變)後改用固定 70% 門檻——「撐過 20 分鐘=打得過」的信任基礎已失效,不再隨時間放寬
@@ -610,7 +619,9 @@
       try {
         if (!(svcPerEvent > 0)) return;
         if (hpFloorFixed) return;   // 斷貨後的「質變戰局」統計不寫快取:簽章不含消耗品庫存,隔天補貨後會拿沒藥的殺速亂算
-        player._offStats = { v: 1, sig: offStatsSig(), svcE: svcPerEvent, batch: batchPerEvent, consume: consumePerTick || {}, boss: bossStats, savedAt: Date.now() };
+        var _kOut = {};   // v2:連同「實測每怪名收益+組成」一起快取 → 下次同簽章直接進批次結清(免暖身)
+        for (var _kn in killStats) { var _kr = killStats[_kn]; if (_kr && _kr.n > 0) _kOut[_kn] = { n: _kr.n, expB: _kr.expB, shareB: _kr.shareB, gold: _kr.gold }; }
+        player._offStats = { v: 2, sig: offStatsSig(), svcE: svcPerEvent, batch: batchPerEvent, consume: consumePerTick || {}, boss: bossStats, kill: _kOut, kpt: liveKpt(), savedAt: Date.now() };
       } catch (e) {}
     }
     // ═══ 結算統計快取(宣告結束) ═══════════════════════════════════════════════
@@ -867,8 +878,129 @@
       //   否則出怪跟不上時每 1 隻也付整批的時間,殺速被人為拖慢(供給受限圖 -20% 的來源之一)。
       return fastAdvance(svcPerEvent * (_killed / batchPerEvent));
     }
+    // ═══ ⚡⚡ 批次結清(2026-07-21):長尾時段一次統計結清,結算耗時與離線時長脫鉤 ═══════
+    // 事件驅動仍是每殺跑一次 killMob 管線,24h 高吞吐圖=數萬次 → 結算數十秒。批次結清把
+    // 「組成/殺速/BOSS 安全都已確立」之後的時間切塊(每塊 5 分鐘虛擬),每塊:
+    //   時間/消耗品/buff/賣廢品 → 沿用 fastAdvance(斷貨走同一條重取樣階梯);
+    //   掉落 → 上游 js/27 的批次擲骰(補丁8 暴露的 __upOffline;二項分布=同一顆骰子換個擲法,
+    //     發獎走真 gainItem,詞綴/收集冊/卡片/廢品標記全是原作邏輯;掉落規則權威=上游,更新自動跟進);
+    //   經驗/金幣/寵傭經驗 → 本次結算實測的每怪名均值(killStats)×等級倍率換算,不手抄核心公式。
+    // 資格(缺一即維持事件驅動):組成樣本夠大、(暖身滿 1 小時虛擬 或 快取已種入組成)、
+    //   組成內每種 BOSS 都已真打驗證安全。升級/斷貨/例外 → 退回既有階梯(重取樣/全模擬)。
+    // 已知取捨(事件驅動才有、批次段沒有):試煉/精通等「一次性任務道具」的條件掉落、誘捕、
+    //   恩賜怪 ×10 加成、BOSS 5% 抽驗——暖身與線上時段照常涵蓋,長尾影響輕微。
+    var BATCH_CHUNK_TICKS = 3000;     // 一塊=5 分鐘虛擬時間(等級跨越/斷貨的誤差解析度)
+    var BATCH_WARMUP_TICKS = 36000;   // 無組成快取:先事件驅動跑滿 1 小時虛擬(累積組成+BOSS 首打;實際耗時僅數秒)
+    var BATCH_MIN_KILLS = 100;        // 實測至少這麼多殺,組成比例才可信
+    // ⚠ 批次殺數不可用 svcPerEvent 推(它只算「場上有怪」的純戰鬥拍,不含出怪等待——供給受限圖會超發)。
+    //   改用整體吞吐 kpt=實測總殺數 ÷ 非批次總拍數(真模擬+事件驅動,等待時間自然內含);快取命中無暖身時用快取的 kpt。
+    var _batchTicks = 0, _cachedKpt = 0, _seedKills = 0;
+    function runKills() {   // 本次結算「實際打出來」的擊殺數(扣掉快取種入的舊計數)
+      var s = 0; for (var k in killStats) s += killStats[k].n; return s - _seedKills;
+    }
+    function liveKpt() {
+      var lt = done - _batchTicks, rk = runKills();
+      if (rk >= BATCH_MIN_KILLS && lt > 0) return rk / lt;
+      return _cachedKpt || 0;
+    }
+    var _mobIdByName = null;
+    function mobByName(n) {
+      if (!_mobIdByName) {
+        _mobIdByName = Object.create(null);
+        try { for (var mid in DB.mobs) { var mb = DB.mobs[mid]; if (mb && mb.n && _mobIdByName[mb.n] == null) _mobIdByName[mb.n] = mid; } } catch (e) {}
+      }
+      var id = _mobIdByName[n];
+      return id != null ? DB.mobs[id] : null;
+    }
+    function batchReady() {
+      if (noBatch || !window.__upOffline || isClimb || isKing) return false;   // (遺忘之島「本島」與快速段同資格)
+      if (!(done >= BATCH_WARMUP_TICKS || batchSeeded)) return false;
+      if (!(liveKpt() > 0)) return false;   // 沒有可信的整體吞吐(暖身不足且無快取)→ 維持事件驅動
+      var tot = 0, kn;
+      for (kn in killStats) tot += killStats[kn].n;
+      if (tot < BATCH_MIN_KILLS) return false;
+      for (kn in killStats) {   // 組成內有 BOSS → 必須已真打驗證安全,否則整段維持事件驅動(不安全 BOSS 每次都真打=撞死即停的底線)
+        var mb = mobByName(kn);
+        if (mb && mb.boss) { var bs = bossStats[kn]; if (!bs || !bs.safe) return false; }
+      }
+      return true;
+    }
+    function buildBatchProfile() {   // 實測組成 → 上游 mobPlan 吃的 profile(席琳旗標照上游後備取樣的口徑:當前世界狀態,血盟不席琳化)
+      var mobs = [], sherine = false, mad = false;
+      try {
+        sherine = typeof sherineWorldActive === 'function' && sherineWorldActive()
+          && !(typeof isSiegeArea === 'function' && isSiegeArea(mapState.current));
+        mad = sherine && typeof sherineMadActive === 'function' && sherineMadActive();
+      } catch (e) {}
+      for (var kn in killStats) {
+        var mb = mobByName(kn);
+        if (!mb) continue;   // 查不到本體(白目玩家等動態怪)→ 不入批次組成(事件驅動時段已照實處理)
+        var p = window.__upOffline.mobProfile({
+          n: kn, count: killStats[kn].n, lv: mb.lv, race: mb.race, transformTo: mb.transformTo,
+          sherine: sherine && mb.race !== '血盟', sherineMad: mad, grace: false
+        });
+        if (p) mobs.push(p);
+      }
+      return { map: mapState.current, mobs: mobs };
+    }
+    function batchAllyExp(shareTotal) {   // 傭兵經驗:實測份額 × 各自等級倍率;升級曲線比照核心 killMob 的傭兵段
+      if (!(shareTotal > 0) || !player.allies || !player.allies.length) return;
+      player.allies.forEach(function (a) {
+        if (!a || a._downed) return;
+        var _am = 1; try { _am = getExpGainMult(a.lv || 1); } catch (e) {}
+        if (!isFinite(_am)) _am = 1;
+        var g = Math.floor(shareTotal * _am);
+        if (g <= 0) return;
+        a.exp = (a.exp || 0) + g;
+        a._expGained = (a._expGained || 0) + g;
+        var up = 0;
+        while ((a.lv || 1) < 100 && a.exp >= getExpReq(a.lv)) { a.exp -= getExpReq(a.lv); a.lv++; if (a.lv >= 50) a.bonus = (a.bonus || 0) + 1; up++; }
+        if ((a.lv || 1) >= 100) a.exp = 0;
+        if (up > 0) { try { if (typeof _allyLevelRecompute === 'function') _allyLevelRecompute(a); } catch (e) {} }
+      });
+    }
+    function batchChunk() {   // 一塊批次:先推進時間(消耗/buff/賣廢品),再按組成發實測收益+上游擲骰掉落;回 false=斷貨(_dryHit)或異常
+      try {
+        var chunkTicks = Math.min(BATCH_CHUNK_TICKS, totalTicks - done);
+        if (chunkTicks <= 0) return true;
+        var kpt = liveKpt();   // 先取吞吐再推進時間(fastAdvance 會動 done,liveKpt 分母不含批次拍,順序其實無差,取前面較直觀)
+        if (!fastAdvance(chunkTicks)) { _batchTicks += chunkTicks; return false; }   // 斷貨:時間已推進、本塊收益保守放棄(與事件驅動斷貨同口徑),交回主迴圈重取樣階梯
+        _batchTicks += chunkTicks;
+        var kills = Math.round(chunkTicks * kpt);
+        if (kills <= 0) return true;
+        var profile = buildBatchProfile();
+        if (!profile.mobs.length) return true;
+        var plan = window.__upOffline.mobPlan(profile, kills);
+        var loot = { items: Object.create(null), cards: Object.create(null), itemCount: 0, cardCount: 0 };
+        var multNow = 1; try { multNow = getExpGainMult(player.lv); } catch (e) {}
+        if (!isFinite(multNow)) multNow = 1;
+        var expSum = 0, goldSum = 0, petSum = 0, shareSum = 0;
+        for (var i = 0; i < plan.length; i++) {
+          var row = plan[i], st = killStats[row.mob.n];
+          if (st && st.n > 0) {
+            var petPer = st.expB / st.n;                            // 每殺寵物經驗份額(=玩家經驗 ÷ 等級倍率)
+            expSum += Math.floor(petPer * multNow) * row.kills;     // 玩家經驗=份額×當前等級倍率(對齊核心 killMob 的取整順序)
+            goldSum += Math.round(st.gold / st.n * row.kills);
+            petSum += Math.round(petPer * row.kills);
+            shareSum += (st.shareB / st.n) * row.kills;             // 傭兵份額(娃娃加成前),等級倍率在 batchAllyExp 各自套
+          }
+          window.__upOffline.rollMobLoot(row.mob, row.kills, mapState.current, loot);
+          killTally[row.mob.n] = (killTally[row.mob.n] || 0) + row.kills;   // 📜 歷史/摘要照記
+        }
+        if (expSum > 0 && (player.lv || 1) < 100) { player.exp += expSum; try { checkLvUp(); } catch (e) {} }
+        if (goldSum > 0) player.gold += goldSum;
+        if (petSum > 0 && typeof petsGainExp === 'function') { try { petsGainExp(petSum); } catch (e) {} }
+        batchAllyExp(shareSum);
+        if (mapState.current === 'demon_temple') player.flameAffinity = (player.flameAffinity || 0) + kills;   // 炎魔友好度(核心 killMob 逐殺 +1)
+        if (typeof pvpChangeAlignment === 'function') { try { pvpChangeAlignment(kills); } catch (e) {} }      // 善惡值(比照上游 js/27 結算的口徑)
+        return true;
+      } catch (e) { console.warn('[AFK] 批次結清步驟出錯:', e); return false; }
+    }
+    // ═══ 批次結清(宣告結束;主迴圈 fastMode 分支優先嘗試) ═══════════════════════
     // 💾 統計快取命中 → 直接進快速段(跳過取樣與 BOSS 首打);未命中 → 照常從取樣開始
-    if (fastEligible && player._offStats && player._offStats.v === 1 && player._offStats.svcE > 0
+    //   v2 快取另帶「實測每怪名收益+組成」→ 種回 killStats,批次結清免暖身直接開跑(舊 v1 快取視同未命中,重取樣一次)
+    var batchSeeded = false;
+    if (fastEligible && player._offStats && player._offStats.v === 2 && player._offStats.svcE > 0
         && player._offStats.sig === offStatsSig()
         && (Date.now() - (player._offStats.savedAt || 0)) < OFFSTATS_MAX_AGE_MS) {
       svcPerEvent = player._offStats.svcE;
@@ -876,8 +1008,12 @@
       consumePerTick = {}; for (var _ck in player._offStats.consume) consumePerTick[_ck] = player._offStats.consume[_ck];
       consumeAcc = {};
       bossStats = player._offStats.boss || {};
+      var _ckill = player._offStats.kill || {};
+      for (var _ckn in _ckill) { var _ckr = _ckill[_ckn]; if (_ckr && _ckr.n > 0) { killStats[_ckn] = { n: _ckr.n, expB: _ckr.expB || 0, shareB: _ckr.shareB || 0, gold: _ckr.gold || 0 }; _seedKills += _ckr.n; } }
+      _cachedKpt = player._offStats.kpt > 0 ? player._offStats.kpt : 0;
+      batchSeeded = Object.keys(killStats).length > 0 && _cachedKpt > 0;
       fastMode = true;
-      console.info('[AFK] 💾 統計快取命中:跳過取樣與 BOSS 首打,直接快速結算(每事件 ' + svcPerEvent.toFixed(1) + ' 拍×' + batchPerEvent.toFixed(2) + ' 隻,BOSS 快取 ' + Object.keys(bossStats).length + ' 種)。');
+      console.info('[AFK] 💾 統計快取命中:跳過取樣與 BOSS 首打,直接快速結算(每事件 ' + svcPerEvent.toFixed(1) + ' 拍×' + batchPerEvent.toFixed(2) + ' 隻,BOSS 快取 ' + Object.keys(bossStats).length + ' 種' + (batchSeeded ? ',組成快取 ' + Object.keys(killStats).length + ' 種怪 → 批次結清免暖身' : '') + ')。');
     }
     if (fastEligible && !fastMode) beginSample(0);
     // ═══ 混合快速結算(宣告結束;主迴圈內 fastMode 分支使用) ═════════════════════
@@ -985,6 +1121,30 @@
               }
               continue;
             }
+            // ⚡⚡ 批次結清:資格齊備(組成/殺速/BOSS 安全)→ 一塊吃掉 5 分鐘虛擬時間,掉落走上游擲骰。
+            //   一塊一塊做:進度條/檢查點/長按放棄在塊間照常運作。斷貨/升級/異常退回既有階梯。
+            if (batchReady()) {
+              _batchChunks++;
+              if (!batchChunk()) {
+                if (_dryHit) {
+                  _dryHit = false;
+                  fastMode = false; sampleGrew = false; hpFloorFixed = true;
+                  sampleEnd = done + FAST_SAMPLE_TICKS;
+                  beginSample(done);
+                  console.info('[AFK] ⚡⚡ 批次結清遇消耗品斷貨(戰局質變):退出重新取樣(固定 70% 血量門檻)。');
+                  continue;
+                }
+                fastMode = false; fastOff = true;
+                console.info('[AFK] ⚡⚡ 批次結清步驟異常,剩餘時間退回全模擬。');
+                continue;
+              }
+              if (player.lv !== lastLv) {   // 升級 → 戰力變了 → 與事件驅動同口徑:重新取樣殺速
+                lastLv = player.lv;
+                fastMode = false; sampleGrew = false; sampleEnd = done + FAST_RESAMPLE_TICKS;
+                beginSample(done);
+              }
+              continue;
+            }
             // ⚡ 快速段:一次一個事件(出怪排程推進/一批真實獎勵管線)。
             //   失敗分兩種:消耗品斷貨(_dryHit)=戰局質變 → 重新取樣(固定 70% 門檻)評估「沒藥的新戰局」,
             //   撐得穩就回快速;其他(出怪異常等)→ 安全網,永久退回全模擬。
@@ -1057,6 +1217,19 @@
       settleDeadMobs();
     }
 
+    // 結算尾統一賣一次廢品:autoSellJunk 的寬限期(junkSince,預設 10 秒)是「牆鐘」——結算把數小時壓縮在
+    //   幾秒牆鐘內,整場擲出的廢品都「還沒熟」,一件都賣不掉、金幣進不了摘要(上線 10 秒後才補賣,看起來像少算)。
+    //   這些廢品在「模擬時間」裡早已放超過寬限期 → 把 junkSince 回撥一個寬限期再賣,等同線上該發生的事。
+    try {
+      if (typeof autoSellJunk === 'function' && (!player || player.autoSellOn !== false)) {
+        var _jdMs = (((typeof getAutoSellRules === 'function' ? getAutoSellRules().delaySec : 10) || 10) * 1000);
+        var _jNow = Date.now();
+        (player.inv || []).forEach(function (i) { if (i && i.junk) i.junkSince = (i.junkSince || _jNow) - _jdMs; });
+        autoSellJunk();
+      }
+    } catch (e) {}
+    if (fastMode || _batchChunks > 0) saveOffStats();   // 💾 全程實測組成/收益寫進統計快取:下次同簽章直接批次結清(撞死時下方會整份清除)
+
     var after = snapshot();
     var oblEndMap = isObl ? (mapState && mapState.current) : null;   // 落點前先記下旅程實際結束地圖(死亡會被改成村莊,先存起來給摘要用)
     // 攀登:封最後一段(還停在某層 → 用該層;已結束則 segFloor 已是 0,改記在最後到過的真實樓層)
@@ -1126,8 +1299,8 @@
     // ⏱ 耗時診斷(只在有感結算時印):玩家回報「結算慢」時,這行直接指出時間花在真模擬還是快速段
     if (done > 0 && (performance.now() - _perfT0) > 1000) {
       var _perfSec = ((performance.now() - _perfT0) / 1000).toFixed(1);
-      try { logSys('<span class="text-slate-400">⏱ 結算耗時 ' + _perfSec + ' 秒（真模擬 ' + fmt(_realSimTicks) + ' 拍、快速事件 ' + fmt(_fastEvents) + ' 次）</span>'); } catch (e) {}
-      console.info('[AFK] ⏱ 結算耗時 ' + _perfSec + 's（真模擬 ' + _realSimTicks + ' 拍、快速事件 ' + _fastEvents + ' 次）');
+      try { logSys('<span class="text-slate-400">⏱ 結算耗時 ' + _perfSec + ' 秒（真模擬 ' + fmt(_realSimTicks) + ' 拍、快速事件 ' + fmt(_fastEvents) + ' 次、批次 ' + fmt(_batchChunks) + ' 塊）</span>'); } catch (e) {}
+      console.info('[AFK] ⏱ 結算耗時 ' + _perfSec + 's（真模擬 ' + _realSimTicks + ' 拍、快速事件 ' + _fastEvents + ' 次、批次 ' + _batchChunks + ' 塊）');
     }
     if (_runErr) {   // 結算中途拋例外 → 把死因印出來(見上方 catch);沒這行的話玩家只看得到「離線掛機 0 分鐘」,完全不知道發生什麼事
       var _eEsc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
@@ -1167,7 +1340,7 @@
       _saveSquelch = false;                                // 保險:例外路徑也不可讓 saveGame 擋板卡住(否則之後線上全部存不了檔)
       if (_giDefer) { window.gainItem = _giDefer; _giDefer = null; }   // 保險:例外路徑也要還原 gainItem(正常路徑已還原 → 此處不動作)
       killTally = null; gainTally = null;                  // 回到「線上不計數」狀態
-      window.__afkKillTally = null; window.__afkGainTally = null;
+      window.__afkKillTally = null; window.__afkGainTally = null; window.__afkKillStats = null;
       if (prevFf0 !== undefined && state.ff !== prevFf0) { state.ff = prevFf0; state.inTick = prevInTick0; }   // 例外時的保險還原(正常路徑已還原 → 此處不動作)
       try { if (typeof startGameTimers === 'function') startGameTimers(); } catch (e3) {}   // 內含去重,正常路徑已重啟 → 無事
       removeOverlay();
@@ -1297,7 +1470,7 @@
     mapName: mapName,   // 對外:地圖 id→中文名(供 afk-mobile 在匯入頁顯示「掛在哪張地圖」)
     histKey: histKey,   // 對外:目前角色的離線紀錄 key(供 afk-history)
     setCkptMs: function (ms) { CKPT_MS = Math.max(200, +ms || 5000); },   // 🧪 測試用:縮短檢查點間隔(驗「結算中斷只丟尾段」)
-    forceCatchup: function (mins, noFast) { _forceNoFast = !!noFast; runCatchup(Math.floor((mins || 60) * 60000 / TICK_MS), true, (typeof mapState !== 'undefined' && mapState && mapState.current) || ''); }   // 帶當前地圖,否則 gotoMap(undefined) 空轉零收益;noFast=true 強制全模擬(A/B 用)
+    forceCatchup: function (mins, noFast, noBatch) { _forceNoFast = !!noFast; _forceNoBatch = !!noBatch; runCatchup(Math.floor((mins || 60) * 60000 / TICK_MS), true, (typeof mapState !== 'undefined' && mapState && mapState.current) || ''); }   // 帶當前地圖,否則 gotoMap(undefined) 空轉零收益;noFast=true 強制全模擬、noBatch=true 停用批次結清(A/B 用)
   };
 
   // ═══ 外掛化掛點:自己 monkey-patch 上游原版核心(取代舊「核心直呼」;上游沒這些鉤子) ═══
@@ -1327,8 +1500,26 @@
     if (typeof killMob === 'function') {
       var _km = killMob;
       window.killMob = function (idx) {
-        if (window.__afkKillTally) { try { var m = mapState.mobs[idx]; if (m && !m._dead && m.n) window.__afkKillTally[m.n] = (window.__afkKillTally[m.n] || 0) + 1; } catch (e) {} }
-        return _km.apply(this, arguments);
+        var _ks = window.__afkKillStats, _m0 = null, _pet0 = 0, _shr0 = 0, _g0 = 0;
+        if (window.__afkKillTally || _ks) { try { var m = mapState.mobs[idx]; if (m && !m._dead && m.n) { _m0 = m; if (window.__afkKillTally) window.__afkKillTally[m.n] = (window.__afkKillTally[m.n] || 0) + 1; } } catch (e) {} }
+        // ⚡⚡ 批次結清用的逐殺量測(平時 __afkKillStats 為 null → 零開銷):經驗份額用核心自己的
+        //   組隊/娃娃函式即時計(與 killMob 同式,吃席琳化實例的 exp),金幣量前後差(含 70% 機率/浮動/娃娃)。
+        if (_ks && _m0) {
+          try {
+            _shr0 = (_m0.exp || 0) * (1 + ((typeof partyExpBonusPct === 'function' ? partyExpBonusPct() : 0) || 0) / 100)
+              / Math.max(1, (typeof partyExpShareCount === 'function' ? partyExpShareCount() : 1) || 1);
+            _pet0 = Math.floor(_shr0 * (1 + ((typeof dollFieldVal === 'function' ? dollFieldVal('expBonus') : 0) || 0) / 100));
+            _g0 = player.gold || 0;
+          } catch (e) { _m0 = null; }
+        }
+        var r = _km.apply(this, arguments);
+        if (_ks && _m0 && _m0._dead) {   // 只記「真的死了」(變身中間階早退不算,收益為零會稀釋均值)
+          try {
+            var rec = _ks[_m0.n] || (_ks[_m0.n] = { n: 0, expB: 0, shareB: 0, gold: 0 });
+            rec.n++; rec.expB += _pet0; rec.shareB += _shr0; rec.gold += Math.max(0, (player.gold || 0) - _g0);
+          } catch (e) {}
+        }
+        return r;
       };
     }
     if (typeof gainItem === 'function') {

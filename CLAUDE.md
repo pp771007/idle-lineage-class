@@ -109,6 +109,9 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 - 掛點:外掛自己 monkey-patch `loadGame`(開頭擷取錨點/結尾結算)、`saveGame`/`changeMap`(結尾 stamp)、`killMob`/`gainItem`(結算期間計數);出怪走核心補丁抽出的 `maybeSpawnMobs()`(與線上同一份排程)。
 - 💾 分段檢查點:結算每 ~5 秒 saveGame+錨點推進到「已結算時點」;**任何新程式碼想在結算(`catchingUp`)期間蓋 afk_ts 都是 bug**。
 - ⚡ 快速結算:取樣→事件驅動逐殺(批次擊殺保 AOE、BOSS 懶驗證+抽驗、維持自動續 buff);危險/特殊圖退回全模擬。**快速段不跑 tick()/autoActions**——「只寫在 autoActions 的自動行為」要各自補,補法=**直接呼叫原作那支函式**(如瞬移 `useItem(uid,true)`),不要自己刻守衛清單(必漏、必分歧)。
+- ⚡⚡ 批次結清(2026-07-21,疊在快速段之上):暖身(取樣+事件驅動滿 1h 虛擬,或統計快取 v2 命中)確立組成/BOSS 安全後,長尾切 5 分鐘塊統計結清——**掉落走補丁 8 暴露的上游 `window.__upOffline` 擲骰**(規則權威=js/27,上游更新自動跟進,不手抄),**經驗/金幣用結算期間 killMob 包裝實測的每怪名均值**(`__afkKillStats`)。批次殺數用整體吞吐 kpt(總殺÷非批次拍)——**不可用 svcPerEvent 推**(它不含出怪等待,供給受限圖會超發)。斷貨/升級/異常退回既有階梯。已知取捨(暖身與線上照常涵蓋):批次段無試煉一次性掉落/誘捕/恩賜怪 ×10/BOSS 5% 抽驗。實測 24h:48s→3s(冷)/0.4s(快取);A/B(8h×5)經驗 ±1%、金幣 ±5%。
+- **廢品寬限期(junkSince)是牆鐘**:結算把數小時壓縮在幾秒內,整場廢品都「沒熟」賣不掉、金幣進不了摘要 → 結算尾把 junkSince 回撥一個寬限期再賣(模擬時間早已超過,等同線上該發生的事)。
+- 結算期間 saveGame 有擋板(`_saveSquelch`):killMob 頭目擊殺後的存檔無 ff 守衛,大存檔逐次序列化是結算大宗成本;檢查點/結算尾經 doCheckpoint 放行。gainItem 一律帶 deferUi(跳過每殺的背包排序),結算尾統一排一次。
 - 排名/計時挑戰類(時空裂痕、排名攀登)**離線一律不續、不結算**(續=刷榜 exploit);攀登/遺忘之島這類非選單圖用外掛自存旅程狀態+原作進場函式還原,不可走 gotoMap 選單路徑。
 - **判準:遊戲邏輯的時間判斷用 `state.ticks`,不用 `Date.now()`**(補跑壓縮時間,牆鐘幾乎凍結)。例外=「關遊戲也該倒數」的(攻城冷卻)留牆鐘。
 - **ff 洩漏判準**:補跑(`state.ff`)期間,戰鬥路徑**直接**呼叫的 `render*`/重副作用(`saveGame`)要被 `!state.ff` 擋住或函式內早退;**自己跑的 timer(setInterval/rAF)也要問「補跑期間它還在跑嗎」**。守衛用 `state.ff && !state.ffSmall`(小補跑要放行)。上游是原文改不得→這類守衛由 afk-offline 以 wrapper 實作(如 sprite ticker、音效靜音)。

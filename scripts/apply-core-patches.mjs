@@ -190,7 +190,39 @@ function patchSellNowNoForce() {
   console.log(`[patch] 立即賣出不強制套規則（${FILE}）`);
 }
 
-const PATCHES = [patchMaybeSpawnMobs, patchTradEnHook, patch16Slots, patchPetAnimTicker, patchBossHuntEscape, patchUseItemKeepModal, patchSellNowNoForce];
+// ── 補丁 8：js/27 上游離線收益讓位給 afk-offline ─────────────────
+//   上游 v3.6.97 起自帶離線收益,「離線」定義與 afk-offline 相同(真正關頁),且同樣包 loadGame/
+//   saveGame/killMob/changeMap → 一次離線回來兩套都會結算。目前沒重複入帳只是巧合(afk-offline
+//   結算期間的檢查點 saveGame 順手把上游 awaySince 推到現在),上游一改存檔時機就會變雙倍收益。
+//   故在 IIFE 開頭直接讓位:afk-offline 開著就整支不安裝;玩家關掉該外掛時上游這套自動接手。
+//   ⚠️ 只能讀 localStorage 判斷,不能問 AFK_TOGGLES——外掛區塊在 </body> 前,這支 IIFE 早就跑完了。
+//   js/03 呼叫 window.offlineCatchupSaveCommitted 前有 typeof 檢查,不安裝不會炸。
+function patchUpstreamOfflineYield() {
+  const FILE = 'js/27-offline-rewards.js';
+  let s = readFileSync(FILE, 'utf8');
+  if (s.includes('afk_toggle_offline')) { already++; return; }
+  // 錨點吃 CRLF/LF 兩種行尾（上游工作樹是 CRLF）
+  const ANCHOR = /\(function \(\) \{(\r?\n)[ \t]*'use strict';\r?\n/;
+  const m = ANCHOR.exec(s);
+  if (!m) throw new Error(`[${FILE}] 找不到 IIFE 開頭錨點——上游可能改寫了離線收益模組外殼,請人工檢查(此補丁防「上游離線收益與 afk-offline 重複結算」)。`);
+  const NL = m[1];
+  const guard = [
+    '',
+    '    // 🔌 加掛版補丁:離線收益由外掛 afk-offline 接手(真實戰鬥模擬、撞死即停、有離線紀錄)。',
+    '    //    玩家在外掛開關關掉「離線快速結算」→ 這裡放行,改由上游這套結算。',
+    '    try {',
+    "        var _afkOfflineOn = localStorage.getItem('afk_toggle_offline');",
+    "        if (_afkOfflineOn === null || _afkOfflineOn === '1') return;   // null=未設過=afk-offline 預設開",
+    '    } catch (e) {}',
+    ''
+  ].join(NL);
+  s = s.slice(0, m.index + m[0].length) + guard + s.slice(m.index + m[0].length);
+  if (!CHECK) writeFileSync(FILE, s);
+  changed++;
+  console.log(`[patch] 上游離線收益讓位給 afk-offline（${FILE}）`);
+}
+
+const PATCHES = [patchMaybeSpawnMobs, patchTradEnHook, patch16Slots, patchPetAnimTicker, patchBossHuntEscape, patchUseItemKeepModal, patchSellNowNoForce, patchUpstreamOfflineYield];
 
 try {
   for (const p of PATCHES) p();

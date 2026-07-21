@@ -2265,6 +2265,14 @@ function _mercAutoOn(ally, sid) {
     return !!(ally && ally.config && ally.config.autoBuffSkills && ally.config.autoBuffSkills[sid]);   // 否則沿用來源角色存檔的自動施放勾選快照
 }
 // 🔮 v2.7.96 幻術士傭兵立方屬性抗性 rider（補 parity）：玩家立方 buff 給 d:{resFire/resEarth/resWind:+30}(recompute 讀 player.buffs)；傭兵立方走 allyCubeTick 不寫 ally.buffs→抗性原本拿不到。改在重算後(buildAlly/_allyLevelRecompute)直接補「已學會＋來源有勾自動施放」的立方抗性到 ally.d（與 allyCubeTick 傷害的勾選閘一致；受屬性攻擊時 js/04:891-894/1007-1010 讀 ally.d.res*）。
+// Helmet-granted and learned versions are the same buff. Prefer the helmet version when both are enabled.
+const _MERC_HELM_BUFF_PRIORITY = { sk_ench_wpn: 'sk_helm_str1', sk_dex_up: 'sk_helm_dex1', sk_reveal: 'sk_helm_str2' };
+function _mercPreferredHelmBuffCovers(ally, sid) {
+    let preferred = _MERC_HELM_BUFF_PRIORITY[sid];
+    if (!preferred || !ally) return false;
+    if (ally.buffs && (ally.buffs[preferred] || 0) > 0) return true;
+    return !!(ally.skills && ally.skills.includes(preferred) && _mercAutoOn(ally, preferred));
+}
 function _applyMercCubeRes(ally) {
     if (!ally || ally.cls !== 'illusion' || !ally.d || !ally.skills) return;
     ['sk_illu_cube_burn', 'sk_illu_cube_quake', 'sk_illu_cube_shock'].forEach(function(sid) {
@@ -2357,6 +2365,7 @@ function allyMaintainBuffs(ally) {
             //    存於 config.autoBuffSkills（buildAlly 深拷貝已帶入傭兵快照）。傭兵原本無條件維持「所有已學 buff」→會維持玩家根本沒開的 buff 白扣 MP（王族/龍騎士尤其明顯：MP 只出不進）。
             //    改為：只維持「來源角色有勾選自動施放」的 buff（沒有 config 或未勾＝不維持·與該角色親自遊玩時完全一致）。⚠️summon/HoT 走各自區塊·此閘只管 _isMercSelfBuff 自我增益。
             if (!_mercAutoOn(ally, sid)) continue;
+            if (_mercPreferredHelmBuffCovers(ally, sid)) continue;   // Equivalent helmet buff is active/enabled; do not spend MP on the learned duplicate.
             if (typeof TEAM_AURA_SKILLS !== 'undefined' && TEAM_AURA_SKILLS.includes(sid) && _teamAuraHas(sid, ally)) continue;   // 🌟 v3.0.99 團隊光環：隊上其他隊員已維持中→不重複施放（全隊只需一個來源·免白耗MP）
             // 🩹 v3.0.107 移除「以主要玩家 buff 為判斷依據」閘（原 v2.6.50）：_isMercSelfBuff 全是「自我增益」——靈魂昇華(自身 mHP/mMP×1.2)、力量/敏捷/防禦/武器附魔/加速…都只加持「施法者本人」，主玩家身上有不代表傭兵有。原閘害「主角(法師)也放同一 buff 時，傭兵法師永遠不自我增益」（用戶回報：傭兵法師點亮靈魂昇華卻不施放）。MP 浪費已由 opt-in 開關(_mercAutoOn)把關；團隊光環(TEAM_AURA)另由上方 _teamAuraHas 閘控制·不受此改動影響。
             if ((ally.buffs[sid] || 0) > 0) continue;   // 已生效（含 noRefresh 語意）；保留「自身」守衛避免同一秒重複施放/MP 空轉

@@ -226,11 +226,25 @@ function gameLoop() {
     //    快照背包數量、以淨增量累積到 _ffAcc.items，還清時以「掛機期間獲得：」格式統一輸出一次。
     let _invBefore = {};
     try { player.inv.forEach(i => { _invBefore[i.id] = (_invBefore[i.id] || 0) + i.cnt; }); } catch (e) {}
+    // 🔬 抽樣快轉（用戶拍板）：積欠超過 FF_SAMPLE_MIN_TICKS（10 分鐘）時改抽樣模擬——每執行 1 個真 tick
+    //    抵 FF_SAMPLE_N 個 tick 的債，本批所得（經驗/金幣/道具/傭兵/寵物經驗）以前後差 ×(N-1) 補足倍率；
+    //    債降回門檻內自動恢復逐 tick 全模擬（收尾 10 分鐘精確·場面狀態銜接正常）。
+    //    近似範圍：藥水消耗/buff 時序/任務計數/卡片/收集冊維持 1×不放大；掉落總量期望值與全模擬一致、僅顆粒變粗。
+    let _sampleN = owed > FF_SAMPLE_MIN_TICKS ? FF_SAMPLE_N : 1;
+    let _smpExp0 = 0, _smpGold0 = 0, _smpAlly0 = null, _smpPet0 = 0;
+    if (_sampleN > 1) {
+        _smpExp0 = _ffExpProgress();
+        _smpGold0 = Math.max(0, Number(player.gold) || 0);
+        _smpAlly0 = Array.isArray(player.allies) ? player.allies.map(a => a ? _ffAllyProgress(a) : 0) : [];
+        _smpPet0 = _ffPetProgressSum();
+    }
     state.ff = true;
     state.ffSmall = owed <= 20;
     let ran = 0, budget0 = now;
+    // 🔬 抽樣批只還「超出門檻的部分」（留 FF_SAMPLE_MIN_TICKS 給之後的全模擬批）——否則單批就可能把債抵到 0，跳過精確收尾
+    let _burstMax = _sampleN > 1 ? Math.max(0, owed - FF_SAMPLE_MIN_TICKS) : owed;
     try {
-        while (ran < owed && ran < FF_HARD_CAP) {
+        while (ran * _sampleN < _burstMax && ran < FF_HARD_CAP) {
             let tickError = null;
             state.inTick = true;
             try {
@@ -254,9 +268,11 @@ function gameLoop() {
                 if (t - budget0 >= FF_BUDGET_MS) break;
             }
         }
+        // 🔬 抽樣批所得補倍：state.ff 仍為 true（gainItem/logSys 靜音）；tick 中途出錯也照補已跑掉的部分
+        if (_sampleN > 1 && ran > 0) _ffApplySampleExtras(_sampleN, _smpExp0, _smpGold0, _smpAlly0, _smpPet0, _invBefore);
     } finally {
-        _tickDebt = Math.max(0, _tickDebt - ran * TICK_MS);
-        _ffAcc.ticks += ran;
+        _tickDebt = Math.max(0, _tickDebt - ran * TICK_MS * _sampleN);   // 🔬 每個真 tick 抵 _sampleN 個 tick 的債
+        _ffAcc.ticks += ran * _sampleN;   // 摘要顯示的是「補上的真實時長」＝償還的債
         if (_ffErrorStreak >= FF_ERROR_STREAK_MAX) {
             _tickDebt = 0;
             _ffAcc.aborted = true;
@@ -324,6 +340,84 @@ const FF_MAX_ELAPSED_MS = 300000;
 const FF_ERROR_STREAK_MAX = 3;
 let _ffAcc = null;   // 補跑摘要累計（跨多次 gameLoop 呼叫·還清時歸零）
 let _ffErrorStreak = 0;
+
+// 🔬 抽樣快轉參數：積欠超過 10 分鐘（6000 tick）改抽樣（1 真 tick 抵 10 tick）；門檻內維持逐 tick 全模擬
+const FF_SAMPLE_MIN_TICKS = 6000;
+const FF_SAMPLE_N = 10;
+// 經驗「總累積進度」（exp＋已升等級需求總和）：跨升級仍單調，前後差＝實得經驗（升級瞬間也算得對）
+function _ffExpProgress() {
+    let lv = Math.max(1, Math.min(100, Math.floor(Number(player.lv) || 1)));
+    let total = Math.max(0, Number(player.exp) || 0);
+    if (typeof getExpReq !== 'function') return total;
+    for (let n = 1; n < lv; n++) { let r = Number(getExpReq(n)); if (Number.isFinite(r) && r > 0) total += r; }
+    return total;
+}
+function _ffAllyProgress(a) {
+    let lv = Math.max(1, Math.min(100, Math.floor(Number(a.lv) || 1)));
+    let total = Math.max(0, Number(a.exp) || 0);
+    if (typeof getExpReq !== 'function') return total;
+    for (let n = 1; n < lv; n++) { let r = Number(getExpReq(n)); if (Number.isFinite(r) && r > 0) total += r; }
+    return total;
+}
+function _ffPetProgressSum() {
+    if (typeof petsOutList !== 'function' || typeof petExpReq !== 'function') return 0;
+    let sum = 0;
+    try {
+        petsOutList().forEach(p => {
+            let t = Math.max(0, Number(p.exp) || 0);
+            for (let n = 1; n < (p.lv || 1); n++) { let r = Number(petExpReq(n)); if (Number.isFinite(r) && r > 0) t += r; }
+            sum += t;
+        });
+    } catch (e) {}
+    return sum;
+}
+// 🔬 把抽樣批的所得補足到 N 倍（前後差 ×(N-1) 追加）：道具走 gainItem（沿用併疊/鎖定/祝福規則·此時 state.ff=true 訊息靜音）、
+//    傭兵升級規則鏡像 js/27 _offlineApplyAllyExp、寵物交給 petsGainExp（自帶均分/等級上限/升級）。消耗（負增量）刻意維持 1×。
+function _ffApplySampleExtras(mult, exp0, gold0, ally0, pet0, invBefore) {
+    let k = mult - 1;
+    try {   // 玩家經驗
+        let d = _ffExpProgress() - exp0;
+        if (d > 0 && (player.lv || 1) < 100) {
+            player.exp = Math.max(0, Number(player.exp) || 0) + Math.floor(d * k);
+            if (typeof checkLvUp === 'function') checkLvUp();
+        }
+    } catch (e) {}
+    try {   // 金幣
+        let d = Math.max(0, Number(player.gold) || 0) - gold0;
+        if (d > 0) player.gold = Math.min(Number.MAX_SAFE_INTEGER, (Number(player.gold) || 0) + Math.floor(d * k));
+    } catch (e) {}
+    try {   // 隊上傭兵：各自增量 ×k
+        if (Array.isArray(player.allies) && Array.isArray(ally0)) player.allies.forEach((a, i) => {
+            if (!a || a._downed || (a.lv || 1) >= 100) return;
+            let d = _ffAllyProgress(a) - (ally0[i] || 0);
+            if (d <= 0) return;
+            let extra = Math.floor(d * k);
+            a.exp = Math.max(0, Number(a.exp) || 0) + extra;
+            a._expGained = Math.max(0, Number(a._expGained) || 0) + extra;
+            let levels = 0;
+            while ((a.lv || 1) < 100 && a.exp >= getExpReq(a.lv)) {
+                a.exp -= getExpReq(a.lv);
+                a.lv++;
+                if (a.lv >= 50) a.bonus = (a.bonus || 0) + 1;
+                levels++;
+            }
+            if ((a.lv || 1) >= 100) a.exp = 0;
+            if (levels > 0 && typeof _allyLevelRecompute === 'function') { try { _allyLevelRecompute(a); } catch (e) {} }
+        });
+    } catch (e) {}
+    try {   // 出戰寵物：總增量 ×k 交給 petsGainExp（其均分 ≈ 各寵原增量 ×k）
+        let d = _ffPetProgressSum() - pet0;
+        if (d > 0 && typeof petsGainExp === 'function') petsGainExp(Math.floor(d * k));
+    } catch (e) {}
+    try {   // 道具：淨正增量 ×k 走 gainItem
+        let after = {};
+        player.inv.forEach(i => { after[i.id] = (after[i.id] || 0) + i.cnt; });
+        new Set([...Object.keys(invBefore), ...Object.keys(after)]).forEach(id => {
+            let d = (after[id] || 0) - (invBefore[id] || 0);
+            if (d > 0 && DB.items[id] && typeof gainItem === 'function') { try { gainItem(id, d * k); } catch (e) {} }
+        });
+    } catch (e) {}
+}
 
 // 🛡️ 絕對屏障：與世界隔絕——無法攻擊/施法/用道具、不自然恢復、不受任何傷害（持續期間 player.buffs.sk_abs_barrier>0）
 function inAbsBarrier() { return !!(player.buffs && player.buffs.sk_abs_barrier > 0); }

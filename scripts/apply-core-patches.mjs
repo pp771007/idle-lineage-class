@@ -190,25 +190,33 @@ function patchSellNowNoForce() {
   console.log(`[patch] 立即賣出不強制套規則（${FILE}）`);
 }
 
-// ── 補丁 8：js/27 上游離線收益讓位給 afk-offline ─────────────────
+// ── 補丁 8：js/27 上游離線收益讓位給 afk-offline(v2:讓位前先暴露批次擲骰函式) ─────────────────
 //   上游 v3.6.97 起自帶離線收益,「離線」定義與 afk-offline 相同(真正關頁),且同樣包 loadGame/
 //   saveGame/killMob/changeMap → 一次離線回來兩套都會結算。目前沒重複入帳只是巧合(afk-offline
 //   結算期間的檢查點 saveGame 順手把上游 awaySince 推到現在),上游一改存檔時機就會變雙倍收益。
-//   故在 IIFE 開頭直接讓位:afk-offline 開著就整支不安裝;玩家關掉該外掛時上游這套自動接手。
+//   v2(2026-07-21):guard 從 IIFE 頂端移到「鉤子安裝」前——錨點前只有常數/函式宣告與一個無害的
+//   window.offlineCatchupSaveCommitted 指派(其依賴的 pending key 只會被被跳過的結算流程設定),
+//   讓位前先把批次擲骰「純函式」掛上 window.__upOffline 供 afk-offline 的批次結清重用:
+//   離線掉落規則的單一權威=上游本檔,上游更新掉落時同步自動跟進,不必外掛手抄一份。
 //   ⚠️ 只能讀 localStorage 判斷,不能問 AFK_TOGGLES——外掛區塊在 </body> 前,這支 IIFE 早就跑完了。
-//   js/03 呼叫 window.offlineCatchupSaveCommitted 前有 typeof 檢查,不安裝不會炸。
+//   js/03 呼叫 window.offlineCatchupSaveCommitted 前有 typeof 檢查;afk-offline 用 __upOffline 前也有檢查。
 function patchUpstreamOfflineYield() {
   const FILE = 'js/27-offline-rewards.js';
   let s = readFileSync(FILE, 'utf8');
-  if (s.includes('afk_toggle_offline')) { already++; return; }
-  // 錨點吃 CRLF/LF 兩種行尾（上游工作樹是 CRLF）
-  const ANCHOR = /\(function \(\) \{(\r?\n)[ \t]*'use strict';\r?\n/;
+  if (s.includes('window.__upOffline')) { already++; return; }
+  // 轉換期:拆掉 v1 的頂端 guard(整包早退會把擲骰函式一起藏掉);上游新鮮檔沒有此塊,replace 無事
+  s = s.replace(/[ \t]*\/\/ 🔌 加掛版補丁:離線收益由外掛 afk-offline 接手[\s\S]*?\} catch \(e\) \{\}\r?\n\r?\n/, '');
+  // 錨點=鉤子安裝的第一行(其後全是 monkey-patch/事件監聽/心跳等可執行副作用);吃 CRLF/LF 兩種行尾
+  const ANCHOR = /(\r?\n)[ \t]*const _offlineOriginalKillMob = window\.killMob;/;
   const m = ANCHOR.exec(s);
-  if (!m) throw new Error(`[${FILE}] 找不到 IIFE 開頭錨點——上游可能改寫了離線收益模組外殼,請人工檢查(此補丁防「上游離線收益與 afk-offline 重複結算」)。`);
+  if (!m) throw new Error(`[${FILE}] 找不到「鉤子安裝」錨點(_offlineOriginalKillMob)——上游可能改寫了離線收益模組,請人工檢查(此補丁防「上游離線收益與 afk-offline 重複結算」並暴露批次擲骰函式)。`);
   const NL = m[1];
   const guard = [
     '',
-    '    // 🔌 加掛版補丁:離線收益由外掛 afk-offline 接手(真實戰鬥模擬、撞死即停、有離線紀錄)。',
+    '    // 🔌 加掛版補丁:把本檔的批次擲骰純函式暴露給外掛 afk-offline 的批次結清重用',
+    '    //    (離線掉落規則的單一權威=本檔;上游更新掉落規則,重用端自動跟進)。',
+    '    window.__upOffline = { mobPlan: _offlineMobPlan, rollMobLoot: _offlineRollMobLoot, binomial: _offlineBinomial, mobProfile: _offlineMobProfile };',
+    '    // 🔌 加掛版補丁:離線收益「結算」由外掛 afk-offline 接手(真實戰鬥模擬、撞死即停、有離線紀錄)——以下鉤子/監聽/心跳不安裝。',
     '    //    玩家在外掛開關關掉「離線快速結算」→ 這裡放行,改由上游這套結算。',
     '    try {',
     "        var _afkOfflineOn = localStorage.getItem('afk_toggle_offline');",
@@ -216,10 +224,10 @@ function patchUpstreamOfflineYield() {
     '    } catch (e) {}',
     ''
   ].join(NL);
-  s = s.slice(0, m.index + m[0].length) + guard + s.slice(m.index + m[0].length);
+  s = s.slice(0, m.index) + guard + s.slice(m.index);
   if (!CHECK) writeFileSync(FILE, s);
   changed++;
-  console.log(`[patch] 上游離線收益讓位給 afk-offline（${FILE}）`);
+  console.log(`[patch] 上游離線收益讓位給 afk-offline+暴露批次擲骰（${FILE}）`);
 }
 
 const PATCHES = [patchMaybeSpawnMobs, patchTradEnHook, patch16Slots, patchPetAnimTicker, patchBossHuntEscape, patchUseItemKeepModal, patchSellNowNoForce, patchUpstreamOfflineYield];

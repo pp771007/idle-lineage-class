@@ -23,7 +23,7 @@
    | 5 | js/07 | 迴避頭目 × 自動找BOSS 互斥(`AFK_BOSSRING.huntActive`) |
    | 6 | js/08 | `useItem` 加 `keepModal` 參數(自動瞬移不關玩家視窗) |
    | 7 | js/10 | 「立即賣出」總開關關閉時不強制套規則(免誤賣沒標記的裝備) |
-   | 8 | js/27 | 上游自帶離線收益讓位給 afk-offline(IIFE 開頭讀 `afk_toggle_offline` 決定要不要安裝) |
+   | 8 | js/27 | 上游自帶離線收益讓位給 afk-offline(讀 `afk_toggle_offline` 決定裝不裝鉤子;讓位前先把批次擲骰純函式掛上 `window.__upOffline` 供 afk-offline 批次結清重用——離線掉落規則單一權威=js/27,上游更新自動跟進) |
 3. **index.html 不手改**:它=上游 index＋`scripts/afk-plugin-block.html` 注入到 `</body>` 前(sync 時自動重組)。**新增外掛 → 改 `afk-plugin-block.html`**(載入順序也在那裡管:afk-toggles 最先、afk-skin 最後),再把它的 `<script>` 行同步補進現行 index.html(或重跑 sync),有 DOM 掛點的加進 `scripts/smoke-hooks.mjs` 的 `need`。
 4. **CSS 覆寫**寫在外掛注入的 `<style>` 裡(如 afk-mobile),不改 `css/*.css`。
 

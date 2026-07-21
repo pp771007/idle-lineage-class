@@ -1338,6 +1338,21 @@
         return _gi.apply(this, arguments);
       };
     }
+    // ── 背景分頁回前景:交回核心逐 tick 補跑(遊戲照跑),不走上游的一次結算 ──
+    //   離線=關閉遊戲;分頁切背景遊戲照跑,回來把那段時間補回來——這是本外掛的前提,不是可調的偏好。
+    //   上游 v3.7.17 把 visibilitychange/bfcache 從 queueCatchupMs 改成 settleBackgroundMs → offlineSettleCatchup
+    //   (統計一次結算),但那套要靠上游自己的實戰取樣,而取樣鉤子正是補丁 8 讓位掉的 → 我方沒有 profile,
+    //   它會走「沒有合格樣本」分支:只 _offlineAdvanceCombatTime(推進 state.ticks、扣光 buff/冷卻/藥水時間)、
+    //   清掉 _tickDebt、然後零收益返回。實測背景 3 小時 = 收益 0,同期 afk-offline 結算為 1,733 萬金幣。
+    //   → 改回 queueCatchupMs:核心補跑本來就有時間預算讓步(FF_BUDGET_MS)＋抽樣快轉(債>10 分鐘 1 抵 10),
+    //     不會凍住分頁,也就是上游宣稱要避免的問題其實核心早就處理過了。
+    if (typeof settleBackgroundMs === 'function' && typeof queueCatchupMs === 'function') {
+      var _sbg = settleBackgroundMs;
+      window.settleBackgroundMs = function (ms, reason) {
+        if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('offline')) return _sbg.apply(this, arguments);   // 關掉本外掛 → 完全回上游行為
+        return queueCatchupMs(ms) || true;   // 回 true:讓核心當作「已受理」,不印那句「一次結算失敗」
+      };
+    }
 
     // ── ff 洩漏守衛(包核心全域,不動核心檔):補跑期間 sprite 幀凍結、戰鬥音效靜音 ──
     //   上游 8fps ticker 只看 document.hidden:補跑中照推玩家/傭兵 sprite 幀,受擊又是 HP-delta 驅動

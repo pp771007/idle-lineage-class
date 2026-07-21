@@ -114,6 +114,7 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 - **判準:遊戲邏輯的時間判斷用 `state.ticks`,不用 `Date.now()`**(補跑壓縮時間,牆鐘幾乎凍結)。例外=「關遊戲也該倒數」的(攻城冷卻)留牆鐘。
 - **ff 洩漏判準**:補跑(`state.ff`)期間,戰鬥路徑**直接**呼叫的 `render*`/重副作用(`saveGame`)要被 `!state.ff` 擋住或函式內早退;**自己跑的 timer(setInterval/rAF)也要問「補跑期間它還在跑嗎」**。守衛用 `state.ff && !state.ffSmall`(小補跑要放行)。上游是原文改不得→這類守衛由 afk-offline 以 wrapper 實作(如 sprite ticker、音效靜音)。
 - debug:`window.__afk.forceCatchup(分鐘, noFast)`。全模擬慢是戰鬥模擬本身,不是掃描/記憶體,別往那優化。
+- **🚨 背景分頁回前景由 afk-offline 包 `settleBackgroundMs` 接管,交回核心 `queueCatchupMs` 逐 tick 補跑**:上游 v3.7.17 把 visibilitychange/bfcache 從 `queueCatchupMs` 改成 `settleBackgroundMs` → `offlineSettleCatchup`(統計一次結算)。那套要靠上游自己的實戰取樣,而取樣鉤子正是補丁 8 讓位掉的 → 我方沒有 profile,它走「沒有合格樣本」分支:只推進 `state.ticks`、扣光 buff/冷卻/藥水時間、清掉 `_tickDebt`,**零收益返回**(實測背景 3 小時=0 金幣,同期核心補跑 2,326 萬)。判準:**上游只要再動 js/01 的 visibilitychange/pageshow 或 js/27 的 catchup 入口,就要重驗這條**——「離線=關遊戲、背景=遊戲照跑補回來」是本外掛的前提,不是可調偏好。核心補跑本來就有時間預算讓步(`FF_BUDGET_MS`)＋抽樣快轉(債>10 分鐘 1 抵 10),不會凍住分頁。
 - **上游 v3.6.97 起自帶離線收益(js/27),已由補丁 8 讓位**:它包的是 loadGame/saveGame/killMob/changeMap ——跟 afk-offline 同一批。上游之後若再擴這套,先確認補丁 8 的錨點還在、且沒繞過 guard 另開入口。
 - **🚨 測「離線回來」時,時間戳要三處一起回撥**:afk-offline 的 `afk_ts_<slot>`、上游的 `lineage_idle_offline_v1_*`、**以及存檔裡的 `player.offlineHunt.awaySince`**(存檔 payload 是 `{v,p:player,...}`,在 `d.p.offlineHunt`)。漏掉存檔內那份 → 上游一律判定「離線 0 分鐘」不結算,看起來像「兩套和平共存」,**實際上線會雙重發獎**(踩過:據此下過「沒有重複發獎」的錯誤結論)。
 

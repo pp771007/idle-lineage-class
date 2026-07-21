@@ -1,14 +1,13 @@
 /*
  * afk-slotinfo.js — 選角/載入畫面的「額外掛機資訊」掛載外掛(桌機 + 手機共用)
  *
- * 職責:在原作者 openSlotSelect 渲染的存檔鈕「下方附加」📍 目前掛在哪張地圖。
- *   (⏱ 已掛機多久 目前不顯示:資料源 afk_ts_ 由暫停使用中的 afk-offline 心跳蓋,值會凍住;見 read())
+ * 職責:在原作者 openSlotSelect / renderLoadSelect 渲染的存檔位「下方附加」該角色的席琳世界狀態。
+ *   (📍 掛機地圖與 ⏱ 已掛機多久 目前不顯示——資料源由暫停使用中的 afk-offline 蓋,見 read())
  *   只「附加」、絕不清空 → 原作者的單行 label(含經典/傳統標籤與配色)、大頭貼都原封不動,
  *   桌機與手機共用同一份附加邏輯(手機差異純由 afk-mobile.js 的 CSS 處理,不另外重建內容)。
  *   對外仍暴露 window.AFK_SLOTINFO.read(slot) → { mapName, idleText }(純資料、無 DOM)供他人取用。
  *
- * 資料來源:afk-offline 寫的即時地圖記錄 afk_map_<slot>,讀不到就退回存檔 blob 的 ms.current。
- *   地圖中文名走 window.__afk.mapName,取不到時原樣顯示 id。
+ * 資料來源:存檔 blob(lineage_idle_save_<slot>)的 player.sherineWorld / sherineMad。
  *
  * 優雅降級:openSlotSelect / __afk 不存在就安靜停用,不弄壞畫面。
  */
@@ -24,14 +23,11 @@
       if (_raw) save = JSON.parse(_raw);
     } catch (e) {}
 
-    var mapId = '';
-    try { mapId = localStorage.getItem('afk_map_' + slot) || ''; } catch (e) {}
-    if (!mapId && save && save.ms) mapId = save.ms.current || '';
+    // 📍 掛機地圖與 ⏱ 已掛機時間目前都不顯示——兩者的資料源(afk_map_/afk_ts_<slot>)都由暫停使用中的
+    //   afk-offline 蓋:老玩家的值會凍在最後一次遊玩(顯示錯的圖、愈來愈大的假時間),
+    //   而中文地圖名要走 window.__afk.mapName,該物件現在也不存在 → 會直接露出英文 id。
+    //   afk-offline 恢復時把這兩段還原即可(回傳欄位刻意保留,呼叫端不必改)。
     var mapName = '';
-    if (mapId) mapName = (window.__afk && typeof window.__afk.mapName === 'function') ? window.__afk.mapName(mapId) : mapId;
-
-    // ⏱ 已掛機時間:資料源 afk_ts_<slot> 由 afk-offline 的心跳蓋,該外掛暫停使用後這個值會凍在最後一次遊玩,
-    //   顯示出來只會是個愈來愈大的假數字 → 整行不顯示。afk-offline 恢復時把這段還原即可。
     var idleText = '';
 
     // 🔮 席琳世界狀態:存於 player.sherineWorld / player.sherineMad(兩者互斥),回 '' / 'world' / 'mad'

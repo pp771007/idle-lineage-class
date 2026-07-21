@@ -107,7 +107,7 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 
 - `afk-toggles` 的 `offline` 項目帶 `locked` 字串 → `enabled('offline')` 一律回 false(**不管玩家 localStorage 存過什麼**),面板上該列 disabled、不可勾、顯示停用原因。老玩家存過 `'1'` 也一樣關閉。
 - **補丁 8 已整個移除**,`js/27-offline-rewards.js` 回到純上游鏡像(blob 對得上上游),上游的離線/背景結算全程生效。
-- 連帶處理:`afk-slotinfo` 的「⏱ 已掛機多久」不顯示(資料源 `afk_ts_` 沒人蓋會凍住);smoke 的 `need` 拿掉 `[AFK]`。
+- 連帶處理:`afk-slotinfo` 的「📍 掛機地圖」與「⏱ 已掛機多久」都不顯示(資料源 `afk_map_`/`afk_ts_` 沒人蓋,老玩家會凍在最後一次遊玩;地圖中文名還要走已不存在的 `window.__afk.mapName`,會直接露英文 id),只剩席琳世界狀態,開關名稱改為「選角附加資訊」;smoke 的 `need` 拿掉 `[AFK]`。
 - `afk-history`(離線掛機紀錄)保留:舊紀錄仍是真的,只是不會再新增。
 - **恢復時要一起還原**:上面每一項 + 把 `locked` 拿掉。afk-offline.js 本體與它包 `settleBackgroundMs` 的邏輯都原封留著,沒有刪。
 

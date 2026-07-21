@@ -66,7 +66,7 @@
         { id: 'backnav', name: '手機返回鍵', desc: '子畫面按返回回首頁而非關 App（僅手機）', group: '遊戲介面' },
         { id: 'dex', name: '怪物/掉落查詢', desc: '首頁入口：查怪名/地圖/掉落物', group: '查詢與資訊' },
         { id: 'wiki', name: '小百科', desc: '首頁入口：職業/裝備/機制/地圖等資料', group: '查詢與資訊' },
-        { id: 'slotinfo', name: '選角掛機資訊', desc: '選存檔位顯示掛哪張圖、掛多久', group: '查詢與資訊' },
+        { id: 'slotinfo', name: '選角附加資訊', desc: '選存檔位顯示席琳世界狀態', group: '查詢與資訊' },
         { id: 'loadslots', name: '選角 16 格分頁', desc: '卡片式選角分頁擴充到 16 格(上游原生只有 8 格)', group: '查詢與資訊' },
         { id: 'history', name: '離線掛機紀錄', desc: '設定選單：最近離線結算紀錄', group: '查詢與資訊' },
         { id: 'diag', name: '快取診斷', desc: '設定選單：回報問題用的取證工具', group: '查詢與資訊' },

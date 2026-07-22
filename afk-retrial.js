@@ -37,6 +37,8 @@
   }
   function on() { return !window.AFK_TOGGLES || AFK_TOGGLES.enabled('retrial'); }
 
+  var MAX_EX = 100;   // 單次兌換上限：發獎勵是逐件 gainItem（含重繪/存檔），一次幾百件會把畫面卡死
+
   // 在區塊 HTML 的最後一個 </div> 之前塞入內容（落在同一張卡片內）
   function inject(html, extraHtml) {
     var i = html.lastIndexOf('</div>');
@@ -74,11 +76,13 @@
       + '<div class="text-sky-300 font-bold text-xs mb-1">🔌 外掛批次兌換（道具會持續掉落）</div>'
       + '<div class="text-xs text-slate-400 mb-1">目前持有：' + matsHtml + (rewardNote || '') + '</div>';
     if (sets >= 1) {
+      var cap = Math.min(sets, MAX_EX);
       h += '<div class="flex items-center gap-2 flex-wrap">'
-        + '<input id="' + qk + '" type="number" min="1" max="' + sets + '" value="1" onclick="event.stopPropagation()"'
+        + '<input id="' + qk + '" type="number" min="1" max="' + cap + '" value="1" onclick="event.stopPropagation()"'
         + ' class="w-16 bg-slate-900 border border-slate-600 text-white text-center rounded py-1">'
-        + '<button class="btn px-3 py-1 text-sm font-bold bg-slate-700 border-slate-500" onclick="document.getElementById(\'' + qk + '\').value=' + sets + '">全部</button>'
-        + '<button class="btn bg-emerald-800 hover:bg-emerald-700 py-1 px-4 font-bold text-sm" onclick="' + exCall + '">兌換（最多 ×' + sets + '）</button>'
+        + '<button class="btn px-3 py-1 text-sm font-bold bg-slate-700 border-slate-500" onclick="document.getElementById(\'' + qk + '\').value=' + cap + '">全部</button>'
+        + '<button class="btn bg-emerald-800 hover:bg-emerald-700 py-1 px-4 font-bold text-sm" onclick="' + exCall + '">兌換（最多 ×' + cap + '）</button>'
+        + (sets > MAX_EX ? '<span class="text-xs text-slate-500">單次上限 ' + MAX_EX + '，可分多次兌換</span>' : '')
         + '</div>';
     } else {
       h += '<div class="text-xs text-slate-500">材料不足 1 份，無法兌換。</div>';
@@ -93,7 +97,7 @@
       if (!c || !player || !player.cls || player.cls !== c.cls) return;
       var sets = setsOfQ(c);
       if (sets < 1) { logSys('<span class="text-red-400 font-bold">材料不足，無法兌換。</span>'); return; }
-      var n = qtyVal('afk-rt-qty-' + key, sets);
+      var n = qtyVal('afk-rt-qty-' + key, Math.min(sets, MAX_EX));
       c.reqs.forEach(function (p) { questConsumeId(p[0], (p[1] || 1) * n); });
       grant(c.rewards, n);
       logSys('<span class="c-legend font-bold">🔌 外掛批次兌換 ×' + n + '：</span><span class="text-amber-200">獲得 '
@@ -106,7 +110,7 @@
       if (!cfg) return;
       var need = cfg.exMatCnt || 1, sets = Math.floor(questCountId(cfg.exMat) / need);
       if (sets < 1) { logSys('<span class="text-red-400 font-bold">材料不足，無法兌換。</span>'); return; }
-      var n = qtyVal('afk-rt-qty-t50', sets);
+      var n = qtyVal('afk-rt-qty-t50', Math.min(sets, MAX_EX));
       questConsumeId(cfg.exMat, need * n);
       grant(cfg.rewards.map(function (r) { return r.id; }), n);
       logSys('<span class="c-legend font-bold">🔌 外掛批次兌換 ×' + n + '：</span><span class="text-amber-200">獲得 '

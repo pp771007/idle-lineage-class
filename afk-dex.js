@@ -712,9 +712,11 @@
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
           var pct = d[2] * mult; if (pct > 100) pct = 100;
           var tag = d[3] ? ' <span class="m-dex-droptag">' + esc(d[3]) + '</span>' : '';
+          // 管制試煉道具(trialForced100)不走掉落表機率:接取後 100% 必掉、沒接取不掉,表內殘留的 % 是死數字
+          var forced = (typeof trialForced100 === 'function') && trialForced100(d[0]);
           return '<tr>' +
             '<td><span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看詳情">' + hl(d[1], q) + '</span>' + tag + '</td>' +
-            '<td class="m-dex-pct">' + fmtPct(pct) + '%</td>' +
+            '<td class="m-dex-pct">' + (forced ? '接取後必掉' : fmtPct(pct) + '%') + '</td>' +
             '</tr>';
         }).join('') + '</tbody></table>'
       : '<div class="m-dex-nodrop">無專屬掉落表</div>';

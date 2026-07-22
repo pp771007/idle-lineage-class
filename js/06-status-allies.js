@@ -1377,6 +1377,7 @@ function allyLaiaWandHitProc(ally, t) {
     dd = Math.max(1, Math.floor(dd * enhanceWpnFinalMult(en, w)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/10)）
     dd = Math.max(1, Math.floor(dd * elementCounterMult(sp.ele, t.e)));   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
+    if (typeof playSpellFx === 'function') { try { playSpellFx(sp.skn || '冰裂術', t); } catch (e) {} }   // ❄️ v3.7.43 鏡像玩家側(js/04)：傭兵觸發也要疊法術特效（未註冊者自動略過）
     logCombat(`<span class="font-bold" style="color:#93c5fd;text-shadow:0 0 6px #2563eb;">【協力·${ally._allyName}·${sp.skn || '冰裂術'}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dd} 點水屬性魔法傷害${wasFrozen ? '（冰碎!）' : ''}。`, 'player-special');
     _allyDamageMob(ally, t, dd, sp.ele, 'magic');
     if (t.curHp > 0) applyMobStatus(t, { kind: 'freeze', pbase: sp.freezePbase, dur: 6 }, sp.skn || '冰裂術');   // 機率冰凍

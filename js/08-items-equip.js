@@ -72,7 +72,7 @@ function _rememberCatchupGainItemStack(item) {
     cache.first = inv.length ? inv[0] : null;
     cache.last = item;
 }
-function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false, deferUi=false) {   // ⚠️ v3.5.87 affixOld 已棄用（新舊詞綴制早已合一·恆走 rollAffixesNew）——參數槽保留只因第 6 參 deferUi 的呼叫點靠位置傳參，勿刪勿復用
+function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false, deferUi=false, fixedAffixes=null) {   // ⚠️ v3.5.87 affixOld 已棄用；第 7 參僅供已預先決定詞綴的來源（如黑市上架商品）原樣交付
     // 卷軸變祝福／詛咒機率：各 1%（互斥）
     if (!forceNormal && (id === 'scroll_weapon' || id === 'scroll_armor')) {
         let _r = lootRng('scrollvar');   // 🎲 committed RNG（防 SL 重抽卷軸祝福/詛咒變體）
@@ -109,7 +109,9 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false, de
     if (!forceNormal && !_noAffixCtx && d && !isRelic(d) && ((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc')) {   // 🦴 _noAffixCtx：白板（寵物裝備製作）→ 不附詞綴；🏺 遺物永不附詞綴（不會祝福/賦予）
         // 詞綴：所有管道只擲 1% 祝福（席琳×3/瘋狂×5·committed RNG）；屬性/遠古改由碧恩賦予卷軸取得。箭矢/遺物/白板不附加。
         //   🗑️ v3.5.87 舊制 rollAffixesOld 已刪（與新制 byte-identical·affixOld 參數棄用不再分派）
-        let _af = rollAffixesNew();
+        let _af = (fixedAffixes && typeof fixedAffixes === 'object')
+            ? { attr: !!fixedAffixes.attr, bless: fixedAffixes.bless === 'cursed' ? 'cursed' : !!fixedAffixes.bless, anc: !!fixedAffixes.anc }
+            : rollAffixesNew();
         attr = _af.attr; bless = _af.bless; anc = _af.anc;
         if (_forceBless) bless = true;   // 🔧 v3.1.27 製作材料含祝福裝備→成品必定祝福（僅在此裝備詞綴分支·寵物白板 _noAffixCtx 已於上方擋掉）
     }

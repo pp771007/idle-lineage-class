@@ -1865,7 +1865,7 @@ function spawnMob(idx) {
         if(_kr.dual) { _id = _kr.bosses[idx]; if(!_id) { mapState.mobs[idx] = null; return; } }   // 🏛️ 雙BOSS祭壇：0,1 兩格各一隻BOSS（第三格留空）
         else _id = (idx === 1) ? _kr.boss : _kr.minion;
         let _b = DB.mobs[_id]; if(!_b) return;
-        mapState.mobs[idx] = { ..._b, curHp: _b.hp, uid: uid(), _born: ++_mobBornSeq, _magCd: {}, justHit: false, st: newMobStatus() };
+        mapState.mobs[idx] = { ..._b, curHp: _b.hp, uid: uid(), _born: ++_mobBornSeq, _bornMs: Date.now(), _magCd: {}, justHit: false, st: newMobStatus() };
         applySherineBuff(idx);   // 🔮 軍王之室／底比斯歐西里斯祭壇也吃「席琳的世界」強化＋_sherine（與一般出怪一致；不含恩賜 grace；須在 initHardSkin 之前）
         if(mapState.mobs[idx].hard) initHardSkin(mapState.mobs[idx]);
         if (_b.boss && typeof vfxBossEntrance === 'function') { try { vfxBossEntrance(mapState.mobs[idx]); } catch (e) {} }   // 🐉 v3.4.95 軍王之室／祭壇頭目也播出場特效

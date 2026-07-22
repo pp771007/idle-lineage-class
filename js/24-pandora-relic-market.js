@@ -1571,7 +1571,7 @@
         let base = Object.keys(DB.items).filter(id => {
             let d = DB.items[id];
             let w = Math.floor(Number(d && d.gachaWeight) || 0);
-            return !!(d && d.n && !d.relic && id !== relicId && ((w >= 1 && w <= 50) || craftable.has(id)));
+            return !!(d && d.n && !d.relic && d.eff !== 'card' && id !== relicId && ((w >= 1 && w <= 50) || craftable.has(id)));
         });
         let p1 = base.filter(id => Math.floor(Number(DB.items[id].gachaWeight) || 0) === 1);
         let p2 = base.filter(id => {
@@ -1744,7 +1744,10 @@
                 return `<div class="pandora-relic-slot active">
                     <div class="pandora-relic-slot-no">布告 ${i + 1}・${category.short}</div>
                     <div class="pandora-relic-target" onmouseenter="pandoraRelicTipShow(event,'${_esc(c.relicId)}')" onmousemove="pandoraTipMove(event)" onmouseleave="pandoraTipHide()">
-                        <img src="${d ? _esc(getIconUrl(d)) : ''}" alt="">
+                        <div class="pandora-collection-icon pandora-relic-icon-wrap">
+                            <img src="${d ? _esc(getIconUrl(d)) : ''}" alt="">
+                            ${typeof pandoraUncollectedBadgeHTML === 'function' ? pandoraUncollectedBadgeHTML(c.relicId) : ''}
+                        </div>
                         <b class="${d ? getItemColor({ id: c.relicId }) : ''}">${_esc(d ? d.n : c.relicId)}</b>
                     </div>
                     <div class="pandora-relic-reqs">${reqHtml}</div>

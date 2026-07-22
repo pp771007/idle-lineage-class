@@ -1689,26 +1689,90 @@ button.classic-skill-cell { cursor:pointer; }
     opacity:.72;
     filter:drop-shadow(0 0 14px rgba(235,207,130,.28)) brightness(.86);
 }
-.load-offline-badge {
+.load-offline-status {
     position:absolute;
     z-index:2;
+    inset:0;
+    pointer-events:none;
+    font-family:"Microsoft JhengHei", sans-serif;
+    letter-spacing:0;
+}
+.load-offline-badge {
+    position:absolute;
     left:50%;
     top:2.2%;
     transform:translateX(-50%);
-    pointer-events:none;
     white-space:nowrap;
-    padding:3px 8px;
+    min-width:72px;
+    padding:4px 8px 3px;
     border:1px solid rgba(74,222,128,.72);
     border-radius:3px;
     background:rgba(3,18,12,.88);
     color:#86efac;
     box-shadow:0 2px 5px rgba(0,0,0,.82), inset 0 1px 0 rgba(255,255,255,.08);
     text-shadow:0 1px 2px #000, 0 0 5px rgba(34,197,94,.48);
-    font-family:"Microsoft JhengHei", sans-serif;
     font-size:14px;
     font-weight:700;
     line-height:1.2;
     letter-spacing:0;
+    text-align:center;
+}
+.load-offline-badge strong,
+.load-offline-badge small {
+    display:block;
+    font:inherit;
+}
+.load-offline-badge small {
+    margin-top:2px;
+    color:#d9f99d;
+    font-size:11px;
+    font-weight:600;
+}
+.load-offline-detail {
+    position:absolute;
+    left:4%;
+    right:4%;
+    bottom:2.5%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-width:0;
+    padding:7px 8px 6px;
+    border-top:1px solid rgba(148,163,184,.3);
+    background:linear-gradient(180deg, rgba(2,6,23,0), rgba(2,6,23,.86) 24%, rgba(2,6,23,.94));
+    color:#e2e8f0;
+    text-shadow:0 1px 3px #000;
+    font-size:12px;
+    line-height:1.25;
+}
+.load-offline-detail > small {
+    color:#cbd5e1;
+    font-size:11px;
+}
+.load-offline-detail > strong {
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    width:100%;
+    margin-top:2px;
+    white-space:nowrap;
+    font-size:14px;
+}
+.load-offline-detail b {
+    font-weight:800;
+}
+.load-offline-exp { color:#86efac; }
+.load-offline-gold { color:#fde047; }
+.load-offline-detail > em {
+    display:block;
+    max-width:100%;
+    margin-top:2px;
+    overflow:hidden;
+    color:#cbd5e1;
+    font-size:11px;
+    font-style:normal;
+    text-overflow:ellipsis;
+    white-space:nowrap;
 }
 .load-slot-card.selected::after {
     display:none;
@@ -2091,7 +2155,12 @@ button.classic-skill-cell { cursor:pointer; }
         box-shadow: inset 0 0 20px rgba(0,0,0,.72);
     }
     .load-slot-card img { transform: scale(1.02); }
-    .load-offline-badge { top:6px; padding:2px 6px; font-size:12px; }
+    .load-offline-badge { top:6px; min-width:64px; padding:3px 6px 2px; font-size:12px; }
+    .load-offline-badge small { font-size:10px; }
+    .load-offline-detail { left:3px; right:3px; bottom:3px; padding:5px 3px 4px; font-size:10px; }
+    .load-offline-detail > small,
+    .load-offline-detail > em { font-size:9px; }
+    .load-offline-detail > strong { gap:5px; font-size:11px; }
     .load-slot-card[data-key="m_warrior"] img,
     .load-slot-card[data-key="f_warrior"] img { transform: scale(1.16); }
     #load-page-tabs {
@@ -2562,7 +2631,26 @@ button.classic-skill-cell { cursor:pointer; }
 .pandora-buy-cancel { flex: none; color: #d6a5a5; text-decoration: underline; font-size: 11px !important; }
 .pandora-market-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; }
 .pandora-market-card { min-width: 0; min-height: 39px; gap: 7px; padding: 4px 6px; }
+.pandora-collection-icon { position: relative; width: 29px; height: 29px; flex: 0 0 29px; overflow: visible; }
 .pandora-card-icon { width: 29px; height: 29px; }
+.pandora-collection-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    z-index: 2;
+    padding: 1px 2px;
+    border: 1px solid #d75a5a;
+    border-radius: 2px;
+    background: #5f2020;
+    color: #ffd4d4;
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 10px;
+    letter-spacing: 0;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,.65);
+    pointer-events: none;
+}
 .pandora-card-name { font-size: 12px; line-height: 1.15; }
 .pandora-card-price { margin-top: 3px; font-size: 11px; }
 .pandora-card-price span { font-size: 9px; }
@@ -2656,6 +2744,7 @@ button.classic-skill-cell { cursor:pointer; }
     min-width: 0;
     margin: 13px 0 6px;
 }
+.pandora-relic-target .pandora-collection-icon { width: 31px; height: 31px; flex-basis: 31px; }
 .pandora-relic-target img { width: 31px; height: 31px; flex: none; object-fit: contain; }
 .pandora-relic-target b { min-width: 0; overflow: hidden; font-size: 11px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .pandora-relic-reqs { display: grid; gap: 3px; }

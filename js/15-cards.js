@@ -7,9 +7,9 @@
 
 // ---- 卡片階級 ----
 const CARD_TIERS = [
-    { t: 1, key: 'p', sfx: '普卡', col: 'c-card-common', img: 'assets/icons/items/普卡.png', price: 100 },
-    { t: 2, key: 's', sfx: '銀卡', col: 'c-card-silver', img: 'assets/icons/items/銀卡.png', price: 1000 },
-    { t: 3, key: 'g', sfx: '金卡', col: 'c-card-gold',   img: 'assets/icons/items/金卡.png', price: 10000 }
+    { t: 1, key: 'p', sfx: '普卡', col: 'c-card-common', img: 'assets/icons/items/普卡.png', price: 100, weight: 50 },
+    { t: 2, key: 's', sfx: '銀卡', col: 'c-card-silver', img: 'assets/icons/items/銀卡.png', price: 1000, weight: 10 },
+    { t: 3, key: 'g', sfx: '金卡', col: 'c-card-gold',   img: 'assets/icons/items/金卡.png', price: 10000, weight: 1 }
 ];
 function cardId(name, tier) { return 'card_' + CARD_TIERS[tier - 1].key + '_' + name; }
 
@@ -107,7 +107,7 @@ const CARD_MOB_MAPS = {};      // mobName -> [mapKey,...]
         CARD_TIERS.forEach(ct => {
             DB.items[cardId(nm, ct.t)] = {
                 n: nm + ' 的' + ct.sfx, type: 'misc', eff: 'card', cardTier: ct.t, cardMob: nm,
-                c: ct.col, img: ct.img, p: ct.price, gachaWeight: 0,
+                c: ct.col, img: ct.img, p: ct.price, gachaWeight: ct.weight,
                 d: '怪物卡片。使用以在卡片收集冊中登錄「' + nm + '」（' + ct.sfx + '效果）。'
             };
         });

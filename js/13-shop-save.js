@@ -312,18 +312,46 @@ function _slotOfflineMeta(n, sum){
     let id = encodeURIComponent(String(sum.enSeed || (n + '|' + (sum.name || '') + '|' + sum.rawCls)));
     return { roleFp: sum.roleFp || '', offlineId: id, savedHunt: sum.offlineHunt || null };
 }
-function _slotOfflineIdleNow(meta, activeRoleFps){
-    if(!meta) return false;
-    if(meta.roleFp && activeRoleFps && activeRoleFps.has(String(meta.roleFp))) return false;   // 有分頁正在玩＝補幀軌，不是離線掛機
+function _slotOfflineStatusNow(meta, activeRoleFps){
+    if(!meta) return null;
+    if(meta.roleFp && activeRoleFps && activeRoleFps.has(String(meta.roleFp))) return null;   // 有分頁正在玩＝補幀軌，不是離線掛機
     let src = meta.savedHunt;
+    let since = src ? (Number(src.awaySince) || 0) : 0;
     try {
         let cp = JSON.parse(_lsGet('lineage_idle_offline_v1_checkpoint_' + meta.offlineId) || 'null');
         if(cp && typeof cp === 'object' && cp.snapshot && typeof cp.snapshot === 'object'
-            && (Number(cp.lastActive) || 0) >= ((src && Number(src.awaySince)) || 0)) src = cp.snapshot;   // 與 _offlineSettle 相同的來源取捨
+            && (Number(cp.lastActive) || 0) >= ((src && Number(src.awaySince)) || 0)) {
+            src = cp.snapshot;
+            since = Math.max(Number(src.awaySince) || 0, Number(cp.lastActive) || 0);
+        }
     } catch(e){}
-    if(!src || src.eligible !== true || !src.map) return false;
+    if(!src || src.eligible !== true || src.bossUnlocked === false || !src.map) return null;
     let prof = src.profile;
-    return !!(prof && String(prof.map || '') === String(src.map) && Number(prof.killsPerMin) > 0);
+    if(!prof || String(prof.map || '') !== String(src.map) || !(Number(prof.killsPerMin) > 0)) return null;
+    return {
+        bossRoom: prof.bossRoom === true,
+        elapsedMs: Math.max(0, Date.now() - Math.max(0, since || Number(src.awaySince) || 0)),
+        mapName: String(src.mapName || prof.mapName || src.map || '狩獵區'),
+        expPer10: Math.max(0, Math.floor((Number(prof.expPerMin) || 0) * 10 * 0.70 + 1e-7)),
+        goldPer10: Math.max(0, Math.floor((Number(prof.goldPerMin) || 0) * 10 * 0.70 + 1e-7))
+    };
+}
+function _slotOfflineDuration(ms){
+    let totalSec = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+    if(totalSec < 60) return totalSec + '秒';
+    let totalMin = Math.floor(totalSec / 60), days = Math.floor(totalMin / 1440);
+    let hours = Math.floor((totalMin % 1440) / 60), mins = totalMin % 60;
+    if(days > 0) return days + '天' + (hours ? hours + '時' : '');
+    if(hours > 0) return hours + '時' + (mins ? mins + '分' : '');
+    return totalMin + '分';
+}
+function _slotOfflineStatusHtml(status){
+    if(!status) return '';
+    let fmt = n => Math.max(0, Math.floor(Number(n) || 0)).toLocaleString('zh-TW');
+    return `<span class="load-offline-status">`
+        + `<span class="load-offline-badge"><strong>${status.bossRoom ? '[BOSS] ' : ''}掛機中</strong><small>${_slotOfflineDuration(status.elapsedMs)}</small></span>`
+        + `<span class="load-offline-detail"><small>離線 / 10分</small><strong><b class="load-offline-exp">經 ${fmt(status.expPer10)}</b><b class="load-offline-gold">金 ${fmt(status.goldPer10)}</b></strong><em>${loadEsc(status.mapName)}</em></span>`
+        + `</span>`;
 }
 
 function _summaryFromRaw(s){
@@ -432,10 +460,13 @@ setInterval(function(){
     const fps = new Set();
     try { _roleOtherActiveSessions().forEach(s => { if(s && s.fp) fps.add(String(s.fp)); }); } catch(e){}
     grid.querySelectorAll('.load-slot-card[data-slot]').forEach(btn => {
-        let on = _slotOfflineIdleNow(_loadSlotMeta[Number(btn.getAttribute('data-slot'))], fps);
-        let badge = btn.querySelector('.load-offline-badge');
-        if(on && !badge){ badge = document.createElement('span'); badge.className = 'load-offline-badge'; badge.textContent = '掛機中'; btn.appendChild(badge); }
-        else if(!on && badge) badge.remove();
+        let status = _slotOfflineStatusNow(_loadSlotMeta[Number(btn.getAttribute('data-slot'))], fps);
+        let old = btn.querySelector('.load-offline-status');
+        if(status){
+            let html = _slotOfflineStatusHtml(status);
+            if(old) old.outerHTML = html;
+            else btn.insertAdjacentHTML('beforeend', html);
+        } else if(old) old.remove();
     });
 }, 2000);
 if(typeof window !== 'undefined') window.addEventListener('beforeunload', _roleSessionForget);
@@ -844,11 +875,11 @@ function renderLoadSelect(){
         const empty = !sum;
         const frame = loadFirstFrame(key);
         _loadSlotMeta[n] = _slotOfflineMeta(n, sum);
-        const offline = _slotOfflineIdleNow(_loadSlotMeta[n], activeRoleFps);
+        const offline = _slotOfflineStatusNow(_loadSlotMeta[n], activeRoleFps);
         const title = sum ? `角色 ${n} ${sum.cls} Lv.${sum.lv}` : `角色 ${n} 空`;
         html += `<button type="button" onclick="loadSelectSlot(${n})" data-slot="${n}" data-key="${key}" class="load-slot-card ${selected ? 'selected' : ''} ${empty ? 'empty' : 'filled'}" title="${loadEsc(title)}">`
             + `<img src="${loadFrameSrc(key, frame)}" alt="${loadEsc(title)}" draggable="false">`
-            + (offline ? `<span class="load-offline-badge">掛機中</span>` : '')
+            + _slotOfflineStatusHtml(offline)
             + `</button>`;
     }
     grid.innerHTML = html;

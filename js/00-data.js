@@ -1,6 +1,6 @@
 ﻿/** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v3.7.37';   // 🏷️ 版本號：末段 0~99 線性遞增，達 100 進位（中位 +1、末段歸 0）
+const GAME_VERSION = 'v3.7.43';   // 🏷️ 版本號：末段 0~99 線性遞增，達 100 進位（中位 +1、末段歸 0）
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -3457,7 +3457,7 @@ const DB = {
  *        ⚠️措辭嚴禁出現「盜版 / 未授權 / 廣告 / 惡意」等指控字眼——因授權允許非商業轉載，
  *        對合法轉載者作此指控＝不實/毀謗，風險落在原作者身上。
  *     2) 於原始碼留存作者浮水印與唯一識別碼，供「商業營利」侵權時著作權 / DMCA 舉證。
- *   官方網域 / localhost / 127.0.0.1 / file://（本機離線遊玩）一律放行。
+ *   官方網域 / localhost / 127.0.0.1 / file://（本機離線遊玩）/ 官方打包版（WebView2 桌面版）一律放行。
  *   🔒 舉證用不可移除的唯一識別碼（canary，請勿刪除）：ORIG-shines871-idle-lineage-class-8F3C1A2B
  * ========================================================================== */
 // 可見浮水印（executable，去註解 / 壓縮也清不掉；請勿刪除，這是舉證依據之一）
@@ -3466,9 +3466,28 @@ try {
     'color:#c8a24a;font-weight:bold;font-size:12px');
 } catch (_) {}
 
+// 🖥️ v3.7.38 官方打包版（.NET + WebView2 桌面版）例外：桌面殼以 AddScriptToExecuteOnDocumentCreated
+//    在任何頁面腳本之前注入 window.idleLineageDesktop = {host:'webview2'} 與 window.fableStore
+//    （見 desktop-dotnet/MainWindow.xaml.cs）。打包版經虛擬網域 https://idle-lineage.test/ 載入，
+//    不在下方網域白名單內 → 若不獨立放行，官方自家安裝版會被自己的「非官方轉載」橫幅蓋住。
+//    ⚠️刻意「不快取 false」：橋接物件若因故延後注入，快取 false 會讓橫幅在官方版永久掛著
+//       （gameLoop 每輪重掛，無法自癒）；只有偵測成立才快取 true（物件已凍結不會消失）。
+//       未命中時的成本＝兩次屬性讀取，可忽略。
+var _origDesktopCache = false;
+function _origOfficialDesktop() {
+  if (_origDesktopCache) return true;
+  try {
+    if (typeof window === 'undefined') return false;
+    var d = window.idleLineageDesktop;
+    if ((d && d.host === 'webview2') || window.fableStore) { _origDesktopCache = true; return true; }
+  } catch (_) {}
+  return false;
+}
+
 // 授權網域判定（結果快取；hostname 一整個 session 不變，之後每次呼叫都是讀布林值，零成本）
 var _origAuthCache = null;
 function _origAuthorizedHost() {
+  if (_origOfficialDesktop()) return true;   // 官方打包版先於網域判定放行；不寫入 _origAuthCache，避免污染網域快取
   if (_origAuthCache !== null) return _origAuthCache;
   try {
     if (location.protocol === 'file:') { _origAuthCache = true; return true; }   // 本機離線遊玩放行

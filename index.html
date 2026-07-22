@@ -14,7 +14,7 @@
     <title>放置天堂 - 日出之國</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <link rel="stylesheet" href="css/style.css?v=6a56e815bb.7.14-duel-stance">
+    <link rel="stylesheet" href="css/style.css?v=8e6fc7a3f8.7.39-offline-boss-status">
     <link rel="stylesheet" href="css/floating-ui.css?v=f9232e9e67.5.100-audit-tail">
     <link rel="stylesheet" href="css/tailwind-built.css?v=c0926cfba4"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
@@ -545,22 +545,22 @@
     </script>
 
     <script src="js/anim-manifest.js?v=e02abcc8e6.5.100-audit-tail"></script>
-    <script src="js/00-data.js?v=205c9b58bb.7.37-return-select-btn-compact"></script>
+    <script src="js/00-data.js?v=7b2dfe9c60.7.43-ice-fx"></script>
 <script src="js/01-drops-config.js?v=d4a790c6cb.7.36-return-character-select"></script>
 <script src="js/02-stats-recompute.js?v=81d28c30f9.7.22-relic-fixes"></script>
-    <script src="js/03-combat-core.js?v=59533c3152.7.36-return-character-select"></script>
+    <script src="js/03-combat-core.js?v=22e6ccea04.7.39-offline-boss-status"></script>
     <script src="js/04-combat-attack.js?v=322ad80e56.7.22-relic-fixes"></script>
-<script src="js/05-kill-progression.js?v=24c68689a9.7.27-mass-taunt-battle"></script>
-    <script src="js/06-status-allies.js?v=5b1103fa25.7.32-merc-ledger-rename-safe"></script>
+<script src="js/05-kill-progression.js?v=263e66cd41.7.38-pandora-cards"></script>
+    <script src="js/06-status-allies.js?v=e74931d427.7.43-ice-fx"></script>
     <script src="js/07-skills-cast.js?v=e05a75515f.7.22-relic-fixes"></script>
-<script src="js/08-items-equip.js?v=b25b92cd0a.7.28-catchup-item-index"></script>
-<script src="js/09-vfx-render.js?v=6e82d82699.7.24-true-catchup-boss-offline"></script>
+<script src="js/08-items-equip.js?v=41f9c70ada.7.38-pandora-stock-bless"></script>
+<script src="js/09-vfx-render.js?v=afb4744533.7.43-ice-fx"></script>
 <script src="js/10-ui-tabs.js?v=12351fb0c4.7.28-catchup-item-index"></script>
-<script src="js/11-world-map.js?v=df5a1f88d3.7.29-old-weapon-attr"></script>
+<script src="js/11-world-map.js?v=acd29c22b1.7.41-castle-owner-events"></script>
 <script src="js/12-npc-quests.js?v=6cfa2b0f18.6.92-lock-stack-merge"></script>
-<script src="js/13-shop-save.js?v=f8afbcb2bb.7.36-return-character-select"></script>
-<script src="js/14-craft-pandora.js?v=e54159ff65.6.92-lock-stack-merge"></script>
-<script src="js/15-cards.js?v=1937e5996c.6.51-doll-batch-perf"></script>
+<script src="js/13-shop-save.js?v=7c9c226f5e.7.39-offline-boss-status"></script>
+<script src="js/14-craft-pandora.js?v=e16a079fe9.7.38-pandora-cards"></script>
+<script src="js/15-cards.js?v=b1024bc6aa.7.38-pandora-cards"></script>
 <script src="js/16-equip-book.js?v=b33a18a2d7.5.100-audit-tail"></script>
 <script src="js/18-misc-book.js?v=13944acf14.5.100-audit-tail"></script>
 <script src="js/17-audio.js?v=369a9f3f1e.7.24-true-catchup-boss-offline"></script>
@@ -569,10 +569,10 @@
 <script src="js/21-relic-book.js?v=bdeff66680.5.100-audit-tail"></script>
     <script src="js/23-summons.js?v=2f5d73fde7.7.22-relic-fixes"></script>
     <script src="js/22-pets.js?v=42eccdab81.7.22-relic-fixes"></script>
-    <script src="js/24-pandora-relic-market.js?v=311c5bdf85.6.95-npc-align-stable"></script>
+    <script src="js/24-pandora-relic-market.js?v=4a3864b9c1.7.38-pandora-cards"></script>
     <script src="js/25-clan-system.js?v=9e44764806.7.30-catchup-perf-fix"></script>
-    <script src="js/26-world-channel.js?v=105669a996.7.29-old-weapon-attr"></script>
-    <script src="js/27-offline-rewards.js?v=be419cd353.7.36-return-character-select"></script>
+    <script src="js/26-world-channel.js?v=6f244df81a.7.43-trash-talk-line"></script>
+    <script src="js/27-offline-rewards.js?v=9eb15f6638.7.40-offline-survival"></script>
 <script src="js/28-pvp-arena.js?v=7352d7e63c.7.17-duel-no-potion"></script>
     <!-- ═══════════ 加掛版外掛層（核心永遠是原作者原版；我們的功能全部是外掛疊上去） ═══════════ -->
     <!-- 此區塊由 scripts/sync-upstream.mjs 於「拉上游 index.html 後」自動注入到 </body> 之前。?v= 由 stamp-code-versions 補。 -->

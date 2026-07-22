@@ -192,9 +192,57 @@ const SIEGE_CITY = {
     windwood: { key:'windwood', name:'風木城', outer:'ww_outer',   outerName:'風木外門區', inner:'ww_inner',   innerName:'風木內城', castle:'town_windwood_castle', castleName:'風木城', gate:'風木城門', tower:'風木守護塔' },
     heine:    { key:'heine',    name:'海音城', outer:'heine_outer', outerName:'海音外門區', inner:'heine_inner', innerName:'海音內城', castle:'town_heine_castle', castleName:'海音城', gate:'海音城門', tower:'海音守護塔' }
 };
+// 城堡所有權只會在角色／模式切換與攻城事件時改變。讀檔後首次使用查一次，
+// 宣戰與勝敗結算再由事件刷新；補跑及一般戰鬥不再定時解壓、解析血盟共用資料。
+let _castleOwnerCache = { playerRef:null, mode:null, ready:false, city:null };
+let _castleOwnerChannel = null;
+function _castleOwnerContext() {
+    let p = (typeof player !== 'undefined') ? player : null;
+    return { playerRef:p, mode:p && p.classicMode ? 'classic' : 'normal' };
+}
+function _castleOwnerCacheReady() {
+    let ctx = _castleOwnerContext();
+    return _castleOwnerCache.ready && _castleOwnerCache.playerRef === ctx.playerRef && _castleOwnerCache.mode === ctx.mode;
+}
+function _castleOwnerApply(city) {
+    city = SIEGE_CITY[city] ? city : null;
+    let g = (typeof player !== 'undefined' && player) ? player.castleGuard : null;
+    if (g && g.city !== city) player.castleGuard = null;
+    return city;
+}
+function castleOwnerCity(force) {
+    let ctx = _castleOwnerContext();
+    if (!force && _castleOwnerCacheReady()) return _castleOwnerCache.city;
+    let city = (ctx.playerRef && typeof clanGetCastleCity === 'function') ? clanGetCastleCity(ctx.playerRef) : null;
+    _castleOwnerCache = { playerRef:ctx.playerRef, mode:ctx.mode, ready:true, city:_castleOwnerApply(city) };
+    return _castleOwnerCache.city;
+}
+function rememberCastleOwnerCity(city, broadcast) {
+    let ctx = _castleOwnerContext();
+    _castleOwnerCache = {
+        playerRef:ctx.playerRef,
+        mode:ctx.mode,
+        ready:true,
+        city:_castleOwnerApply(city)
+    };
+    if (broadcast !== false && _castleOwnerChannel) {
+        try { _castleOwnerChannel.postMessage({ type:'castle-owner', mode:ctx.mode, city:_castleOwnerCache.city }); } catch (e) {}
+    }
+    return _castleOwnerCache.city;
+}
+try {
+    if (typeof BroadcastChannel === 'function') {
+        _castleOwnerChannel = new BroadcastChannel('fb5-castle-owner-v1');
+        _castleOwnerChannel.onmessage = function(ev) {
+            let data = ev && ev.data, ctx = _castleOwnerContext();
+            if (!data || data.type !== 'castle-owner' || data.mode !== ctx.mode) return;
+            rememberCastleOwnerCity(data.city, false);
+        };
+    }
+} catch (e) { _castleOwnerChannel = null; }
 function siegeCityCfg() { return SIEGE_CITY[(player.siege && player.siege.city) || 'kent']; }   // 進行中攻城的城池
 function victoryCityCfg() {
-    let city = (typeof clanGetCastleCity === 'function') ? clanGetCastleCity(player) : null;
+    let city = castleOwnerCity();
     return SIEGE_CITY[city] || SIEGE_CITY.kent;
 }   // 血盟同模式共用的永久城堡
 const SIEGE_OUTER_INNER = ['kent_outer', 'kent_inner', 'ww_outer', 'ww_inner', 'heine_outer', 'heine_inner'];
@@ -277,7 +325,7 @@ function cancelCastleGuard() {
 // 受到對應類型傷害時，城堡護衛承擔 10%（玩家 HP 低於門檻、護衛未力竭時）；回傳玩家實際承受的傷害
 function castleGuardAbsorb(dmg, type) {
     let g = player.castleGuard;
-    if (!g || g.absorbType !== type || !siegeVictoryActive()) return dmg;
+    if (!g || g.absorbType !== type) return dmg;
     if (g.disabled || g.hp <= 1) return dmg;
     if (player.hp > player.mhp * (g.threshold / 100)) return dmg;   // 未低於門檻 → 不護衛
     let share = Math.floor(dmg * 0.10);
@@ -287,10 +335,14 @@ function castleGuardAbsorb(dmg, type) {
     else logCombat(`<span class="text-amber-300">【${g.name}】</span>替你承擔了 ${share} 點傷害。`, 'magic');
     return dmg - share;
 }
-// 每 tick：城堡擁有結束/換城 → 解散；每16秒回血；回血達 50% 解除力竭
+// 每 tick 只累積回血／回魔；所有權在角色首次載入、宣戰與勝敗事件刷新。
 function castleGuardTick() {
     let g = player.castleGuard; if (!g) return;
-    if (!siegeVictoryActive() || (typeof victoryCityCfg === 'function' && victoryCityCfg().key !== g.city)) { player.castleGuard = null; return; }
+    if (!_castleOwnerCacheReady()) {
+        castleOwnerCity();
+        g = player.castleGuard;
+        if (!g) return;
+    }
     if (g.mode === 'heal') {
         g._regenAcc = (g._regenAcc || 0) + 1;
         if (g._regenAcc >= 160) { g._regenAcc = 0; if (g.mp < g.maxMp) g.mp = Math.min(g.maxMp, g.mp + g.regen); }
@@ -702,7 +754,7 @@ function openSiegeSelect(faction, targetEl) {
     if (typeof clanCanSiege === 'function' && !clanCanSiege(player)) { alert('此模式沒有創立血盟的王族，無法攻城。'); return; }
     if (s.active) { alert('攻城戰正在進行中！'); return; }
     faction = clan.faction;
-    let held = (typeof clanGetCastleCity === 'function') ? clanGetCastleCity(player) : null;
+    let held = rememberCastleOwnerCity(clan.castle);
     let choice = (city, label, style) => {
         let defender = typeof npcClanCastleDefender === 'function' ? npcClanCastleDefender(city, player) : null;
         let defenderText = defender ? `<span class="block text-xs font-normal mt-1">守城血盟：${typeof clanEsc === 'function' ? clanEsc(defender.name) : defender.name}</span>` : '';
@@ -734,8 +786,9 @@ function startSiege(faction, city) {
     if (!clan) { alert('你尚未加入血盟，無法宣布攻城戰。'); return; }
     if (typeof clanCanSiege === 'function' && !clanCanSiege(player)) { alert('此模式沒有創立血盟的王族，無法攻城。'); return; }
     if (s.active) { alert('攻城戰正在進行中！'); return; }
+    let held = rememberCastleOwnerCity(clan.castle);
     // ⚔️ v3.6.05 等級限制取消（用戶拍板·原 Lv40 門檻）：與 v3.6.01 的冷卻取消一致，攻城不再有任何前置條件
-    if (typeof clanGetCastleCity === 'function' && clanGetCastleCity(player) === city) { alert(`你的血盟目前已持有${cfg.name}。`); return; }
+    if (held === city) { alert(`你的血盟目前已持有${cfg.name}。`); return; }
     if (!confirm(`確定要對【${cfg.name}】宣戰嗎？限時 30 分鐘。`)) return;
     let accCdUntil = Number(s.accCdUntil) || 0;
     let _defender = typeof npcClanCastleDefender === 'function' ? npcClanCastleDefender(city, player) : null;
@@ -759,13 +812,16 @@ function endSiege(result) {
     if (result === 'win') {
         let setResult = (typeof clanSetCastle === 'function') ? clanSetCastle(_cfg.key) : { ok:false };
         if (setResult && setResult.ok) {
+            rememberCastleOwnerCity(_cfg.key);   // 寫入成功後立即更新快取，不等待下一個 5 秒檢查
             if (typeof npcClanOnSiegeResult === 'function') npcClanOnSiegeResult(_cfg.key, 'win', _npcDefenderClanId);
             let replaced = setResult.previous && setResult.previous !== _cfg.key && SIEGE_CITY[setResult.previous] ? `，原有的${SIEGE_CITY[setResult.previous].castleName}已放棄` : '';
             logSys(`🏆🏰 <span class="text-yellow-300 font-bold">攻城獲勝！</span>血盟已永久佔領${_cfg.castleName}${replaced}。同模式所有角色可使用城堡、全商店 8 折，回村按鈕改為回城。`);
         } else {
+            rememberCastleOwnerCity(typeof clanGetCastleCity === 'function' ? clanGetCastleCity(player) : null);
             logSys('<span class="text-red-400 font-bold">攻城獲勝，但城堡共用資料寫入失敗。</span>攻城已無冷卻，可立即再次宣戰重試佔領。');
         }
     } else {
+        rememberCastleOwnerCity(typeof clanGetCastleCity === 'function' ? clanGetCastleCity(player) : null);
         if (typeof npcClanOnSiegeResult === 'function') npcClanOnSiegeResult(_cfg.key, 'lose', _npcDefenderClanId);
         logSys(`🏰 <span class="text-slate-300 font-bold">攻城失敗…</span>時間到，未能攻下${_cfg.tower}。`);
     }
@@ -823,7 +879,7 @@ function handleSiegeKill(mob) {
         endSiege('win');
     }
 }
-function siegeVictoryActive() { return !!(typeof clanGetCastleCity === 'function' && clanGetCastleCity(player)); }
+function siegeVictoryActive() { return !!castleOwnerCity(); }
 function shopPrice(base) { return siegeVictoryActive() ? Math.floor((base || 0) * 0.8) : (base || 0); }
 function ismaelAccCooldownMs() { return Math.max(0, Number(player.siege && player.siege.accCdUntil) - Date.now()); }
 function ismaelAccAvailable() { return ismaelAccCooldownMs() <= 0; }

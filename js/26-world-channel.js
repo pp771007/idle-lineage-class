@@ -224,15 +224,27 @@ function _wcBuildKnowledge() {
     let itemDrops = Object.create(null), mobDrops = Object.create(null), shopItems = new Set();
     try {
         if (typeof MAP_REGIONS !== 'undefined') MAP_REGIONS.forEach(r => (r.maps || []).forEach(m => { mapNames[m.v] = m.t; }));
+        let addMobMap = function(mobName, mapKey, mapName) {
+            if (!mobName) return;
+            let rows = mobMaps[mobName] = mobMaps[mobName] || [];
+            if (!rows.some(row => row.key === mapKey)) rows.push({ key: mapKey, name: mapName });
+        };
         for (let mapKey in DB.maps) {
             let mapName = mapNames[mapKey];
             if (!mapName || !Array.isArray(DB.maps[mapKey])) continue;
             let seen = new Set();
             DB.maps[mapKey].forEach(mobId => {
                 let mob = DB.mobs[mobId];
-                if (!mob || !mob.n || seen.has(mob.n)) return;
-                seen.add(mob.n);
-                (mobMaps[mob.n] = mobMaps[mob.n] || []).push({ key: mapKey, name: mapName });
+                if (!mob || !mob.n) return;
+                if (!seen.has(mob.n)) seen.add(mob.n);
+                let chainId = mobId, chainSeen = new Set();
+                while (chainId && !chainSeen.has(chainId)) {
+                    chainSeen.add(chainId);
+                    let form = DB.mobs[chainId];
+                    if (!form || !form.n) break;
+                    addMobMap(form.n, mapKey, mapName);
+                    chainId = form.transformTo;
+                }
             });
             mapMobs[mapName] = Array.from(seen);
         }
@@ -282,7 +294,7 @@ function _wcBuildKnowledge() {
             };
         });
     } catch (e) {}
-    _wcKnowledge = { itemNames: itemNames, mobNames: mobNames, mapEntries: mapEntries, itemDrops: itemDrops, mobDrops: mobDrops, shopItems: shopItems, craftBy: craftBy };
+    _wcKnowledge = { itemNames: itemNames, mobNames: mobNames, mapEntries: mapEntries, mobMaps: mobMaps, itemDrops: itemDrops, mobDrops: mobDrops, shopItems: shopItems, craftBy: craftBy };
     return _wcKnowledge;
 }
 function _wcCompactItemText(s) {
@@ -499,6 +511,21 @@ function _wcMobDropAnswers(mobName) {
         `${mobName}我印象中有 ${parts.join('、')}${more}，詳細的自己開統計的掉落物頁看。${relicTxt}`
     ];
 }
+function _wcMobLocationAnswers(mobName) {
+    let rows = ((_wcBuildKnowledge().mobMaps || {})[mobName] || []).filter((row, index, all) =>
+        row && row.name && all.findIndex(other => other && other.name === row.name) === index);
+    if (!rows.length) return [
+        `${mobName}目前查不到固定出沒地圖，可能是特殊事件、召喚或階段型怪物。`,
+        `我查不到${mobName}的固定怪物池，先看統計的怪物資料或特殊區域規則。`
+    ];
+    let shown = rows.slice(0, 6).map(row => row.name);
+    let more = rows.length > shown.length ? `，另外還有 ${rows.length - shown.length} 張地圖` : '';
+    return [
+        `${mobName}會出現在 ${shown.join('、')}${more}。`,
+        `要找${mobName}就去 ${shown.join('、')}${more}。`,
+        `${mobName}的出沒地圖是 ${shown.join('、')}${more}。`
+    ];
+}
 function _wcMapMobAnswers(map) {
     let mobs = (map && map.mobs) || [];
     if (!mobs.length) return [`${map ? map.name : '這張圖'}目前查不到固定怪物池。`];
@@ -614,20 +641,26 @@ function _wcDynamicTopic(q) {
     }
     // ⚠️ v3.6.61 補「學／買／做／弄／獲得」動詞：技能書「哪裡學」、藥水「哪裡買」原本全落空只會被嘲笑
     let sourceAsked = /[哪那]裡打|[哪那]邊打|在[哪那]打|[哪那]打|打[哪那]|誰掉|[哪那]掉|會掉|掉落|出處|來源|怎麼拿|怎麼取得|怎取得|如何取得|[哪那]裡出|刷什麼|去[哪那]刷|取得|[哪那]裡學|去[哪那]學|[哪那]學|怎麼學|[哪那]裡買|去[哪那]買|[哪那]買|怎麼買|[哪那]裡拿|去[哪那]拿|[哪那]拿|[哪那]裡找|去[哪那]找|怎麼做|[哪那]裡做|怎麼獲得|如何獲得|如何入手|入手|怎麼弄|[哪那]裡弄|去[哪那]弄/.test(q);
-    let item = _wcFindItem(q, sourceAsked);
+    let exactItem = _wcFindItem(q, false);
+    let mob = _wcFindMob(q);
+    let mobIntentText = mob ? String(q).replace(mob, '') : '';
+    let mobDropAsked = /掉|掉落|噴|物品|道具|裝備|寶物|掉寶|出寶|有什麼寶|戰利品|出什麼|出啥|出貨|出處|來源/.test(mobIntentText);
+    // 怪物名成立時不做兩字物品模糊搜尋，避免「死亡騎士哪裡打」被含死亡騎士字樣的裝備搶走。
+    let item = exactItem || (!mob ? _wcFindItem(q, sourceAsked) : null);
+    let sameMobItemName = !!(exactItem && mob && _wcCompactItemText(exactItem.name) === _wcCompactItemText(mob));
     // ⚠️ 「龍之鑽石」不是背包物品（會被物品「鑽石」substring 誤中）→ 交給 blackmarket 主題
-    if (item && sourceAsked && !/龍之鑽石|龍鑽/.test(q)) return { key: 'item-source', gen: function () { return _wcItemSourceAnswers(item.id); } };
+    if (item && sourceAsked && (!sameMobItemName || mobDropAsked) && !/龍之鑽石|龍鑽/.test(q)) return { key: 'item-source', gen: function () { return _wcItemSourceAnswers(item.id); } };
     // 🐾 v3.6.63 寵物取得：問句點名某隻寵物 → 講該隻的實際管道（蛋／誘捕／進化），別再回制式寵物說明。
     //    ⚠️ 必須排在 _wcFindMob 之前：多數寵物名同時是怪物名（誘捕來源），否則會被 mob-drop 搶走。
     let petName = _wcFindPet(q);
     if (petName && /怎麼拿|怎麼抓|哪裡抓|去哪抓|哪裡拿|去哪拿|怎麼獲得|如何獲得|怎麼取得|如何取得|怎麼弄|哪來的|怎麼來|抓得到|哪裡有|怎麼養|怎麼孵/.test(q)) {
         return { key: 'pet-source', gen: function () { return _wcPetSourceAnswers(petName); } };
     }
-    let mob = _wcFindMob(q);
-    if (mob && /掉什麼|會掉|掉落物|出什麼|噴什麼|有什麼寶/.test(q)) return { key: 'mob-drop', gen: function () { return _wcMobDropAnswers(mob); } };
+    if (mob && mobDropAsked) return { key: 'mob-drop', gen: function () { return _wcMobDropAnswers(mob); } };
     let map = _wcFindMap(q);
     if (map && /什麼怪|哪些怪|出怪|怪物|有什麼/.test(q)) return { key: 'map-mobs', gen: function () { return _wcMapMobAnswers(map); } };
     if (item && /有什麼用|幹嘛的|做什麼|用途|效果|能力|說明|好用嗎/.test(q)) return { key: 'item-info', gen: function () { return _wcItemInfoAnswers(item.id); } };
+    if (mob) return { key: 'mob-location', gen: function () { return _wcMobLocationAnswers(mob); } };
     return null;
 }
 
@@ -1354,7 +1387,7 @@ function _wcBuildExtraChatLines() {
 const WC_EXTRA_CHAT_LINES = _wcBuildExtraChatLines();
 const WC_ALL_CHAT_LINES = WC_CHAT_LINES.concat(WC_EXTRA_CHAT_LINES);
 
-// 🔥 v3.6.74 玩家互嗆對話（250 組 × 2 句＝500 條全新台詞）。
+// 🔥 玩家互嗆對話（301 組 × 2 句＝602 條台詞）。
 //   取材自台版天堂／天堂M／天堂W／楓之谷的頻道文化：衝裝爆裝、搶王卡點、盟戰攻城、課長零課、
 //   掛機外掛工作室、嘴砲跑路、喊價殺價、職業互嘲。
 //   ⚠️ 刻意成對（[開嗆, 回嗆]）而非單句池：由 _wcPostTrashTalk 派兩位不同 NPC 一來一往，
@@ -1536,6 +1569,7 @@ const WC_TRASH_TALK_PAIRS = [
     ['你昨天說不課了，今天又在抽。', '人是會變的。'],
     ['課金排行有你的名字嗎，沒有就閉嘴。', '那種榜有什麼好上的。'],
     ['免費仔的意見我通常直接跳過。', '那你繼續跳，反正你也贏不了。'],
+    ['免費遊戲福利這麼少，還不准人抱怨喔。', '又沒人逼你玩，免費的是在哭喔。'],
     ['抽到神裝也是運氣，別講得像實力。', '實力包含運氣管理，懂？'],
     ['我看你儲值紀錄比戰績漂亮。', '兩個都比你漂亮。'],
     ['錢燒完了就會退坑，我看多了。', '那你等著看。'],

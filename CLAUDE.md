@@ -39,6 +39,7 @@
 - **🚨 絕不可盲呼叫「會寫入玩家存檔」的原作函式**(踩過:主選單狀態呼叫 `saveGame()` 把玩家第 1 格蓋成 Lv.1 null、無備份可救)。要存檔資料**直接讀 `localStorage`**(`lineage_idle_save_<n>`);非寫不可時先驗 `player && player.cls`。任何會動玩家 localStorage 的操作,都要假設可能在「未載入角色/currentSlot 不是預期那格」被觸發。
 - 外掛插 DOM 錨「穩定容器 id」,不要錨父子關係——錨不到只會安靜消失,smoke 驗不到,改過首頁版面要人工掃。
 - 覆寫「會被 `.hidden` 切換」的容器 display 時一律加 `:not(.hidden)`,否則畫面關不掉(踩過)。
+- **覆寫上游「寫在 media query 裡」的樣式時,自己的規則要包進同一條 media query**:afk-mobile 的 `detectMobile()`(`pointer:coarse` 或 UA 或寬 ≤820)跟上游 CSS 的手機斷點(`max-width:768px` 或 `max-height:520px and pointer:coarse`)**判定範圍不一樣**——觸控平板在我們眼中是手機、在上游 CSS 眼中是桌機。只寫 `body.m-mobile` 就去覆寫上游手機版的 `top`/`height`,平板會拿到「我們的定位＋上游的桌機 transform」→ 兩套幾何混搭,元素被 `translate(-50%,-50%)` 推出畫面(城鎮 NPC 視窗踩過,top 到 −489、上半截全在畫面外,**手機與桌機都測不出來**)。判準:**要覆寫的上游宣告是包在 media query 裡的嗎?** 是 → 自己的規則也包同一條;只有純位移／封頂(padding、max-height)這種「哪種幾何都成立」的才可以裸寫。
 - 外掛自建遊戲物件(如木人場 spawn 怪)欄位要對齊核心 `spawnMob`,缺欄位(如 `_born`)會整個系統安靜失效。
 - 上游改版後外掛的「字串/DOM 結構假設」可能失效——同步後 smoke＋人工掃一輪首頁/手機版面。
 

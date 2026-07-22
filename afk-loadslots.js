@@ -71,5 +71,22 @@
         renderLoadSelect();
     };
 
+    // 遊戲中的「回選角」把頁碼算成 currentSlot > 4 ? 1 : 0（核心只有 2 頁）→ 第 9 格以後回來會停在第 2 頁。
+    if (typeof window.returnToCharacterSelect === 'function') {
+        var _ret = window.returnToCharacterSelect;
+        window.returnToCharacterSelect = function () {
+            var r = _ret.apply(this, arguments);
+            try {
+                var panel = document.getElementById('load-select-panel');
+                if (panel && !panel.classList.contains('hidden')) {
+                    _loadPage = Math.max(0, Math.min(maxPage - 1, Math.floor((currentSlot - 1) / 4)));
+                    _loadSelectedSlot = currentSlot;
+                    renderLoadSelect();
+                }
+            } catch (e) {}
+            return r;
+        };
+    }
+
     try { console.log('[AFK-loadslots] hooks OK — 卡片選角分頁擴充到 ' + SAVE_SLOT_MAX + ' 格（' + maxPage + ' 頁）。'); } catch (e) {}
 })();

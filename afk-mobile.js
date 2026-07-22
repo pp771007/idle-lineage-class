@@ -213,6 +213,8 @@
             // 底部讓位：--m-nav-h=導覽實測高度(含 iPhone safe-area 的 env padding；量測見 applyNavH)。
             //   寫死 60px 在實機 iPhone 會不夠(導覽 ~59px + home 條 safe-area ~34px)→ 清單最後一兩列被蓋。
             'body.m-mobile #game-screen{padding-bottom:calc(8px + var(--m-nav-h,0px)) !important;}',
+            // 核心補跑進度條釘在畫面底部 18px、z-index 只有 90 → 手機會整條躲在導覽列(9600)底下看不到。
+            'body.m-mobile #ff-progress-indicator{bottom:calc(10px + var(--m-nav-h,0px)) !important;}',
             // 浮動日誌面板
             'body.m-mobile #m-log-sheet{display:none;position:fixed;left:0;right:0;bottom:var(--m-nav-h,0px);height:46vh;z-index:9500;background:#0b1222;border-top:2px solid #475569;box-shadow:0 -10px 30px rgba(0,0,0,.6);flex-direction:column;}',
             'body.m-mobile.mlog-open #m-log-sheet{display:flex;}',

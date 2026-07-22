@@ -108,7 +108,7 @@
             if (typeof KING_ROOMS !== 'undefined' && KING_ROOMS[c]) return true;              // 軍王之室
             if (typeof isSiegeArea === 'function' && isSiegeArea(c)) return true;              // 攻城
             if (state && state.riftRun) return true;                                          // 時空裂痕（排名挑戰）
-            if (state && (state.oblivion || state.prideClimb || state.prideRanked)) return true; // 遺忘之島 / 攀登
+            if (state && (state.oblivion || state.antharas || state.prideClimb || state.prideRanked)) return true; // 遺忘之島 / 🐉 安塔瑞斯巢穴(區內禁傳送) / 攀登
             if (typeof prideTeleportBlocked === 'function' && prideTeleportBlocked()) return true;
             if (typeof PURE_BOSS_MAPS !== 'undefined' && PURE_BOSS_MAPS.includes(c)) return true;   // 純BOSS房:BOSS常駐,瞬移只會清進度
             if (typeof HIDDEN_AREA_PARENT !== 'undefined' && HIDDEN_AREA_PARENT[c]) return true;    // 這些圖手動用卷軸=進隱藏區域,自動不該誤觸
@@ -131,6 +131,15 @@
         } catch (e) { return false; }
     }
     window.AFK_BOSSRING = { huntActive: huntActive };
+
+    var WAIT_SPAWN_TICKS = 100;      // 瞬移後等 BOSS 生成(10 秒),不連續空瞬移
+    var WAIT_BLOCKED_TICKS = 3000;   // 卷軸沒被消耗=這張圖禁傳送 → 退避 5 分鐘再試
+    // 卷軸總數:用來判斷 useItem 有沒有真的把卷軸用掉。上游對「禁傳送區域」是印一行紅字後 return
+    // (不消耗卷軸),外掛看場上還是沒王 → 10 秒後又試一次 → 紅字洗版。這裡不逐一列舉上游的禁區清單
+    // (作者一路在加:遺忘之島→傲慢之塔→安塔瑞斯…),改用「有沒有被消耗」這個共通結果來退避。
+    function scrollCount() {
+        try { return player.inv.reduce(function (s, i) { return s + ((i && i.id === 'scroll_teleport') ? (i.cnt || 1) : 0); }, 0); } catch (e) { return -1; }
+    }
 
     var _waitUntil = 0;   // 瞬移後「等 BOSS 生成」期限(比照 main 的 _autoBossHuntUntil);逾時容許重試
     function tick() {
@@ -159,8 +168,10 @@
                 } catch (e) {}
             }
             if (!sc) return;                             // 買不起也沒存貨 → 不動
+            var before = scrollCount();
             useItem(sc.uid, false, true);                // 非 silent=戒指 forceBoss;keepModal=自動觸發別關玩家開著的視窗
-            _waitUntil = (state.ticks || 0) + 100;       // 等 10 秒讓 BOSS 生出來,不連續空瞬移
+            var blocked = (before >= 0 && scrollCount() === before);
+            _waitUntil = (state.ticks || 0) + (blocked ? WAIT_BLOCKED_TICKS : WAIT_SPAWN_TICKS);
         } catch (e) {}
     }
     setInterval(tick, 1000);

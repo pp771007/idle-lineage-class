@@ -1,21 +1,18 @@
 ---
 name: release
-description: 放置天堂加掛版發版 — 整理上次發版後的改動成「玩家看得懂」的更新說明，bump 加掛版版本號(semver)，打 tag + 開 GitHub Release。當使用者說「發版」「發 Release」「出新版」「發佈新版本」或 /release 時使用。
+description: 放置天堂加掛版發版 — 用「日期 tag + 原作者版本號」開一個 GitHub Release（與同步 CI 同一套規則）。當使用者說「發版」「發 Release」「出新版」「發佈新版本」或 /release 時使用。
 disable-model-invocation: true
 ---
 
 # /release — 發版 SOP
 
-本專案自 2026-07 起獨立維護（不再跟進原作者版本），發版由這支 skill 手動觸發。
-版本號是**我們自己的 semver**（`v1.0.0` 起跳），存在 `version.json` 的 `app` 欄位（首頁由 afk-syncinfo 顯示「加掛版 vX.Y.Z」）。
+**與 `.github/workflows/sync-upstream.yml` 的自動發版同一套規則**，差別只在這支是人工觸發（同步 CI 只在「有跟到上游」時才發，加掛版自己改了東西不會觸發）。
 
-## 更新說明鐵則（使用者明訂）
+- tag：`vYYYYMMDD-HHMM`（台灣時間）
+- 標題：`《<遊戲名>》加掛版 <TAG>（原版 <上游 GAME_VERSION>）`
+- 說明：固定文字（不列改動清單・2026-07-22 使用者明訂）
 
-- **只寫玩家需要知道的東西**：功能更新、問題修正、玩起來有感的調整。
-- **淺顯易懂、不要術語**：寫「離線掛機的結算速度大幅加快，掛一整天回來幾秒就算完」，不要寫「混合快速結算管線／取樣殺速」。
-- **不寫**：內部重構、文件、CI/腳本、開發流程改動——玩家看不到的一律略過；某次發版若全是這類改動，跟使用者確認是否真的要發。
-- 用分組條列：`✨ 新功能`／`🛠️ 問題修正`／`⚙️ 調整`（沒有的組別省略），每條一句白話。
-- 結尾固定附：線上遊玩網址 `https://pp771007.github.io/idle-lineage-class/`、「原始碼可由下方 Source code 下載」。
+> 不再維護加掛版自己的 semver。`version.json` 的 `app` 欄位已無人顯示（afk-syncinfo 首頁只顯示「最後同步原版 <buildAt>」），發版**不要**去動它。
 
 ## 步驟
 
@@ -23,26 +20,35 @@ disable-model-invocation: true
    - `git fetch origin && git status`：工作區要乾淨、本地不落後 origin/main。
    - 有未 push 的改動 → 先走 `/prepush` + push、等 GitHub Pages 上線，再回來發版（發版對象必須是線上已生效的內容）。
 
-2. **收集這次要發什麼**
-   - 上一版 tag：`git tag --sort=-creatordate | head -5` 取最新的 `vX.Y.Z`（首次發版時上一版是舊日期式 tag `vYYYYMMDD-HHMM`）。
-   - `git log <上一版tag>..HEAD --oneline` 逐條看，翻成玩家視角的白話條目（照上面的鐵則取捨）。
+2. **取兩個變數**
+   ```bash
+   TAG="v$(date -u -d '+8 hours' +%Y%m%d-%H%M)"                                   # 台灣時間（git-bash 的 TZ= 不生效）
+   VER=$(sed -n "s/.*GAME_VERSION = '\([^']*\)'.*/\1/p" js/00-data.js | head -1)  # 上游版本號
+   GAME=$(sed -n 's/.*<title>\([^<]*\)<\/title>.*/\1/p' index.html | head -1)     # 遊戲名
+   ```
+   三個都要有值才往下走（空值代表核心結構被改過，停下來回報）。
 
-3. **決定版本號（自己決定，不要問使用者・2026-07-14 使用者明訂）**
-   - 讀 `version.json` 的 `app` 當現行版本。
-   - 依改動 bump：大改版/不相容變動 → major；新功能 → minor；純修正/微調 → patch。
-   - 直接往下做，版本號與更新說明在最後回報時一併告知即可。
+3. **寫說明檔**（中文走檔案、不走命令列參數，避免 git-bash 重編碼）
+   - 用 Write 工具寫 `.scratch/relnotes.md`，內容照 CI 那段固定文字，只把 `<遊戲名>`／`<原版版本>` 換掉：
 
-4. **bump 版本 + commit + push**
-   - 改 `version.json` 的 `app` 為新版本（`stamp-sw-version.mjs` 會保留此欄位，之後照跑不會弄丟）。
-   - `node scripts/stamp-sw-version.mjs`（讓 version.json 以標準格式重寫、欄位一致。注意 stamp 的 hash 來源不含 version.json——光 bump `app` 不會、也不需要讓 CODE_VERSION 變：`version.json` 走網路不進快取，首頁版本號直接生效，玩家端不需要 SW 更新）。
-   - commit（`chore(release): vX.Y.Z`）→ push。
-   - 照 CLAUDE.md「push 後等 GitHub Pages」規矩：背景輪詢線上 `version.json` 的 `app` 變成新版本才算上線。
+     ```
+     《<遊戲名>》加掛版 — 已同步原作者最新版（原版版本 <原版版本>），外掛層照常疊加、不改動原遊戲內容（手機版面／掉落查詢／小百科／木人場／賽狗場等，遊戲內「外掛開關」可逐一管理）。
 
-5. **打 tag + 開 Release**
-   - `git tag vX.Y.Z && git push origin vX.Y.Z`
-   - 更新說明先用 Write 工具寫到 `.scratch/relnotes.md`（中文走檔案、不走命令列參數，避免 git-bash 重編碼），再：
-     `gh release create vX.Y.Z --title "《放置天堂 - 以血為盟》加掛版 vX.Y.Z" --notes-file .scratch/relnotes.md`
+     原始碼請由下方 Source code (zip / tar.gz) 下載。
+     線上遊玩：https://pp771007.github.io/idle-lineage-class/
+     ```
+
+4. **打 tag + 開 Release**
+   ```bash
+   git tag "$TAG" && git push origin "$TAG"
+   gh release create "$TAG" --title "《${GAME}》加掛版 ${TAG}（原版 ${VER}）" --notes-file .scratch/relnotes.md
+   ```
+   - 同名 tag 已存在（同一分鐘內重跑）→ 等一分鐘換新 TAG，不要 `-f` 覆蓋既有 release。
    - 用完刪掉 `.scratch/relnotes.md`。
 
-6. **回報**
-   - 上線 + Release 建好後回報使用者（訊息從 Telegram 來就用 reply），附 Release 連結。
+5. **回報**：附 Release 連結給使用者（訊息從 Telegram 來就用 reply）。
+
+## 判準備忘
+
+- **不 bump 任何版本號、不 commit、不用等 Pages**：這支只打 tag + 開 Release，不動 repo 內容（跟舊版最大的差別）。
+- 舊的 semver tag（`v3.4.x`）留著當歷史，不要再往下接——`version.json` 的 `app` 停在 `3.4.10` 是已知且無害的（沒有任何畫面讀它）。

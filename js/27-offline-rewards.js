@@ -325,6 +325,7 @@
 
     function _offlineValidHuntMap(map) {
         if (!map || String(map).indexOf('town_') === 0) return false;
+        if (/^antharas_(?:nest_[123]|lair)$/.test(String(map))) return false;   // 🐉 v3.7.61 安塔瑞斯副本禁止離線掛機
         if (typeof DB === 'undefined' || !DB.maps || !Array.isArray(DB.maps[map])) return false;
         if (typeof isSiegeArea === 'function' && isSiegeArea(map)) return false;
         if (/^pride_f\d+$/.test(map) || map === 'rift_battle') return false;
@@ -338,8 +339,10 @@
     function _offlineCanSnapshot(now, profile) {
         if (typeof state === 'undefined' || !state || !state.running) return false;
         if (typeof player === 'undefined' || !player || !player.cls || player.dead) return false;
-        if (!player.offlineHunt || player.offlineHunt.bossUnlocked === false) return false;
+        if (!player.offlineHunt) return false;
         if (typeof mapState === 'undefined' || !mapState || !_offlineValidHuntMap(mapState.current)) return false;
+        // 死亡後只鎖離線頭目戰；普通狩獵區復活後仍可重新建立掛機快照。
+        if (player.offlineHunt.bossUnlocked === false && _offlineBossRoomMap(mapState.current)) return false;
         if (player.siege && player.siege.active) return false;
         if (state.prideClimb || state.riftRun) return false;
         if (!profile || profile.map !== String(mapState.current) || profile.killsPerMin <= 0) return false;
@@ -521,7 +524,7 @@
         try { if (typeof _offlineOriginalSaveGame === 'function') _offlineOriginalSaveGame(); } catch (e) {}
         finally { _offlineInternalSave = false; }
         if (wasLocked && typeof logSys === 'function') {
-            logSys('<span class="text-emerald-300 font-bold">已擊敗頭目，離線掛機資格重新解鎖。</span>');
+            logSys('<span class="text-emerald-300 font-bold">已擊敗頭目，離線頭目戰資格重新解鎖。</span>');
         }
     }
 
@@ -1395,7 +1398,7 @@
                 '、掉落物 ' + loot.itemCount.toLocaleString() + '、卡片 ' + loot.cardCount.toLocaleString() + '。');
             if (survivalPlan.died) {
                 logSys('<span class="text-red-400 font-bold">角色在離線戰鬥 ' + _offlineFormatDuration(elapsed) +
-                    ' 後死亡，後續收益已停止；需再次擊敗頭目才能解鎖離線掛機。</span>');
+                    ' 後死亡，後續收益已停止；離線頭目戰需再次擊敗頭目才能解鎖，普通狩獵復活後仍可掛機。</span>');
             }
         }
         if (survivalPlan.died) _offlineApplySettledDeath();
@@ -1483,7 +1486,8 @@
             let elapsed = Math.min(rawElapsed, OFFLINE_MAX_MS);
             let profile = _offlineProfile(source.profile);
 
-            if (!source.eligible || source.bossUnlocked === false || !profile || profile.map !== source.map || elapsed < OFFLINE_MIN_MS || profile.killsPerMin <= 0) {
+            let bossLocked = source.bossUnlocked === false && profile && profile.bossRoom === true;
+            if (!source.eligible || bossLocked || !profile || profile.map !== source.map || elapsed < OFFLINE_MIN_MS || profile.killsPerMin <= 0) {
                 _offlineResetRuntime(typeof mapState !== 'undefined' && mapState ? mapState.current : '');
                 _offlinePrepareSnapshot(now);
                 return false;
@@ -1493,7 +1497,7 @@
             return _offlineGrantBatch(source, profile, elapsed, rawElapsed, OFFLINE_EFFICIENCY, {
                 now: now,
                 label: '離線收益',
-                allowBosses: true,
+                allowBosses: source.bossUnlocked !== false,
                 advanceCombatTime: false,
                 showModal: true
             });
@@ -1690,7 +1694,7 @@
             let changed = _offlineLockAfterDeath();
             let result = _offlineOriginalKillPlayer.apply(this, arguments);
             if (changed && typeof logSys === 'function') {
-                logSys('<span class="text-amber-300 font-bold">死亡使離線掛機資格失效，需再次擊敗任一頭目才能解鎖。</span>');
+                logSys('<span class="text-amber-300 font-bold">死亡使離線頭目戰資格失效；普通狩獵復活後仍可掛機，再次擊敗任一頭目可重新解鎖離線頭目戰。</span>');
             }
             return result;
         };

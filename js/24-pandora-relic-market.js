@@ -16,6 +16,7 @@
     const RELIC_SEARCH_COST = 100;
     const WANDERER_CHANCE = 0.50;
     const GOLD_WANDERER_CHANCE = 0.30;
+    const WANDERER_CARD_CHANCE = 0.10;
 
     // 🚫 v3.5.53 出沒排除（用戶拍板）：攻城三城（限持城者進入·NPC 形同碰不到）＋炎魔謁見所＋席琳神殿；
     //    其餘安全區皆可出沒（含 傲慢之塔入口/時空裂痕入口/沉默洞穴/長老會議廳/希培利亞村莊/貝希摩斯）。
@@ -676,6 +677,29 @@
         });
     }
 
+    function _pickWeightedWandererItem(st, items, tag) {
+        let pool = (items || []).map(id => ({
+            id: id,
+            weight: Math.max(0, Number(DB.items[id] && DB.items[id].gachaWeight) || 0)
+        })).filter(entry => entry.weight > 0);
+        if (!pool.length) return null;
+        let roll = _rand(st, tag) * pool.reduce((sum, entry) => sum + entry.weight, 0);
+        for (let entry of pool) {
+            roll -= entry.weight;
+            if (roll < 0) return entry.id;
+        }
+        return pool[pool.length - 1].id;
+    }
+
+    function _pickWandererItem(st, currency) {
+        let items = _wandererItemPool(currency);
+        if (!items.length) return null;
+        let wantCard = _rand(st, 'wander-item-kind|' + currency) < WANDERER_CARD_CHANCE;
+        let categoryPool = items.filter(id => (DB.items[id] && DB.items[id].eff === 'card') === wantCard);
+        if (!categoryPool.length) categoryPool = items;
+        return _pickWeightedWandererItem(st, categoryPool, 'wander-item|' + currency + '|' + (wantCard ? 'card' : 'normal'));
+    }
+
     function _makeName(st) {
         let history = new Set(st.nameHistory || []);
         let made = '';
@@ -693,10 +717,10 @@
     function _makeWanderer(st, now, townId, currency) {
         let towns = _eligibleTowns();
         currency = currency === 'gold' ? 'gold' : 'diamond';
-        let items = _wandererItemPool(currency);
-        if (!towns.length || !items.length) return null;
+        if (!towns.length) return null;
         if (!townId || !towns.includes(townId)) townId = _pick(st, towns, 'wander-town');
-        let itemId = _pick(st, items, 'wander-item');
+        let itemId = _pickWandererItem(st, currency);
+        if (!itemId) return null;
         let d = DB.items[itemId];
         let en = null;
         if (_isEnhanceableDef(d)) {

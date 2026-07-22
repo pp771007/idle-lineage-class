@@ -8,7 +8,7 @@ function whKey(p){ let _p = (p !== undefined) ? p : player; return WH_KEY + mode
 const WH_MAX = 5000;   // 倉庫格數上限（🔧 100 → 200 → 500 → 5000）
 const WH_NO_STORE = ['item_dk_insignia','item_mastery_proof',   // 🚫 v3.2.17 舊項圈 id 已隨項圈系統移除
     'item_pride_pass_11','item_pride_pass_21','item_pride_pass_31','item_pride_pass_41','item_pride_pass_51','item_pride_pass_61','item_pride_pass_71','item_pride_pass_81','item_pride_pass_91',
-    'item_dantes_letter','item_elf_whisper','item_ancient_book','item_sealed_intel','item_spy_report','item_chaos_key','item_royal_order','wpn_shaha_arrow','item_dragon_egg',   // 🗑️ v3.5.87 移除 item_card_book/item_equip_book：收集冊本體已無取得管道且 DB 定義移除（ensureCardBook/ensureEquipBook 仍會濾除舊存檔殘留）
+    'item_dantes_letter','item_elf_whisper','item_ancient_book','item_sealed_intel','item_spy_report','item_chaos_key','item_royal_order','wpn_shaha_arrow',   // 🗑️ v3.5.87 移除 item_card_book/item_equip_book：收集冊本體已無取得管道且 DB 定義移除（ensureCardBook/ensureEquipBook 仍會濾除舊存檔殘留）；🐉 v3.7.56 移除 item_dragon_egg：幼龍蛋開放存倉
     // 🔥 v3.0.78 試煉接取制：所有試煉道具禁止存入倉庫（既有倉庫存量仍可取出）
     'new_item_196','new_item_198','new_item_206','new_item_144','new_item_208','item_nightvision','item_ancientkey',
     'new_item_204','new_item_205','new_item_203','new_item_214','new_item_212','new_item_240',
@@ -17,7 +17,7 @@ const WH_NO_STORE = ['item_dk_insignia','item_mastery_proof',   // 🚫 v3.2.17 
     'item_ant_fruit','item_ant_branch','item_ant_bark','item_elmore_heart','item_time_orb','item_wyvern_blood',
     'new_item_207','new_item_226','new_item_225','item_cyclops_blood','new_item_219','new_item_234',
     'item_demon_search','item_demon_spy','item_yeti_heart','item_soulfire_ash',
-    'new_item_197','new_item_211','item_lost_soul','mat_flame_sword','mat_flame_eye','mat_flame_claw','mat_flame_heart'];   // 🚫 禁止存入倉庫（現行陣列內容）：死亡騎士之印記、精通之證、傲慢之塔傳送符(11~91F)、各村莊搜索狀/信件等劇情道具、沙哈之箭、頑皮幼龍蛋、🔥50級試煉任務道具＋全部試煉道具。
+    'new_item_197','new_item_211','item_lost_soul','mat_flame_sword','mat_flame_eye','mat_flame_claw','mat_flame_heart'];   // 🚫 禁止存入倉庫（現行陣列內容）：死亡騎士之印記、精通之證、傲慢之塔傳送符(11~91F)、各村莊搜索狀/信件等劇情道具、沙哈之箭、🔥50級試煉任務道具＋全部試煉道具。
     //    （🗑️ 已不在此列：四種項圈＝v3.2.17 隨項圈系統移除、🎴卡片/裝備收集冊＝v3.5.87 移除 DB 定義、潘朵拉抽獎卷＝v3.5.49 隨舊抽獎機移除）
 // 倉庫分類過濾（武器 / 防具 / 道具）：存入、取出共用同一個下拉清單
 let _whFilter = 'weapon';

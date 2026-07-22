@@ -6,14 +6,14 @@
 //   每音效預載 N 個元素做 round-robin → 可重疊播放、零重載延遲。HTMLAudio.play() 於首次使用者互動後即可播（遊戲本就需點擊進入）。
 //   音效偏好為「裝置全域設定」（非每存檔），存於 _lsSet('fb5_sfx')。對外：playSfx('attack'|'crit'|'kill'|'magic'|'hurt'|'levelup')。
 const SFX_DEFS = {
-    attack:  { file: 'attack',  vol: 0.45, throttle: 70 },   // 玩家普攻命中（連打節流，不洗版）
+    attack:  { file: 'attack',  vol: 0.45, throttle: 70, preload: false },   // 玩家普攻命中（由完整的武器變體懶載；不探測不存在的通用檔）
     crit:    { file: 'crit',    vol: 0.70, throttle: 40 },   // 爆擊／會心一擊
     // 🔊 v3.5.84 擊殺怪物：原本指向 assets/sfx/kill.*，但該檔從未存在＝三條「退回通用擊殺音」的鏈路實際全是靜音。
     //    改借用音效庫既有的 57（MOB_KILL_SFX 中最通用的死亡音·37 隻怪共用）當通用擊殺音。
     //    ⚠️ 若日後補了專屬的 assets/sfx/kill.ogg，把 file 改回 'kill' 即可（其餘程式碼不必動）。
     kill:    { file: '57',      vol: 0.60, throttle: 50 },   // 擊殺怪物（通用·借用 57）
     magic:   { file: 'magic',   vol: 0.55, throttle: 90 },   // 玩家施放魔法
-    hurt:    { file: 'hurt',    vol: 0.50, throttle: 120 },  // 玩家受到傷害
+    hurt:    { file: 'hurt',    vol: 0.50, throttle: 120, preload: false },  // 玩家受到傷害（由完整的職業／性別變體懶載）
     levelup: { file: 'levelup', vol: 0.85, throttle: 0 },    // 升級
 };
 // 創角動畫：charsound.def 的「觸發 PNG 幀 → 音效編號」。鍵名須與 creationAnimKey() 一致。
@@ -43,9 +43,9 @@ function _sfxLoadCfg() {
 }
 function _sfxSaveCfg() { try { if (typeof _lsSet === 'function') _lsSet('fb5_sfx', JSON.stringify(_sfxCfg)); } catch (e) {} }
 
-// 載入單一音效：依序試 mp3→ogg→wav；第一個能播者→建立 N 個元素的播放池；全部失敗→該事件保持靜音
+// 載入單一音效：素材庫以 ogg 為主，依序試 ogg→mp3→wav；第一個能播者→建立 N 個元素的播放池；全部失敗→該事件保持靜音
 function _sfxTryLoad(key, def) {
-    var exts = ['mp3', 'ogg', 'wav'], i = 0;
+    var exts = ['ogg', 'mp3', 'wav'], i = 0;
     function tryNext() {
         if (i >= exts.length) { _sfxPool[key] = null; return; }
         var url = 'assets/sfx/' + def.file + '.' + exts[i++];
@@ -67,7 +67,7 @@ function _sfxTryLoad(key, def) {
 function _sfxInit() {
     if (_sfxInited) return; _sfxInited = true;
     _sfxLoadCfg();
-    Object.keys(SFX_DEFS).forEach(function (k) { _sfxTryLoad(k, SFX_DEFS[k]); });
+    Object.keys(SFX_DEFS).forEach(function (k) { var def = SFX_DEFS[k]; if (def.preload !== false) _sfxTryLoad(k, def); });
     _sfxSyncUI();
 }
 // 將 UI 控制項（設定面板的開關 + 音量滑桿）初值同步為目前偏好
@@ -339,6 +339,13 @@ const MOB_ATTACK_SFX = {
 //   ① 明確別名 MOB_ATTACK_ALIAS（跨名借用·非子字串關係·用戶指定）。② 最長「被包含」的已對應怪名子字串（如 遺忘之島鱷魚←鱷魚、妖魔法師←妖魔、小惡魔←惡魔·最長者優先＝最精確）。
 //   ⚠️來源怪本身要有攻擊音才借得到；鱷魚家族(gfx 1572/1574)天堂精靈完全無聲→無來源可借（維持靜音）。結果記憶化 _mobAtkResolveCache。
 const MOB_ATTACK_ALIAS = { "卡魯塔": "風精靈王", "卡瑞": "死亡騎士" };   // 卡瑞 已有精確對應 86(=死亡騎士)·此處僅記錄用戶意圖·精確對應優先故此別名不觸發
+// 🐉 v3.7.57 侵蝕的安塔瑞斯巢穴音效：安塔瑞斯三形態＋大地荒龍沿用龍族既有音；喀瑪五種各套不同高崙音（石頭/冰石/熔岩/鋼鐵組合）
+Object.assign(MOB_HURT_SFX, { "被侵蝕的安塔瑞斯": 226, "被侵蝕的狂怒安塔瑞斯": 226, "被侵蝕的瘋狂安塔瑞斯": 226, "大地荒龍": 278,
+    "喀瑪南": 770, "喀瑪焰": 723, "喀瑪南王": 642, "喀瑪焰王": 770, "喀瑪王": 770 });
+Object.assign(MOB_KILL_SFX, { "被侵蝕的安塔瑞斯": 258, "被侵蝕的狂怒安塔瑞斯": 258, "被侵蝕的瘋狂安塔瑞斯": 258, "大地荒龍": 274,
+    "喀瑪南": 772, "喀瑪焰": 724, "喀瑪南王": 643, "喀瑪焰王": 772, "喀瑪王": 772 });
+Object.assign(MOB_ATTACK_SFX, { "被侵蝕的安塔瑞斯": 445, "被侵蝕的狂怒安塔瑞斯": 445, "被侵蝕的瘋狂安塔瑞斯": 445,
+    "喀瑪南王": 640, "喀瑪王": 768 });
 // 🗡️ v3.0.112 持刀劍怪：攻擊時「額外疊一記揮刀聲」(在自身攻擊音之上·重用玩家武器揮擊音池 wpnatk_<n>)。name -> 揮擊音編號(248=單手劍揮擊)。
 const MOB_ATTACK_SWING = { "死亡騎士": 248, "卡瑞": 248 };   // 死亡騎士/卡瑞 同精靈(gfx240)·攻擊 86(本體聲)＋248(揮刀聲)
 // 🧙 v3.0.114 用戶指定：長老/術士系 9 怪 統一音效 攻擊81/受傷79/死亡80（覆蓋三表原值；因怪物本體與玩家變身皆讀此三表→同步生效。名稱相近的變種攻擊音亦由子字串借用同步）。
@@ -579,7 +586,8 @@ var _TOWN_BGM = {}; TOWN_BGM_LIST.forEach(function (id) { _TOWN_BGM[id] = 1; });
 // 🐍 狩獵區專屬 BGM（地圖 id → 曲目檔名·assets/bgm/<檔>.<ext>）：提卡爾蛇神降世 3 圖。優先於通用 battle/boss，故祭壇(純頭目房)也放自己的曲。
 var HUNT_BGM = { 'tikal_area': 'music122', 'tikal_deep': 'music123', 'tikal_altar': 'music125',
     'cursed_dark_elf_sanctuary': 'music153', 'collapsed_elder_council_hall': 'music162',   // 🌑 v3.4.0 黑暗妖精聖地雙 BOSS 房（黑暗妖精聖地.md：music 153／162；一般聖地未指定→維持通用 battle）
-    'sunrise_castle': 'music161', 'sunrise_east': 'music167', 'sunrise_west': 'music167', 'sunrise_north': 'music167' };   // 🌅 v3.4.98 日出之國：城墎=music161·東/西/北之地=music167
+    'sunrise_castle': 'music161', 'sunrise_east': 'music167', 'sunrise_west': 'music167', 'sunrise_north': 'music167',   // 🌅 v3.4.98 日出之國：城墎=music161·東/西/北之地=music167
+    'antharas_nest_1': 'music128', 'antharas_nest_2': 'music130', 'antharas_nest_3': 'music130', 'antharas_lair': 'music133' };   // 🐉 v3.7.57 侵蝕的安塔瑞斯巢穴：入口128·通道/深處130·棲息地133（規格書指定）
 Object.keys(HUNT_BGM).forEach(function (id) { BGM_TRACKS[HUNT_BGM[id]] = HUNT_BGM[id]; });   // 註冊曲目 scene=檔名，_bgmInit 會預解析 URL
 var _bgmUrl = {}, _bgmEls = [null, null], _bgmActive = -1, _bgmScene = null, _bgmFadeTimer = null, _bgmInited = false;
 
@@ -618,6 +626,10 @@ function _bgmCreateScene() {
 }
 function _bgmDetectScene() {
     if (_bgmIsCreateScreen()) return _bgmCreateScene();   // 創角畫面優先：依目前選擇的職業播放專屬曲目
+    if (typeof document !== 'undefined') {
+        var gameScreen = document.getElementById('game-screen');
+        if (gameScreen && gameScreen.classList && gameScreen.classList.contains('hidden')) return 'title';   // 回首頁／選角時 player 仍保留，必須先以畫面狀態切回標題 BGM
+    }
     if (typeof player === 'undefined' || !player || !player.cls) return 'title';
     var cur = (typeof mapState !== 'undefined' && mapState) ? mapState.current : '';
     if (cur && cur.indexOf('town_') === 0) return _TOWN_BGM[cur] ? cur : 'town';   // 專屬城鎮→自己的曲；其餘安全區→共通 town

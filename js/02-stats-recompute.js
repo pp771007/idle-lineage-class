@@ -433,10 +433,13 @@ d.mr += (baseMr + bonusMr);
     if(setCheck['frost'] >= 3) { d.ac -= 5; p.mhp += 100; d.hpR += 8; d.mpR += 4; d.mr += 15; d.resWater += 20; }   // ❄️ 寒冰套裝（王族／龍騎士）：AC-5、HP+100、HP自然恢復+8、MP自然恢復+4、MR+15、水屬性抗性+20（體質+3 已於 Phase 1 前提前套用）
     if(setCheck['bluepirate'] >= 4) { d.ac -= 1; p.mhp += 10; }   // 🏴‍☠️ 藍海賊套裝（頭巾＋皮盔甲＋手套＋長靴）：AC-1、HP+10（智力+1 已於 Phase 1 前提前套用）
     if(setCheck['emperor'] >= 5) { d.ac -= 20; p.mhp += 100; p.mmp += 20; d.hpR += 10; d.atkSpdPct += 30; d.meleeDmg += 5; d.rangedDmg += 5; }   // 🌑 v3.3.33 真‧冥皇套裝（披風/鎧甲/面甲/護手/鋼靴 5 件·黑暗妖精聖地.md）：防禦-20、HP+100、MP+20、HP自然恢復+10、攻速額外+30%（atkSpdPct 管線·與加速/勇敢藥水乘算堆疊）、額外傷害+5（近/遠皆加）
+    if(setCheck['priest'] >= 5) { d.ac -= 50; d.mr += 50; p.mhp += 300; d.mpR += 30; d.meleeCrit += 5; d.rangedCrit += 5; d.magicCrit += 5; d.meleeCritDmg += 50; d.rangedCritDmg += 50; d.magicCritDmg += 50; }   // 🏺 v3.7.52 司祭苦行套裝（5 件遺物·純 flat 免 _setEarly）：AC-50、MR+50、HP+300、MP自然恢復+30、近/遠/魔法爆擊率+5%、近/遠/魔法爆擊傷害+50%
     // 🌑 v3.4.0 受詛咒的真．冥皇執行劍：裝備時變身 死亡騎士（走 _setPoly 管線＝卸下即消失·速度覆蓋沿 POLY_TIERS 死亡騎士；套裝變身優先於本劍故加 !p._setPoly 守衛）
     if(!p._setPoly && p.eq && p.eq.wpn && p.eq.wpn.id === 'wpn_cursed_emperor_blade') { let _ceb = findPolyForm('死亡騎士'); if(_ceb) p._setPoly = makePolyState(_ceb.form, _ceb.color); }
     // 🌑 v3.4.67 解除詛咒的真死亡騎士．冥皇執行劍：裝備時變身 真死亡騎士 冥皇丹特斯（equip-only·per-weapon APM 攻速·套裝變身優先故加 !p._setPoly 守衛）
     if(!p._setPoly && p.eq && p.eq.wpn && p.eq.wpn.id === 'wpn_uncursed_emperor_blade') { p._setPoly = Object.assign({}, DANTES_POLY_FORM); }
+    // 🔥 v3.7.52 烈焰的死亡騎士之劍（flameDkMorph）：裝備時變身 烈焰的死亡騎士（形態既存於變身表·含 per-weapon APM/動態/音效；套裝變身優先故加 !p._setPoly 守衛）
+    if(!p._setPoly && p.eq && p.eq.wpn) { let _fdw = DB.items[p.eq.wpn.id]; if (_fdw && _fdw.flameDkMorph) { let _fdk = findPolyForm('烈焰的死亡騎士'); if (_fdk) p._setPoly = makePolyState(_fdk.form, _fdk.color); } }
 
     // ===== 🔮 席琳套裝效果：⚠️v3.1.68 改「席琳遺骸」計件——只掃 8 格遺骸欄（SHERINE_REMAINS·欄位鍵=物品id）=====
     // 每格遺骸必附一種席琳詞綴(seteff)，相同組名的遺骸格數達 2/3/5 → 發動效果（門檻/效果不變）。
@@ -509,6 +512,7 @@ d.mr += (baseMr + bonusMr);
     if(p.buffs.sk_dark_walkhaste > 0) spdMult *= (1/1.15); // 🔧 行走加速：攻速+15%（v3.5.37 1/1.15）（與加速術等相乘疊加）
     { let _clvW = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; let _clvOn = !p.classicMode && ((p.statuses && p.statuses.cleave > 0) || (p.mastery === 'k_cleave' && _clvW && _clvW.eff === 'cleave')); if(_clvOn) spdMult *= (p.mastery === 'k_cleave' ? (1/1.5) : (1/1.2)); }   // 切割：攻速+20%（🏅 切割精通：+50%・持切割武器常駐），與其他加速相乘疊加；🎮 經典模式停用
     if (typeof player !== 'undefined' && p === player && !p._allyName && (p._crushFuryUntil || 0) > state.ticks) spdMult *= (1/1.2);   // 🔨 v3.6.47 重裝戰士的粉碎鎚：即死觸發攻速+20%（8秒·js/04 授予·js/03 到期重算·經典亦生效比照即死本體；傭兵版走 _crushFuryTicks 於 js/06 攻擊間隔）
+    if (typeof player !== 'undefined' && p === player && !p._allyName && (p._fangFuryUntil || 0) > state.ticks) { let _ffw = p.eq.wpn && DB.items[p.eq.wpn.id]; spdMult *= (1 / (1 + (((_ffw && _ffw.critFuryHaste && _ffw.critFuryHaste.pct) || 30) / 100))); }   // 🏺 v3.7.52 邪惡利牙：爆擊觸發攻速+30%（5秒·js/04 授予·js/03 到期重算；傭兵版走 _fangFuryTicks 於 js/06 攻擊間隔）
     { let _swMelee = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(p.mastery === 'e_sword' && _swMelee && !_swMelee.w2h && !_swMelee.isBow && !_swMelee.ranged) spdMult *= (1/1.5); }   // 🏅 劍術精通：持單手近戰武器攻速+50%（與加速/勇敢/餅乾/變身相乘疊加）
     { let _aw = p.eq.wpn ? getWeaponTags(p.eq.wpn.id) : []; let _ow = p.eq.offwpn ? getWeaponTags(p.eq.offwpn.id) : []; if(p.mastery === 'k_giantaxe' && (_aw.includes('雙手鈍器') || _ow.includes('雙手鈍器'))) spdMult *= (1/1.3); else if(p.mastery === 'k_dualaxe' && _aw.includes('單手鈍器') && p.eq.offwpn && _ow.includes('單手鈍器')) spdMult *= (1/1.3); }   // ⚔️ 巨斧精通(主手或副手任一持雙手鈍器·符合「持雙手鈍器+30%」描述·含混裝)／雙斧精通(主副手皆單手鈍器)：攻速+30%
     { let _rw = p.eq.wpn ? getWeaponTags(p.eq.wpn.id) : []; if(p.mastery === 'k_royal_sword' && (_rw.includes('單手劍') || _rw.includes('雙手劍'))) spdMult *= (1/1.5); }   // 👑 劍術精通：裝單手劍／雙手劍攻速+50%
@@ -648,6 +652,31 @@ d.mr += (baseMr + bonusMr);
     // 🏺 人面獅身的漆黑羽翼（drPerEr）：傷害減免 +（完整 ER ÷ N）。ER 的迴避效益遞減由 effResistPct 處理，此處不設上限。
     if (p.eq) { for (let _dk in p.eq) { let _de = p.eq[_dk]; if (!_de) continue; let _dd = DB.items[_de.id];
         if (_dd && _dd.drPerEr) d.dr += Math.floor(Math.max(0, d.er) / _dd.drPerEr); } }
+    // 🏺 v3.7.52 高崙的生命印記（golemMarkDebuff）：受重擊後 3 秒 MR-100（js/04 授予·js/03 到期重算；置於所有 MR 來源之後·可為負值＝魔法傷害被放大）
+    if ((p._golemMrDebuffUntil || 0) > state.ticks && p.eq && p.eq.helm && (DB.items[p.eq.helm.id] || {}).golemMarkDebuff) d.mr -= 100;
+    // 🏺 v3.7.54 專精劍術的魔劍士之刀（spellbladeBuff）：消耗MP施放傷害法術後 10 秒·依法術階級提升近傷/近命（1:+1 2:+2 3:+3 4:+6 5:+9 6:+12 7:+15 8:+18 9:+21 10:+25）
+    if ((p._spellbladeUntil || 0) > state.ticks && p.eq && p.eq.wpn && (DB.items[p.eq.wpn.id] || {}).spellbladeBuff) {
+        let _sbT = { 1:1, 2:2, 3:3, 4:6, 5:9, 6:12, 7:15, 8:18, 9:21, 10:25 };
+        let _sbB = _sbT[Math.max(1, Math.min(10, p._spellbladeTier || 1))] || 1;
+        d.meleeDmg += _sbB; d.meleeHit += _sbB;
+    }
+    // 🐉 v3.7.57 安塔瑞斯副本助戰者（僅主玩家·快照制 player.antharasHelpers）：精準=等級5%額外命中(≤20)·破壞=近/遠/魔傷/SP各5%(各≤20)·
+    //    抵抗=地抗100%(≤+30)·護衛=MR10%傷害減免(≤20%·存 p._antHelperDr·js/04 受擊點消費——⚠️獨立函式不動被 C# 包裝的 teamDmgReduceMult)
+    p._antHelperDr = 0;
+    if (!_recomputingAlly && p.antharasHelpers) {
+        let _ah = p.antharasHelpers;
+        if (_ah.precision) d.extraHit += Math.min(20, Math.floor((_ah.precision.lv || 0) * 0.05));
+        if (_ah.destroy) {
+            d.meleeDmg  += Math.min(20, Math.floor((_ah.destroy.meleeDmg  || 0) * 0.05));
+            d.rangedDmg += Math.min(20, Math.floor((_ah.destroy.rangedDmg || 0) * 0.05));
+            d.magicDmg  += Math.min(20, Math.floor((_ah.destroy.magicDmg  || 0) * 0.05));
+            d.extraMp   += Math.min(20, Math.floor((_ah.destroy.sp        || 0) * 0.05));
+        }
+        if (_ah.resist) d.resEarth = (d.resEarth || 0) + Math.min(30, Math.floor(_ah.resist.resEarth || 0));
+        if (_ah.guard) p._antHelperDr = Math.min(20, Math.floor((_ah.guard.mr || 0) * 0.10));
+    }
+    // 🐉 v3.7.57 地龍之魔眼觸發增益（10 分鐘）：額外傷害/額外命中/ER 各 +5（js/04 石化觸發·js/03 _tickExpireFields 到期重算）
+    if ((p._eyePetrifyUntil || 0) > state.ticks) { d.extraDmg += 5; d.extraHit += 5; d.er += 5; }
 
     // 原版方向魔法公式拆分：INT 提供 SP 封頂 33；其餘 extraMp 才列為道具／套裝／增益 SP。
     // 用未封頂的 INT 原始提供量扣除，避免 INT 100 多出的 2 點被誤判成道具 SP。

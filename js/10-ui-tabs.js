@@ -210,6 +210,7 @@ function renderTabs(force) {
     if(setCheck['icequeen_charm'] >= 3) activeSets.push('icequeen_charm');   // ❄️👸 冰之女王魅力套裝：3 件齊→欄位底色亮起
     if(setCheck['frost'] >= 3) activeSets.push('frost');   // ❄️ 寒冰套裝：3 件齊→欄位底色亮起
     if(setCheck['bluepirate'] >= 4) activeSets.push('bluepirate');   // 🏴‍☠️ 藍海賊套裝：4 件齊→欄位底色亮起
+    if(setCheck['priest'] >= 5) activeSets.push('priest');   // 🏺 v3.7.52 司祭苦行套裝：5 件齊→欄位底色亮起
 
     slots.forEach(s => {
         if (s.filler) {   // 🦴 v3.1.75 填充格：與 decorateClassicInventoryTab 尾端補的空格同款（無邊框互動·非 .list-item）
@@ -634,6 +635,9 @@ const WEAPON_TAGS = {
     // 🏺 v3.7.20 遺物第二十二批武器 tag：瞥視=雙手鈍器；漆黑之劍=反擊＋居合雙標籤（裝真盾→反擊、無盾→居合·黃金權杖先例）；巨劍/鐮刀=雙手劍（切割走 eff:cleave）
     relic_maze_demon_glare: ['雙手鈍器'], relic_warrior_blackblade: ['單手劍', '武士刀'],
     relic_elmore_greatsword: ['雙手劍'], relic_beheading_scythe: ['雙手劍'],
+    // 🏺 v3.7.52 遺物第二十三批武器 tag：邪惡利牙=雙刀（雙擊）；魔劍士之刀/死騎劍=反擊＋居合雙標籤（黃金權杖先例）；真‧屠龍劍=雙手劍（切割走 eff:cleave）
+    relic_serrated_fangs: ['雙刀'], relic_mageblade_knife: ['單手劍', '武士刀'],
+    relic_true_dragonslayer: ['雙手劍'], relic_flame_dk_sword: ['單手劍', '武士刀'],
     wpn_20: ['單手鈍器'], wpn_10: ['單手鈍器'], wpn_13: ['單手鈍器'], wpn_alien: ['單手鈍器'], wpn_1: ['單手鈍器'], wpn_2: ['單手鈍器'], wpn_ancient_axe: ['單手鈍器'], wpn_warrior_trial_axe: ['單手鈍器'], wpn_master_axe: ['單手鈍器'], wpn_demon_axehead: ['單手鈍器'], wpn_iron_axehead: ['單手鈍器'], wpn_giant_axehead: ['單手鈍器'],   // 🔧 古代神之斧／試煉斧頭／大匠的斧頭／魔物的斧頭／鐵斧頭／巨人的斧頭：單手鈍器（鈍擊）
     wpn_2hsword: ['雙手劍'], wpn_dragonslayer: ['雙手劍'], wpn_official_2h: ['雙手劍'],   // 🔧 雙手劍類型標註
     // 🔧 重擊特效武器標註為「雙手鈍器」
@@ -743,7 +747,7 @@ function weaponPurposeLabels(d) {
     if (d.mpRPerEn) out.push(`MP自然恢復每強化+${d.mpRPerEn}`);
     if (d.mdmgEnFrom7Max3) out.push('魔法傷害成長（+7起魔法傷害+1，之後每強化+1，最高+3）');
     if (d.equipHaste) out.push('裝備加速（常駐加速，與加速術／自我加速藥水不重疊）');
-    if (d.dragonStrike) out.push(`龍的一擊 ${d.dragonStrike}%（每次一般攻擊皆判定且不論命中；對全體造成1D力量+25固定物理傷害）`);
+    if (d.dragonStrike) out.push(`龍的一擊 ${d.dragonStrike}%（每次一般攻擊皆判定且不論命中；對全體造成3D力量+30固定物理傷害）`);
     if (d.procBurstPoison) {
         let p = d.procBurstPoison;
         out.push(`猛爆劇毒 ${p.rateBase == null ? 1 : p.rateBase}%＋每強化${p.ratePerEn == null ? 1 : p.ratePerEn}%（每秒100點真實傷害，持續5秒，最多1層）`);

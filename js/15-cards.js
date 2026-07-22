@@ -42,8 +42,8 @@ const CARD_STAT_LABEL = { mhp: 'HP', mmp: 'MP', mpR: 'MP自動恢復量', hpR: '
 
 // ---- 特殊刷出怪：不在任何 DB.maps 出怪池（掃圖建索引抓不到）→ 手動歸入指定卡片地區（同時開通掉卡＋圖鑑）----
 //  怪id → { region: CARD_REGIONS key, mapLabel: 金卡「出沒」顯示文字 }
-//  🐉 v3.5.35 風龍林德拜爾：持有頑皮幼龍蛋於野外 1% 特殊刷出（js/03）·歸入亞丁地區（完成加成 resWind·風龍對味）。
-const CARD_SPECIAL_MOBS = { lindvior: { region: 'aden', mapLabel: '野外（持有頑皮幼龍蛋時極低機率遭遇）' } };
+//  🐉 v3.5.35 風龍林德拜爾：持有任意幼龍蛋（頑皮／淘氣）於野外 1% 特殊刷出（js/03）·歸入亞丁地區（完成加成 resWind·風龍對味）。
+const CARD_SPECIAL_MOBS = { lindvior: { region: 'aden', mapLabel: '野外（持有任意幼龍蛋時極低機率遭遇）' } };
 
 // ---- 地圖 key → 中文名（供金卡「出沒地圖」顯示）----
 const _CARD_MAP_NAMES = {};

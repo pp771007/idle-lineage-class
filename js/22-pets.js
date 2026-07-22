@@ -546,7 +546,7 @@ function petReleaseSlotAssignments(slot) {
     return changed;
 }
 
-// ---------- 四、道具使用（誘捕/頑皮幼龍蛋）與擊殺捕捉 ----------
+// ---------- 四、道具使用（誘捕/幼龍蛋）與擊殺捕捉 ----------
 function petUseLureItem(d, silent) {   // eff:'petlure' → 掛 600 秒誘捕 buff（重複使用重置時間）
     let key = d.lure, cfg = PET_LURES[key];
     if (!cfg) return false;
@@ -555,10 +555,10 @@ function petUseLureItem(d, silent) {   // eff:'petlure' → 掛 600 秒誘捕 bu
     try { updateUI(); } catch (e) {}
     return true;   // 呼叫端 fallthrough 消耗道具
 }
-function petUseDragonEgg(item) {   // 頑皮幼龍蛋：保管未滿→消耗·隨機獲得 淘氣龍/頑皮龍（committed RNG）
+function petUseDragonEgg(item) {   // 🐉 v3.7.56 幼龍蛋定向孵化：保管未滿→消耗·依蛋種 eggPet 孵出（頑皮幼龍蛋→頑皮龍、淘氣幼龍蛋→淘氣龍）
     if (petRoster().length >= PET_STORAGE_MAX) { logSys(`<span class="text-red-400">寵物保管已滿（上限 ${PET_STORAGE_MAX} 隻），無法孵化。</span>`); return; }
     let snap = _petMutationSnapshot();
-    let form = lootRng('dragonEgg') < 0.5 ? '淘氣龍' : '頑皮龍';
+    let form = (DB.items[item.id] && DB.items[item.id].eggPet) || '頑皮龍';
     item.cnt--; if (item.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== item.uid);
     let added = petStoreAdd(form, null, true);
     if (!added || !_petCommitMutation(snap)) return;

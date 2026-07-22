@@ -30,6 +30,7 @@
         if (id === 'arena_pvp') return '決鬥競技場';   // ⚔️ 上游 v3.7.4 存檔 PvP 用圖(不在 MAP_CATEGORIES,查不到中文名)
         if (typeof SANCTUARY_MAP_NAMES !== 'undefined' && SANCTUARY_MAP_NAMES[id]) return SANCTUARY_MAP_NAMES[id];   // 🌑 黑暗妖精聖地 3 隱藏圖（js/11 定義）
         if (typeof HIDDEN_AREA_NAMES !== 'undefined' && HIDDEN_AREA_NAMES[id]) return HIDDEN_AREA_NAMES[id];   // 🏛️ 隱藏狩獵區域
+        if (typeof ANTHARAS_AREA_NAMES !== 'undefined' && ANTHARAS_AREA_NAMES[id]) return ANTHARAS_AREA_NAMES[id];   // 🐉 侵蝕的安塔瑞斯巢穴 4 區（js/05 定義，不在 MAP_CATEGORIES）
         var pf = /^pride_f(\d+)$/.exec(id); if (pf) return '傲慢之塔 ' + pf[1] + ' 樓';
         var pr = /^pride_(\d+)_(\d+)$/.exec(id); if (pr) return '傲慢之塔 ' + pr[1] + '~' + pr[2] + ' 樓（直接挑戰）';
         if (typeof MAP_CATEGORIES !== 'undefined') {

@@ -572,6 +572,11 @@ function updatePrideFloorIndicator() {
         ind.classList.remove('hidden');
         if (sel) sel.classList.add('hidden');
         if (cat) cat.classList.add('hidden');
+    } else if (state.antharas && typeof ANTHARAS_AREA_NAMES !== 'undefined' && ANTHARAS_AREA_NAMES[cur]) {
+        ind.textContent = '🐉 ' + ANTHARAS_AREA_NAMES[cur];   // 🐉 v3.7.57 侵蝕的安塔瑞斯巢穴：左右下拉全隱藏、只顯示目前區域名稱（離開走「回村」＝視同失敗不耗次數）
+        ind.classList.remove('hidden');
+        if (sel) sel.classList.add('hidden');
+        if (cat) cat.classList.add('hidden');
     } else if (cur === 'arena_pvp') {
         ind.textContent = '⚔️ 決鬥競技場';   // ⚔️ v3.7.13 決鬥競技場（不在 MAP_CATEGORIES·入口＝古魯丁巴魯特）：比照隱藏區域＝左右下拉全隱藏、只顯示地名（離場走「回村」或結果視窗的「回村莊」）
         ind.classList.remove('hidden');
@@ -620,6 +625,7 @@ function returnToTown() {
     let _wasKingRoom = !!KING_ROOMS[mapState.current];   // 🔧 記住離開前是否在軍王之室
     let _kingRegion = _wasKingRoom && typeof mapRegionOf === 'function' ? mapRegionOf(mapState.current) : null;   // 🗝️ 離場前先取得該軍王之室所屬地區（changeMap 後 mapState.current 已變）
     if (state.oblivion) { state.oblivion = null; state._oblivionAdvance = false; }   // 🏝️ 回村即結束遺忘之島旅程
+    if (state.antharas) { state.antharas = 0; state._antAdvance = false; logSys('你離開了侵蝕的安塔瑞斯巢穴（挑戰失敗不消耗每日次數，隨時可再次挑戰）。'); }   // 🐉 v3.7.57 回村＝中離副本（不耗次數）
     setMapSelectors(siegeVictoryActive() ? victoryCityCfg().castle : getLastTown());   // 持有城堡：回城＝血盟城堡；否則回上一個待過的安全區（無紀錄→家鄉）
     changeMap();   // 走既有切換流程（進入村莊：補滿 HP/MP、清狀態、渲染 NPC）
     // 🔧 自軍王之室手動回城／回村：同樣將「特殊」記憶位置改為新兵修練場（避免下次自動回到需鑰匙的軍王之室）
@@ -1777,6 +1783,10 @@ function interactNPC(npcId, townId) {
         renderPvpArenaNPC(contentDiv);
     } else if (npc.id === 'npc_arkata') {   // 🕊️ 聖使阿卡塔：死亡經驗買回（亞丁·經典限定）
         renderArkataBuyback(contentDiv);
+    } else if (npc.id === 'npc_doruga_bell') {   // 🐉 v3.7.57 多魯嘉貝爾：安塔瑞斯副本入口＋助戰者設定（威頓村·js/05）
+        renderDorugaBell(contentDiv);
+    } else if (npc.id === 'npc_riley_aide') {   // 🐉 v3.7.57 萊利的輔佐官：安塔瑞斯素材兌換積分＋傳家之寶抽獎（威頓村·js/05）
+        renderRileyAide(contentDiv);
     } else if (npc.id === 'npc_obel' || npc.id === 'npc_hert' || npc.id === 'npc_diren') {   // 🔧 赫特＝風木城、帝倫＝海音城的魔物追蹤（同奧貝勒）
         renderObelNPC(contentDiv);
     } else if (npc.id === 'npc_pandora') { 
@@ -1793,7 +1803,7 @@ function interactNPC(npcId, townId) {
         renderJoelCraft(contentDiv, npc.id);
     } else if (npc.id === 'npc_runde' || npc.id === 'npc_kang' || npc.id === 'npc_brudica') {   // 🔧 黑暗妖精限定試煉（仿瑞奇/甘特，而非製作）
         renderDarkTrial(contentDiv, npc.id);
-    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide', 'npc_kororanz', 'npc_sebas', 'npc_mystic_mage', 'npc_atelier'].includes(npc.id)) {
+    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson', 'npc_kupu', 'npc_lentis', 'npc_upni', 'npc_bamut', 'npc_flame_shadow', 'npc_imp', 'npc_flame_smith', 'npc_norse', 'npc_keluya', 'npc_dytite', 'npc_bartel', 'npc_pir', 'npc_zeus_golem', 'npc_rabiani', 'npc_david', 'npc_flame_aide', 'npc_kororanz', 'npc_sebas', 'npc_mystic_mage', 'npc_atelier', 'npc_mimi'].includes(npc.id)) {
         renderUniversalCraft(contentDiv, npc.id);
     } else if (npc.id === 'npc_dantes_lord') {   // 🌑 真‧冥皇丹特斯：聖地入口三選項
         renderDantesGate(contentDiv);
@@ -1908,7 +1918,8 @@ const NPC_SPR = {
     '6690': { g: '6690', f: 12 }, '6804': { g: '6804', f: 12 },
     '5454': { g: '5454', f: 1 },   // 🌑 v3.3.33 真‧冥皇丹特斯＝骸骨王座坐像（NPC/真‧冥皇丹特斯 5454-0＋影子 5455-0·單幀 138×228）
     '2141': { g: '2141', f: 6 },   // 🕊️ v3.4.73 聖使阿卡塔（body 2141＋影 2142·6幀·29×59）
-    '10669': { g: '10669', f: 3 }   // 🏦 v3.4.74 朵琳＝倉庫NPC通用新外型（body 10669＋影 10670·3幀·67×44 帶雙寶箱·取代舊 54）
+    '10669': { g: '10669', f: 3 },   // 🏦 v3.4.74 朵琳＝倉庫NPC通用新外型（body 10669＋影 10670·3幀·67×44 帶雙寶箱·取代舊 54）
+    '7618': { g: '7618', f: 12 }   // 🐉 v3.7.60 多魯嘉貝爾（body 7618＋影 7619·breath 12幀·62×63）
 };
 // 有名字的 NPC → 專屬 sprite（＋依功能固定共用者：魔物追蹤/城堡護衛已於下方 role 邏輯處理）
 const NPC_SPR_FIXED = {
@@ -1924,6 +1935,8 @@ const NPC_SPR_FIXED = {
     npc_dantes_lord: '5454', npc_atelier: '1768',   // 🌑 v3.3.33 長老會議廳：真‧冥皇丹特斯＝骸骨王座／亞提利歐＝矮人鐵匠（用戶指定·同炎魔鐵匠外型 1768）
     npc_arkata: '2141',   // 🕊️ v3.4.73 聖使阿卡塔（亞丁·經典限定·死亡經驗買回）
     npc_arena: '1305',    // ⚔️ v3.7.5 鬥技場管理者 巴魯特（古魯丁村莊·甲冑武人外型·決鬥競技場入口）
+    // 🐉 v3.7.60 威頓村安塔瑞斯三人組（Downloads/NPC 用戶指定素材）：多魯嘉貝爾＝新轉 7618；米米＝914（與妖精森林那翰同素材·異城不撞臉）；萊利的輔佐官＝460（與說話之島法林同素材·異城不撞臉）
+    npc_doruga_bell: '7618', npc_mimi: '914', npc_riley_aide: '460',
     // 魔物追蹤三兄弟共用 cray；港口/寵物保管等亦可指定
     npc_obel: '1049', npc_hert: '1049', npc_diren: '1049'
 };
@@ -1952,7 +1965,8 @@ const NPC_FEMALE_IDS = new Set([
     'npc_shenien', 'npc_yuria', 'npc_lachesis', 'npc_moliya', 'npc_moli', 'npc_saedia',
     'npc_brudica', 'npc_sherine', 'npc_io', 'npc_masha', 'npc_doll_merchant',
     'npc_lumiel',   // 🚺 v3.3.6 海音 琉米埃爾＝女性外型
-    'npc_lucy'      // 🚺 v3.7.7 古魯丁 露西（雜貨商人）＝女性外型
+    'npc_lucy',     // 🚺 v3.7.7 古魯丁 露西（雜貨商人）＝女性外型
+    'npc_mimi'      // 🚺 v3.7.57 威頓村 米米（安塔瑞斯裝備製作）＝女性外型
 ]);
 
 function _npcSpriteKey(npc, usedSet) {
@@ -2017,8 +2031,8 @@ const TOWN_NPC_SPOTS = {
     // 古魯丁村莊(港口村)：巴魯特=廣場中左空地｜凱倫=左側藍屋大宅前石板路｜露西=左下攤棚前路面｜傭兵公會=廣場中右｜奧斯丁=水井左下石地
     //   ⚠️[50,58] 是叫賣玩家固定點（TOWN_WANDERING_BUYER_SPOTS.town_gludin 同座標），NPC 一律避開。
     town_gludin: [[38, 58], [23, 46], [33, 81], [70, 55], [48, 36]],
-    // 威頓村莊(火山村)：馬沙=大宅階梯前｜漢=村中央｜客盧亞=左上屋簷攤棚｜宙斯之熔岩高崙=左下鍛造爐(自家熔爐)｜魔法娃娃商人=右下屋前｜艾斯倫=右側貨箱堆旁
-    town_witon: [[70, 37], [48, 52], [27, 40], [13, 72], [66, 79], [77, 48]],
+    // 威頓村莊(火山村)：馬沙=大宅階梯前｜漢=村中央｜客盧亞=左上屋簷攤棚｜宙斯之熔岩高崙=左下鍛造爐(自家熔爐)｜魔法娃娃商人=右下屋前｜艾斯倫=右側貨箱堆旁｜多魯嘉貝爾=下方村口(副本入口)｜米米=左中攤位｜萊利的輔佐官=右上宅邸前（🐉 v3.7.57·573×323 扁平圖·橫向間距≥10%≈57px）
+    town_witon: [[70, 37], [48, 52], [27, 40], [13, 72], [66, 79], [77, 48], [38, 84], [24, 57], [88, 30]],
     // 希培利亞(天空神殿)：倉管=左上殿門階梯｜史菲爾=上方大殿門前｜巴特爾=右側步道橋頭｜希蓮恩=中央圓形圖紋
     town_hyperia: [[15, 32], [48, 24], [68, 56], [48, 55]],
     // 象牙塔：帕羅=左階梯平台｜塔拉斯=上廳地磚(v3.3.32勿站上層平台)｜塔斯=星紋左側｜巴耶斯=右書牆前｜碧恩=右上水晶祭壇階下(賦屬)｜迪嘉勒廷=大階梯底｜迪泰特=中央星紋｜神秘的魔法師=閱讀角書桌右側地磚(v3.3.32勿站桌區)

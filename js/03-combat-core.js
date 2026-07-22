@@ -554,6 +554,8 @@ function maybeSpawnMobs() {
                     delay = 50;                                                 // 🔧 純BOSS房(三龍窟)：BOSS死亡後固定 5 秒(50 tick)才刷新，不受日光術/席琳的世界加速影響（2026-06 用戶調整 3 分鐘→5 秒）
                 } else if(KING_ROOMS[mapState.current]) {
                     delay = 50;                                                 // 🔧 軍王之室：固定 5 秒復活，不受日光術/席琳的世界加速影響
+                } else if(mapState.current === 'antharas_lair') {
+                    delay = 50;                                                 // 🐉 v3.7.57 侵蝕的安塔瑞斯棲息地（BOSS房）：固定 5 秒重生
                 } else {
                     // 🐾 重生延遲＝基準 50 tick(5秒) × 玩家有效移動延遲倍率。
                     // 變身(wlk·16=100%)、加速、勇敢／餅乾、行走加速、裝備移速與資訊面板共用 playerMoveDelayMultiplier()。
@@ -585,9 +587,13 @@ function tick() {
     if(!state.running || player.dead) return;
     state.ticks++;
     // 🪄 吉爾塔斯魔杖：擊殺增益到期即重算，避免額外魔法點數停留在衍生能力中。
+    // 🏺 v3.7.52 同型到期重算：_golemMrDebuffUntil（高崙印記 MR-100）／_fangFuryUntil（邪惡利牙攻速+30%）／_spellbladeUntil（魔劍士之刀施法增益）
     let _giltasWandExpired = [];
-    if (player._giltasWandFuryUntil && state.ticks >= player._giltasWandFuryUntil) { player._giltasWandFuryUntil = 0; _giltasWandExpired.push(player); }
-    if (player.allies && player.allies.length) player.allies.forEach(a => { if (a && a._giltasWandFuryUntil && state.ticks >= a._giltasWandFuryUntil) { a._giltasWandFuryUntil = 0; _giltasWandExpired.push(a); } });
+    let _tickExpireFields = ['_giltasWandFuryUntil', '_golemMrDebuffUntil', '_fangFuryUntil', '_spellbladeUntil', '_eyePetrifyUntil'];   // 🐉 v3.7.57 +地龍之魔眼增益到期
+    _tickExpireFields.forEach(f => {
+        if (player[f] && state.ticks >= player[f]) { player[f] = 0; if (!_giltasWandExpired.includes(player)) _giltasWandExpired.push(player); }
+        if (player.allies && player.allies.length) player.allies.forEach(a => { if (a && a[f] && state.ticks >= a[f]) { a[f] = 0; if (!_giltasWandExpired.includes(a)) _giltasWandExpired.push(a); } });
+    });
     if (_giltasWandExpired.length) {
         if (_giltasWandExpired.includes(player)) calcStats();
         _giltasWandExpired.forEach(a => { if (a !== player && typeof _allyLevelRecompute === 'function') _allyLevelRecompute(a); });
@@ -637,6 +643,7 @@ function tick() {
             updateUI();
         } else {
             player.hp -= _pdmg;
+            if (typeof dotMpRefundTo === 'function') dotMpRefundTo(player, _pdmg);   // 🏺 v3.7.52 受困幽魂的淚滴：DoT 損血回 MP
             logCombat(`你受到劇毒傷害 ${_pdmg} 點。`, 'enemy');
             if(player.hp <= 0) { killPlayer(); return; }
             updateUI();
@@ -644,18 +651,21 @@ function tick() {
     }
     if(player.statuses.burn > 0 && state.ticks % player.statuses.burnTick === 0 && !inAbsBarrier()) {
         player.hp -= player.statuses.burnDmg;
+        if (typeof dotMpRefundTo === 'function') dotMpRefundTo(player, player.statuses.burnDmg);   // 🏺 v3.7.52 淚滴
         logCombat(`你受到灼燒傷害 ${player.statuses.burnDmg} 點。`, 'enemy');
         if(player.hp <= 0) { killPlayer(); return; }
         updateUI();
     }
     if(player.statuses.scald > 0 && state.ticks % player.statuses.scaldTick === 0 && !inAbsBarrier()) {
         player.hp -= player.statuses.scaldDmg;
+        if (typeof dotMpRefundTo === 'function') dotMpRefundTo(player, player.statuses.scaldDmg);   // 🏺 v3.7.52 淚滴
         logCombat(`你受到燙傷傷害 ${player.statuses.scaldDmg} 點。`, 'enemy');
         if(player.hp <= 0) { killPlayer(); return; }
         updateUI();
     }
     if(player.statuses.bleed > 0 && state.ticks % player.statuses.bleedTick === 0 && !inAbsBarrier()) {
         player.hp -= player.statuses.bleedDmg;
+        if (typeof dotMpRefundTo === 'function') dotMpRefundTo(player, player.statuses.bleedDmg);   // 🏺 v3.7.52 淚滴
         logCombat(`你受到出血傷害 ${player.statuses.bleedDmg} 點。`, 'enemy');
         if(player.hp <= 0) { killPlayer(); return; }
         updateUI();
@@ -1858,6 +1868,23 @@ function spawnMob(idx) {
     if (mapState.current === 'rift_battle') { spawnRiftMob(idx); return; }   // 🌀 時空裂痕：自訂動態出怪（不靠 DB.maps）
     let pool = DB.maps[mapState.current];
     if(!pool) return;
+    // 🐉 v3.7.57 侵蝕的安塔瑞斯巢穴：棲息地=中央「被侵蝕的安塔瑞斯」+其餘「大地荒龍」；入口/通道/深處=中央固定區域頭目（場上無王時）、其餘格走 DB.maps 池
+    //    ⚠️ 刻意不掛 KING_ROOMS/PURE_BOSS_MAPS：前者會觸發 _kbVictory 傳送與非頭目掉落封鎖、後者只生中央格，皆與副本規格衝突。
+    let _antharasDungeon = typeof ANTHARAS_AREA_BOSS !== 'undefined' && !!ANTHARAS_AREA_BOSS[mapState.current];
+    if (_antharasDungeon) {
+        let _aid = null;
+        if (mapState.current === 'antharas_lair') _aid = (idx === 1) ? ANTHARAS_AREA_BOSS.antharas_lair : 'ant_earth_wild_dragon';
+        else if (idx === 1 && !mapState.mobs.some(m => m && m.boss && !m._dead)) _aid = ANTHARAS_AREA_BOSS[mapState.current];
+        if (_aid) {
+            let _ab = DB.mobs[_aid]; if (!_ab) return;
+            mapState.mobs[idx] = { ..._ab, curHp: _ab.hp, uid: uid(), _born: ++_mobBornSeq, _bornMs: Date.now(), _magCd: {}, justHit: false, st: newMobStatus() };
+            applySherineBuff(idx);   // 🐉 v3.7.61 初始區域頭目也套用席琳世界，與後續變身階段一致
+            if (_ab.hard) initHardSkin(mapState.mobs[idx]);
+            if (_ab.boss && typeof vfxBossEntrance === 'function') vfxBossEntrance(mapState.mobs[idx]);
+            renderMobs(); return;
+        }
+        // 其餘格落到下方一般出怪（喀瑪/荒龍池）
+    }
     // 🔧 軍王之室：中央(1)固定 BOSS、其餘四格固定指定小怪（不走一般出怪/席琳強化/追蹤邏輯）
     if(KING_ROOMS[mapState.current]) {
         let _kr = KING_ROOMS[mapState.current];
@@ -1877,8 +1904,8 @@ function spawnMob(idx) {
     let normalPool = pool.filter(id => DB.mobs[id] && !DB.mobs[id].boss);
     let mobId;
     let siegeArea = isSiegeArea(mapState.current);
-    let npcClanBattle = typeof npcClanGroupBattleActive === 'function' && npcClanGroupBattleActive();
-    let wcMassTauntBattle = typeof wcMassTauntGroupBattleActive === 'function' && wcMassTauntGroupBattleActive();
+    let npcClanBattle = !_antharasDungeon && typeof npcClanGroupBattleActive === 'function' && npcClanGroupBattleActive();
+    let wcMassTauntBattle = !_antharasDungeon && typeof wcMassTauntGroupBattleActive === 'function' && wcMassTauntGroupBattleActive();
     let allowMultiBoss = backSlotsActive() && !siegeArea;   // 🆕 一般5格地圖可同時出現多隻頭目；攻城雖改為5格，仍維持單一城門／守護塔
     // 🏛️ 長老之室 BOSS 節流：場上最多同時 2 隻長老 BOSS；已有 1 隻時須該 BOSS 存活滿 3 分鐘才可能出現第 2 隻
     let _elderRoom = mapState.current === 'elder_room';
@@ -1943,7 +1970,7 @@ function spawnMob(idx) {
             }
         }
         // 😤 v3.5.59 白目玩家：被記仇(player.trollPlayers·js/24 嗆聲觸發)→野外(非BOSS房/非攻城)重生 5% 機率遭遇；同名不同時出現；逾期(2小時)自動移除
-        if (player.trollPlayers && player.trollPlayers.length) {
+        if (!_antharasDungeon && player.trollPlayers && player.trollPlayers.length) {
             let _now = Date.now();
             let _tl = player.trollPlayers.filter(t => t && (t.noExpire || t.pvpRevenge || t.until > _now));
             if (_tl.length !== player.trollPlayers.length) {
@@ -1987,12 +2014,12 @@ function spawnMob(idx) {
         && Math.random() < 0.01) {
         mobId = 'demon_assassin';
     }
-    // 🐉 林德拜爾（BOSS）：持有「幼龍蛋」於任一野外地圖時，1% 機率改為刷出林德拜爾
-    //    （場上無其他 BOSS 時才出現、同時最多一隻；賣掉幼龍蛋即不再遭遇）
+    // 🐉 林德拜爾（BOSS）：身上持有任意「幼龍蛋」（頑皮／淘氣）於任一野外地圖時，1% 機率改為刷出林德拜爾
+    //    （場上無其他 BOSS 時才出現、同時最多一隻；蛋全數賣出或存入倉庫即不再遭遇）
     if (!bossInBattle
         && MAP_CATEGORIES.wild.some(m => m.v === mapState.current)
         && !mapState.mobs.some(m => m && m.n === '林德拜爾')
-        && player.inv.some(i => i.id === 'item_dragon_egg' && i.cnt > 0)
+        && player.inv.some(i => (i.id === 'item_dragon_egg' || i.id === 'item_dragon_egg2') && i.cnt > 0)
         && Math.random() < 0.01) {
         mobId = 'lindvior';
     }
@@ -2646,8 +2673,9 @@ function procCombo(t, fullDmg) {
     if (!t || t.curHp <= 0 || t._dead) return;
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     let dice = wpn ? (t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
-    let res = getPhysicalDmg(dice, t, wpn, null, false, false, false);   // 獨立命中判定（可未命中）
+    let res = getPhysicalDmg(dice, t, wpn, null, false, false, false, fullDmg && !!(wpn && wpn.comboForceCrit));   // 獨立命中判定（可未命中）；🏺 v3.7.52 邪惡利牙：雙擊追加攻擊必定爆擊（forceCrit·爆擊精通額外攻擊(!fullDmg)不套）
     if (!res.hit) { if (typeof vfxMiss === 'function') vfxMiss(t); logCombat(`<span class="font-bold" style="color:#c4b5fd;">【雙擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 未命中。`, 'miss'); return; }
+    if (res.crit && typeof grantCritFuryHaste === 'function') grantCritFuryHaste(player, wpn);   // 🏺 v3.7.52 邪惡利牙：雙擊爆擊亦觸發攻速 buff
     // 🔧 黑暗妖精：連擊亦獨立觸發燃燒鬥志(30%×1.5)、雙重破壞(雙刀/鋼爪 45級起10%×2，每5級+1%)，兩者可疊加；先套用於本擊傷害，再依連擊倍率（暗影5/5→100%，否則50%）結算
     let _cdmg = res.dmg;
     if (player.buffs && player.buffs.sk_dark_burn > 0 && Math.random() < 0.30) _cdmg = Math.floor(_cdmg * 1.5);

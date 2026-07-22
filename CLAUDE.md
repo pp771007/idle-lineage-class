@@ -145,7 +145,7 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 - **表格優先、有數據用數據**;程式查得到的數字優先「動態讀 DB/呼叫遊戲函式」產表;散文只留機制說明。表格已表達的不要在下面散文重述。
 - **數據以「真正算它的那段 code」為準**,絕不抄遊戲說明文字/註解(常過時);白話零術語(不要 1D4/骰 19);AC 照遊戲顯示負值;寫「現況」不寫改版語氣;不要模糊詞(短時間/有機率)。
 - **渲染內容絕不露英文**——狀態/數值名補對應表(`STATUS_LABEL`/`STAT_LABEL`/`AFK_EXTRA.mapName`);地圖漏翻有 smoke 自動擋。
-- **掉率要把四個倍率一次講完**(席琳×3/瘋狂×5/恩賜×10/經典×1/10;判準=該 roll 有沒有乘 `_dropMult` 系);「不吃倍率」的兩處都補:小百科該頁+dex `SPECIAL_BLOCKS` 的 dropmult 清單。
+- **掉率要把三個倍率一次講完**(席琳×3/瘋狂×5/恩賜×10;判準=該 roll 有沒有乘 `_dropMult` 系);「不吃倍率」的兩處都補:小百科該頁+dex `SPECIAL_BLOCKS` 的 dropmult 清單。⚠️ **經典模式沒有掉率懲罰**——`classicDropMult()` 上游 v3.0.85 起恆回 1(v3.0.82 也已移除經驗×0.5/金幣÷2),舊的「經典×1/10」與它的例外清單(試煉道具/遺物/卡瑞屠龍劍)全部作廢,不要再寫進任何頁。
 - **條件式掉落(`if(...) gainItem`)都要在掉落查詢查得到**(掃 js/05/06 補 `SPECIAL_BLOCKS`);掉落表以 `_auditMobDrops` push 的那組為權威;客製製作結構(`DEMONKING_RECIPES`/`LUMIEL_RECIPES`…)dex+wiki 兩邊都補,**實測查得到才算數**;純兌換/無怪掉的補 `AFK_EXTRA.itemAcquire[id].short`;潘朵拉抽獎不列為取得方式(唯一來源也寫「目前沒有固定取得途徑」)。
 - 裝備顯示一律重用 `buildItemDescHTML`,不自己刻數值格式。
 - 介面:搜尋=統一結果(跨分頁跨職業,黃色高亮);分頁列單排橫捲;手機不加會撐高的標示元素。

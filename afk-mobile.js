@@ -74,7 +74,14 @@
             //   ② A 型·頂端錨定的浮動窗(倉庫/道具詳情/黑市·NPC)：核心手機把它們釘 top:8px + 100dvh 高、無視橫幅與導覽
             //      (這幾個 z-index 都低於 #m-nav → 底段整條被導覽蓋住、內層捲到底也看不到)。
             //      ⚠ 核心是 #id !important 規則，:is(.class) 特異度壓不過(倉庫踩過)，必須用「實際 id」選擇器才蓋得掉。
-            + 'body.m-mobile #warehouse-window-frame, body.m-mobile #item-modal:not(.hidden), body.m-mobile #town-interaction-container:not(.hidden){ top: calc(8px + var(--orig-bar-h, 0px)) !important; height: calc(100dvh - 16px - var(--orig-bar-h, 0px) - var(--m-nav-h, 0px)) !important; }\n'
+            //      🚨 必須跟上游「手機幾何」同一條 media query：這三個窗的 top:8px/transform:none 是上游寫在
+            //      (max-width:768px),(max-height:520px) and (pointer:coarse) 裡的。而本檔的 detectMobile() 只要
+            //      pointer:coarse 就算手機 → 平板(寬 > 768 的觸控裝置)會拿到「我們的 top:8px」卻沒有上游的
+            //      transform:none，殘留的 translate(-50%,-50%) 把整個視窗往上推半個身高(實測 top 到 -211~-489，
+            //      上半截整個跑出畫面)。加上這層 media query，寬螢幕就乖乖走下面的桌機幾何。
+            + '@media (max-width: 768px), (max-height: 520px) and (pointer: coarse){\n'
+            + '  body.m-mobile #warehouse-window-frame, body.m-mobile #item-modal:not(.hidden), body.m-mobile #town-interaction-container:not(.hidden){ top: calc(8px + var(--orig-bar-h, 0px)) !important; height: calc(100dvh - 16px - var(--orig-bar-h, 0px) - var(--m-nav-h, 0px)) !important; }\n'
+            + '}\n'
             //   ③ B 型·置中彈窗容器(含內聯 position:fixed 與 .fixed.inset-0 兩種都有的)：padding 夾安全區 + 內卡壓 max-height。
             + 'body.m-mobile :is(' + MODAL_HOSTS + '){ padding-top: calc(var(--orig-bar-h, 0px) + 8px) !important; padding-bottom: calc(var(--m-nav-h, 0px) + 8px) !important; }\n'
             + 'body.m-mobile :is(' + MODAL_BOXES + '){ max-height: calc(100dvh - var(--orig-bar-h, 0px) - var(--m-nav-h, 0px) - 16px) !important; }\n'
@@ -82,6 +89,18 @@
             //      ⚠ 必須排除嵌入模式(.equipment-window-embedded·js/19 init 就掛上、現行永遠嵌入)：嵌入時 frame 由 JS 內聯
             //        top:0 對齊 host，這裡的 top !important 會壓過內聯值把 12 格整個往下推出安全區(踩過)。
             + 'body.m-mobile #equipment-window:not(.equipment-window-embedded) .equipment-window-frame{ top: calc(50% + var(--orig-bar-h, 0px) / 2 - var(--m-nav-h, 0px) / 2) !important; max-height: calc(100dvh - 16px - var(--orig-bar-h, 0px) - var(--m-nav-h, 0px)) !important; }\n'
+            //   ④' 桌機幾何下的彈窗讓位：③④ 只掛 body.m-mobile，桌機/平板只有主舞台讓開 → 置中的彈窗在
+            //      「視窗矮、彈窗高」時上緣會鑽進橫幅底下(實測 1024x768 的怪物圖鑑、1024x700 的自動賣出規則)。
+            //      整段包在「上游手機幾何以外」的尺寸(寬 ≥769 且高 ≥521)，避免與 ② 的手機幾何互相打架。
+            //      body.afk-bar＝量到橫幅才掛(見 applyBarH)：官方站無橫幅時這組規則整個不存在，不動任何既有版面。
+            + '@media (min-width: 769px) and (min-height: 521px){\n'
+            + '  body.afk-bar:not(.m-mobile) :is(' + MODAL_HOSTS + '){ padding-top: var(--orig-bar-h, 0px) !important; }\n'
+            + '  body.afk-bar:not(.m-mobile) :is(' + MODAL_BOXES + '){ max-height: calc(100dvh - var(--orig-bar-h, 0px) - 16px) !important; }\n'
+            //      transform 置中的城鎮 NPC 窗吃不到 padding → 改推中心點並封頂高度。這條連「被判成手機的平板」
+            //      也要套(它在這個尺寸帶走的就是桌機幾何)，故不加 :not(.m-mobile)。
+            + '  body.afk-bar #town-interaction-container:not(.hidden){ top: calc(50% + var(--orig-bar-h, 0px) / 2) !important; max-height: calc(92vh - var(--orig-bar-h, 0px)) !important; }\n'
+            + '  body.afk-bar:not(.m-mobile) #equipment-window:not(.equipment-window-embedded) .equipment-window-frame{ top: calc(50% + var(--orig-bar-h, 0px) / 2) !important; max-height: calc(100dvh - 16px - var(--orig-bar-h, 0px)) !important; }\n'
+            + '}\n'
             //   ⑤ 右欄分頁(統計/道具/收藏…)：核心手機把 #tab-content-panel 設固定高+內層 overflow-auto，與外層 #game-screen 捲動疊成「雙捲軸」。
             //      讓分頁內容順流展開→只由 #game-screen 單層捲動(與 左/中 欄一致)；黏頂的 #mobile-vitals/分頁列照舊固定。
             //      ⚠ 必須排除 .equipment-panel-host：「裝備」分頁是核心的「嵌入式裝備視窗」(js/19)——#equipment-window 以
@@ -129,6 +148,8 @@
         var h = _barEl ? Math.ceil(_barEl.getBoundingClientRect().height) : 0;
         if (h > 0) h += 6;   // 安全邊距：橫幅換行/字重/邊距量測誤差，多讓一點確保完全不被蓋
         document.documentElement.style.setProperty('--orig-bar-h', h + 'px');
+        // 有橫幅才掛：非手機的彈窗讓位規則全掛在 body.afk-bar 之下，官方站(無橫幅)整組不生效。
+        if (document.body) document.body.classList.toggle('afk-bar', h > 0);
     }
     function measureBar() {
         var bar = findBanner();

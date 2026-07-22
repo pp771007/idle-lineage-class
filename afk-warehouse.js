@@ -239,8 +239,18 @@
     }
     var _render = window.renderWarehouseNPC;
     window.renderWarehouseNPC = function () {
+        // 📌 捲動保底:手機 PWA 上核心的「innerHTML 重繪→立刻恢復 scrollTop」會偏移(iOS 在版面
+        //   還沒重算時設 scrollTop 可能被舊高度鉗制/錨定,玩家回報捲下去後每存一次往上跳一格),
+        //   且本外掛 afterRender 又在核心恢復之後才補注入金幣鈕。這裡在「重繪+補注入都完成」後
+        //   再恢復一次,並用 rAF 於版面計算完成後補一發。
+        var c0 = document.getElementById('warehouse-window-content');
+        var s0 = c0 ? c0.scrollTop : 0;
         var r = _render.apply(this, arguments);
         try { afterRender(); } catch (e) {}
+        try {
+            var c1 = document.getElementById('warehouse-window-content');
+            if (c1 && s0 > 0) { c1.scrollTop = s0; requestAnimationFrame(function () { c1.scrollTop = s0; }); }
+        } catch (e) {}
         return r;
     };
 

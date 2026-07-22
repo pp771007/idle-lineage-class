@@ -47,8 +47,8 @@
     //   兩型的 100dvh 都不知道橫幅與導覽 → A 型改 top/height，B 型改容器 padding + 內卡 max-height。
     //   ⚠ B 型光改容器 padding 不夠：內卡比 padding 後的剩餘空間高時，flex 置中會「上下均分溢出」，
     //     頂端照樣鑽進橫幅底下(自動賣出規則的標題/Close 被蓋就是這樣來的)——必須同時壓內卡 max-height。
-    var MODAL_HOSTS = '#autosell-rule-modal, #autosell-preview-modal, #poly-modal, #osiris-box-modal, #summon-select-overlay, #pet-evo-overlay, #pet-gear-overlay, #card-book, #equip-book, #misc-book, #relic-book, #collection-panel';
-    var MODAL_BOXES = '#autosell-rule-modal .as-box, #autosell-preview-modal > div, #poly-modal > div, #osiris-box-modal > div, #summon-select-overlay > div, #pet-evo-overlay > div, #pet-gear-overlay > div, #card-book > div, #equip-book > div, #misc-book > div, #relic-book > div, #collection-panel > div';
+    var MODAL_HOSTS = '#autosell-rule-modal, #autosell-preview-modal, #poly-modal, #osiris-box-modal, #summon-select-overlay, #pet-evo-overlay, #pet-gear-overlay, #card-book, #equip-book, #misc-book, #relic-book, #collection-panel, #offline-reward-modal';
+    var MODAL_BOXES = '#autosell-rule-modal .as-box, #autosell-preview-modal > div, #poly-modal > div, #osiris-box-modal > div, #summon-select-overlay > div, #pet-evo-overlay > div, #pet-gear-overlay > div, #card-book > div, #equip-book > div, #misc-book > div, #relic-book > div, #collection-panel > div, #offline-reward-modal > div';
     var _styleInjected = false;
     function ensureOffsetStyle() {
         if (_styleInjected) return; _styleInjected = true;

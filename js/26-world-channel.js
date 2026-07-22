@@ -719,7 +719,8 @@ const WC_TOPICS = [
                 '現行掉落、製作、潘朵拉與血盟管道只會隨機出現「祝福的」詞綴，機率 1%；屬性與遠古詞綴要去象牙塔找碧恩處理。',
                 '別再照舊攻略 SL 三詞綴了，現在隨機來源只有 1% 祝福；武器屬性跟遠古能力是碧恩那條系統。',
                 '祝福是取得裝備時的隨機驚喜，屬性和遠古不是同一個抽法。想洗那兩種就去象牙塔，別在掉落畫面跟自己過不去。',
-                '五階屬性武器還能拿同屬性卷軸找碧恩附加或重抽屬性魔法；遺物武器、本身就有非屬性卷觸發技能的武器不能附加。'
+                '五階屬性武器還能拿同屬性卷軸找碧恩附加或重抽屬性魔法；遺物武器、本身就有非屬性卷觸發技能的武器不能附加。',
+                '古老的劍跟古老的巨劍雖然無法強化，但碧恩照樣能賦予屬性，而且免 +10/+11 門檻、可以直接衝到第五階。'
             ];
         }
     },
@@ -1785,6 +1786,7 @@ const WC_MASS_TAUNT_PATTERNS = [
     { all:['見一個'], any:['殺一個', '砍一個', '打一個'] },
     { all:['看到一個'], any:['殺一個', '砍一個', '打一個'] },
     { all:['來一個'], any:['殺一個', '砍一個', '打一個'] },
+    { all:['我要打'], any:['10個', '十個'] },
     { all:['你們'], any:['都是垃圾', '都是廢物', '全是垃圾', '全是廢物', '都沒用'] },
     { all:['全部'], any:['一起上', '都來', '都是垃圾', '都是廢物', '都沒用'] },
     { all:['全頻'], any:['垃圾', '廢物', '沒用', '來pk', '來戰'] }
@@ -1803,6 +1805,8 @@ const WC_MASS_TAUNT_REPLIES = [
     '嘴砲先算你贏，實戰等等再結算。', '我已經截到了，你想裝沒說過也來不及。', '村口等你，別突然說要睡了。',
     '好大的口氣，希望不是靠復活撐出來的。', '你成功把和平頻道變成約戰頻道了。', '等我看到你，希望你還笑得出來。'
 ];
+const WC_MASS_TAUNT_WINDOW_MS = 30 * 60 * 1000;
+const WC_MASS_TAUNT_BATTLE_CHANCE = 0.10;
 function _wcIsMassTaunt(q) {
     q = String(q || '').toLowerCase().replace(/[\s　，。！？!?、,.；;：:「」『』（）()]/g, '');
     return WC_MASS_TAUNT_PATTERNS.some(pattern => {
@@ -1811,8 +1815,144 @@ function _wcIsMassTaunt(q) {
         return allHit && anyHit;
     });
 }
+function _wcMassTauntRosterEntry(raw) {
+    if (!raw || !raw.n) return null;
+    let avatar = (typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[raw.avatar]) ? raw.avatar : '男戰士';
+    let alignmentValue = (typeof pvpClampAlignment === 'function')
+        ? pvpClampAlignment(raw.alignmentValue)
+        : Math.max(-32767, Math.min(32767, Math.round(Number(raw.alignmentValue) || 0)));
+    return {
+        n: String(raw.n).slice(0, 24),
+        avatar: avatar,
+        source: 'worldChannel',
+        wcGrudge: true,
+        alignmentValue: alignmentValue,
+        levelOffset: Math.max(-10, Math.min(10, Math.round(Number(raw.levelOffset) || 0))),
+        clanId: raw.clanId || null,
+        clanName: raw.clanName || '',
+        clanLeader: !!raw.clanLeader,
+        until: Math.max(0, Number(raw.until) || 0)
+    };
+}
+function _wcMassTauntState() {
+    if (typeof player === 'undefined' || !player || !player.cls) return null;
+    let st = player.wcMassTaunt;
+    let now = Date.now();
+    if (!st || Math.max(0, Number(st.expiresAt) || 0) <= now || !Array.isArray(st.roster)) {
+        if (st) delete player.wcMassTaunt;
+        return null;
+    }
+    let seen = new Set();
+    st.roster = st.roster.map(_wcMassTauntRosterEntry).filter(entry => {
+        if (!entry || seen.has(entry.n)) return false;
+        seen.add(entry.n);
+        return true;
+    }).slice(0, 20);
+    if (!st.roster.length) { delete player.wcMassTaunt; return null; }
+    return st;
+}
+function wcMassTauntGroupBattleActive() {
+    let battle = typeof mapState !== 'undefined' && mapState ? mapState.wcMassTauntBattle : null;
+    return !!(battle && battle.map === mapState.current && Array.isArray(battle.roster));
+}
+function wcMassTauntMaybeStartGroupBattle(encounter) {
+    if (!encounter || encounter._wcMassTauntBattle || wcMassTauntGroupBattleActive()) return false;
+    if (typeof mapState === 'undefined' || !mapState || !mapState.current || mapState.current.startsWith('town_')) return false;
+    if ((typeof isSiegeArea === 'function' && isSiegeArea(mapState.current)) ||
+        (typeof KING_ROOMS !== 'undefined' && KING_ROOMS[mapState.current]) ||
+        (typeof PURE_BOSS_MAPS !== 'undefined' && PURE_BOSS_MAPS.includes(mapState.current)) ||
+        (typeof npcClanGroupBattleActive === 'function' && npcClanGroupBattleActive())) return false;
+    if (typeof MAP_CATEGORIES === 'undefined' || !MAP_CATEGORIES.wild || !MAP_CATEGORIES.wild.some(m => m.v === mapState.current)) return false;
+    let st = _wcMassTauntState();
+    if (!st || !Array.isArray(player.trollPlayers)) return false;
+    let grudges = new Map();
+    player.trollPlayers.forEach(entry => {
+        if (entry && entry.n && (entry.source === 'worldChannel' || entry.wcGrudge)) grudges.set(entry.n, entry);
+    });
+    let roster = st.roster.map(entry => _wcMassTauntRosterEntry(grudges.get(entry.n))).filter(Boolean);
+    if (!roster.length) { delete player.wcMassTaunt; return false; }
+    if (Math.random() >= WC_MASS_TAUNT_BATTLE_CHANCE) return false;
+    for (let i = roster.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [roster[i], roster[j]] = [roster[j], roster[i]];
+    }
+    mapState.wcMassTauntBattle = {
+        map: mapState.current,
+        roster: roster,
+        next: 0,
+        kills: 0,
+        defeated: [],
+        total: roster.length,
+        startedAt: Date.now()
+    };
+    for (let i = 0; i < mapState.mobs.length; i++) {
+        let live = mapState.mobs[i];
+        if (live && !live.boss) mapState.mobs[i] = null;
+    }
+    mapState.spawnAt = [null, null, null, null, null];
+    mapState.targetIdx = -1;
+    if (typeof logSys === 'function') {
+        logSys('<span class="text-red-400 font-bold">你先前挑釁的玩家們在狩獵區包圍了你！</span>');
+    }
+    return true;
+}
+function wcMassTauntGroupBattleNextOpponent() {
+    let battle = wcMassTauntGroupBattleActive() ? mapState.wcMassTauntBattle : null;
+    if (!battle) return null;
+    while (battle.next < battle.roster.length) {
+        let rosterIndex = battle.next++;
+        let entry = _wcMassTauntRosterEntry(battle.roster[rosterIndex]);
+        if (entry) {
+            entry._wcMassTauntBattle = true;
+            entry._wcMassTauntBattleKey = rosterIndex + ':' + entry.n;
+            return entry;
+        }
+    }
+    return null;
+}
+function wcMassTauntGroupBattleFill() {
+    if (!wcMassTauntGroupBattleActive() || mapState._wcMassTauntBattleFilling) return;
+    mapState._wcMassTauntBattleFilling = true;
+    try {
+        let slots = typeof backSlotsActive === 'function' && backSlotsActive() ? 5 : 3;
+        for (let i = 0; i < slots; i++) {
+            if (!mapState.mobs[i] && mapState.wcMassTauntBattle.next < mapState.wcMassTauntBattle.roster.length) spawnMob(i);
+        }
+    } finally {
+        mapState._wcMassTauntBattleFilling = false;
+    }
+}
+function wcMassTauntGroupBattleEnd(reason) {
+    let battle = typeof mapState !== 'undefined' && mapState ? mapState.wcMassTauntBattle : null;
+    if (!battle) return;
+    mapState.wcMassTauntBattle = null;
+    for (let i = 0; i < mapState.mobs.length; i++) {
+        if (mapState.mobs[i] && mapState.mobs[i]._wcMassTauntBattle) mapState.mobs[i] = null;
+    }
+    let nowT = typeof state !== 'undefined' ? state.ticks : 0;
+    mapState.spawnAt = mapState.mobs.map(m => m ? null : nowT + 50);
+    mapState.targetIdx = -1;
+    if (reason === 'victory') {
+        delete player.wcMassTaunt;
+        if (typeof logSys === 'function') logSys('<span class="text-emerald-300 font-bold">你擊退了前來圍堵的玩家們。</span>');
+    }
+    if (typeof renderMobs === 'function') renderMobs();
+}
+function wcMassTauntGroupBattleOnKill(mob) {
+    if (!mob || !mob._wcMassTauntBattle || !wcMassTauntGroupBattleActive()) return;
+    let battle = mapState.wcMassTauntBattle;
+    if (!Array.isArray(battle.defeated)) battle.defeated = [];
+    let battleKey = String(mob._wcMassTauntBattleKey || mob.n || '');
+    if (!battleKey || battle.defeated.includes(battleKey)) return;
+    battle.defeated.push(battleKey);
+    battle.kills = battle.defeated.length;
+    if (battle.kills >= battle.total) wcMassTauntGroupBattleEnd('victory');
+}
+function wcMassTauntOnLeaveBattleArea() {
+    if (typeof mapState !== 'undefined' && mapState && mapState.wcMassTauntBattle) wcMassTauntGroupBattleEnd('leave');
+}
 function _wcTriggerMassTaunt() {
-    let count = 5 + Math.floor(Math.random() * 6);   // 5~10 人
+    let count = 10 + Math.floor(Math.random() * 11);   // 10~20 人
     let replies = WC_MASS_TAUNT_REPLIES.slice();
     for (let i = replies.length - 1; i > 0; i--) {
         let j = Math.floor(Math.random() * (i + 1));
@@ -1820,13 +1960,23 @@ function _wcTriggerMassTaunt() {
     }
     let chaseChanged = false;
     let clanHatred = Object.create(null);
-    for (let i = 0; i < count; i++) {
+    let roster = [];
+    let attempts = 0;
+    while (roster.length < count && attempts++ < count * 12) {
         let id = _wcSpawnNpc();
         let npc = _wcNpcs[id];
-        if (!npc) continue;
-        logWorld(`<span class="wc-mock">${_wcNameHtml(id)}：${_wcEsc(replies[i % replies.length])}</span>`);
-        if (_wcAddGrudge(npc, { silent:true, deferSave:true })) chaseChanged = true;
+        if (!npc || roster.some(entry => entry.n === npc.name)) continue;
+        if (!_wcAddGrudge(npc, { silent:true, deferSave:true })) continue;
+        let grudge = Array.isArray(player.trollPlayers) ? player.trollPlayers.find(entry => entry && entry.n === npc.name) : null;
+        let saved = _wcMassTauntRosterEntry(grudge);
+        if (!saved) continue;
+        logWorld(`<span class="wc-mock">${_wcNameHtml(id)}：${_wcEsc(replies[roster.length % replies.length])}</span>`);
+        roster.push(saved);
+        chaseChanged = true;
         if (npc.clanId) clanHatred[npc.clanId] = (clanHatred[npc.clanId] || 0) + 1;
+    }
+    if (roster.length) {
+        player.wcMassTaunt = { v:1, expiresAt:Date.now() + WC_MASS_TAUNT_WINDOW_MS, roster:roster };
     }
     if (typeof npcClanAdjustHatred === 'function') {
         Object.keys(clanHatred).forEach(clanId => npcClanAdjustHatred(clanId, clanHatred[clanId]));

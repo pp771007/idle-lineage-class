@@ -2948,7 +2948,7 @@ const MERC_LEDGER_KEY = 'fb5_merc_exp_ledger';
 const MERC_LEDGER_LOCK_KEY = 'fb5_merc_exp_ledger_lock';
 const MERC_LEDGER_LOCK_TTL = 5000;                         // 鎖逾時：持鎖分頁當機/被關 → 5 秒後他人可搶（正常操作持鎖僅數毫秒）
 const MERC_LEDGER_KEEP_CLAIMED = 7 * 24 * 3600 * 1000;     // 已領紀錄保留 7 天供查帳後清除
-const MERC_LEDGER_KEEP_UNCLAIMED = 90 * 24 * 3600 * 1000;  // 未領紀錄保留 90 天（角色被刪除/改名則永遠領不到→到期清除）
+const MERC_LEDGER_KEEP_UNCLAIMED = 90 * 24 * 3600 * 1000;  // 未領紀錄保留 90 天（角色被刪除/同位重創則永遠領不到→到期清除；🪪 v3.7.32 起「改名」可領＝enSeed 相符即放行）
 let _mercLockToken = null;   // 🛡️ v2.6.69 審計#18：臨界區期間的持鎖 token（寫入前再驗一次·縮小 TOCTOU 窗口＋TTL 被奪鎖時中止續寫）
 function _mercLedgerLocked(fn) {   // 跨分頁鎖：搶到→執行 fn 回 true；搶不到→回 false（呼叫端排程重試）。set 後回讀驗 token＝雙寫競態後寫者勝、自己沒搶到就讓出。
     let token = 'T' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e9).toString(36);
@@ -3044,8 +3044,14 @@ function mercExpClaimPending(_retry) {
             let led = _mercLedgerRead(), hit = false;
             led.forEach(r => {
                 if (!r || r.claimed) return;
-                if (String(r.slot) !== String(currentSlot) || r.cls !== player.cls || (r.name || '') !== (player.name || '')) return;   // 🛡️ 三重守衛：防換角/刪角誤領
-                if (r.enSeed && player.enSeed && r.enSeed !== player.enSeed) return;   // 🩹 v3.0.108 enSeed 唯一角色識別：同存檔位+同名+同職業但實為「重新創角的不同角色」→enSeed 不同→不誤領（舊紀錄無 enSeed 則沿用三重守衛）
+                if (String(r.slot) !== String(currentSlot) || r.cls !== player.cls) return;   // 🛡️ 基本守衛：存檔位＋職業
+                // 🪪 v3.7.32 改名安全（用戶指示）：enSeed＝創角時固定的唯一角色識別，改名不會變——
+                //    兩邊都有且相符＝同一角色→放行（名字不同也可領，改名後不再永遠領不到）；
+                //    兩邊都有但不同＝同存檔位重新創角的「別人」→擋（v3.0.108 防誤領不變）；
+                //    紀錄無 enSeed（舊帳）→退回名字守衛當後備。
+                let _seedSame = !!(r.enSeed && player.enSeed && r.enSeed === player.enSeed);
+                if (r.enSeed && player.enSeed && !_seedSame) return;
+                if (!_seedSame && (r.name || '') !== (player.name || '')) return;
                 total += Math.max(0, Math.floor(r.exp || 0));
                 r.claimed = true; r.claimedAt = Date.now(); hit = true;   // 標記已結算：同一筆只能領一次（跨分頁由鎖保證）
             });

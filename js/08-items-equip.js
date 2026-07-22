@@ -6,6 +6,72 @@ const RELIC_EGG_PETS = {
     doomsdayegg: { pet: '破滅蜥蜴', aura: '破滅' },
     calamityegg: { pet: '災厄蜥蜴', aura: '災厄' }
 };
+
+// 補跑期間的 gainItem 熱路徑：同一背包以完整 itemSig 建一次索引。
+// 一般遊戲與 _lockMergeOff 製作流程仍走原本線性搜尋；未命中也回退掃描，避免中途改裝造成漏合併。
+let _catchupGainItemIndex = null;
+function resetCatchupGainItemIndex() { _catchupGainItemIndex = null; }
+function _catchupGainItemIndexActive() {
+    return !_lockMergeOff && typeof state !== 'undefined' && !!state.ff;
+}
+function _buildCatchupGainItemIndex() {
+    let inv = player && Array.isArray(player.inv) ? player.inv : [];
+    let bySig = new Map();
+    for (let index = 0; index < inv.length; index++) {
+        let item = inv[index];
+        if (!item || item.gw) continue;
+        let sig = itemSig(item);
+        if (!bySig.has(sig)) bySig.set(sig, { item: item, index: index });
+    }
+    _catchupGainItemIndex = {
+        inv: inv,
+        length: inv.length,
+        first: inv.length ? inv[0] : null,
+        last: inv.length ? inv[inv.length - 1] : null,
+        bySig: bySig
+    };
+    return _catchupGainItemIndex;
+}
+function _findCatchupGainItemStack(probe) {
+    let inv = player.inv;
+    let cache = _catchupGainItemIndex;
+    let first = inv.length ? inv[0] : null;
+    let last = inv.length ? inv[inv.length - 1] : null;
+    if (!cache || cache.inv !== inv || cache.length !== inv.length || cache.first !== first || cache.last !== last) {
+        cache = _buildCatchupGainItemIndex();
+    }
+
+    let sig = itemSig(probe);
+    let entry = cache.bySig.get(sig);
+    if (entry && inv[entry.index] === entry.item && !entry.item.gw && sameItemSig(entry.item, probe)) return entry.item;
+    if (entry) cache = _buildCatchupGainItemIndex();
+    entry = cache.bySig.get(sig);
+    if (entry && inv[entry.index] === entry.item && !entry.item.gw && sameItemSig(entry.item, probe)) return entry.item;
+
+    // 索引未命中仍保留舊路徑，涵蓋補跑讓步期間玩家修改物品簽章的極端情況。
+    for (let index = 0; index < inv.length; index++) {
+        let item = inv[index];
+        if (item && !item.gw && sameItemSig(item, probe)) {
+            cache.bySig.set(sig, { item: item, index: index });
+            return item;
+        }
+    }
+    return null;
+}
+function _rememberCatchupGainItemStack(item) {
+    let cache = _catchupGainItemIndex;
+    let inv = player.inv;
+    if (!cache || cache.inv !== inv || cache.length + 1 !== inv.length || inv[inv.length - 1] !== item) {
+        resetCatchupGainItemIndex();
+        return;
+    }
+    let index = inv.length - 1;
+    let sig = itemSig(item);
+    if (!cache.bySig.has(sig)) cache.bySig.set(sig, { item: item, index: index });
+    cache.length = inv.length;
+    cache.first = inv.length ? inv[0] : null;
+    cache.last = item;
+}
 function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false, deferUi=false) {   // ⚠️ v3.5.87 affixOld 已棄用（新舊詞綴制早已合一·恆走 rollAffixesNew）——參數槽保留只因第 6 參 deferUi 的呼叫點靠位置傳參，勿刪勿復用
     // 卷軸變祝福／詛咒機率：各 1%（互斥）
     if (!forceNormal && (id === 'scroll_weapon' || id === 'scroll_armor')) {
@@ -67,9 +133,13 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false, de
         _gw = [];
         for (let _k = 0; _k < 3; _k++) { let _ri = Math.floor(lootRng('geniewish') * _pool.length); _gw.push(_pool.splice(_ri, 1)[0]); }
     }
-    let ex = _gw ? null : player.inv.find(i => !i.gw && (!_lockMergeOff || !i.lock) && sameItemSig(i, _probe));   // 🔧 架構#3：統一簽章比對（itemSig 已含 en→+0 只併 +0、+3 只併 +3，永不誤併不同強化值）；⚠️ 巨靈願望戒指(gw)每只獨立·簽章不含 gw 故顯式排除
+    let _fastGainIndex = !_gw && _catchupGainItemIndexActive();
+    if (!_fastGainIndex && _catchupGainItemIndex && !(typeof catchupActive === 'function' && catchupActive())) resetCatchupGainItemIndex();
+    let ex = _gw ? null : (_fastGainIndex
+        ? _findCatchupGainItemStack(_probe)
+        : player.inv.find(i => !i.gw && (!_lockMergeOff || !i.lock) && sameItemSig(i, _probe)));   // 🔧 架構#3：統一簽章比對（itemSig 已含 en→+0 只併 +0、+3 只併 +3，永不誤併不同強化值）；⚠️ 巨靈願望戒指(gw)每只獨立·簽章不含 gw 故顯式排除
     if(ex) ex.cnt += cnt;   // 僅加數量、不更動既有堆疊的廢品狀態
-    else { let _push = { id: id, uid: uid(), cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff, lock: false, junk: !!(player.junkPrefs && player.junkPrefs[itemSig(_probe)]) && !(d && d.noJunk) }; if (_gw) _push.gw = _gw; player.inv.push(_push); }   // 🔧 廢品記憶改以完整簽章比對：詞綴物品也可自動標記，但僅限「完全相同詞綴」者；🎴 noJunk(收集冊)永不自動標記
+    else { let _push = { id: id, uid: uid(), cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff, lock: false, junk: !!(player.junkPrefs && player.junkPrefs[itemSig(_probe)]) && !(d && d.noJunk) }; if (_gw) _push.gw = _gw; player.inv.push(_push); if (_fastGainIndex) _rememberCatchupGainItemStack(_push); }   // 🔧 廢品記憶改以完整簽章比對：詞綴物品也可自動標記，但僅限「完全相同詞綴」者；🎴 noJunk(收集冊)永不自動標記
 
     // 紀錄這次產生的物品屬性
     let itemInfo = { id: id, cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff };

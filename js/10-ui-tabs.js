@@ -1894,6 +1894,7 @@ const invSortCmp=function(a,b){
 function setInventorySortMode(mode){
     if(!player||!['category','quality','name'].includes(mode))return;
     player[INV_SORT_MODE_KEY]=mode; player.inv.sort(invSortCmp);
+    if(typeof resetCatchupGainItemIndex==='function')resetCatchupGainItemIndex();
     if(typeof saveGame==='function')saveGame(); renderTabs(true);
 }
 function toggleInventoryAutoSort(on){ if(!player)return;player.inventoryAutoSort=!!on;if(typeof saveGame==='function')saveGame(); }
@@ -1905,12 +1906,14 @@ function autoSortInventory() {
     if (state.ticks - _autoSortAt < 100) return;   // ⏲️ 10 秒節流（100 ticks）
     _autoSortAt = state.ticks;
     player.inv.sort(invSortCmp);
+    if (typeof resetCatchupGainItemIndex === 'function') resetCatchupGainItemIndex();
     renderTabs(true);
 }
 // 🔧 v2.6.80 規則視窗「立即一鍵排列」：純排序＋提示·不 saveGame（避免把視窗草稿規則一併落地·排序結果隨其他存檔點落地）·視窗保持開啟
 function sortInventoryNow() {
     if (!player || !Array.isArray(player.inv)) return;
     player.inv.sort(invSortCmp);
+    if (typeof resetCatchupGainItemIndex === 'function') resetCatchupGainItemIndex();
     renderTabs(true);
     logSys('<span class="text-cyan-300 font-bold">背包已重新排列。</span>');
 }

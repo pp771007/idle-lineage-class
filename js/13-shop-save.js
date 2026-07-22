@@ -789,6 +789,45 @@ function loadBackToMenu(){
     if(load) load.classList.add('hidden');
     if(main) main.classList.remove('hidden');
 }
+
+function returnToCharacterSelect(){
+    if(typeof player === 'undefined' || !player || !player.cls) return false;
+    let offlineEligible = false;
+    try {
+        if(typeof window.offlinePrepareCharacterSelect === 'function') {
+            offlineEligible = window.offlinePrepareCharacterSelect() === true;
+        } else if(typeof saveGame === 'function') {
+            saveGame();
+        }
+    } catch(e) {
+        try { if(typeof saveGame === 'function') saveGame(); } catch(_) {}
+    }
+
+    if(typeof stopGameTimers === 'function') stopGameTimers();
+    if(typeof state !== 'undefined' && state) state.running = false;
+    try { _roleSessionForget(); } catch(e) {}
+    try { if(typeof _vfxClearAll === 'function') _vfxClearAll(); } catch(e) {}
+
+    const game = document.getElementById('game-screen');
+    const creationScreen = document.getElementById('creation-screen');
+    const main = document.getElementById('main-menu');
+    const creation = document.getElementById('creation-panel');
+    const load = document.getElementById('load-select-panel');
+    if(game) game.classList.add('hidden');
+    if(creationScreen) creationScreen.classList.remove('hidden');
+    if(main) main.classList.add('hidden');
+    if(creation) creation.classList.add('hidden');
+    if(load) load.classList.remove('hidden');
+    document.body.classList.remove('game-bg-dim', 'sherine-world', 'sherine-mad');
+
+    _loadLastClickSlot = 0;
+    _loadLastClickAt = 0;
+    _loadPage = currentSlot > 4 ? 1 : 0;
+    _loadSelectedSlot = currentSlot;
+    renderLoadSelect();
+    try { if(typeof _bgmTick === 'function') { _bgmScene = null; _bgmTick(); } } catch(e) {}
+    return offlineEligible;
+}
 function renderLoadSelect(){
     const grid = document.getElementById('load-slot-grid');
     if(!grid) return;
@@ -1352,6 +1391,12 @@ function saveGame() {
     //    這些背景觸發會把空殼 player 寫進 currentSlot（預設 1）→ 毀掉該格真正的角色（顯示為 null／Lv.1／預設王族／資料不完整）。
     //    無 cls＝不是進行中的遊戲角色 → 一律拒寫，確保空殼永遠不覆蓋既有存檔。（真正的角色必有職業；創角於選職業後才 saveGame，不受影響。）
     if (!player || !player.cls) return false;
+    // ⏩ v3.7.30 補跑存檔延後（接上 v3.7.25 就設計好但漏接線的 deferCatchupSave）：真補跑會殺 BOSS（v3.7.24），
+    //    killMob 的頭目存檔點每殺必全量存檔（sanitize＋LZ＋寫入）拖慢補跑並造成卡頓尖峰；
+    //    補跑期間一律改記 _ffSavePending，還清後由 gameLoop 收尾的 takeCatchupSaveRequest 統一補存一次。
+    if (typeof catchupActive === 'function' && catchupActive() && typeof deferCatchupSave === 'function'
+        && !(typeof window !== 'undefined' && window.__fb5CloseFlush)) return deferCatchupSave();   // 🔚 v3.7.31 __fb5CloseFlush＝關頁最終存檔（js/27 _offlineCloseAndSave）不延後
+
     if (!_roleSaveAllowed()) {
         if(!_saveFailureNotified && typeof logSys === 'function') {
             _saveFailureNotified = true;

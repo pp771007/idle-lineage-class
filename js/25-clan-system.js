@@ -1130,6 +1130,7 @@ function npcClanGroupBattleEnd(reason) {
 
 function npcClanOnLeaveBattleArea() {
     if (mapState && mapState.npcClanBattle) npcClanGroupBattleEnd('leave');
+    if (typeof wcMassTauntOnLeaveBattleArea === 'function') wcMassTauntOnLeaveBattleArea();
 }
 
 function npcClanMaybeStartGroupBattle(mob) {
@@ -1139,9 +1140,12 @@ function npcClanMaybeStartGroupBattle(mob) {
         (typeof KING_ROOMS !== 'undefined' && KING_ROOMS[mapState.current]) ||
         (typeof PURE_BOSS_MAPS !== 'undefined' && PURE_BOSS_MAPS.includes(mapState.current)) ||
         npcClanGroupBattleActive()) return false;
+    // ⚡ v3.7.30 先骰再讀（補跑效能修）：npcClanGetWorld 每呼叫都重讀＋解析血盟帳號桶（~2.5ms），v3.7.27 起掛在每次擊殺
+    //    → 補跑 per-tick 慢 2.6 倍（killMob 佔 93%·其中 95% 是本函式）。把 1% 機率骰移到最前＝99% 擊殺零成本；兩事件獨立，觸發機率不變。
+    if (Math.random() >= NPC_CLAN_GROUP_CHANCE) return false;
     let world = npcClanGetWorld(player);
     let candidates = world ? world.clans.filter(c => c && c.war && c.hatred > 80) : [];
-    if (!candidates.length || Math.random() >= NPC_CLAN_GROUP_CHANCE) return false;
+    if (!candidates.length) return false;
     let clan = _npcClanPick(candidates);
     mapState.npcClanBattle = {
         clanId:clan.id,

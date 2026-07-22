@@ -318,10 +318,10 @@
                 <button class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #28350f 0%, #6b8e23 26%, #202b0c 48%, #566f1f 72%, #151d08 100%); color: #ecfccb; border-color: #84cc16;" onclick="switchTab('audit', this); saveGame()">統計/存檔</button>
                 <button id="btn-collection" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #4a2f0c 0%, #b3850e 28%, #3f2a0c 52%, #9a720c 76%, #2e2008 100%); color: #fde68a; border-color: #d4a017;" onclick="openCollectionPanel()">收藏</button>
                 <button id="btn-autosell" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #2e1065 0%, #6d28d9 28%, #1e1b4b 52%, #7c3aed 76%, #1e133f 100%); color: #ddd6fe; border-color: #8b5cf6;" onclick="openAutoSellRules()">自動販賣</button>
-                <!-- 第四排：PVP / 血盟 / 自動化設定 -->
+                <!-- 第四排：PVP / 血盟 / 設定 -->
                 <button id="btn-pvp" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #565d68 0%, #6b7280 26%, #3f4651 48%, #5a6270 72%, #313740 100%); color: #f1f5f9; border-color: #6b7280; box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.22), 0 1px 2px rgba(0,0,0,.35);" onclick="switchTab('pvp', this)">PVP</button>
                 <button id="btn-clan" class="btn text-base py-2 font-bold px-0" onclick="switchTab('clan', this)">血盟</button>
-                <button id="btn-automation" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" onclick="switchTab('automation', this)" title="自動化設定（獲得物品時自動排列背包·每10秒最多一次·與自動販賣同一開關）">自動化設定</button>
+                <button id="btn-automation" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" onclick="switchTab('automation', this)" title="設定（獲得物品時自動排列背包·每10秒最多一次·與自動販賣同一開關）">設定</button>
             </div>
 
             <div id="tab-content-panel" class="panel flex-1 flex flex-col overflow-hidden relative">
@@ -393,6 +393,7 @@
                 <!-- 🔧 v2.6.74 自動化設定改「分頁內嵌」（原 v2.6.73 浮動視窗取消）：與 能力/技能 同框架，switchTab(automation) 切換；set-* 控制項恆在 DOM 供 saveGame/自動化讀取 -->
                 <div id="tab-automation" class="p-4 text-base overflow-y-auto h-full hidden">
                     <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
+                        <button type="button" class="btn w-24 py-1 mb-2 text-sm font-bold bg-slate-700 hover:bg-slate-600 border-slate-500 text-slate-100" onclick="returnToCharacterSelect()">回選角</button>
                         <div class="flex items-center justify-between gap-3">
                             <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-sfx-on" class="w-4 h-4" onchange="try{setSfxOn(this.checked)}catch(e){}"><span class="text-sm text-amber-200 font-bold">🔊 戰鬥音效</span></label>
                             <input type="range" id="set-sfx-vol" min="0" max="100" value="50" step="5" class="flex-1 max-w-[150px]" oninput="try{setSfxVol(this.value)}catch(e){}" title="音效音量">
@@ -544,20 +545,20 @@
     </script>
 
     <script src="js/anim-manifest.js?v=e02abcc8e6.5.100-audit-tail"></script>
-    <script src="js/00-data.js?v=246e182413.7.22-relic-fixes"></script>
-<script src="js/01-drops-config.js?v=da4babf0c9.7.25-catchup-fast-scheduler"></script>
+    <script src="js/00-data.js?v=205c9b58bb.7.37-return-select-btn-compact"></script>
+<script src="js/01-drops-config.js?v=d4a790c6cb.7.36-return-character-select"></script>
 <script src="js/02-stats-recompute.js?v=81d28c30f9.7.22-relic-fixes"></script>
-    <script src="js/03-combat-core.js?v=95ec604563.7.25-catchup-fast-scheduler"></script>
+    <script src="js/03-combat-core.js?v=59533c3152.7.36-return-character-select"></script>
     <script src="js/04-combat-attack.js?v=322ad80e56.7.22-relic-fixes"></script>
-<script src="js/05-kill-progression.js?v=00f30cdd57.6.95-npc-align-stable"></script>
-    <script src="js/06-status-allies.js?v=f8705531e5.7.22-relic-fixes"></script>
+<script src="js/05-kill-progression.js?v=24c68689a9.7.27-mass-taunt-battle"></script>
+    <script src="js/06-status-allies.js?v=5b1103fa25.7.32-merc-ledger-rename-safe"></script>
     <script src="js/07-skills-cast.js?v=e05a75515f.7.22-relic-fixes"></script>
-<script src="js/08-items-equip.js?v=53e171f6b7.7.17-duel-no-potion"></script>
+<script src="js/08-items-equip.js?v=b25b92cd0a.7.28-catchup-item-index"></script>
 <script src="js/09-vfx-render.js?v=6e82d82699.7.24-true-catchup-boss-offline"></script>
-<script src="js/10-ui-tabs.js?v=1e616eb9cb.7.24-true-catchup-boss-offline"></script>
-<script src="js/11-world-map.js?v=d3dee95f79.7.13-duel-hud"></script>
+<script src="js/10-ui-tabs.js?v=12351fb0c4.7.28-catchup-item-index"></script>
+<script src="js/11-world-map.js?v=df5a1f88d3.7.29-old-weapon-attr"></script>
 <script src="js/12-npc-quests.js?v=6cfa2b0f18.6.92-lock-stack-merge"></script>
-<script src="js/13-shop-save.js?v=64fd8d8080.7.13-duel-hud"></script>
+<script src="js/13-shop-save.js?v=f8afbcb2bb.7.36-return-character-select"></script>
 <script src="js/14-craft-pandora.js?v=e54159ff65.6.92-lock-stack-merge"></script>
 <script src="js/15-cards.js?v=1937e5996c.6.51-doll-batch-perf"></script>
 <script src="js/16-equip-book.js?v=b33a18a2d7.5.100-audit-tail"></script>
@@ -569,9 +570,9 @@
     <script src="js/23-summons.js?v=2f5d73fde7.7.22-relic-fixes"></script>
     <script src="js/22-pets.js?v=42eccdab81.7.22-relic-fixes"></script>
     <script src="js/24-pandora-relic-market.js?v=311c5bdf85.6.95-npc-align-stable"></script>
-    <script src="js/25-clan-system.js?v=2dd0fd3c52.7.22-clan-dissolve-text"></script>
-    <script src="js/26-world-channel.js?v=19d2777e8d.7.24-true-catchup-boss-offline"></script>
-    <script src="js/27-offline-rewards.js?v=e070787979.7.24-true-catchup-boss-offline"></script>
+    <script src="js/25-clan-system.js?v=7a6e1debeb.7.30-catchup-perf-fix"></script>
+    <script src="js/26-world-channel.js?v=105669a996.7.29-old-weapon-attr"></script>
+    <script src="js/27-offline-rewards.js?v=be419cd353.7.36-return-character-select"></script>
 <script src="js/28-pvp-arena.js?v=9a813bcf1e.7.17-duel-no-potion"></script>
     <!-- ═══════════ 加掛版外掛層（核心永遠是原作者原版；我們的功能全部是外掛疊上去） ═══════════ -->
     <!-- 此區塊由 scripts/sync-upstream.mjs 於「拉上游 index.html 後」自動注入到 </body> 之前。?v= 由 stamp-code-versions 補。 -->
@@ -594,7 +595,7 @@
     <script src="afk-slotinfo.js?v=4373ef22b5"></script>
     <script src="afk-loadslots.js?v=e90752bb35"></script>
     <script src="afk-dex.js?v=c02eada6f0"></script>
-    <script src="afk-wiki.js?v=a712cd1169"></script>
+    <script src="afk-wiki.js?v=79a94ed9a9"></script>
     <!-- 設定選單 / 存檔 / 診斷 / 離線紀錄 -->
     <script src="afk-storage.js?v=2038c52bd1"></script>
     <script src="afk-history.js?v=1b25f8f62c"></script>

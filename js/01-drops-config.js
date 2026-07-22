@@ -1291,39 +1291,80 @@ function startGameTimers() {
     if (typeof _initTabGuard === 'function') _initTabGuard();           // 🚀 綁定分頁面板點擊保護＋重繪節流（避免狩獵時 賣出/強化 按鈕卡頓、點擊失效）
 }
 
+function stopGameTimers() {
+    if (typeof _ffCancelScheduledLoop === 'function') _ffCancelScheduledLoop();
+    if (typeof resetCatchupForRoleSwitch === 'function') resetCatchupForRoleSwitch();
+    if (_gameLoopId !== null) clearInterval(_gameLoopId);
+    if (_saveLoopId !== null) clearInterval(_saveLoopId);
+    _gameLoopId = null;
+    _saveLoopId = null;
+    _loopLast = null;
+    _tickDebt = 0;
+    _ffSavePending = false;
+    _ffHiddenAt = 0;
+}
+
 function _perfNow() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
 function _resetGameLoopClock() { if (typeof _ffCancelScheduledLoop === 'function') _ffCancelScheduledLoop(); _loopLast = _perfNow(); _tickDebt = 0; _ffSavePending = false; }
-// 背景時間錨點：切到背景記下時刻，回前景後排入 gameLoop 逐 tick 真實補跑。
-// 不依賴背景中可能被 Chrome 節流或凍結的 setInterval；戰鬥照算，僅抑制逐次動畫與重繪。
+// 背景期間由被 Chrome 降頻後仍能執行的 gameLoop 先增量補跑；回前景只補最後一次 callback 後的剩餘差額。
+// _loopLast 會在每次背景 gameLoop 更新，因此不能再用整段 hidden 時間入帳，否則會把已處理部分重複計算。
 let _ffHiddenAt = (typeof document !== 'undefined' && document.hidden) ? _perfNow() : 0;
+function _resumeIncrementalBackground(reason) {
+    let _now = _perfNow();
+    let _anchor = (Number.isFinite(_loopLast) && _loopLast > 0) ? _loopLast : _ffHiddenAt;
+    _ffHiddenAt = 0;
+    _loopLast = _now;
+    if (_anchor > 0 && typeof state !== 'undefined' && state.running && typeof player !== 'undefined' && player && player.cls && !player.dead) {
+        settleBackgroundMs(Math.max(0, _now - _anchor), reason);
+    }
+    // 若背景已完全追平而只剩摘要待結束，這次零差額 gameLoop 會負責統一重繪與顯示。
+    if (typeof gameLoop === 'function') gameLoop();
+}
 if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) { if (!_ffHiddenAt) _ffHiddenAt = _perfNow(); return; }
-        let _now = _perfNow();
-        let _anchor = _ffHiddenAt; _ffHiddenAt = 0;
-        _loopLast = _now;
-        if (_anchor > 0 && typeof state !== 'undefined' && state.running && typeof player !== 'undefined' && player && player.cls && !player.dead) {
-            settleBackgroundMs(Math.max(0, _now - _anchor), 'visibility');
-        }
+        _resumeIncrementalBackground('visibility');
     });
 }
 if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('pageshow', function (ev) {
-        // bfcache 的頁面與 JS 記憶體仍存在，視為背景掛機並排入真實補跑。
+        // bfcache 完全凍結期間沒有 callback：以最後一次 gameLoop 為錨，只補尚未執行的尾段。
         if (ev && ev.persisted) {
-            let _now = _perfNow();
-            let _anchor = _ffHiddenAt;
-            _ffHiddenAt = 0;
-            _loopLast = _now;
-            if (_anchor > 0 && typeof state !== 'undefined' && state.running && typeof player !== 'undefined' && player && player.cls && !player.dead) {
-                settleBackgroundMs(Math.max(0, _now - _anchor), 'bfcache');
-            }
+            _resumeIncrementalBackground('bfcache');
             return;
         }
         _ffHiddenAt = 0;
         _resetGameLoopClock();
     });
 }
+
+// 🧵 v3.7.33 背景全速心跳：主執行緒計時器在背景分頁會被 Chrome 節流（最壞每分鐘一拍），
+//    但 Web Worker 的計時器不受分頁節流影響——由 Worker 每秒 postMessage 喚醒主執行緒跑一次 gameLoop，
+//    上方的背景增量補跑便以近即時速率持續執行：切分頁／縮小視窗也完整照跑不停止。
+//    前景不走此路徑（100ms 主迴圈負責）；Worker 建立失敗時自動退回既有的節流喚醒＋回前景差額補跑。
+//    file:// 下外部 Worker 檔會被擋，須用 Blob URL 建立。
+//    ⚠️限制：分頁被瀏覽器整個凍結／丟棄（省電模式、記憶體回收）時 message 也不會送達，
+//    該情境仍由回前景差額補跑與 js/27 離線結算兜底。
+let _bgHeartbeatWorker = null;
+(function _initBgHeartbeat() {
+    if (typeof window === 'undefined' || typeof Worker === 'undefined' || typeof Blob === 'undefined'
+        || typeof URL === 'undefined' || !URL.createObjectURL) return;
+    try {
+        let _u = URL.createObjectURL(new Blob(['setInterval(function(){postMessage(1);},1000);'], { type: 'text/javascript' }));
+        _bgHeartbeatWorker = new Worker(_u);
+        URL.revokeObjectURL(_u);
+        _bgHeartbeatWorker.onmessage = function () {
+            if (typeof document === 'undefined' || !document.hidden) return;   // 前景由 100ms 主迴圈驅動
+            if (typeof gameLoop !== 'function' || !state.running) return;
+            gameLoop();
+            // 背景中被延後的存檔（每 5 分鐘自動存檔會進 deferCatchupSave）：趁債務已還清的空檔補寫入，
+            // 降低背景掛機中分頁被瀏覽器回收時的進度損失；js/27 的 checkpoint 凍結不受影響，仍錨在切出當下。
+            if (_tickDebt < TICK_MS && takeCatchupSaveRequest() && typeof saveGame === 'function') {
+                try { saveGame(); } catch (e) {}
+            }
+        };
+    } catch (e) { _bgHeartbeatWorker = null; }
+})();
 
 let player = {
     cls: null, name: null, lv: 1, exp: 0, gold: 1000, hp: 0, mhp: 0, mp: 0, mmp: 0, alignmentValue: 0, pvpOn: false, pvpRevengeList: [],

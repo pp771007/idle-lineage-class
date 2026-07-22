@@ -557,6 +557,8 @@ function settleDeadMobs() {
     if (_tgtDied) mapState.targetIdx = -1;
     if (typeof npcClanGroupBattleActive === 'function' && npcClanGroupBattleActive() &&
         typeof npcClanGroupBattleFill === 'function') npcClanGroupBattleFill();
+    if (typeof wcMassTauntGroupBattleActive === 'function' && wcMassTauntGroupBattleActive() &&
+        typeof wcMassTauntGroupBattleFill === 'function') wcMassTauntGroupBattleFill();
     if (changed) renderMobs();
     // 🔧 軍王之室：擊敗頭目（掉落已於 killMob 發放）後處理；補跑期間延後到回到即時再執行。
     //   身上仍有「軍王的鑰匙」→ 留在室內，清空全部怪物，5 秒後消耗 1 把鑰匙從頭復活軍王；

@@ -1022,7 +1022,7 @@ function ismaelCursedExchange(kind) {
 //   規則：只能用在「裝備中武器／副手武器(戰士限定)」；每次使用皆為獨立事件，成功率 7%；
 //   無屬性成功→1階、同屬性成功→+1階（最高5階）、不同屬性成功→變成該屬性1階；
 //   第5階同屬性卷軸：原生無攻擊觸發技能的非遺物武器可用 1% 機率附加／重抽屬性魔法；同技能升星、不同技能回1星，最高3星；
-//   衝第4階需武器+10以上、第5階需+11以上（不符不消耗卷軸）；失敗僅消耗卷軸，武器不會消失。
+//   衝第4階需武器+10以上、第5階需+11以上（不符不消耗卷軸；🗡️ v3.7.29 noEnhance 非遺物武器＝古老的劍/巨劍 豁免門檻）；失敗僅消耗卷軸，武器不會消失。
 //   🎲 純機率 Math.random（與武器強化同政策·可 save/load 重抽）。經典/一般/傳統模式皆適用。
 const ATTR_SCROLLS = {
     fire:  { id: 'scroll_attr_fire',  n: '火之武器強化卷軸', btn: 'bg-red-900 border-red-500 text-red-200 hover:bg-red-800' },
@@ -1069,8 +1069,10 @@ function doBianAttr(slotKey, ele) {
         return;
     }
     let en = Number(item.en) || 0;
-    if (nextTier === 4 && en < 10) { logSys('<span class="text-amber-300">武器需 +10 以上才能衝屬性第四階。</span>'); return; }   // 不消耗
-    if (nextTier === 5 && en < 11) { logSys('<span class="text-amber-300">武器需 +11 以上才能衝屬性第五階。</span>'); return; }   // 不消耗
+    // 🗡️ v3.7.29 無法強化的非遺物武器（古老的劍／古老的巨劍）豁免 +10/+11 門檻：noEnhance 永遠 +0，不豁免＝永遠封頂第3階（用戶指示：維持不能強化、但賦予屬性可用到滿）
+    let noEnhFree = !!d.noEnhance;   // 遺物已在上方 isRelic 擋掉，走到這裡的 noEnhance 只剩古老的系列
+    if (nextTier === 4 && en < 10 && !noEnhFree) { logSys('<span class="text-amber-300">武器需 +10 以上才能衝屬性第四階。</span>'); return; }   // 不消耗
+    if (nextTier === 5 && en < 11 && !noEnhFree) { logSys('<span class="text-amber-300">武器需 +11 以上才能衝屬性第五階。</span>'); return; }   // 不消耗
     sc.cnt--; if (sc.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== sc.uid);
     if (Math.random() < 0.07) {   // 🎲 7% 獨立事件（純機率·可 save/load 重抽·同強化政策）
         let oldMagic = getAttrMagicProc(item);
@@ -1136,7 +1138,7 @@ function renderBianAttr(el) {
     el.innerHTML = `
         <div class="flex flex-col gap-2 p-1">
             <div class="text-slate-300 text-sm leading-relaxed">碧恩：我能將四大元素之力銘刻於你手中的武器。屬性提升成功率為 <b>7%</b>；第5階使用同屬性卷軸附加／重抽魔法的成功率為 <b>1%</b>。失敗僅消耗卷軸，武器不會消失。</div>
-            <div class="text-xs text-slate-400">無屬性成功→第1階；同屬性成功→提升1階（最高5階）；<b>不同屬性成功→變成該屬性第1階</b>。衝第4階需武器+10以上、第5階需+11以上。第1~5階：額外傷害/額外魔法點數 +1/+3/+5/+7/+9，一般攻擊轉為該屬性。</div>
+            <div class="text-xs text-slate-400">無屬性成功→第1階；同屬性成功→提升1階（最高5階）；<b>不同屬性成功→變成該屬性第1階</b>。衝第4階需武器+10以上、第5階需+11以上（<b>無法強化的武器如古老的劍／古老的巨劍免此門檻</b>）。第1~5階：額外傷害/額外魔法點數 +1/+3/+5/+7/+9，一般攻擊轉為該屬性。</div>
             <div class="text-xs text-slate-400">只有本身沒有攻擊／命中觸發技能的非遺物武器可附加魔法；成功時從該屬性5種魔法中抽選。同技能升1星並使觸發率乘上星數，最高3星；抽到不同技能則改為新技能1星。</div>
             <div class="text-xs text-slate-400">持有卷軸：<span class="c-attr-fr3">火 ${cnt('scroll_attr_fire')}</span>｜<span class="c-attr-wa3">水 ${cnt('scroll_attr_water')}</span>｜<span class="c-attr-wi3">風 ${cnt('scroll_attr_wind')}</span>｜<span class="c-attr-ea3">地 ${cnt('scroll_attr_earth')}</span></div>
             ${rows}

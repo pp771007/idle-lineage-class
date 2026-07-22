@@ -29,6 +29,7 @@
     let _offlineInternalSave = false;
     let _offlineRestoredCatchupKey = '';
     let _offlineLastBatchSavedOk = false;
+    let _offlineRoleDetached = false;
     // ⚠️ 背景分頁期間任何存檔（js/01 每 5 分鐘自動存檔在背景仍會觸發）都不得把 awaySince／
     //    checkpoint.lastActive 往後推，否則離線時長永遠湊不滿 1 分鐘下限、資格也會因
     //    「最後擊殺超過 5 分鐘」被翻成 false → 回前景永遠結不了帳。
@@ -472,7 +473,16 @@
         let key = _offlineStoreKey('catchup');
         if (!key) return false;
         let runtimeMs = typeof catchupPendingMs === 'function' ? catchupPendingMs() : 0;
-        let hiddenMs = _offlineHiddenAt > 0 ? Math.max(0, closedAt - _offlineHiddenAt) : 0;
+        // 🔄 v3.7.31 背景增量補跑架構修正：隱藏期間 gameLoop 仍被節流喚醒逐 tick 處理（且 5 分鐘自動存檔可能已落地），
+        //    舊公式 hiddenMs＝closedAt−_offlineHiddenAt（整段隱藏時間）會把「已處理＋已存檔」的部分在重開時重複結算（雙重入帳）。
+        //    未處理殘額＝runtime 債務（catchupPendingMs）＋「最後一次 gameLoop 之後」的尾段（同 js/01 差額錨點口徑）；
+        //    _loopLast 從未跑過（隱藏中載入等）才退回整段隱藏時間。⚠️_loopLast/_perfNow＝performance.now 時域，勿與 closedAt(Date.now) 相減。
+        let hiddenMs;
+        if (typeof _loopLast !== 'undefined' && Number.isFinite(_loopLast) && _loopLast > 0 && typeof _perfNow === 'function') {
+            hiddenMs = Math.max(0, _perfNow() - _loopLast);
+        } else {
+            hiddenMs = _offlineHiddenAt > 0 ? Math.max(0, closedAt - _offlineHiddenAt) : 0;
+        }
         let previous = _offlineReadJson(key);
         // 已排入本頁記憶體的舊債不可再取 max，否則中途關頁會把已補過的部分再次帶回。
         let previousMs = _offlineRestoredCatchupKey === key ? 0 :
@@ -1272,6 +1282,7 @@
     const _offlineOriginalLoadGame = window.loadGame;
     if (typeof _offlineOriginalLoadGame === 'function') {
         window.loadGame = function () {
+            _offlineRoleDetached = false;
             _offlineLoading = true;
             let result;
             try {
@@ -1285,8 +1296,32 @@
         };
     }
 
+    const _offlineOriginalStartGame = window.startGame;
+    if (typeof _offlineOriginalStartGame === 'function') {
+        window.startGame = function () {
+            _offlineRoleDetached = false;
+            return _offlineOriginalStartGame.apply(this, arguments);
+        };
+    }
+
+    window.offlinePrepareCharacterSelect = function () {
+        if (typeof player === 'undefined' || !player || !player.cls || _offlineLoading || _offlineSettling) return false;
+        let now = _offlineNow();
+        _offlineRememberPendingCatchup(now);
+        let snapshot = _offlinePrepareSnapshot(now, true);
+        _offlineInternalSave = true;
+        window.__fb5CloseFlush = true;
+        try { _offlineOriginalSaveGame(); } catch (e) {}
+        finally {
+            _offlineInternalSave = false;
+            window.__fb5CloseFlush = false;
+            _offlineRoleDetached = true;
+        }
+        return !!(snapshot && snapshot.eligible === true);
+    };
+
     function _offlinePauseAndSave() {
-        if (typeof player === 'undefined' || !player || !player.cls || _offlineLoading || _offlineSettling) return;
+        if (_offlineRoleDetached || typeof player === 'undefined' || !player || !player.cls || _offlineLoading || _offlineSettling) return;
         _offlinePrepareSnapshot(_offlineNow());
         _offlineInternalSave = true;
         try { _offlineOriginalSaveGame(); } catch (e) {}
@@ -1294,17 +1329,19 @@
     }
 
     function _offlineCloseAndSave() {
-        if (typeof player === 'undefined' || !player || !player.cls || _offlineLoading || _offlineSettling) return;
+        if (_offlineRoleDetached || typeof player === 'undefined' || !player || !player.cls || _offlineLoading || _offlineSettling) return;
         let now = _offlineNow();
         _offlineRememberPendingCatchup(now);
         _offlinePrepareSnapshot(now, true);
         _offlineInternalSave = true;
+        window.__fb5CloseFlush = true;   // 🔚 v3.7.31 關頁最終存檔＝final flush：繞過 js/13 的補跑存檔延後閘（背景節流喚醒間 _tickDebt 常 ≥100ms，不繞過＝最終進度不落地）
         try { _offlineOriginalSaveGame(); } catch (e) {}
-        finally { _offlineInternalSave = false; }
+        finally { _offlineInternalSave = false; window.__fb5CloseFlush = false; }
     }
 
     if (typeof document !== 'undefined' && document.addEventListener) {
         document.addEventListener('visibilitychange', function () {
+            if (_offlineRoleDetached) return;
             if (document.hidden) {
                 if (!_offlineHiddenAt) _offlineHiddenAt = _offlineNow();
                 _offlinePauseAndSave();
@@ -1325,6 +1362,7 @@
         });
         window.addEventListener('beforeunload', _offlineCloseAndSave);
         window.addEventListener('pageshow', function (ev) {
+            if (_offlineRoleDetached) return;
             if (document.hidden) return;
             _offlineHiddenAt = 0;
             if (ev && ev.persisted) {

@@ -191,14 +191,19 @@ function gameLoop() {
     }
     let elapsed = now - _loopLast;
     _loopLast = now;
+    let _hidden = typeof document !== 'undefined' && document.hidden;
 
-    // 🔀 v3.6.95 混合制：背景期間（分頁還開著）不跑也不清帳——時間由 js/01 的 visibilitychange 錨點
-    //    在回前景時整段記入 _tickDebt，這裡的補跑路徑再全額償還（補幀）。真正關閉網頁＝js/27 離線收益。
-    if (typeof document !== 'undefined' && document.hidden) { _ffCancelScheduledLoop(); return; }
+    // 🔀 背景分頁能跑多少先跑多少：Chrome 即使降低 setInterval 頻率，每次喚醒仍逐 tick 償還已經過的時間。
+    //    瀏覽器完全凍結的尾段由 visibilitychange 只補「距離最後一次 gameLoop」的差額，不會重複入帳。
     if (!state.running || player.dead) {
         _ffCancelScheduledLoop();
         _tickDebt = 0;
-        _ffAcc = null;
+        if (_ffAcc && !_hidden) _ffFinishCatchup();
+        else {
+            _ffAcc = null;
+            if (typeof resetCatchupGainItemIndex === 'function') resetCatchupGainItemIndex();
+            _ffProgressHide();
+        }
         _ffErrorStreak = 0;
         state.ff = false;
         state.ffSmall = false;
@@ -208,11 +213,14 @@ function gameLoop() {
     }
 
     if (!Number.isFinite(elapsed) || elapsed < 0) elapsed = 0;
-    _tickDebt += Math.min(elapsed, FF_MAX_ELAPSED_MS);   // 單次呼叫吸收上限 5 分鐘（防時鐘異常；背景大段時間走錨點、不經這裡）
-    if (_tickDebt < TICK_MS) return;
+    _tickDebt += _hidden ? elapsed : Math.min(elapsed, FF_MAX_ELAPSED_MS);   // 背景凍結可能超過 5 分鐘：全額保留在債務中，不能因單次上限遺失收益
+    if (_tickDebt < TICK_MS) {
+        if (!_hidden && _ffAcc) _ffFinishCatchup();
+        return;
+    }
 
     let owed = Math.floor(_tickDebt / TICK_MS);
-    if (owed <= 1) {   // 即時路徑：每次排程一個 tick（前景常態）
+    if (owed <= 1 && !_hidden && !_ffAcc) {   // 即時路徑：背景／既有補跑摘要一律走下方靜音路徑
         _tickDebt -= TICK_MS;
         state.inTick = true;
         try { tick(); } finally { state.inTick = false; settleDeadMobs(); }
@@ -221,13 +229,22 @@ function gameLoop() {
     }
 
     // ⏩ 補跑路徑（v3.6.95 重建 v3.2.78 時間預算榨乾制）：每次呼叫最多吃 FF_BUDGET_MS 計算時間就讓步，
-    //    未還完的債留待下次呼叫（每 16 tick 量一次 performance.now·FF_HARD_CAP 保底防單次過量）。
+    //    未還完的債留待下次呼叫（每 4 tick 量一次 performance.now·FF_HARD_CAP 保底防單次過量）。
     //    state.ff＝全域補跑閘（VFX/動畫/音效/日誌/逐次重繪與存檔全部受抑制）；ffSmall 保留相容但固定 false。
     if (!_ffAcc) {
+        if (typeof resetCatchupGainItemIndex === 'function') resetCatchupGainItemIndex();
         _ffAcc = { t0: Date.now(), ticks: 0, gold: (player.gold || 0), invStart: _ffInventoryCounts() };   // ⏩ 整段補跑只在起點與終點各掃一次背包
         try { if (typeof _vfxClearAll === 'function') _vfxClearAll(); } catch (e) {}   // 補跑只保留最終收益，立即釋放尚未播完的戰鬥特效
     }
+    // 長補跑先讓瀏覽器畫出進度提示再開始重運算；只做一次，不增加每批額外等待。
+    if (!_hidden && !_ffAcc.progressPrimed && (_ffAcc.ticks * TICK_MS + _tickDebt) >= FF_PROGRESS_MIN_MS) {
+        _ffAcc.progressPrimed = true;
+        _ffProgressUpdate(_ffAcc, _tickDebt);
+        _ffScheduleNext();
+        return;
+    }
     // 真實補跑固定每次只抵 1 tick，不抽樣放大任何收益。
+    if (typeof resetCatchupGainItemIndex === 'function') resetCatchupGainItemIndex();   // 每批重建，隔離 8ms 讓步期間可能發生的背包操作
     state.ff = true;
     state.ffSmall = false;   // 真實補跑一律略過動畫；小補跑也只保留最終畫面與收益
     let ran = 0, budget0 = now;
@@ -253,7 +270,7 @@ function gameLoop() {
             }
             if (player.dead) break;   // 真實補跑戰敗即停止；死亡後的背景時間不得繼續產生收益
             _ffErrorStreak = 0;
-            if ((ran & 15) === 0) {
+            if ((ran & 3) === 0) {
                 let t = (typeof performance !== 'undefined' ? performance.now() : Date.now());
                 if (t - budget0 >= FF_BUDGET_MS) break;
             }
@@ -269,51 +286,59 @@ function gameLoop() {
         state.ffSmall = false;
     }
     if (player.dead) _tickDebt = 0;   // 進入下方統一收尾與最終重繪，不留下死亡後的補跑債務
+    if (!_hidden) _ffProgressUpdate(_ffAcc, _tickDebt);
     if (_tickDebt < TICK_MS) {   // 補跑完畢
-        let _acc = _ffAcc;
-        let _longCatchup = !!(_acc && _acc.ticks >= 30);
-        let _deferredSave = typeof takeCatchupSaveRequest === 'function' && takeCatchupSaveRequest();
-        if (_longCatchup) {   // ≥3 秒的補跑（回前景補幀）：統一刷新＋存檔＋摘要
-            try { renderMobs(); updateUI(); renderTabs(true); } catch (e) {}
-        } else {
-            flushTickRender();
-        }
-        let _needsSave = _longCatchup || _deferredSave || (_acc && _acc.failed);
-        let _saveOk = false;
-        if (_needsSave) {
-            try { _saveOk = saveGame() === true; } catch (e) {}
-        }
-        if (_saveOk && typeof window !== 'undefined' && typeof window.offlineCatchupSaveCommitted === 'function') {
-            try { window.offlineCatchupSaveCommitted(); } catch (e) {}
-        }
-        if (_longCatchup) {
-            try {
-                let _gd = (player.gold || 0) - _acc.gold;
-                let _sec = Math.round(_acc.ticks / 10);
-                let _dur = _sec >= 60 ? Math.floor(_sec / 60) + ' 分 ' + (_sec % 60) + ' 秒' : _sec + ' 秒';
-                logSys('<span class="text-cyan-300 font-bold">⏩ 掛機補跑完成：</span>已補上 ' + _dur + ' 的進度' + (_gd > 0 ? ('，金幣 +' + _gd.toLocaleString()) : '') + '。');
-                // 🎁 v3.6.86 前舊格式（用戶指示恢復）：補跑期間獲得物品彙整輸出（物品名依稀有度上色·頓號串接·只列淨正值）
-                let _gains = [];
-                let _invAfter = _ffInventoryCounts();
-                new Set([...Object.keys(_acc.invStart || {}), ...Object.keys(_invAfter)]).forEach(id => {
-                    let n = (_invAfter[id] || 0) - ((_acc.invStart || {})[id] || 0);
-                    if (n > 0 && DB.items[id]) _gains.push({ id: id, n: n });
-                });
-                if (_gains.length) {
-                    logSys(`<span class="sys-item-gain">掛機期間獲得：` + _gains
-                        .map(g => `<span class="${getItemColor({ id: g.id, en: 0 })} font-bold">${DB.items[g.id].n} ×${g.n}</span>`)
-                        .join('、') + `</span>`);
-                }
-            } catch (e) {}
-        }
-        if (_acc && _acc.aborted && typeof logSys === 'function') {
-            logSys('<span class="text-red-400 font-bold">補跑連續發生錯誤，已停止剩餘補跑，避免進度卡在重複補跑；請重新整理後確認。</span>');
-        }
-        _ffAcc = null;
-        _ffErrorStreak = 0;
+        if (!_hidden) _ffFinishCatchup();   // 背景已追平也先保留摘要；回到前景後才重繪、存檔與顯示一次
     } else {
         _ffScheduleNext();   // 尚未還清：讓出短暫時間後立即續跑，不等待下一次 100ms 主迴圈
     }
+}
+
+function _ffFinishCatchup() {
+    let _acc = _ffAcc;
+    if (!_acc) { flushTickRender(); return; }
+    let _longCatchup = _acc.ticks >= 30;
+    let _deferredSave = typeof takeCatchupSaveRequest === 'function' && takeCatchupSaveRequest();
+    if (_longCatchup) {   // ≥3 秒的補跑（回前景補幀）：統一刷新＋存檔＋摘要
+        try { renderMobs(); updateUI(); renderTabs(true); } catch (e) {}
+    } else {
+        flushTickRender();
+    }
+    let _needsSave = _longCatchup || _deferredSave || _acc.failed;
+    let _saveOk = false;
+    if (_needsSave) {
+        try { _saveOk = saveGame() === true; } catch (e) {}
+    }
+    if (_saveOk && typeof window !== 'undefined' && typeof window.offlineCatchupSaveCommitted === 'function') {
+        try { window.offlineCatchupSaveCommitted(); } catch (e) {}
+    }
+    if (_longCatchup) {
+        try {
+            let _gd = (player.gold || 0) - _acc.gold;
+            let _sec = Math.round(_acc.ticks / 10);
+            let _dur = _sec >= 60 ? Math.floor(_sec / 60) + ' 分 ' + (_sec % 60) + ' 秒' : _sec + ' 秒';
+            logSys('<span class="text-cyan-300 font-bold">⏩ 掛機補跑完成：</span>已補上 ' + _dur + ' 的進度' + (_gd > 0 ? ('，金幣 +' + _gd.toLocaleString()) : '') + '。');
+            // 🎁 v3.6.86 前舊格式（用戶指示恢復）：補跑期間獲得物品彙整輸出（物品名依稀有度上色·頓號串接·只列淨正值）
+            let _gains = [];
+            let _invAfter = _ffInventoryCounts();
+            new Set([...Object.keys(_acc.invStart || {}), ...Object.keys(_invAfter)]).forEach(id => {
+                let n = (_invAfter[id] || 0) - ((_acc.invStart || {})[id] || 0);
+                if (n > 0 && DB.items[id]) _gains.push({ id: id, n: n });
+            });
+            if (_gains.length) {
+                logSys(`<span class="sys-item-gain">掛機期間獲得：` + _gains
+                    .map(g => `<span class="${getItemColor({ id: g.id, en: 0 })} font-bold">${DB.items[g.id].n} ×${g.n}</span>`)
+                    .join('、') + `</span>`);
+            }
+        } catch (e) {}
+    }
+    if (_acc.aborted && typeof logSys === 'function') {
+        logSys('<span class="text-red-400 font-bold">補跑連續發生錯誤，已停止剩餘補跑，避免進度卡在重複補跑；請重新整理後確認。</span>');
+    }
+    _ffAcc = null;
+    if (typeof resetCatchupGainItemIndex === 'function') resetCatchupGainItemIndex();
+    _ffErrorStreak = 0;
+    _ffProgressHide();
 }
 // ⏩ 補跑專用快速排程：每批最多運算 80ms、讓出 8ms 後續跑；仍逐 tick 真實結算。
 const FF_BUDGET_MS = 80;
@@ -321,9 +346,70 @@ const FF_YIELD_MS = 8;
 const FF_HARD_CAP = 6000;
 const FF_MAX_ELAPSED_MS = 300000;
 const FF_ERROR_STREAK_MAX = 3;
+const FF_PROGRESS_MIN_MS = 3000;
 let _ffAcc = null;   // 補跑摘要累計（跨多次 gameLoop 呼叫·還清時歸零）
 let _ffErrorStreak = 0;
 let _ffResumeTimer = null;
+let _ffProgressEl = null;
+
+function _ffProgressEnsure() {
+    if (typeof document === 'undefined' || !document.body) return null;
+    if (_ffProgressEl && _ffProgressEl.isConnected) return _ffProgressEl;
+    if (!document.getElementById('ff-progress-style')) {
+        let style = document.createElement('style');
+        style.id = 'ff-progress-style';
+        style.textContent = `
+            @keyframes ffProgressSpin { to { transform: rotate(360deg); } }
+            #ff-progress-indicator { position:fixed; left:50%; bottom:max(18px, env(safe-area-inset-bottom)); z-index:90; width:min(360px, calc(100vw - 28px)); transform:translate(-50%, 12px); opacity:0; pointer-events:none; transition:opacity .16s ease, transform .16s ease; padding:10px 12px; border:1px solid rgba(180,140,62,.72); border-radius:6px; color:#f5e7bd; background:rgba(20,18,24,.94); box-shadow:0 6px 22px rgba(0,0,0,.5); font-size:14px; }
+            #ff-progress-indicator.is-visible { opacity:1; transform:translate(-50%, 0); }
+            #ff-progress-indicator .ff-progress-head { display:flex; align-items:center; gap:9px; min-width:0; }
+            #ff-progress-indicator .ff-progress-spinner { width:16px; height:16px; flex:0 0 16px; border:2px solid rgba(245,231,189,.28); border-top-color:#e5bd63; border-radius:50%; animation:ffProgressSpin .75s linear infinite; }
+            #ff-progress-indicator .ff-progress-title { flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-weight:700; }
+            #ff-progress-indicator .ff-progress-percent { flex:0 0 auto; color:#f8d477; font-variant-numeric:tabular-nums; font-weight:700; }
+            #ff-progress-indicator .ff-progress-track { height:5px; margin-top:8px; overflow:hidden; border-radius:3px; background:#34303a; }
+            #ff-progress-indicator .ff-progress-fill { height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg, #9b6e27, #e4bd62); transition:width .12s linear; }
+            @media (prefers-reduced-motion: reduce) { #ff-progress-indicator, #ff-progress-indicator .ff-progress-fill { transition:none; } #ff-progress-indicator .ff-progress-spinner { animation:none; } }
+        `;
+        document.head.appendChild(style);
+    }
+    let el = document.createElement('div');
+    el.id = 'ff-progress-indicator';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.setAttribute('aria-atomic', 'true');
+    el.innerHTML = '<div class="ff-progress-head"><span class="ff-progress-spinner" aria-hidden="true"></span><span class="ff-progress-title">補跑中</span><span class="ff-progress-percent">0%</span></div><div class="ff-progress-track"><div class="ff-progress-fill"></div></div>';
+    document.body.appendChild(el);
+    _ffProgressEl = el;
+    return el;
+}
+
+function _ffProgressDuration(ms) {
+    let seconds = Math.max(0, Math.ceil((Number(ms) || 0) / 1000));
+    if (seconds >= 60) return Math.floor(seconds / 60) + ' 分 ' + (seconds % 60) + ' 秒';
+    return seconds + ' 秒';
+}
+
+function _ffProgressUpdate(acc, remainingMs) {
+    if (!acc || typeof document === 'undefined' || document.hidden) return;
+    let doneMs = Math.max(0, Number(acc.ticks) || 0) * TICK_MS;
+    let remainMs = Math.max(0, Math.floor((Number(remainingMs) || 0) / TICK_MS) * TICK_MS);
+    let totalMs = doneMs + remainMs;
+    if (totalMs < FF_PROGRESS_MIN_MS) { _ffProgressHide(); return; }
+    let el = _ffProgressEnsure();
+    if (!el) return;
+    let percent = remainMs < TICK_MS ? 100 : Math.max(1, Math.min(99, Math.floor(doneMs * 100 / Math.max(TICK_MS, totalMs))));
+    let title = el.querySelector('.ff-progress-title');
+    let pct = el.querySelector('.ff-progress-percent');
+    let fill = el.querySelector('.ff-progress-fill');
+    if (title) title.textContent = remainMs >= TICK_MS ? '補跑中，剩餘 ' + _ffProgressDuration(remainMs) : '補跑完成，正在整理收益';
+    if (pct) pct.textContent = percent + '%';
+    if (fill) fill.style.width = percent + '%';
+    el.classList.add('is-visible');
+}
+
+function _ffProgressHide() {
+    if (_ffProgressEl) _ffProgressEl.classList.remove('is-visible');
+}
 
 function _ffScheduleNext() {
     if (_ffResumeTimer !== null || _tickDebt < TICK_MS || !state || !state.running || !player || player.dead) return;
@@ -336,6 +422,19 @@ function _ffScheduleNext() {
 function _ffCancelScheduledLoop() {
     if (_ffResumeTimer !== null) clearTimeout(_ffResumeTimer);
     _ffResumeTimer = null;
+}
+
+function resetCatchupForRoleSwitch() {
+    _ffCancelScheduledLoop();
+    _ffAcc = null;
+    _ffErrorStreak = 0;
+    if (typeof resetCatchupGainItemIndex === 'function') resetCatchupGainItemIndex();
+    _ffProgressHide();
+    if (typeof state !== 'undefined' && state) {
+        state.ff = false;
+        state.ffSmall = false;
+        state.inTick = false;
+    }
 }
 function _ffInventoryCounts() {
     let counts = {};
@@ -1365,6 +1464,7 @@ function pvpOnPlayerDeath(killers) {
 function pvpOnKillMob(mob) {
     if (!mob || !player || !player.cls) return;
     pvpEnsureState();
+    if (mob.trollPlayer && mob._wcMassTauntBattle && typeof wcMassTauntGroupBattleOnKill === 'function') wcMassTauntGroupBattleOnKill(mob);
     if (mob.trollPlayer && mob._npcClanId && typeof npcClanOnNpcKilled === 'function') npcClanOnNpcKilled(mob);
     if (mob.pledgeEnemy || mob.siegeEnemy || mob.race === '血盟' || (typeof isSiegeArea === 'function' && typeof mapState !== 'undefined' && mapState && isSiegeArea(mapState.current))) return;
     if (mob.trollPlayer) {
@@ -1778,6 +1878,7 @@ function spawnMob(idx) {
     let mobId;
     let siegeArea = isSiegeArea(mapState.current);
     let npcClanBattle = typeof npcClanGroupBattleActive === 'function' && npcClanGroupBattleActive();
+    let wcMassTauntBattle = typeof wcMassTauntGroupBattleActive === 'function' && wcMassTauntGroupBattleActive();
     let allowMultiBoss = backSlotsActive() && !siegeArea;   // 🆕 一般5格地圖可同時出現多隻頭目；攻城雖改為5格，仍維持單一城門／守護塔
     // 🏛️ 長老之室 BOSS 節流：場上最多同時 2 隻長老 BOSS；已有 1 隻時須該 BOSS 存活滿 3 分鐘才可能出現第 2 隻
     let _elderRoom = mapState.current === 'elder_room';
@@ -1787,7 +1888,7 @@ function spawnMob(idx) {
         if (_ab.length >= 2) _elderBossOk = false;
         else if (_ab.length === 1) _elderBossOk = (Date.now() - (_ab[0]._bornMs || Date.now())) >= 180000;
     }
-    let wantBoss = !npcClanBattle && (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (!_elderRoom || _elderBossOk) && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (_elderRoom ? Math.random() < 0.05 : Math.random() < 0.01)));
+    let wantBoss = !npcClanBattle && !wcMassTauntBattle && (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (!_elderRoom || _elderBossOk) && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (_elderRoom ? Math.random() < 0.05 : Math.random() < 0.01)));
     if(mapState.forceBoss) mapState.forceBoss = false;   // 強制旗標只作用於下一次生怪
     if(wantBoss) {
         // 🔧 同名BOSS限制：場上已有同名BOSS時不再抽到該名→需地圖池有 2 種以上「不同名」BOSS 才可能同時出現多隻；若無不同名可出則退回一般怪
@@ -1895,7 +1996,15 @@ function spawnMob(idx) {
         && Math.random() < 0.01) {
         mobId = 'lindvior';
     }
-    if (npcClanBattle && typeof npcClanCreateGroupBattleOpponent === 'function') {
+    let _actualPlayerEncounter = mapState._trollSpawn && DB.mobs[mobId] && DB.mobs[mobId].trollPlayer;
+    if (!npcClanBattle && !wcMassTauntBattle && _actualPlayerEncounter && typeof wcMassTauntMaybeStartGroupBattle === 'function' &&
+        wcMassTauntMaybeStartGroupBattle(mapState._trollSpawn)) wcMassTauntBattle = true;
+    if (wcMassTauntBattle && typeof wcMassTauntGroupBattleNextOpponent === 'function') {
+        let _massPvp = wcMassTauntGroupBattleNextOpponent();
+        if (!_massPvp) { delete mapState._trollSpawn; mapState.mobs[idx] = null; return; }
+        mobId = trollPickClassMob(_massPvp.avatar);
+        mapState._trollSpawn = _massPvp;
+    } else if (npcClanBattle && typeof npcClanCreateGroupBattleOpponent === 'function') {
         let _battle = mapState.npcClanBattle;
         let _groupPvp = npcClanCreateGroupBattleOpponent(_battle && _battle.clanId);
         if (_groupPvp) {
@@ -1936,6 +2045,8 @@ function spawnMob(idx) {
             mapState.mobs[idx]._npcClanConflict = !!_t.clanConflict;
             mapState.mobs[idx]._npcClanHasCastle = !!_t.clanHasCastle;
             mapState.mobs[idx]._npcClanBattle = !!_t._npcClanBattle;
+            mapState.mobs[idx]._wcMassTauntBattle = !!_t._wcMassTauntBattle;
+            mapState.mobs[idx]._wcMassTauntBattleKey = _t._wcMassTauntBattleKey || '';
             if (_t.siegePlayer) {
                 mapState.mobs[idx].siegeEnemy = true;
                 mapState.mobs[idx]._siegePlayer = true;
@@ -1954,7 +2065,7 @@ function spawnMob(idx) {
                 MOB_ANIM_NAMES.add(_t.n);
                 if (typeof MOB_ANIM_SPRITE_SHADOW !== "undefined") MOB_ANIM_SPRITE_SHADOW.add(_t.n);   // 16 職業資料夾皆含 _s 影子層
             }
-            logTrollEncounterTrashTalk(_t);
+            if (!_t._wcMassTauntBattle) logTrollEncounterTrashTalk(_t);
         }
         delete mapState._trollSpawn;
     }
@@ -1977,7 +2088,8 @@ function spawnMob(idx) {
 
     applySherineGrace(idx);   // 🔮 席琳的恩賜：1% 機率場上一隻一般怪變恩賜怪（與時空裂痕共用 applySherineGrace）
     if (base.boss && typeof vfxBossEntrance === 'function') { try { vfxBossEntrance(mapState.mobs[idx]); } catch (e) {} }   // 🐉 頭目出場特效＋螢幕震動（cosmetic·v3.4.95 起全頭目通用：名單有專屬配色/稱號·未註冊者依屬性配色·吃 __vfxOff/補跑）
-    if (!state.ff) renderMobs();
+    if (mapState.mobs[idx]._wcMassTauntBattle && typeof wcMassTauntGroupBattleFill === 'function') wcMassTauntGroupBattleFill();
+    if (!state.ff && !mapState._wcMassTauntBattleFilling) renderMobs();
 }
 
 function getMobColor(mobLv) {

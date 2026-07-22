@@ -89,7 +89,8 @@ function patchTradEnHook() {
 }
 
 // ── 補丁 3：存檔位 8 → 16（加掛版原有功能，上游只有 8 格）──────────
-//   上游把格數硬寫死在 2 處：js/13 匯入時的「同角色重複」掃描、js/06 allySlotList（招募）。
+//   上游把格數硬寫死在 4 處：js/13 匯入時的「同角色重複」掃描、js/06 allySlotList（招募）、
+//   js/25 clanScanRoles（血盟成員/盟主判定）、js/28 PVP 挑戰自己其他角色的清單。
 //   改成用 SAVE_SLOT_MAX=16（定義於 js/13，執行期全域，afk-loadslots/afk-wiki/afk-diag 的選角面板也讀它）。
 //   選角畫面本身不必改核心：上游是分頁式卡片（每頁 4 格），afk-loadslots 自行擴充頁數。
 function patch16Slots() {
@@ -121,6 +122,32 @@ function patch16Slots() {
     console.log(`[patch] 傭兵招募 16 格（${F06}）`);
   } else if (!s06.includes('SAVE_SLOT_MAX')) {
     throw new Error(`[${F06}] 找不到 allySlotList 8 格錨點——上游可能改了招募邏輯。`);
+  } else { already++; }
+
+  // js/25：血盟成員掃描（成員清單＋貢獻度、clanLeaderRole 找盟主、城鎮 NPC 的「有無君主」判斷都經這裡）
+  const F25 = 'js/25-clan-system.js';
+  let s25 = readFileSync(F25, 'utf8');
+  const A4 = "for (let slot = 1; slot <= 8; slot++) {";
+  if (s25.indexOf(A4) >= 0) {
+    s25 = s25.replace(A4, "for (let slot = 1; slot <= SAVE_SLOT_MAX; slot++) {");
+    if (!CHECK) writeFileSync(F25, s25);
+    changed++;
+    console.log(`[patch] 血盟成員掃描 16 格（${F25}）`);
+  } else if (!s25.includes('SAVE_SLOT_MAX')) {
+    throw new Error(`[${F25}] 找不到 clanScanRoles 8 格迴圈錨點——上游可能改了血盟成員掃描。`);
+  } else { already++; }
+
+  // js/28：PVP 面板「挑戰自己其他角色」的候選清單
+  const F28 = 'js/28-pvp-arena.js';
+  let s28 = readFileSync(F28, 'utf8');
+  const A5 = "for (let n = 1; n <= 8; n++) {";
+  if (s28.indexOf(A5) >= 0) {
+    s28 = s28.replace(A5, "for (let n = 1; n <= SAVE_SLOT_MAX; n++) {");
+    if (!CHECK) writeFileSync(F28, s28);
+    changed++;
+    console.log(`[patch] PVP 對手清單 16 格（${F28}）`);
+  } else if (!s28.includes('SAVE_SLOT_MAX')) {
+    throw new Error(`[${F28}] 找不到 PVP 對手清單 8 格迴圈錨點——上游可能改了 PVP 面板。`);
   } else { already++; }
 }
 

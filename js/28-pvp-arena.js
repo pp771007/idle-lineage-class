@@ -769,7 +769,7 @@
         let a = (player && player.pvpArena) || { wins: 0, losses: 0, streak: 0, best: 0, history: [] };
         let inArena = (typeof mapState !== 'undefined' && mapState && mapState.current === PVP_ARENA_MAP);
         let slots = [];
-        for (let n = 1; n <= 8; n++) {
+        for (let n = 1; n <= SAVE_SLOT_MAX; n++) {
             if (String(n) === String(currentSlot)) continue;
             let sum = (typeof slotSummary === 'function') ? slotSummary(n) : null;
             if (sum) slots.push({ n: n, label: '存檔' + n + '　' + (sum.name || '未命名') + '（' + sum.cls + ' Lv.' + sum.lv + '）' });

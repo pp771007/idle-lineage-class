@@ -1375,7 +1375,7 @@ function clanScanRoles(mode) {
     if (_clanScanCache.roles && _clanScanCache.mode === mode && now - _clanScanCache.at < 3000) return _clanScanCache.roles.slice();
     let byId = {};
     if (typeof _roleReadSavePlayer === 'function') {
-        for (let slot = 1; slot <= 8; slot++) {
+        for (let slot = 1; slot <= SAVE_SLOT_MAX; slot++) {
             let p = _roleReadSavePlayer(slot);
             if (!p || !p.cls || clanModeKey(p) !== mode) continue;
             let id = clanRoleId(p);

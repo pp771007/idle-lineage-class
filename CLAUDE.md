@@ -18,7 +18,7 @@
    |---|---|---|
    | 1 | js/03 | `maybeSpawnMobs` 抽出(tick 出怪塊→具名函式,離線快速結算共用同一份排程) |
    | 2 | js/08 | `gainItem` 自帶強化值鉤子 `__afkTradRollEn`(afk-traditional 偽傳統) |
-   | 3 | js/13+js/06 | 存檔位 8→16(`SAVE_SLOT_MAX`) |
+   | 3 | js/13+js/06+js/25+js/28 | 存檔位 8→16(`SAVE_SLOT_MAX`;匯入重複掃描/傭兵招募/血盟成員掃描/PVP 對手清單) |
    | 4 | js/22 | 寵/召 sprite ticker 改間接呼叫(讓 afk-powersave 包得住) |
    | 5 | js/07 | 迴避頭目 × 自動找BOSS 互斥(`AFK_BOSSRING.huntActive`) |
    | 6 | js/08 | `useItem` 加 `keepModal` 參數(自動瞬移不關玩家視窗) |

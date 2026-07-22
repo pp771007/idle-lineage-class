@@ -26,6 +26,7 @@
  *   寵物名冊  outOwner 'char:<舊碼>' → 新碼(靠 outSlot 決定歸屬;判不出來就收回,見下)
  *   血盟      members[<舊碼>] 與 modes[].leaderId → 新碼
  *   傭兵帳本  fb5_merc_exp_ledger 內 {slot,enSeed} 的 enSeed → 新碼(待領經驗才不會失效)
+ *   離線暫存  lineage_idle_offline_v1_{checkpoint,claim,catchup}_<碼> 整把改名到新碼(js/27)
  *
  * 優雅降級:核心函式/常數缺任何一個就安靜停用,不影響遊戲。
  * ========================================================================== */
@@ -40,6 +41,11 @@
   var CLAN_KEY = core('CLAN_STATE_KEY', 'fb5_clan_state_v1');
   var MERC_KEY = core('MERC_LEDGER_KEY', 'fb5_merc_exp_ledger');
   var REISSUE_LOG_KEY = 'afk_reissue_log';    // 換發對照表(舊碼→新碼),很小,留著方便事後查帳
+  // 上游離線收益的三把暫存鍵。前綴與組法必須與 js/27 的 OFFLINE_STORE_PREFIX / _offlineStoreKey 一致
+  //   (那兩者是 IIFE 內的區域宣告,外部取不到,只能照抄;上游改了這裡就搬不到,但只是留孤兒不會弄壞收益)。
+  var OFFLINE_PREFIX = 'lineage_idle_offline_v1_';
+  var OFFLINE_KINDS = ['checkpoint', 'claim', 'catchup'];
+  function offlineKey(kind, seed) { return OFFLINE_PREFIX + kind + '_' + encodeURIComponent(String(seed)); }
   var CONFIRM_PHRASE = '換發身分證';          // 執行前要玩家手動打進去(擋手滑;同上游刪角要打角色名)
 
   function slotMax() { return (typeof SAVE_SLOT_MAX !== 'undefined') ? SAVE_SLOT_MAX : 16; }
@@ -205,7 +211,31 @@
       }
     } catch (e) { note('⚠️ 傭兵帳本處理略過(' + (e.message || e) + '),不影響其他項'); }
 
-    // 5) 對照表留檔(很小,事後查帳用)
+    // 5) 上游離線收益(js/27)的暫存:三把鍵都以身分碼命名,不搬就變成永遠沒人清的孤兒,
+    //    且離線暫存退回存檔內較舊的那份(存檔裡的 offlineHunt 才是權威,故收益本身不會錯)。
+    //    ⚠️ 走 _lsGet/_lsSet/_lsRemove(與 js/27 同一層):這些鍵不經 LZ 壓縮,且打包版是檔案儲存不是 localStorage。
+    //    撞號(同一組舊碼被多格共用)時分不出暫存屬於哪一格 → 一律清除,不硬塞給任一格:
+    //    checkpoint 帶著 awaySince/狩獵圖/每分鐘產出,給錯格會結算出別人的離線收益。
+    try {
+      var offMoved = 0, offDropped = 0;
+      Object.keys(byOldSeed).forEach(function (old) {
+        var group = byOldSeed[old];
+        var to = group.length === 1 ? group[0].newSeed : '';   // 唯一歸屬才搬,共用的一律丟棄
+        OFFLINE_KINDS.forEach(function (kind) {
+          var from = offlineKey(kind, old);
+          var raw = _lsGet(from);
+          if (raw == null) return;
+          if (!to) { _lsRemove(from); offDropped++; return; }
+          // 先寫新的、確認成功才刪舊的:寫不進去就原封留著,寧可留孤兒也不要把資料弄丟
+          if (_lsSet(offlineKey(kind, to), raw)) { _lsRemove(from); offMoved++; }
+        });
+      });
+      if (offMoved || offDropped) {
+        note('離線收益暫存:' + offMoved + ' 筆改掛新身分' + (offDropped ? '、' + offDropped + ' 筆判不出歸屬已清除' : ''));
+      }
+    } catch (e) { note('⚠️ 離線暫存處理略過(' + (e.message || e) + '),不影響其他項'); }
+
+    // 6) 對照表留檔(很小,事後查帳用)
     try {
       var log = { at: Date.now(), map: plan.map(function (e) { return { slot: e.slot, from: e.oldSeed, to: e.newSeed }; }) };
       localStorage.setItem(REISSUE_LOG_KEY, JSON.stringify(log));
@@ -336,6 +366,8 @@
       '少數對不上來源存檔位的舊傭兵仍可能在下次載入時自動解散(設定會被記住、經驗會結算)。</li>' +
       '<li><b>其他分頁</b>——如果你在別的分頁或另一台裝置開著同一個角色,那邊會停止寫入存檔' +
       '(這是刻意的保護)。換發後請把其他分頁全部關掉重開。</li>' +
+      '<li><b>離線收益</b>——暫存資料會跟著改掛新身分。但<b>身分碼重複的那幾格</b>因為分不出暫存屬於誰,' +
+      '會直接清掉,最多少算幾分鐘的背景時間(離線收益本身記在存檔裡,不受影響)。</li>' +
       '<li><b>不受影響</b>——等級、裝備、背包、金幣、倉庫、收集冊、離線掛機紀錄完全不動。</li>' +
       '</ul></div>' +
 

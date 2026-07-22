@@ -54,7 +54,7 @@
 
 CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHub schedule**;**目前完全沒有定時觸發,同步時機由人決定**——`cf-sync-trigger/` 的 Cloudflare Worker 還在,但 cron 已於 2026-07-21 清空(`crons = []`,API 查 schedules 為空)。要恢復每天自動:把 `wrangler.toml` 的 `crons` 填回 `["20 10 * * *"]`(=台灣 18:20)再 `npx wrangler triggers deploy`;不用 GitHub 自家 schedule 是因為它常延遲 1~2 小時)做同一件事:ls-remote 比 checkpoint 早退 → 鏡像資產(`rsync --delete`)→ sync 腳本(AFK_SKIP_SMOKE=1)→ smoke → **全綠直推 main(Pages 自動部署)+ 發 Release(tag `vYYYYMMDD-HHMM`,標題帶原作者版本號)**;錨點失效/smoke 紅 → 各開 issue、不推壞版。commit 用路徑白名單 add(CI 臨時裝的 playwright/package.json 不進版控)。**因此 `assets/`、`public/` 下不可放我方獨有檔案**(會被 `--delete` 刪)——外掛需要圖優先引用上游既有檔(例:afk-training 背景用 `assets/area/1920x1080/新兵修練場.jpg`);真的要自有素材就放 assets 之外,或改 workflow 加 exclude。
 
-## 目前的外掛(42 支;載入順序見 `scripts/afk-plugin-block.html`)
+## 目前的外掛(43 支;載入順序見 `scripts/afk-plugin-block.html`)
 
 | 檔案 | 功能 |
 |---|---|
@@ -78,6 +78,7 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 | `afk-reissueid.js` | 換發身分證(角色身分碼重發) |
 | `afk-powersave.js` | 省電模式(關戰鬥動畫/降更新頻率;涵蓋寵/召 ticker=補丁4) |
 | `afk-statpts.js` | 能力值來源分解(能力圖下方單一區塊) |
+| `afk-statlist.js` | 能力分頁條列式(拿掉經典背景圖改大字卡片;純 CSS,DOM/updateUI 不動;配點中改單欄) |
 | `afk-autobuy.js` | 自動買肉/魔法屏障卷軸補貨(預設開;離線結算共用 `__afkAutobuyCheck`) |
 | `afk-training.js` | 木人場(量真實 DPS;獨立 map id `afk_dummy`) |
 | `afk-bossring.js` | 傳送控制戒指自動找BOSS(缺卷軸自動購買;與迴避頭目互斥=補丁5) |

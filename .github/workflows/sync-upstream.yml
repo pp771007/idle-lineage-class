@@ -115,7 +115,8 @@ jobs:
           if gh release view "$TAG" > /dev/null 2>&1; then
             echo "已有同名 release $TAG，略過（避免重複）。"
           else
-            printf '《%s》加掛版 — 已自動同步原作者最新版（原版版本 %s），外掛層照常疊加、不改動原遊戲內容（離線掛機／手機版面／掉落查詢／小百科／木人場／賽狗場等，遊戲內「外掛開關」可逐一管理）。\n\n原始碼請由下方 Source code (zip / tar.gz) 下載。\n線上遊玩：https://pp771007.github.io/idle-lineage-class/\n' "$GAME" "$VER" > /tmp/relnotes.md
+            # ⚠️ 這段文字與 .claude/skills/release/SKILL.md 的說明範本必須逐字一致（人工發版走那支，兩邊同一套）。
+            printf '《%s》加掛版 — 已同步原作者最新版（原版版本 %s），外掛層照常疊加、不改動原遊戲內容（手機版面／掉落查詢／小百科／木人場／賽狗場等，遊戲內「外掛開關」可逐一管理）。\n\n原始碼請由下方 Source code (zip / tar.gz) 下載。\n線上遊玩：https://pp771007.github.io/idle-lineage-class/\n' "$GAME" "$VER" > /tmp/relnotes.md
             gh release create "$TAG" --target "$SHA" --title "《${GAME}》加掛版 ${TAG}（原版 ${VER}）" --notes-file /tmp/relnotes.md
           fi
 

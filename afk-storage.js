@@ -91,7 +91,11 @@
     if (data.rawChars > 0) {
       html += '<div class="m-stg-warn">⚠ 其中 <b>' + fmtKB(data.rawChars) + '</b> 的存檔是「<b>未壓縮</b>」狀態' +
         '（下方標紅 <span class="m-stg-form m-stg-form-raw">未壓縮</span> 的項目）。正常會自動壓縮成原本的約 1/10,' +
-        '壓縮沒生效時空間會被灌爆。若這個數字很大,請回報給作者。</div>';
+        '壓縮沒生效時空間會被灌爆。可到左上角 <b>🎚️ 外掛</b> 打開 <b>「存檔即時壓縮」</b>,'
+        + '之後每次存檔都會當場壓好(不再留未壓縮),佔用縮到約 1/10。<br>'
+        + '<b>缺點</b>:壓縮改成存檔的當下做,每次存檔會多花一點時間'
+        + '(桌機約 0.02~0.1 秒幾乎無感;手機大存檔可能到 0.4 秒,存檔瞬間偶爾會小卡一下)。'
+        + '空間沒問題的人不用開。</div>';
     }
 
     if (data.rows.length) html += '<button id="m-stg-copy" class="m-stg-copybtn">📋 複製完整清單</button>';

@@ -75,6 +75,7 @@
         { id: 'bossring', name: '傳送控制戒指自動找 BOSS', desc: '持傳送控制戒指時，場上無 BOSS 自動用瞬移卷軸召來（線上前景；排名/裂痕/軍王/攻城不套用）', group: '自動化' },
         { id: 'pwa', name: '安裝成 App / 離線快取', desc: '把遊戲裝成手機或電腦上的 App、圖片離線快取對帳', group: '系統與其他' },
         { id: 'storage', name: '設定選單', desc: '首頁 ⚙ 設定鈕與存檔大小檢查', group: '系統與其他' },
+        { id: 'synccompress', name: '存檔即時壓縮', desc: '每次存檔當下就壓縮再寫入,根治「登出/多開後存檔未壓縮、佔用暴增導致角色/倉庫消失」;代價是存檔瞬間多花一點時間(手機大存檔可能小卡),故預設關', group: '系統與其他', def: false },
         { id: 'powersave', name: '省電模式', desc: '首頁設定→關戰鬥動畫/降畫面更新頻率（補回上游沒有的 2 個省電選項）', group: '系統與其他' },
         { id: 'skin', name: '首頁外掛入口/資訊', desc: '外掛入口整理（桌機收成🔌鈕/手機依原版按鈕樣式直接排列）＋原作者資訊、最後更新時間、巴哈/Line 連結', group: '系統與其他' },
         { id: 'offline', name: '離線快速結算', desc: '關掉遊戲後回來自動結算掛機收益', group: '遊戲玩法', locked: '因作者持續異動離線收益機制，暫時關閉此功能，改用遊戲原版的離線收益。' },
@@ -99,7 +100,8 @@
         ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.66);display:flex;align-items:flex-start;justify-content:center;padding:14px 12px 12px;';
         applyBannerPad(ov);   // 開啟當下實測橫幅高度直接設 padding-top（不靠 afk-mobile 的非同步 --orig-bar-h，避免量測未就緒時被橫幅蓋住）
         var card = document.createElement('div');
-        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:560px;width:100%;max-height:calc(100vh - var(--orig-bar-h,0px) - 30px);overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.6);-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;';
+        // 直向 flex:頭與尾(重新整理鈕)固定,只有中間清單區捲動 → 項目再多,底部按鈕永遠在畫面上
+        card.style.cssText = 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;max-width:560px;width:100%;max-height:calc(100vh - var(--orig-bar-h,0px) - 30px);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.6);';
         // iOS Safari 的 vh 含工具列高度,卡片底(重新整理鈕)會被切出可視範圍 → 覆寫成 dvh+safe-area(舊瀏覽器不認 dvh 就留上面 vh 版)。
         // 頂端扣「開啟當下實測」的橫幅 pad(與 applyBannerPad 同源),不用 --orig-bar-h(非同步、可能還是 0)。
         card.style.maxHeight = 'calc(100dvh - ' + (bannerPadPx() + 16) + 'px - env(safe-area-inset-bottom, 0px))';
@@ -107,11 +109,11 @@
         var groups = {};
         registry.forEach(function (r) { (groups[r.group] = groups[r.group] || []).push(r); });
 
-        var html = '<div style="padding:16px 18px;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+        var html = '<div style="padding:16px 18px;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;gap:12px;flex:0 0 auto;">'
             + '<div><div style="font-size:17px;font-weight:700;">🎚️ 外掛開關</div>'
             + '<div style="font-size:12px;color:#94a3b8;margin-top:3px;">某個外掛出問題時，先關掉它就能用原版繼續玩，作者修好再打開。改完按「重新整理」生效。</div></div>'
             + '<button id="afk-tg-close" style="flex:none;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:6px 12px;cursor:pointer;">關閉</button></div>'
-            + '<div style="padding:10px 14px;">';
+            + '<div style="padding:10px 14px;flex:1 1 auto;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;">';
 
         if (!registry.length) {
             html += '<div style="color:#94a3b8;padding:14px;text-align:center;">目前沒有任何外掛登錄開關。</div>';
@@ -133,8 +135,8 @@
             });
         }
         html += '</div>'
-            + '<div id="afk-tg-note" style="display:none;padding:10px 16px;color:#fbbf24;font-size:13px;border-top:1px solid #1e293b;">已變更，按下方「重新整理」套用。</div>'
-            + '<div style="padding:12px 16px;border-top:1px solid #1e293b;display:flex;gap:10px;justify-content:flex-end;">'
+            + '<div id="afk-tg-note" style="display:none;padding:10px 16px;color:#fbbf24;font-size:13px;border-top:1px solid #1e293b;flex:0 0 auto;">已變更，按下方「重新整理」套用。</div>'
+            + '<div style="padding:12px 16px;border-top:1px solid #1e293b;display:flex;gap:10px;justify-content:flex-end;flex:0 0 auto;">'
             + '<button id="afk-tg-reset" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:8px 14px;cursor:pointer;">全部恢復預設</button>'
             + '<button id="afk-tg-reload" style="background:#0ea5e9;border:none;color:#04263a;font-weight:700;border-radius:8px;padding:8px 16px;cursor:pointer;">重新整理</button></div>';
 

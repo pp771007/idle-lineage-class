@@ -1802,13 +1802,21 @@
     return out;
   }
 
-  // 魔法娃娃:全部讀遊戲資料動態產生(DB.items slot==='doll' 的 d.d 即官方逐隻介紹、含觸發效果/免疫;
-  //   袋子/盒子機率讀 DOLL_BAG_POOL/DOLL_BOX_TIER_POOL、合成成功率讀 DOLL_SYNTH_RATES;作者改數值自動跟上)。
-  //   不另用 buildItemDescHTML:娃娃的數值與特效已完整寫在 d.d prose,再疊結構化數值會重複;d.d 是此處唯一同時含 proc/免疫的來源。
+  // 魔法娃娃:全部讀遊戲資料動態產生(袋子/盒子機率讀 DOLL_BAG_POOL/DOLL_BOX_TIER_POOL、
+  //   合成成功率讀 DOLL_SYNTH_RATES;作者改數值自動跟上)。
+  //   ⚠️ 效果一律走遊戲本體 buildItemDescHTML 從結構化欄位(procBonusDmg/mhp/mpR/免疫…)組出——
+  //   上游早年 d.d prose 含效果文字,後來(v3.7.43 前)簡化成通用句「X階魔法娃娃。…游標變其模樣。」、
+  //   效果全搬進結構化欄位;若還只讀 d.d 會整片顯示「(無加成)」(玩家回報過)。切掉「適用職業/重量/
+  //   無法強化」尾段樣板(那三段在 buildItemDescHTML 固定排在效果之後),娃娃的特效/數值/AC/免疫都在其前。
   var DOLL_TIER_CN = ['', '一階', '二階', '三階', '四階', '五階', '六階'];
-  function dollDescClean(id) {   // 去掉逐隻重複的開頭階級語與結尾游標語(已在頁首/分組講過);作者改字串時最差只是沒去乾淨,不會壞
-    var d = DB.items[id]; var t = (d && d.d) || '';
-    return t.replace(/^[一二三四五六]階魔法娃娃。/, '').replace(/。?裝於魔法娃娃欄，游標變其模樣。?/g, '').trim() || '（無加成）';
+  function dollDescClean(id) {
+    var d = DB.items[id]; if (!d) return '（無加成）';
+    var t = (typeof buildItemDescHTML === 'function') ? buildItemDescHTML({ id: id }) : String(d.d || '');
+    t = t.replace(/<br>\s*<span class="text-slate-400">適用職業：[\s\S]*$/, '');   // 砍尾段樣板(適用職業→重量→無法強化)
+    // 去掉逐隻重複的開頭階級語與結尾游標語(已在頁首/分組講過);作者改字串時最差只是沒去乾淨,不會壞
+    t = t.replace(/^[一二三四五六]階魔法娃娃。/, '').replace(/。?裝於魔法娃娃欄，游標變其模樣。?/g, '');
+    t = t.replace(/^\s*(<br>\s*)+/, '').replace(/^\s*[/／]\s*/, '');   // 剝掉開頭殘留的 <br> 與近/遠距離欄位前綴的「/」
+    return t.trim() || '（無加成）';
   }
   function renderDoll() {
     var items = DB.items || {};

@@ -94,6 +94,8 @@
         '壓縮沒生效時空間會被灌爆。若這個數字很大,請回報給作者。</div>';
     }
 
+    if (data.rows.length) html += '<button id="m-stg-copy" class="m-stg-copybtn">📋 複製完整清單</button>';
+
     if (!data.rows.length) {
       html += '<div class="m-stg-empty">localStorage 目前是空的（沒有任何存檔）。</div>';
     } else {
@@ -119,11 +121,46 @@
     return html;
   }
 
+  // 把目前用量整理成純文字(給玩家一鍵複製、貼給作者回報)
+  function buildReportText(data) {
+    var lines = [];
+    lines.push('存檔空間用量  總計 ' + fmtKB(data.total) + '（' + (data.total / CAP_CHARS * 100).toFixed(1) + '% of ~5MB）'
+      + (data.rawChars > 0 ? '  未壓縮 ' + fmtKB(data.rawChars) : ''));
+    lines.push('----');
+    data.rows.forEach(function (r) {
+      var tag = FORM_BADGE[r.form] || r.form || '?';
+      var lbl = friendlyLabel(r.key);
+      lines.push('[' + tag + '] ' + fmtKB(r.chars) + '  ' + r.key + (lbl ? '  (' + lbl + ')' : ''));
+    });
+    return lines.join('\n');
+  }
+  function _copyFallback(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy'); ta.remove();
+      return true;
+    } catch (e) { return false; }
+  }
+  function copyReport() {
+    var text = buildReportText(collect());
+    var btn = document.getElementById('m-stg-copy');
+    var flash = function (msg) { if (btn) { btn.textContent = msg; setTimeout(function () { btn.textContent = '📋 複製完整清單'; }, 1600); } };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { flash('✓ 已複製'); },
+        function () { flash(_copyFallback(text) ? '✓ 已複製' : '複製失敗,請手動選取'); });
+    } else {
+      flash(_copyFallback(text) ? '✓ 已複製' : '複製失敗,請手動選取');
+    }
+  }
+
   var _layer = null;
   function openModal() {
     var m = document.getElementById('m-stg-modal'); if (!m) return;
     if (_layer) return;   // 已開著就別再壓一層歷史(舊 _layer 會被覆寫成孤兒、永遠關不掉)
     document.getElementById('m-stg-body').innerHTML = renderBody();
+    var cb = document.getElementById('m-stg-copy'); if (cb) cb.addEventListener('click', copyReport);
     m.classList.add('open');
     _layer = window.AFK_UI ? AFK_UI.openLayer(hideModal) : null;   // 手機返回鍵 / ESC 可關
   }
@@ -189,6 +226,9 @@
       '.m-stg-form-lz{background:#064e3b;color:#6ee7b7;}',
       '.m-stg-form-raw{background:#7f1d1d;color:#fecaca;}',
       '.m-stg-form-plain{background:#1e293b;color:#94a3b8;}',
+      '.m-stg-copybtn{display:block;width:100%;margin:0 0 12px;padding:9px 12px;background:#1e293b;border:1px solid #334155;color:#93c5fd;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit;}',
+      '.m-stg-copybtn:hover{background:#273449;color:#bfdbfe;}',
+      '.m-stg-copybtn:active{background:#334155;}',
       '.m-stg-list{display:flex;flex-direction:column;gap:9px;}',
       '.m-stg-item{background:#111c30;border:1px solid #1e293b;border-radius:9px;padding:9px 11px;}',
       '.m-stg-item-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}',

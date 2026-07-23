@@ -24,6 +24,9 @@
   var CAP_CHARS = 5 * 1024 * 1024;   // ~5MB 參考上限
   function fmtKB(chars) { return (chars / 1024).toFixed(chars < 102.4 ? 2 : 1) + ' KB'; }
 
+  // 儲存形態徽章文字(classifyForm 的分類 → 顯示標籤);empty 不標(空值不佔量、無意義)
+  var FORM_BADGE = { lz: '壓縮', raw: '未壓縮', plain: '明文', empty: '' };
+
   // key → 給人看的說明(認得的標註,認不得就只顯示原始 key)
   function friendlyLabel(key) {
     var m, sfx = /_trad$/.test(key) ? '（傳統模式）' : (/_classic$/.test(key) ? '（經典模式）' : '');   // 倉庫/收集冊依模式分桶,標出是哪一桶
@@ -41,18 +44,32 @@
     return '';
   }
 
+  // 判斷這個值在 localStorage 裡是哪種形態:
+  //   lz    = 'LZ1:' 前綴 → 已壓縮(正常,體積小)
+  //   raw   = 'SIG1:' 前綴 → 簽章存檔但「未壓縮」(異常:核心存完後應由背景 Worker 壓成 LZ1,
+  //           若卡在這代表壓縮沒生效,體積比壓縮版大 ~10 倍 → 診斷爆滿的關鍵訊號)
+  //   plain = 其餘明文(多為小設定/戰鬥暫存,本來就不壓,不算異常)
+  function classifyForm(v) {
+    if (!v) return 'empty';
+    if (v.slice(0, 4) === 'LZ1:') return 'lz';
+    if (v.slice(0, 5) === 'SIG1:') return 'raw';
+    return 'plain';
+  }
+
   function collect() {
-    var rows = [], total = 0;
+    var rows = [], total = 0, rawChars = 0;
     for (var k in localStorage) {
       if (!Object.prototype.hasOwnProperty.call(localStorage, k)) continue;
       var v;
       try { v = localStorage.getItem(k); } catch (e) { v = ''; }
       var n = (k.length + (v ? v.length : 0));   // key 名本身也佔配額,一起算
-      rows.push({ key: k, chars: n });
+      var form = classifyForm(v);
+      rows.push({ key: k, chars: n, form: form });
       total += n;
+      if (form === 'raw') rawChars += n;   // 未壓縮存檔佔用(應為 0;>0 代表壓縮沒生效)
     }
     rows.sort(function (a, b) { return b.chars - a.chars; });
-    return { rows: rows, total: total };
+    return { rows: rows, total: total, rawChars: rawChars };
   }
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
@@ -69,6 +86,14 @@
       '<div class="m-stg-capbar"><div class="m-stg-capbar-fill" style="width:' + Math.min(100, pctCap).toFixed(1) + '%"></div></div>' +
       '</div>';
 
+    // ⚠️ 未壓縮存檔警示:正常所有存檔都應是「已壓縮(LZ1)」。若有一批停在「未壓縮(SIG1)」,
+    //    代表背景壓縮沒生效,同一份資料佔用會膨脹 ~10 倍 → 這才是空間被吃光的元凶。
+    if (data.rawChars > 0) {
+      html += '<div class="m-stg-warn">⚠ 其中 <b>' + fmtKB(data.rawChars) + '</b> 的存檔是「<b>未壓縮</b>」狀態' +
+        '（下方標紅 <span class="m-stg-form m-stg-form-raw">未壓縮</span> 的項目）。正常會自動壓縮成原本的約 1/10,' +
+        '壓縮沒生效時空間會被灌爆。若這個數字很大,請回報給作者。</div>';
+    }
+
     if (!data.rows.length) {
       html += '<div class="m-stg-empty">localStorage 目前是空的（沒有任何存檔）。</div>';
     } else {
@@ -77,9 +102,11 @@
         var lbl = friendlyLabel(r.key);
         var share = r.chars / data.total * 100;
         var barW = r.chars / maxChars * 100;
+        var badge = FORM_BADGE[r.form];
+        var badgeHtml = badge ? '<span class="m-stg-form m-stg-form-' + r.form + '">' + badge + '</span>' : '';
         html += '<div class="m-stg-item">' +
           '<div class="m-stg-item-head">' +
-            '<span class="m-stg-key" title="' + esc(r.key) + '">' + esc(r.key) + (lbl ? ' <span class="m-stg-lbl">' + esc(lbl) + '</span>' : '') + '</span>' +
+            '<span class="m-stg-key" title="' + esc(r.key) + '">' + badgeHtml + esc(r.key) + (lbl ? ' <span class="m-stg-lbl">' + esc(lbl) + '</span>' : '') + '</span>' +
             '<span class="m-stg-size">' + fmtKB(r.chars) + '</span>' +
           '</div>' +
           '<div class="m-stg-bar"><div class="m-stg-bar-fill" style="width:' + barW.toFixed(1) + '%"></div></div>' +
@@ -155,6 +182,13 @@
       '.m-stg-cap{color:#94a3b8;font-size:12.5px;margin-left:4px;}',
       '.m-stg-capbar{height:8px;background:#1e293b;border-radius:5px;overflow:hidden;margin-top:7px;}',
       '.m-stg-capbar-fill{height:100%;background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);}',
+      '.m-stg-warn{margin-top:10px;padding:9px 11px;background:#450a0a;border:1px solid #b91c1c;border-radius:8px;color:#fecaca;font-size:12.5px;line-height:1.7;}',
+      '.m-stg-warn b{color:#fca5a5;}',
+      /* 儲存形態徽章:壓縮=綠、未壓縮=紅(異常)、明文=灰 */
+      '.m-stg-form{display:inline-block;font-family:system-ui,"Segoe UI",sans-serif;font-size:10.5px;font-weight:bold;padding:1px 6px;border-radius:6px;margin-right:6px;white-space:nowrap;vertical-align:1px;}',
+      '.m-stg-form-lz{background:#064e3b;color:#6ee7b7;}',
+      '.m-stg-form-raw{background:#7f1d1d;color:#fecaca;}',
+      '.m-stg-form-plain{background:#1e293b;color:#94a3b8;}',
       '.m-stg-list{display:flex;flex-direction:column;gap:9px;}',
       '.m-stg-item{background:#111c30;border:1px solid #1e293b;border-radius:9px;padding:9px 11px;}',
       '.m-stg-item-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}',

@@ -7,6 +7,7 @@
  *
  * 流程：
  *   1. 用上游原版覆蓋核心 js/NN-*.js 與 css/*（保留我方 afk-*.js、scripts/、tools/）。
+ *   1.5 check-save-io.mjs：上游動到存檔寫入/壓縮就 exit 1（afk-synccompress 直接覆寫 _lzSet，格式一變會寫壞存檔）。
  *   2. index.html = 上游 index.html + 注入外掛區塊（scripts/afk-plugin-block.html）到 </body> 之前。
  *   3. 跑 apply-core-patches.mjs 把加掛版必要的核心鉤子補回去（錨點式，插不進就 exit 1）。
  *   4. 重產 anim-manifest / 對帳 manifest，stamp 版本號與 SW。
@@ -37,6 +38,10 @@ for (const f of upJsFiles) {
 }
 for (const f of readdirSync(join(UP, 'css'))) copyFileSync(join(UP, 'css', f), join('css', f));
 console.log(`[sync] 覆蓋核心 js ${copied} 支（新增 ${added}）+ css`);
+
+// ── 1.5) 存檔寫入/壓縮把關（afk-synccompress 直接覆寫核心 _lzSet，格式假設一變就可能寫壞存檔）──
+//   上游動到那段就 exit 1 停在這裡：人工比對後跑 `node scripts/check-save-io.mjs --accept` 再續。
+run('node scripts/check-save-io.mjs');
 
 // ── 2) 重組 index.html = 上游 + 外掛區塊 ────────────────────────
 let idx = readFileSync(join(UP, 'index.html'), 'utf8');

@@ -129,7 +129,7 @@ jobs:
           if [ "$existing" = "0" ]; then
             gh issue create \
               --title "⚠️ 同步腳本失敗（上游 ${{ steps.up.outputs.ver }}），可能是核心補丁錨點被改壞" \
-              --body "自動同步在 sync-upstream.mjs 階段失敗（最常見：上游改寫了 apply-core-patches.mjs 依賴的錨點字串）。已暫停推送。請本機跑 /sync-upstream 修正錨點後再推，詳見本次 workflow run log。"
+              --body "自動同步在 sync-upstream.mjs 階段失敗。常見兩種：①上游改寫了 apply-core-patches.mjs 依賴的錨點字串；②check-save-io.mjs 擋下（上游動到存檔寫入/壓縮 _lzSet 那組，afk-synccompress 可能寫壞存檔，需人工複核後 --accept）。已暫停推送。請本機跑 /sync-upstream 處理後再推，詳見本次 workflow run log。"
           else
             echo "已有開啟中的同名 issue，略過。"
           fi

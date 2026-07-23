@@ -3,7 +3,7 @@
 ## 專案性質與架構（2026-07-19 起・純上游鏡像＋外掛層）
 
 - 網頁放置遊戲。遊戲本體由原作者(巴哈姆特 秋玥)製作,原版:**https://shines871.github.io/idle-lineage-class/**;本站(加掛版):https://pp771007.github.io/idle-lineage-class/。
-- **架構=「上游原版鏡像＋外掛層」**:核心(`js/NN-*.js`、`css/*`、`index.html`、`assets/`、`public/`)永遠是上游原文/原檔的位元組級鏡像;我們的所有功能都在**外掛層**——根目錄 `afk-*.js`(47 支)＋`sw.js`(PWA,上游沒有)＋極少量**錨點式核心補丁**(`scripts/apply-core-patches.mjs`)。
+- **架構=「上游原版鏡像＋外掛層」**:核心(`js/NN-*.js`、`css/*`、`index.html`、`assets/`、`public/`)永遠是上游原文/原檔的位元組級鏡像;我們的所有功能都在**外掛層**——根目錄 `afk-*.js`(49 支)＋`sw.js`(PWA,上游沒有)＋極少量**錨點式核心補丁**(`scripts/apply-core-patches.mjs`)。
 - 歷史一句話:2026-07-06 曾與上游分家獨立維護(直接改核心);2026-07-19 起改回本架構(`rearch-plugins`),核心修改全數退回外掛/補丁,以便隨時整包跟進上游。舊的 3-way 逐功能移植 SOP 已作廢。
 - 上游本機 clone:`D:/otherPersonRepos/idle-lineage-class`。**引用上游做任何判斷前先 `git -C <clone> fetch`**——舊 clone 會讓「上游也是這樣」的結論整個相反(踩過)。
 - 同步狀態記在 `upstream-checkpoint.json`(`syncedUpstreamCommit`=目前鏡像的上游 commit)。
@@ -50,18 +50,20 @@
 使用者說「同步原版/更新上游」就跑 `.claude/skills/sync-upstream/`。摘要:
 1. `git -C <clone> fetch` + checkout 目標 commit(通常 origin/main)。
 2. **assets 鏡像**:比對要用 **blob sha**(`git ls-files -s`),不能只比檔名——「兩邊都有但內容不同」佔過大宗(踩過:一次 10,149 檔)。補檔用 tar 走檔案清單(中文檔名不經 exe 參數);**上游沒有的檔要刪**(assets 已於 2026-07-19 達成純鏡像,刪前仍 grep `afk-*.js`+`scripts/` 確認外掛層沒引用)。
-3. `node scripts/sync-upstream.mjs <clone>`:覆蓋核心 js/css → 重組 index.html(上游+外掛區塊) → apply-core-patches → 重產 manifest → stamp 版本 → smoke。**錨點失效會 exit 1**→讀上游該處 diff、更新補丁錨點再跑。
+3. `node scripts/sync-upstream.mjs <clone>`:覆蓋核心 js/css → **check-save-io** → 重組 index.html(上游+外掛區塊) → apply-core-patches → 重產 manifest → stamp 版本 → smoke。**錨點失效會 exit 1**→讀上游該處 diff、更新補丁錨點再跑。
+   - **`scripts/check-save-io.mjs`(存檔寫入/壓縮把關)**:`afk-synccompress` 是唯一「整支覆寫核心存檔函式」的外掛(換掉 `_lzSet`、自己拼 `"LZ1:"+compressToUTF16`、bump `_lzWorkerRev`、退路呼叫 `_lsSet`),上游一改存檔格式/Worker 對帳,開著那支的玩家就會被寫出**讀不回來的存檔**,而 smoke 只驗掛點、驗不到。故同步時逐支比對這組核心函式的 sha(基準存在 `upstream-checkpoint.json` 的 `saveIo`),變了就 exit 1。處理:讀 diff → 判斷外掛要不要跟改(有疑慮先在 afk-toggles 給 `synccompress` 加 `locked` 鎖起來) → 確認安全再 `node scripts/check-save-io.mjs --accept` 收下新基準。
 4. 更新 `upstream-checkpoint.json` → commit(不主動 push)。
 5. 後續提醒:小百科/掉落查詢內容要另跑 `/update-wiki` 對齊(看上游 BASE..TARGET 的遊戲資料 diff);上游 commit message 全是「1」不可依賴,一律讀 diff。
 
 CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHub schedule**;**目前完全沒有定時觸發,同步時機由人決定**——`cf-sync-trigger/` 的 Cloudflare Worker 還在,但 cron 已於 2026-07-21 清空(`crons = []`,API 查 schedules 為空)。要恢復每天自動:把 `wrangler.toml` 的 `crons` 填回 `["20 10 * * *"]`(=台灣 18:20)再 `npx wrangler triggers deploy`;不用 GitHub 自家 schedule 是因為它常延遲 1~2 小時)做同一件事:ls-remote 比 checkpoint 早退 → 鏡像資產(`rsync --delete`)→ sync 腳本(AFK_SKIP_SMOKE=1)→ smoke → **全綠直推 main(Pages 自動部署)+ 發 Release(tag `vYYYYMMDD-HHMM`,標題帶原作者版本號)**;錨點失效/smoke 紅 → 各開 issue、不推壞版。commit 用路徑白名單 add(CI 臨時裝的 playwright/package.json 不進版控)。**因此 `assets/`、`public/` 下不可放我方獨有檔案**(會被 `--delete` 刪)——外掛需要圖優先引用上游既有檔(例:afk-training 背景用 `assets/area/1920x1080/新兵修練場.jpg`);真的要自有素材就放 assets 之外,或改 workflow 加 exclude。
 
-## 目前的外掛(47 支;載入順序見 `scripts/afk-plugin-block.html`)
+## 目前的外掛(49 支;載入順序見 `scripts/afk-plugin-block.html`)
 
 | 檔案 | 功能 |
 |---|---|
 | `afk-toggles.js` | 外掛開關中樞(最先載;逃生門,自己不可關) |
 | `afk-banner.js` | 非官方轉載橫幅讓位(量橫幅→`--orig-bar-h`/`body.afk-bar`→位移全螢幕容器+桌機/平板彈窗讓位;基礎設施,無開關) |
+| `afk-synccompress.js` | 存檔即時壓縮(預設關;把 `_lzSet` 換回同步壓縮,根治登出/多開後存檔未壓縮爆滿;代價=存檔當下多花 0.02~0.4 秒) |
 | `afk-lzcache.js` | 存檔解壓快取(同一份壓縮字串只解一次;核心每殺一隻怪都重讀整包血盟狀態,離線結算 4×) |
 | `afk-ui.js` | 共用彈窗:接管 alert、`AFK_UI.confirm`、openLayer/closeLayer(返回鍵/ESC 關最上層) |
 | `afk-extradata.js` | dex/wiki 共用手動補充資料(`AFK_EXTRA`:itemAcquire/武器特性白話/mapName) |
@@ -76,6 +78,7 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 | `afk-dex.js` | 掉落查詢(五張掉落表+特殊掉落 SPECIAL_BLOCKS;`?view=dex` 獨立頁) |
 | `afk-wiki.js` | 小百科(多分頁+統一搜尋;`?view=wiki` 獨立頁;改前讀下方維護準則) |
 | `afk-storage.js` | 首頁「⚙ 設定」選單(MENU_ITEMS 可擴充)+檢查存檔大小 |
+| `afk-notice.js` | 首頁公告卡(通用框架;檔頭 `NOTICE=null` 就不顯示,要發公告填一組設定即可) |
 | `afk-quotawarn.js` | 存檔空間警告(localStorage >80% 時首頁紅卡提醒刪角;唯讀;估算與 afk-storage 同套) |
 | `afk-history.js` | 離線掛機紀錄卡片(讀 afk_hist_<slot>,唯讀) |
 | `afk-diag.js` | 快取診斷(全程唯讀;欄位各自包錯;產物自帶版本號) |

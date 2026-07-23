@@ -43,7 +43,7 @@ const logs = [];
 // afk-touchtip 只在觸控裝置 init(桌機有 hover,本來就不該掛)→ 桌機那輪永遠等不到,必須放手機輪。
 const needMobileOnly = ['[AFK-touchtip]'];
 // ⚠ '[AFK]'(afk-offline)與 '[AFK-history]'(離線掛機紀錄)已暫停使用、不印掛點訊息 → 不列入;恢復時要一併加回來
-const need = ['[AFK-lzcache]', '[AFK-mobile]', '[AFK-backnav]', '[AFK-battlehud]', '[AFK-mapbar]', '[AFK-nozoom]', '[AFK-trackinfo]', '[AFK-relicguard]', '[AFK-enhtarget]', '[AFK-retrial]', '[AFK-battlebuffs]', '[AFK-slotinfo]', '[AFK-dex]', '[AFK-wiki]', '[AFK-syncinfo]', '[AFK-statpts]', '[AFK-statlist]', '[AFK-pwa]', '[AFK-storage]', '[AFK-quotawarn]', '[AFK-notice]', '[AFK-reissueid]', '[AFK-diag]', '[AFK-mobname]', '[AFK-training]', '[AFK-itemsearch]', '[AFK-eqlist]', '[AFK-npclist]', '[AFK-skin]'];
+const need = ['[AFK-banner]', '[AFK-lzcache]', '[AFK-synccompress]', '[AFK-mobile]', '[AFK-backnav]', '[AFK-battlehud]', '[AFK-mapbar]', '[AFK-nozoom]', '[AFK-trackinfo]', '[AFK-relicguard]', '[AFK-enhtarget]', '[AFK-retrial]', '[AFK-battlebuffs]', '[AFK-slotinfo]', '[AFK-dex]', '[AFK-wiki]', '[AFK-syncinfo]', '[AFK-statpts]', '[AFK-statlist]', '[AFK-pwa]', '[AFK-storage]', '[AFK-quotawarn]', '[AFK-notice]', '[AFK-reissueid]', '[AFK-diag]', '[AFK-mobname]', '[AFK-training]', '[AFK-itemsearch]', '[AFK-eqlist]', '[AFK-npclist]', '[AFK-skin]'];
 const seen = (list) => list.every((n) => logs.some((l) => l.includes(n) && l.includes('hooks OK')));
 
 // ⚠ 不用 waitUntil:'networkidle':作者新版(.49 起)加了背景音樂 assets/bgm/*.mp3，<audio> 媒體串流會讓網路
@@ -92,6 +92,16 @@ await opage.evaluate(() => {
 await opage.waitForTimeout(1500);
 const toggleOffProblems = await opage.evaluate(() => {
   const bad = [];
+  // 橫幅讓位:必須由 afk-banner(不可停用)提供 → 關掉「手機版面」後依然要生效。
+  //   歷史成因:讓位整組寫在 afk-mobile 裡,平板玩家為了換回三欄把它關掉 → 頂端(冒險地圖標題/黑市/瞬移/右欄分頁)
+  //   全被橫幅蓋住(2026-07-23 回報)。
+  const barH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--orig-bar-h')) || 0;
+  const barBottom = document.getElementById('_orig_pbar').getBoundingClientRect().bottom;
+  if (barH < barBottom) bad.push(`--orig-bar-h(${barH}px) 沒讓開橫幅(底端 ${barBottom}px)`);
+  for (const id of ['app-stage', 'creation-screen']) {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top < barBottom) bad.push(`#${id} 頂端(${Math.round(el.getBoundingClientRect().top)}px)還在橫幅底下,會被蓋住`);
+  }
   const btn = document.getElementById('afk-toggles-entry');
   if (!btn) bad.push('左上角「外掛開關」逃生門按鈕不存在');
   else {

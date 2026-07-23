@@ -6,9 +6,10 @@
  *   上游新 app-stage 打架、把版面弄爛）。
  *
  * 這支只做兩件「外殼」層的事，不動版面結構：
- *   1. 讓空間給「非官方轉載橫幅」：上游橫幅是 position:fixed;top:0，但上游本身沒讓開 → 內容被蓋住
- *      （桌機/手機皆是；官方網域無橫幅則不影響）。量測橫幅高度寫進 --orig-bar-h，把 #app-stage 頂部
- *      讓開該高度。純位移、不碰內部排版。
+ *   1. 手機幾何下的彈窗/浮動窗讓位（頂端讓開橫幅、底部讓開自製導覽列）。
+ *      🚨 橫幅量測與「主畫面讓位」已搬去 afk-banner.js（基礎設施、不可被關）——本支是可被玩家關掉的
+ *      外掛，讓位跟著它一起消失會讓平板玩家(關掉手機版面換三欄)整個頂端被橫幅蓋住（2026-07-23 回報）。
+ *      本支只讀 --orig-bar-h / AFK_BANNER，不再自己量。
  *   2. 提供 window.__afkm.isMobile（afk-offline 等沿用）。
  */
 (function () {
@@ -23,23 +24,8 @@
         } catch (e) { return false; }
     }
 
-    // ── 讓空間給橫幅 ──────────────────────────────────────────
-    // 橫幅特徵：position:fixed、top:0、z-index 極大、內含官方站字樣。官方網域無此元素→高度 0。
-    function findBanner() {
-        var els = document.body ? document.body.children : [];
-        for (var i = 0; i < els.length; i++) {
-            var e = els[i], s;
-            if (!e || e.tagName !== 'DIV') continue;
-            try { s = getComputedStyle(e); } catch (_) { continue; }
-            if (s.position === 'fixed' && s.top === '0px' && parseInt(s.zIndex || '0', 10) > 1000000) {
-                if (/shines871|官方|非官方|轉載/.test(e.textContent || '')) return e;
-            }
-        }
-        return null;
-    }
-
     // 上游全螢幕彈窗/浮動窗的「安全區」讓位：頂端讓開橫幅(--orig-bar-h)、底部讓開底部導覽(--m-nav-h)。
-    //   兩個變數都由本外掛量測寫入(無橫幅/無導覽時為 0px → 規則等同不動)，公式一律：
+    //   --orig-bar-h 由 afk-banner 量測寫入、--m-nav-h 由本外掛量測寫入(無橫幅/無導覽時為 0px → 規則等同不動)，公式一律：
     //   可用高度 = 100dvh - var(--orig-bar-h) - var(--m-nav-h)。新的被蓋案例優先併進下面 ①~④ 的清單，別另立公式。
     // 上游手機版把彈窗分兩型(css/style.css 手機 media query)：
     //   A. 頂端錨定 top:8px + height:calc(100dvh-16px) 的浮動窗(倉庫/道具詳情/城鎮互動)
@@ -47,26 +33,21 @@
     //   兩型的 100dvh 都不知道橫幅與導覽 → A 型改 top/height，B 型改容器 padding + 內卡 max-height。
     //   ⚠ B 型光改容器 padding 不夠：內卡比 padding 後的剩餘空間高時，flex 置中會「上下均分溢出」，
     //     頂端照樣鑽進橫幅底下(自動賣出規則的標題/Close 被蓋就是這樣來的)——必須同時壓內卡 max-height。
-    var MODAL_HOSTS = '#autosell-rule-modal, #autosell-preview-modal, #poly-modal, #osiris-box-modal, #summon-select-overlay, #pet-evo-overlay, #pet-gear-overlay, #card-book, #equip-book, #misc-book, #relic-book, #collection-panel, #offline-reward-modal';
-    var MODAL_BOXES = '#autosell-rule-modal .as-box, #autosell-preview-modal > div, #poly-modal > div, #osiris-box-modal > div, #summon-select-overlay > div, #pet-evo-overlay > div, #pet-gear-overlay > div, #card-book > div, #equip-book > div, #misc-book > div, #relic-book > div, #collection-panel > div, #offline-reward-modal > div';
+    // 彈窗清單由 afk-banner 單一維護(桌機幾何那組規則也吃同一份)；本支只在手機幾何下重用。
+    //   (afk-banner 不可被停用，正常一定拿得到；取不到時退成不匹配任何元素的選擇器，避免產出無效 CSS)
+    var MODAL_HOSTS = (window.AFK_BANNER && AFK_BANNER.MODAL_HOSTS) || '#afk-no-such-element';
+    var MODAL_BOXES = (window.AFK_BANNER && AFK_BANNER.MODAL_BOXES) || '#afk-no-such-element';
     var _styleInjected = false;
     function ensureOffsetStyle() {
         if (_styleInjected) return; _styleInjected = true;
         var st = document.createElement('style');
         st.id = 'afk-mobile-bar-offset';
-        // 只位移舞台頂部、縮短其高度讓開橫幅；--orig-bar-h 為 0（官方網域/無橫幅）時等同不動。
+        // 主畫面(#app-stage/#creation-screen/#game-screen)的橫幅讓位在 afk-banner，這裡只補手機幾何專屬的部分。
         st.textContent =
-            // 讓開橫幅：#creation-screen(登入/創角/選角)與 #game-screen 本身就是 position:fixed;top:0(相對視窗定位)，
-            //   所以位移父層 #app-stage 對它們無效——必須直接位移這兩個全螢幕容器。頂部下移橫幅高度、縮短高度。
-            //   只動 top/height、不碰 display → 不影響 .hidden 隱藏。
-            '#app-stage, #creation-screen, #game-screen{ top: var(--orig-bar-h, 0px) !important; height: calc(100% - var(--orig-bar-h, 0px)) !important; }\n'
-            // 只有首頁(#main-menu 在 #creation-screen 內)需要整頁縱向捲動(內容比縮短後的高度高)；
-            //   #game-screen 不加 overflow → 避免它與背包內層 viewport 形成巢狀捲動，害武器等小溢出分頁的觸控被外層吃掉。
-            + '#creation-screen{ overflow-y: auto !important; }\n'
             // 🆕 卡片式選角面板 #load-select-panel(手機)本身 position:absolute;inset:0;overflow:auto;min-height:100dvh，
             //   但它在被橫幅讓位縮短的 #creation-screen 內 → min-height:100dvh 比容器高 → creation-screen 也被迫捲，
             //   兩層巢狀捲動打架＝滾一下就卡住(使用者回報)。把它的 min-height 改成剛好=讓位後可視高度 → 只剩它單層捲。
-            + 'body.m-mobile #load-select-panel:not(.hidden){ min-height: calc(100dvh - var(--orig-bar-h, 0px)) !important; overscroll-behavior: contain !important; }\n'
+            'body.m-mobile #load-select-panel:not(.hidden){ min-height: calc(100dvh - var(--orig-bar-h, 0px)) !important; overscroll-behavior: contain !important; }\n'
             // 選角面板顯示時，讓外層 #creation-screen 完全不捲(它自己會捲)→ 只剩 panel 單層捲，不再兩層打架卡住。
             + 'body.m-mobile #creation-screen:has(#load-select-panel:not(.hidden)){ overflow: hidden !important; }\n'
             //   ① 置中類 Tailwind modal(.fixed.inset-0·flex 置中)：padding 把置中內容夾進安全區(遊戲畫面容器用 id 非這組 class，不受影響)。
@@ -89,18 +70,8 @@
             //      ⚠ 必須排除嵌入模式(.equipment-window-embedded·js/19 init 就掛上、現行永遠嵌入)：嵌入時 frame 由 JS 內聯
             //        top:0 對齊 host，這裡的 top !important 會壓過內聯值把 12 格整個往下推出安全區(踩過)。
             + 'body.m-mobile #equipment-window:not(.equipment-window-embedded) .equipment-window-frame{ top: calc(50% + var(--orig-bar-h, 0px) / 2 - var(--m-nav-h, 0px) / 2) !important; max-height: calc(100dvh - 16px - var(--orig-bar-h, 0px) - var(--m-nav-h, 0px)) !important; }\n'
-            //   ④' 桌機幾何下的彈窗讓位：③④ 只掛 body.m-mobile，桌機/平板只有主舞台讓開 → 置中的彈窗在
-            //      「視窗矮、彈窗高」時上緣會鑽進橫幅底下(實測 1024x768 的怪物圖鑑、1024x700 的自動賣出規則)。
-            //      整段包在「上游手機幾何以外」的尺寸(寬 ≥769 且高 ≥521)，避免與 ② 的手機幾何互相打架。
-            //      body.afk-bar＝量到橫幅才掛(見 applyBarH)：官方站無橫幅時這組規則整個不存在，不動任何既有版面。
-            + '@media (min-width: 769px) and (min-height: 521px){\n'
-            + '  body.afk-bar:not(.m-mobile) :is(' + MODAL_HOSTS + '){ padding-top: var(--orig-bar-h, 0px) !important; }\n'
-            + '  body.afk-bar:not(.m-mobile) :is(' + MODAL_BOXES + '){ max-height: calc(100dvh - var(--orig-bar-h, 0px) - 16px) !important; }\n'
-            //      transform 置中的城鎮 NPC 窗吃不到 padding → 改推中心點並封頂高度。這條連「被判成手機的平板」
-            //      也要套(它在這個尺寸帶走的就是桌機幾何)，故不加 :not(.m-mobile)。
-            + '  body.afk-bar #town-interaction-container:not(.hidden){ top: calc(50% + var(--orig-bar-h, 0px) / 2) !important; max-height: calc(92vh - var(--orig-bar-h, 0px)) !important; }\n'
-            + '  body.afk-bar:not(.m-mobile) #equipment-window:not(.equipment-window-embedded) .equipment-window-frame{ top: calc(50% + var(--orig-bar-h, 0px) / 2) !important; max-height: calc(100dvh - 16px - var(--orig-bar-h, 0px)) !important; }\n'
-            + '}\n'
+            //   ④' 桌機/平板幾何(寬 ≥769 且高 ≥521)的彈窗讓位在 afk-banner.js——那組不可隨本外掛被關掉。
+            //      ③④ 只掛 body.m-mobile，是手機幾何專屬。
             //   ⑤ 右欄分頁(統計/道具/收藏…)：核心手機把 #tab-content-panel 設固定高+內層 overflow-auto，與外層 #game-screen 捲動疊成「雙捲軸」。
             //      讓分頁內容順流展開→只由 #game-screen 單層捲動(與 左/中 欄一致)；黏頂的 #mobile-vitals/分頁列照舊固定。
             //      ⚠ 必須排除 .equipment-panel-host：「裝備」分頁是核心的「嵌入式裝備視窗」(js/19)——#equipment-window 以
@@ -143,27 +114,6 @@
         (document.head || document.documentElement).appendChild(st);
     }
 
-    var _barRO = null, _barEl = null;
-    function applyBarH() {
-        var h = _barEl ? Math.ceil(_barEl.getBoundingClientRect().height) : 0;
-        if (h > 0) h += 6;   // 安全邊距：橫幅換行/字重/邊距量測誤差，多讓一點確保完全不被蓋
-        document.documentElement.style.setProperty('--orig-bar-h', h + 'px');
-        // 有橫幅才掛：非手機的彈窗讓位規則全掛在 body.afk-bar 之下，官方站(無橫幅)整組不生效。
-        if (document.body) document.body.classList.toggle('afk-bar', h > 0);
-    }
-    function measureBar() {
-        var bar = findBanner();
-        if (bar !== _barEl) {
-            _barEl = bar;
-            if (_barRO) { try { _barRO.disconnect(); } catch (e) {} _barRO = null; }
-            // 橫幅高度會隨寬度換行變 → 用 ResizeObserver 跟著它變，量測永遠準
-            if (bar && typeof ResizeObserver === 'function') {
-                try { _barRO = new ResizeObserver(applyBarH); _barRO.observe(bar); } catch (e) {}
-            }
-        }
-        applyBarH();
-    }
-
     // 選角畫面（手機直式）：#load-art-stage 是 overflow:hidden 的固定高（1040px）舞台，動作鈕區
     //   #load-action-panel 絕對定位在 top:854px；選到「有角色」的槽時鈕會變成 4 顆全寬（進入/匯出/刪除/返回）
     //   ＝222px 高 → 底端 1076px 超出舞台，最後一顆「返回」被裁掉一截。鈕數隨選中槽狀態變動，
@@ -197,15 +147,12 @@
     function run() {
         syncMobileClass();
         ensureOffsetStyle();
-        measureBar();
         watchLoadStage();
     }
 
-    // 橫幅可能晚出現（gameLoop 會重掛）、換行高度隨寬度變 → 量測數次 + resize 時重量。
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
     else run();
-    window.addEventListener('resize', function () { syncMobileClass(); measureBar(); fitLoadStage(); });
-    var _n = 0, _iv = setInterval(function () { measureBar(); if (++_n >= 12) clearInterval(_iv); }, 1000);
+    window.addEventListener('resize', function () { syncMobileClass(); fitLoadStage(); });
 
     // ── 底部導覽列 + 浮動日誌（手機外殼）─────────────────────────
     // 上游手機把三欄（#col-left 狀態/隊伍/技能、#col-center 戰鬥/地圖/日誌、#col-right 背包分頁）直向堆疊。

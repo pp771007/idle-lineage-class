@@ -1,8 +1,8 @@
 /* ============================================================================
  * afk-notice.js — 首頁公告卡（臨時：更新去留投票）
  *
- * 在首頁左側標題區(#login-title-layer，標題下方)放一張公告卡，請玩家到巴哈 301 樓
- * 留言處投票，決定這個加掛版要「繼續跟進上游更新」還是「退回舊版本」。純顯示、
+ * 在首頁左側標題區(#login-title-layer，標題下方)放一張公告卡，請玩家到 Google 表單
+ * 投票，決定這個加掛版要「繼續跟進上游更新」還是「退回舊版本」。純顯示、
  * 全程唯讀，不動存檔。
  *   - 放 #login-title-layer 而非 #main-menu：桌機寬版是左右分欄(左=標題區、右=按鈕)，
  *     放標題區才會落在使用者說的「左邊那塊」；手機單欄時標題區在最上、卡片自然落在
@@ -20,12 +20,12 @@
   if (window.AFK_TOGGLES) {
     AFK_TOGGLES.register({
       id: 'notice', name: '首頁投票公告', group: '系統與其他', def: true,
-      desc: '首頁頂端顯示「到巴哈 301 樓投票決定更新去留」的公告卡（投票活動結束後會移除）'
+      desc: '首頁顯示「填 Google 表單投票決定更新去留」的公告卡（投票活動結束後會移除）'
     });
     if (!AFK_TOGGLES.enabled('notice')) return;
   }
 
-  var VOTE_URL = 'https://forum.gamer.com.tw/Co.php?bsn=84452&sn=37297';   // 巴哈 301 樓（本加掛版發布樓層）
+  var VOTE_URL = 'https://forms.gle/eaNeqVAYFxnhLwTE9';   // 更新去留投票 Google 表單
 
   function ensureCard() {
     if (document.getElementById('afk-notice')) return;
@@ -38,9 +38,8 @@
       + 'background:#1e293b;border:2px solid #38bdf8;border-radius:10px;color:#e0f2fe;'
       + 'font-size:13px;line-height:1.7;text-align:left;';
     el.innerHTML = '<div style="font-weight:700;font-size:14px;color:#7dd3fc;margin-bottom:4px;">📢 更新去留投票</div>'
-      + '請到 <a href="' + VOTE_URL + '" target="_blank" rel="noopener" style="color:#7dd3fc;text-decoration:underline;">巴哈 301 樓</a> 的<b>留言處</b>投票，決定這個加掛版接下來要：'
-      + '<br>・<b>繼續跟進更新</b> → 留言 <b>B2106</b>'
-      + '<br>・<b>退回舊版本</b> → 留言 <b>B2107</b>';
+      + '請幫忙投票，決定這個加掛版接下來要<b>繼續跟進上游更新</b>還是<b>退回舊版本</b>：'
+      + '<br><a href="' + VOTE_URL + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;padding:5px 12px;background:#0284c7;color:#fff;border-radius:6px;font-weight:700;text-decoration:none;">👉 點我填投票表單</a>';
     host.appendChild(el);
   }
 

@@ -389,6 +389,14 @@
 
     setInterval(navTick, 1500);
     navTick();
+    // 🚀 遊戲畫面一顯示(#game-screen 移除 .hidden)就「立刻」重建手機殼,不等下一次 1.5s 輪詢。
+    //    否則登入後會先看到上游桌機堆疊版面、隔最多 1.5 秒才 reshape 成手機殼(底部導覽/單欄)→ 明顯閃一下。
+    //    MutationObserver 回呼在 class 變更後、下次繪製前以 microtask 觸發,手機殼多半趕在畫面繪出前套上。
+    (function () {
+        var gs = document.getElementById('game-screen');
+        if (!gs || typeof MutationObserver === 'undefined') return;
+        try { new MutationObserver(function () { navTick(); }).observe(gs, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+    })();
 
     // ── 對外介面（afk-offline 沿用 isMobile；setView/openLog 供離線結算後開日誌）──
     //   setLog('sys')＝離線結算後把日誌切到「系統日誌」分頁（摘要印在那）；其餘只開日誌。

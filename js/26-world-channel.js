@@ -770,7 +770,7 @@ const WC_TOPICS = [
         gen: function () {
             return [
                 '傷害技能放在攻擊技能設定；火牢、冰雪颶風這種持續型是輔助／狀態技能，要在自動化的增益區勾選，不會出現在攻擊技能下拉。',
-                '傭兵會讀來源角色存檔的技能與自動化設定。先切回那隻角色勾好、存檔，再重新招募或更新快照。',
+                '傭兵會讀來源角色存檔的技能與自動化設定。先切回那隻角色勾好、存檔，換回隊長再進一次安全區就會自動刷新隊員資料。',
                 '技能沒放先檢查四件事：有沒有學、MP或HP夠不夠、自動化有沒有勾、技能是否被分在攻擊／治療／輔助的另一欄。'
             ];
         }
@@ -800,7 +800,8 @@ const WC_TOPICS = [
                 '召喚物走另一套，召喚控制戒指可以指定要召什麼，別用預設的。',
                 '傭兵攻擊技能如果 MP/HP 不夠或條件不符，現在會回普攻節奏，不會假裝施法成功又吃冷卻卡住。',
                 '王族魅力夠可以帶到 7 名傭兵，場上都會顯示外觀；傭兵吃來源角色的等級、裝備、自動技能與變身能力快照。',
-                '古魯丁村莊也開了傭兵公會，港口那邊就能招人，不用特地跑回海音或歐瑞。'
+                '古魯丁村莊也開了傭兵公會，港口那邊就能招人，不用特地跑回海音或歐瑞。',
+                '同一個角色同時只能被一位僱主招募，已經被別人招走的存檔在名單上會標「已受僱於某某」、沒有召喚鈕，要先叫現任僱主解散。'   // 🧑‍🤝‍🧑 v3.7.93 傭兵獨佔
             ];
         }
     },
@@ -1018,7 +1019,7 @@ const WC_TOPICS = [
             return [
                 '角色管理在登入畫面：要先刪除角色才能創新或匯入，匯出進度也在那邊，記得定期備份。',
                 '版本更新後畫面怪怪的、圖沒換新，就按 Ctrl+Shift+R 硬重載，把快取的舊檔清掉。',
-                '分頁切到背景後，回到遊戲會逐 tick 真實補跑戰鬥；真正關閉網頁則在累積實戰樣本、離線滿 1 分鐘後結算，最多 12 小時，可取得裝備、卡片與曾實際擊敗過的隨機頭目獎勵，但不模擬 PVP 或活動事件。',
+                '分頁切到背景（切分頁／縮小視窗）遊戲照跑，回到前景還會把被節流掉的時間逐 tick 真實補跑回來；但真正關掉網頁就完全停住了，沒有離線收益這種東西，想掛就把分頁開著。',
                 '存檔會自動進行，也可以手動點儲存；角色突然不見先確認瀏覽器沒清除網站資料，有匯出檔就能救回來。',
                 '倉庫搜尋輸入兩個字以上就會做模糊搜尋，名字記不完整也找得到。',
                 '匯出會帶角色、倉庫跟龍之鑽石；匯入時照選項還原倉庫與寵物資料，隊伍狀態會整理避免跨角色出戰錯亂。',
@@ -1756,6 +1757,25 @@ function _wcPickIdleChatLine() {
     }
     return _wcRememberChatLine(_wcPick(fresh.length ? fresh : pool));
 }
+function _wcLogOptionalNpcLine(id, npc, kind, question, fallback, className) {
+    fallback = String(fallback || '').trim();
+    let token = 'wc-local-ai-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+    logWorld(`<span class="${className}">${_wcNameHtml(id)}：<span id="${token}">${_wcEsc(fallback)}</span></span>`);
+    let language = (typeof window !== 'undefined') ? window.idleLineageNpcLanguage : null;
+    if (!language || typeof language.rewrite !== 'function') return;
+    Promise.resolve(language.rewrite({
+        kind: kind,
+        npcName: npc && npc.name ? npc.name : '',
+        persona: npc && npc.persona ? npc.persona : '',
+        question: question || '',
+        fallback: fallback
+    }, 9000)).then(function (rewritten) {
+        rewritten = String(rewritten || '').trim();
+        if (!rewritten || rewritten === fallback) return;
+        let target = document.getElementById(token);
+        if (target) target.textContent = rewritten;
+    }).catch(function () {});
+}
 function _wcCanIdleChat() {
     if (typeof document === 'undefined') return false;
     let game = document.getElementById('game-screen');
@@ -1772,7 +1792,7 @@ function _wcPostIdleChat() {
         setTimeout(function() {
             if (!_wcCanIdleChat()) return;
             let id = _wcSpawnNpc();
-            logWorld(`<span class="wc-answer wc-idle-chat">${_wcNameHtml(id)}：${_wcEsc(_wcPickIdleChatLine())}</span>`);
+            _wcLogOptionalNpcLine(id, _wcNpcs[id], 'chat', '', _wcPickIdleChatLine(), 'wc-answer wc-idle-chat');
         }, i * (650 + Math.floor(Math.random() * 450)));
     }
 }
@@ -2067,9 +2087,9 @@ function worldChannelAsk() {
                         let tone = WC_TONE[npc.persona] || WC_TONE.helpful;
                         logWorld(`<span class="wc-answer">${_wcNameHtml(id)}：${_wcEsc(_wcPick(tone.open) + core + _wcPick(tone.end))}</span>`);
                     } else if (kind === 'chat') {
-                        logWorld(`<span class="wc-answer">${_wcNameHtml(id)}：${_wcEsc(_wcPickIdleChatLine())}</span>`);
+                        _wcLogOptionalNpcLine(id, npc, 'chat', q, _wcPickIdleChatLine(), 'wc-answer');
                     } else {
-                        logWorld(`<span class="wc-mock">${_wcNameHtml(id)}：${_wcEsc(_wcPick(WC_MOCK_LINES))}</span>`);
+                        _wcLogOptionalNpcLine(id, npc, 'mock', q, _wcPick(WC_MOCK_LINES), 'wc-mock');
                     }
                 } catch (e) {}
             }, delay);

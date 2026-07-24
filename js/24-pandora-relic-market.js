@@ -802,6 +802,14 @@
 
     function _runWanderBroadcastQueue() {
         _wanderBroadcastTimer = null;
+        // 🐛 v3.7.70 補跑期間不要把佇列吃掉：_queuedLiveWanderer 在 state.ff 時對「所有人」都回 null，
+        //    下面的 while 會把整條佇列 shift 光卻一句都沒印 → 那批喊話直接消失（且 _announceWanderer
+        //    已先寫了 _lastBroadcastCycles，要等下一個 5 分鐘週期才會再喊）＝回到遊戲時世界頻道空空的。
+        //    改成「補跑中就延後重試」，等 ff 結束再照常輪播。
+        if (typeof state !== 'undefined' && state && state.ff) {
+            if (_wanderBroadcastQueue.length) _wanderBroadcastTimer = setTimeout(_runWanderBroadcastQueue, _wanderBroadcastGapMs());
+            return;
+        }
         let live = null;
         while (_wanderBroadcastQueue.length && !live) {
             let wandererId = _wanderBroadcastQueue.shift();

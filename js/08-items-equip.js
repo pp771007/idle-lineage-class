@@ -290,15 +290,19 @@ function getAttrAffix(attr) {
     let c = attrCanon(attr);
     return c ? ATTR_AFFIX[c] : null;
 }
+function resolveWeaponElement(affixPresent, affixElement, spellbladeActive, spellbladeElement, baseElement) {
+    if (affixPresent) return affixElement;
+    if (spellbladeActive && spellbladeElement) return spellbladeElement;
+    return baseElement || 'normal';
+}
 // 武器實際屬性（屬性詞綴優先，否則用基底物品 ele）；owner 供傭兵使用，省略時沿用主玩家。
 function getWpnEle(wpnInst, wpnBase, owner) {
     let a = wpnInst && getAttrAffix(wpnInst.attr);
-    if (a) return a.ele;
     // 🏺 v3.7.54 專精劍術的魔劍士之刀：施法後 10 秒，一般攻擊變成裝備者最後施放法術的屬性。
     let wielder = owner || ((typeof player !== 'undefined') ? player : null);
-    if (wpnBase && wpnBase.spellbladeBuff && wielder && wielder.eq && wielder.eq.wpn === wpnInst
-        && (wielder._spellbladeUntil || 0) > ((typeof state !== 'undefined' && state.ticks) || 0) && wielder._spellbladeEle) return wielder._spellbladeEle;
-    return (wpnBase && wpnBase.ele) ? wpnBase.ele : 'normal';
+    let spellbladeActive = !!(wpnBase && wpnBase.spellbladeBuff && wielder && wielder.eq && wielder.eq.wpn === wpnInst
+        && (wielder._spellbladeUntil || 0) > ((typeof state !== 'undefined' && state.ticks) || 0));
+    return resolveWeaponElement(!!a, a && a.ele, spellbladeActive, wielder && wielder._spellbladeEle, wpnBase && wpnBase.ele);
 }
 // 屬性剋制判定（攻擊屬性 e 是否剋制怪物屬性 te），加成量由各詞綴的 counter 決定
 // 🔧 統一：抗魔係數（MR 折減倍率，邊際效益遞減）。回傳「魔法傷害通過率」(=1-減傷%)。
@@ -889,18 +893,23 @@ function royalEquipOk(d, id) {
 function checkCanEquip(item) {
     let d = DB.items[item.id];
     if (d && d.reqAvatar && player && ((d.strictAvatar && player.avatar !== d.reqAvatar) || (!d.strictAvatar && player.avatar && player.avatar !== d.reqAvatar))) return false;   // 👸 性別頭像限定；strictAvatar（純潔少女的憐愛）要求必須明確為女妖精，舊檔缺 avatar 亦不放行
-    if (isRelic(d)) return reqAllowsClass(d, player.cls);   // 🏺 遺物：職業限制純以 req 白名單為準（略過各職業專屬 *EquipOk 武器/防具清單，否則戰士等會被拒）
-    if (player.cls === 'dark') return darkEquipOk(d, item.id);   // 🔧 黑暗妖精專屬裝備規則
-    if (player.cls === 'illusion') return illusionEquipOk(d, item.id);   // 🔮 幻術士專屬裝備規則（除匕首外的全職業裝備＋開放清單）
-    if (player.cls === 'dragon') return dragonEquipOk(d, item.id);   // 🐉 龍騎士專屬裝備規則（除匕首外的全職業裝備＋開放清單）
-    if (player.cls === 'warrior') return warriorEquipOk(d, item.id);   // ⚔️ 戰士專屬裝備規則（白名單制：鈍器＋全職非盾防具＋開放清單）
-    if (player.cls === 'royal') return royalEquipOk(d, item.id);   // 👑 王族專屬裝備規則（全職業裝備＋具名開放清單）
+    // 🏺 遺物：職業限制純以 req 白名單為準＝略過各職業專屬 *EquipOk 武器/防具清單（否則戰士等會被拒）。
+    //    ⚠️ v3.7.83 修：原本這裡是 `return reqAllowsClass(...)` 直接早退，連帶把下方共用尾段的**劍術精通例外**也跳過了
+    //    → 妖精選劍術精通後，一般的騎士限定單手武器借得到、同條件的「遺物」卻裝不上（8 件）。改成只跳過 *EquipOk 分派、
+    //    仍走同一條尾段，遺物與一般裝備的判定路徑就完全一致。
+    if (!isRelic(d)) {
+        if (player.cls === 'dark') return darkEquipOk(d, item.id);   // 🔧 黑暗妖精專屬裝備規則
+        if (player.cls === 'illusion') return illusionEquipOk(d, item.id);   // 🔮 幻術士專屬裝備規則（除匕首外的全職業裝備＋開放清單）
+        if (player.cls === 'dragon') return dragonEquipOk(d, item.id);   // 🐉 龍騎士專屬裝備規則（除匕首外的全職業裝備＋開放清單）
+        if (player.cls === 'warrior') return warriorEquipOk(d, item.id);   // ⚔️ 戰士專屬裝備規則（白名單制：鈍器＋全職非盾防具＋開放清單）
+        if (player.cls === 'royal') return royalEquipOk(d, item.id);   // 👑 王族專屬裝備規則（全職業裝備＋具名開放清單）
+    }
     // 1. 基本職業判定
     let canEquip = reqAllowsClass(d, player.cls);
 
     // 2. 負重強化的擴充判定
     if (!canEquip && loadUpAllows(item.id)) canEquip = true;
-    // 3. 🏅 劍術精通：妖精可裝備騎士限定的單手武器（非雙手、非弓）
+    // 3. 🏅 劍術精通：妖精可裝備騎士限定的單手武器（非雙手、非弓）——⚠️ 遺物同樣適用（v3.7.83 起遺物也會走到這裡）
     if (!canEquip && hasMastery('e_sword') && d.type === 'wpn' && !d.w2h && !d.isBow && d.req && d.req.includes('knight')) canEquip = true;
     return canEquip;
 }
@@ -1377,6 +1386,7 @@ function renderStatusEffects() {
 function _updateUIImpl() {
     if(state.ff) return; // 補跑期間不刷新畫面
     updatePrideFloorIndicator();   // 🗼 攀登中右上角顯示目前樓層（背景補跑後回到前景時同步）
+    try { if (typeof updateMercRoleHint === 'function') updateMercRoleHint(); } catch (e) {}   // 🧑‍🤝‍🧑 v3.7.84 「目前擔任隊員中」提示（受僱/解散由其他分頁造成→靠這裡每輪自動同步）
     try { renderPandoraBanner(); } catch (e) {}   // 🔧 潘朵拉黑市稀有商品公告橫幅
     try { if (typeof updatePvpButtonTone === 'function') updatePvpButtonTone(); } catch (e) {}
     try { renderSyslogPandora(); } catch (e) {}   // 🔧 系統日誌標題列右側：黑市拍賣中商品
@@ -1443,19 +1453,7 @@ function _updateUIImpl() {
         document.getElementById('mv-mp-fill').style.width = `${Math.max(0, (player.mp/player.mmp)*100)}%`;
         document.getElementById('mv-mp-txt').innerText = `${Math.floor(player.mp)}/${Math.floor(player.mmp)}`;
     } }
-    // 🏰 城堡護衛：狀態欄依類型顯示傭兵樣式的 HP／MP
-    { let _gr = document.getElementById('castle-guard-row'), _g = player.castleGuard;
-      if (_gr) { if (_g && siegeVictoryActive()) { _gr.classList.remove('hidden');
-          let _heal = _g.mode === 'heal';
-          let _cur = _heal ? _g.mp : _g.hp, _max = _heal ? _g.maxMp : _g.maxHp;
-          document.getElementById('cg-name').innerText = _g.name + (_g.disabled ? (_heal ? '(耗盡)' : '(力竭)') : '');
-          document.getElementById('cg-txt').innerText = `${Math.floor(_cur)}/${Math.floor(_max)}`;
-          let _bar = document.getElementById('cg-bar');
-          _bar.className = `bar-fill ${_heal ? 'bg-blue-600' : 'bg-red-600'}`;
-          _bar.parentElement.title = _heal ? 'MP' : 'HP';
-          _bar.style.width = `${Math.max(0, (_cur/_max)*100)}%`;
-        } else { _gr.classList.add('hidden'); } } }
-    
+    // 🏰 v3.7.96 城堡護衛 v2：改為隊伍面板實體 HP 卡（renderGuardTeamHTML·js/31）；舊「主狀態欄承擔傷害護衛條」已移除。
     let nxtE = getExpReq(player.lv);
     let pct = player.lv >= 100 ? 100 : (nxtE > 0 && isFinite(nxtE) ? (player.exp / nxtE) * 100 : 0);
     document.getElementById('txt-exp').innerText = `${pct.toFixed(2)}%`;

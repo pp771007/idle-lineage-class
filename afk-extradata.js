@@ -31,6 +31,9 @@
         if (typeof SANCTUARY_MAP_NAMES !== 'undefined' && SANCTUARY_MAP_NAMES[id]) return SANCTUARY_MAP_NAMES[id];   // 🌑 黑暗妖精聖地 3 隱藏圖（js/11 定義）
         if (typeof HIDDEN_AREA_NAMES !== 'undefined' && HIDDEN_AREA_NAMES[id]) return HIDDEN_AREA_NAMES[id];   // 🏛️ 隱藏狩獵區域
         if (typeof ANTHARAS_AREA_NAMES !== 'undefined' && ANTHARAS_AREA_NAMES[id]) return ANTHARAS_AREA_NAMES[id];   // 🐉 侵蝕的安塔瑞斯巢穴 4 區（js/05 定義，不在 MAP_CATEGORIES）
+        if (typeof SiegeV2 !== 'undefined' && SiegeV2.stages) {   // 🏰 攻城戰 v2 各階段戰場（js/30 定義，不在 MAP_CATEGORIES / SIEGE_CITY）
+          for (var si = 0; si < SiegeV2.stages.length; si++) if (SiegeV2.stages[si].map === id) return SiegeV2.stages[si].mapName;   // 讀上游自己的 stage 表→作者補其他城的階段時自動跟上
+        }
         var pf = /^pride_f(\d+)$/.exec(id); if (pf) return '傲慢之塔 ' + pf[1] + ' 樓';
         var pr = /^pride_(\d+)_(\d+)$/.exec(id); if (pr) return '傲慢之塔 ' + pr[1] + '~' + pr[2] + ' 樓（直接挑戰）';
         if (typeof MAP_CATEGORIES !== 'undefined') {

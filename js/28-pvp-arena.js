@@ -180,7 +180,7 @@
         if (!card) return '';
         let json;
         try { json = JSON.stringify(card); } catch (e) { return ''; }
-        return PVP_CARD_PREFIX + _pvpCompressB64(_saveWrap(json));   // 🛡️ 先簽章再壓縮：貼上端可辨識「有無被改過」
+        return PVP_CARD_PREFIX + _pvpCompressB64(_saveWrapPortable(json));   // 🛡️ 分享碼固定使用可跨網頁／桌面的 SIG1
     }
     // 回傳 {card, signed, ok}；ok=false＝簽章不符（仍給 card，由呼叫端決定是否警告後照用）
     function pvpCardDecode(str) {
@@ -503,8 +503,25 @@
         return true;
     }
 
+    // 🧹 v3.7.67 清掉還站在場上的決鬥對手（落敗結算專用）。
+    //   ⚠️ 為什麼一定要清：落敗時對手並沒有死，而 `_pvpRecord` 開頭就把傭兵放回隊伍——
+    //      這中間到結果視窗（900ms）、乃至按下「繼續」之後，gameLoop 照樣在跑：活著的對手 ×
+    //      已歸隊的傭兵 ＝ 傭兵接手替玩家單挑（用戶回報「按繼續會變成傭兵一起參戰」）。
+    //      更糟的是此時 `_duel` 已清空，傭兵若把對手打死會走「一般 killMob」→ 拿到經驗/金幣/掉落，
+    //      還會被算成一次真的 PvP 擊殺（對手帶 trollPlayer 標記）＝ 故意落敗就能刷獎勵。
+    //   投降路徑本來就自己清過場（pvpArenaSurrender）→ 這裡再清一次無副作用（冪等）。
+    function _pvpClearFoe() {
+        try {
+            if (typeof mapState === 'undefined' || !mapState || !Array.isArray(mapState.mobs)) return;
+            if (!mapState.mobs.some(function (m) { return m && m._pvpDuelFoe; })) return;
+            mapState.mobs = [null, null, null, null, null];
+            try { renderMobs(); updateUI(); } catch (e) {}
+        } catch (e) {}
+    }
+
     function _pvpRecord(win, foeName) {
         if (!player || !player.cls) return;
+        if (!win) _pvpClearFoe();   // 🧹 落敗／投降：對手立刻退場——⚠️必須早於下面的傭兵歸隊，否則會有「傭兵接手打」的空窗
         _pvpUnbenchAllies();   // ⚔️ 傭兵先歸隊——⚠️必須早於下方的 saveGame，否則存檔寫入的是空隊伍
         if (!player.pvpArena || typeof player.pvpArena !== 'object') player.pvpArena = { wins: 0, losses: 0, streak: 0, best: 0, history: [] };
         let a = player.pvpArena;
@@ -578,6 +595,7 @@
 
     function pvpResultContinue() {
         let m = document.getElementById('pvp-result-modal'); if (m) m.remove();
+        if (!_duel) _pvpClearFoe();   // 🧹 v3.7.67 安全網：本場已結束卻仍有對手殘留在場上（例如中途重整過）→ 清掉再整備，免得復活後又被打
         _pvpRestoreInArena();
         try { logSys('<span class="text-slate-300">⚔️ 你留在競技場整備，準備下一場決鬥。</span>'); } catch (e) {}
         try { saveGame(); } catch (e) {}

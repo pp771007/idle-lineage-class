@@ -89,8 +89,9 @@ function patchTradEnHook() {
 }
 
 // ── 補丁 3：存檔位 8 → 16（加掛版原有功能，上游只有 8 格）──────────
-//   上游把格數硬寫死在 4 處：js/13 匯入時的「同角色重複」掃描、js/06 allySlotList（招募）、
-//   js/25 clanScanRoles（血盟成員/盟主判定）、js/28 PVP 挑戰自己其他角色的清單。
+//   上游把格數硬寫死在多處：js/13 匯入時的「同角色重複」掃描、js/06 allySlotList（招募）與傭兵受僱
+//   登記的四處掃描、js/05 安塔瑞斯每日通關遷移、js/25 clanScanRoles（血盟成員/盟主判定）、
+//   js/28 PVP 挑戰自己其他角色的清單。
 //   改成用 SAVE_SLOT_MAX=16（定義於 js/13，執行期全域，afk-loadslots/afk-wiki/afk-diag 的選角面板也讀它）。
 //   選角畫面本身不必改核心：上游是分頁式卡片（每頁 4 格），afk-loadslots 自行擴充頁數。
 function patch16Slots() {
@@ -111,17 +112,44 @@ function patch16Slots() {
     console.log(`[patch] 存檔位 16 格（${F13}）`);
   } else { already++; }
 
-  // js/06：傭兵招募可選存檔位
+  // js/06：傭兵招募可選存檔位 + 傭兵受僱登記的存檔位掃描
   const F06 = 'js/06-status-allies.js';
   let s06 = readFileSync(F06, 'utf8');
+  let dirty06 = false;
   const A3 = "['1','2','3','4','5','6','7','8'].filter(n => n !== String(currentSlot))";
   if (s06.indexOf(A3) >= 0) {
     s06 = s06.replace(A3, "(function(){ let a=[]; for(let n=1;n<=SAVE_SLOT_MAX;n++){ if(String(n)!==String(currentSlot)) a.push(String(n)); } return a; })()");
-    if (!CHECK) writeFileSync(F06, s06);
+    dirty06 = true;
     changed++;
     console.log(`[patch] 傭兵招募 16 格（${F06}）`);
   } else if (!s06.includes('SAVE_SLOT_MAX')) {
     throw new Error(`[${F06}] 找不到 allySlotList 8 格錨點——上游可能改了招募邏輯。`);
+  } else { already++; }
+
+  // 傭兵受僱登記（bootstrap 遷移／受僱查詢／選角徽章／獨佔判定）四處各自掃全部存檔位。
+  //   漏放大 → 僱主在第 9~16 格時，傭兵不顯示徽章、不受安全區限制、也擋不住被第二位僱主重複招募。
+  const A3B_FROM = 'for (let n = 1; n <= 8; n++) {';
+  const A3B_TO = 'for (let n = 1; n <= SAVE_SLOT_MAX; n++) {';
+  if (s06.indexOf(A3B_FROM) >= 0) {
+    s06 = s06.split(A3B_FROM).join(A3B_TO);
+    dirty06 = true;
+    changed++;
+    console.log(`[patch] 傭兵受僱掃描 16 格（${F06}）`);
+  } else if (s06.indexOf(A3B_TO) < 0) {
+    throw new Error(`[${F06}] 找不到傭兵受僱登記的 8 格迴圈錨點——上游可能改了受僱判定，請確認第 9~16 格仍被掃到。`);
+  } else { already++; }
+  if (dirty06 && !CHECK) writeFileSync(F06, s06);
+
+  // js/05：安塔瑞斯副本「模式共用每日通關」的舊資料遷移掃描
+  const F05 = 'js/05-kill-progression.js';
+  let s05 = readFileSync(F05, 'utf8');
+  if (s05.indexOf(A3B_FROM) >= 0) {
+    s05 = s05.split(A3B_FROM).join(A3B_TO);
+    if (!CHECK) writeFileSync(F05, s05);
+    changed++;
+    console.log(`[patch] 安塔瑞斯通關遷移掃描 16 格（${F05}）`);
+  } else if (s05.indexOf(A3B_TO) < 0) {
+    throw new Error(`[${F05}] 找不到 antharasSharedClearDay 的 8 格迴圈錨點——上游可能改了副本每日通關遷移。`);
   } else { already++; }
 
   // js/25：血盟成員掃描（成員清單＋貢獻度、clanLeaderRole 找盟主、城鎮 NPC 的「有無君主」判斷都經這裡）

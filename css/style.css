@@ -516,6 +516,7 @@
         #battle-view.area-fit .mob-target.duel-fixed { position: absolute; height: 242px; width: auto; min-width: 96px; transform: translate(-50%, -50%); z-index: 1; }
         /* 🔻 v3.1.65 溢框動畫怪(MOB_ANIM_SMALL·js/09 加 .mob-anim-small·如希爾黛斯)：整體 max-height 降至 85%(較上方 100% 多一個 class → 特異性勝出)。本體+_s+_w 三層同吃此上限→等比縮小逐幀對齊；技能特效(anchored)依本體 rect 縮放→亦同步縮小。腳底對齊(object-position bottom)不變。修 v3.0.68 裁畫布過緊致 attack/death 撐到頂緣「超出圖片框」。 */
         #battle-view.area-fit .mob-target:not(.boss-slot):not(.boss-zoom) .mob-img-inner.mob-anim.mob-anim-small img { max-height: 85% !important; }
+        /* 🏰 v3.7.82 用戶指定復原：v3.7.79 的 .siege-mob 縮放（攻城敵人整體 scale .8·js/09 加 class）四條規則已整組移除，攻城敵人回到與其他怪物相同的原生尺寸。要再縮回去＝配方見記憶 siege-building-fixed-position。 */
         /* 🧝 v3.0.46 玩家變身戰鬥 sprite（js/09 _playerMorphApply 懶建）：狩獵區最下方中間偏左·原生像素三層(影子 multiply/本體/武器 screen)。
            ⚠️容器與各層皆不用 transform（隔離群組會使 _w 的 screen blend 失效＝黑框病根 v3.0.19）→ 置中由 js 以 left:calc(44% - 寬/2) 完成。 */
         #player-morph-sprite { position: absolute; bottom: 4px; height: 1px; z-index: 2; pointer-events: none; overflow: visible; }
@@ -1689,7 +1690,7 @@ button.classic-skill-cell { cursor:pointer; }
     opacity:.72;
     filter:drop-shadow(0 0 14px rgba(235,207,130,.28)) brightness(.86);
 }
-.load-offline-status {
+.load-slot-status {
     position:absolute;
     z-index:2;
     inset:0;
@@ -1697,7 +1698,7 @@ button.classic-skill-cell { cursor:pointer; }
     font-family:"Microsoft JhengHei", sans-serif;
     letter-spacing:0;
 }
-.load-offline-badge {
+.load-slot-badge {
     position:absolute;
     left:50%;
     top:2.2%;
@@ -1717,62 +1718,26 @@ button.classic-skill-cell { cursor:pointer; }
     letter-spacing:0;
     text-align:center;
 }
-.load-offline-badge strong,
-.load-offline-badge small {
+.load-slot-badge strong,
+.load-slot-badge small {
     display:block;
     font:inherit;
 }
-.load-offline-badge small {
+.load-slot-badge small {
     margin-top:2px;
     color:#d9f99d;
     font-size:11px;
     font-weight:600;
 }
-.load-offline-detail {
-    position:absolute;
-    left:4%;
-    right:4%;
-    bottom:2.5%;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    min-width:0;
-    padding:7px 8px 6px;
-    border-top:1px solid rgba(148,163,184,.3);
-    background:linear-gradient(180deg, rgba(2,6,23,0), rgba(2,6,23,.86) 24%, rgba(2,6,23,.94));
-    color:#e2e8f0;
-    text-shadow:0 1px 3px #000;
-    font-size:12px;
-    line-height:1.25;
-}
-.load-offline-detail > small {
-    color:#cbd5e1;
-    font-size:11px;
-}
-.load-offline-detail > strong {
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    width:100%;
-    margin-top:2px;
-    white-space:nowrap;
-    font-size:14px;
-}
-.load-offline-detail b {
-    font-weight:800;
-}
-.load-offline-exp { color:#86efac; }
-.load-offline-gold { color:#fde047; }
-.load-offline-detail > em {
-    display:block;
-    max-width:100%;
-    margin-top:2px;
-    overflow:hidden;
-    color:#cbd5e1;
-    font-size:11px;
-    font-style:normal;
-    text-overflow:ellipsis;
-    white-space:nowrap;
+/* 🧑‍🤝‍🧑 v3.7.85 「擔任傭兵」＝受僱為別人的傭兵（只能待安全區）。單行 <strong> 徽章，置於立繪頭頂正中。
+   🗑️ v3.7.94 離線掛機移除後，本檔的 .load-slot-badge 只剩這一種用途（原綠色「掛機中」已刪）；
+   幾何/字級/RWD 仍留在上方 .load-slot-badge（含 @media 縮小規則），此處只覆寫配色。 */
+.load-slot-badge.load-badge-party {
+    border-color:rgba(192,132,252,.8);
+    background:rgba(26,8,42,.9);
+    color:#e9d5ff;
+    box-shadow:0 2px 5px rgba(0,0,0,.82), inset 0 1px 0 rgba(255,255,255,.08);
+    text-shadow:0 1px 2px #000, 0 0 6px rgba(168,85,247,.6);
 }
 .load-slot-card.selected::after {
     display:none;
@@ -2155,12 +2120,8 @@ button.classic-skill-cell { cursor:pointer; }
         box-shadow: inset 0 0 20px rgba(0,0,0,.72);
     }
     .load-slot-card img { transform: scale(1.02); }
-    .load-offline-badge { top:6px; min-width:64px; padding:3px 6px 2px; font-size:12px; }
-    .load-offline-badge small { font-size:10px; }
-    .load-offline-detail { left:3px; right:3px; bottom:3px; padding:5px 3px 4px; font-size:10px; }
-    .load-offline-detail > small,
-    .load-offline-detail > em { font-size:9px; }
-    .load-offline-detail > strong { gap:5px; font-size:11px; }
+    .load-slot-badge { top:6px; min-width:64px; padding:3px 6px 2px; font-size:12px; }
+    .load-slot-badge small { font-size:10px; }
     .load-slot-card[data-key="m_warrior"] img,
     .load-slot-card[data-key="f_warrior"] img { transform: scale(1.16); }
     #load-page-tabs {

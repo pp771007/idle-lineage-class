@@ -309,9 +309,7 @@ function _ffFinishCatchup() {
     if (_needsSave) {
         try { _saveOk = saveGame() === true; } catch (e) {}
     }
-    if (_saveOk && typeof window !== 'undefined' && typeof window.offlineCatchupSaveCommitted === 'function') {
-        try { window.offlineCatchupSaveCommitted(); } catch (e) {}
-    }
+    // 🗑️ v3.7.94 移除 offlineCatchupSaveCommitted 呼叫：那是 js/27 離線掛機的「待結算補跑憑證」提交點，整套已刪除。
     if (_longCatchup) {
         try {
             let _gd = (player.gold || 0) - _acc.gold;
@@ -600,7 +598,6 @@ function tick() {
     }
     _combatSrc = null;   // ⚔️ 戰鬥日誌來源：每 tick 起始重置（玩家攻擊/施法/DoT 等預設依顏色type推定；友方派發點會各自設定）
     _dpsAllyTurn = false; let _dpsPlayerSnap = _dpsSnap();   // 🎯 DPS：玩家階段起點快照（至怪物行動前的所有掉血＝玩家輸出·含自動施法/持續增益）
-    castleGuardTick();   // 🏰 城堡護衛：回血/力竭恢復/城堡擁有結束自動解散
     for(let k in player.manualCd) if(player.manualCd[k] > 0) player.manualCd[k]--;
     
     let canAct = true;
@@ -679,6 +676,7 @@ function tick() {
     if(player.statuses.freeze > 0) alerts.push("冰凍中");
     if(player.statuses.stone > 0) alerts.push("石化中");
     if(player.statuses.paralyze > 0) alerts.push("麻痺中");
+    if(player.statuses.bind > 0) alerts.push(isRangedArmed(player) ? "束縛中（遠距離不受影響）" : "束縛中（無法一般攻擊）");   // 🕸️ v3.7.75 束縛
     if(player.statuses.silence > 0) alerts.push("沉默中");
     if(player.statuses.magicseal > 0) alerts.push("魔法封印中");
     if(player.statuses.poison > 0) alerts.push("中毒");
@@ -747,7 +745,7 @@ function tick() {
         state._pAtkIntervalTicks = aspdTicks;
         state.pDmgTick = attackProgress + 1;
         if(state.pDmgTick >= aspdTicks) {
-            playerAttack();
+            if (!bindSelfBlocked(player)) playerAttack();   // 🕸️ v3.7.75 束縛：非遠距離武器時打不出一般攻擊（攻擊節奏照跑·施法/技能不受影響）
             state.pDmgTick = Math.max(0, state.pDmgTick - aspdTicks);   // 保留小數餘額，長期平均攻速才正確
             state._pStunCycle = false;   // ⚔️ 硬直：每次攻擊後重置「本週期已硬直」旗標（下週期被擊可再延遲一次）
         }
@@ -766,13 +764,14 @@ function tick() {
             state.pOffDmgTick = offProgress + 1;
             if (state.pOffDmgTick >= offTicks) {
                 let _ot = getTarget();   // 副手自行取目標（不依賴主手這一拍有沒有攻擊）
-                if (_ot) dualWieldOffhandAttack(_ot);
+                if (_ot && !bindSelfBlocked(player)) dualWieldOffhandAttack(_ot);   // 🕸️ v3.7.75 束縛：副手必為近戰→被束縛時同樣打不出去
                 state.pOffDmgTick = Math.max(0, state.pOffDmgTick - offTicks);
             }
         } else { state.pOffDmgTick = 0; state._pOffAtkIntervalTicks = 0; }   // 卸下副手：歸零，避免下次裝上時瞬間觸發
     }
     
     { let _pd = _dpsDealt(_dpsPlayerSnap); if (_pd > 0) _dps.player += _pd; }   // 🎯 DPS：結算玩家階段輸出（攻擊／自動施法／持續增益）；怪物中毒/出血 DoT 於 processMobStatusTick 另計入玩家
+    if (typeof threatCommitDiff === 'function') threatCommitDiff(_dpsPlayerSnap, player);   // 🎯 v3.7.97 仇恨制：玩家階段整段掉血→記給玩家（threatMult＝職業×武器·同快照差分）
     for(let i=0; i<mapState.mobs.length; i++) {   // 🆕 含後排(3,4)：所有在場怪皆會行動攻擊
         let m = mapState.mobs[i];
         if(!m) continue;
@@ -886,7 +885,7 @@ function tick() {
     }
 
     if(!player.dead) { let _auraSnap = _dpsSnap(); try { relicAuraTick(); } catch(e){} let _auraDealt = _dpsDealt(_auraSnap); if(_auraDealt > 0) _dps.player += _auraDealt; }   // 🏺 蠅災的詛咒等 auraDmg：玩家階段週期全體固定魔傷（自帶快照→正確計入玩家 DPS·修 code-review#1）
-    if(!player.dead) { _combatSrc = 'summon'; let _dpsSumSnap = _dpsSnap(); summonTick(player.summon, () => { player.summon = null; }); summonTick(player.charmed, () => { player.charmed = null; }); if (typeof summonV2Tick === 'function') { try { summonV2Tick(); } catch (e) {} }   /* 🧙 v3.2.19 召喚術 v2（多實體·js/23） */ if(player.cls === 'illusion') { cubeTick(); illuSummonTick(); } { let _sd = _dpsDealt(_dpsSumSnap); if (_sd > 0) _dps.summon += _sd; }   /* 🎯 DPS：召喚（玩家召喚/迷魅/幻術立方）輸出 */ _combatSrc = 'mercenary'; alliesTick(); _combatSrc = null; }   // ⚔️ 召喚(含迷魅)/傭兵 戰鬥訊息來源情境；🔮 幻術士立方週期效果＋幻術精通幻象
+    if(!player.dead) { _combatSrc = 'summon'; let _dpsSumSnap = _dpsSnap(); summonTick(player.summon, () => { player.summon = null; }); summonTick(player.charmed, () => { player.charmed = null; }); if (typeof summonV2Tick === 'function') { try { summonV2Tick(); } catch (e) {} }   /* 🧙 v3.2.19 召喚術 v2（多實體·js/23） */ if (typeof castleGuardTick === 'function') { try { castleGuardTick(); } catch (e) {} }   /* 🏰 城堡護衛 v2（可招募協同角色·js/31）：與召喚同階段·輸出計入 summon 桶 */ if(player.cls === 'illusion') { cubeTick(); illuSummonTick(); } { let _sd = _dpsDealt(_dpsSumSnap); if (_sd > 0) _dps.summon += _sd; }   /* 🎯 DPS：召喚（玩家召喚/迷魅/幻術立方/城堡護衛）輸出 */ _combatSrc = 'mercenary'; alliesTick(); _combatSrc = null; }   // ⚔️ 召喚(含迷魅)/傭兵 戰鬥訊息來源情境；🔮 幻術士立方週期效果＋幻術精通幻象
     if(!player.dead) pledgeBlessTick();   // 生命的祝福：場上血盟怪物持續治療
     // HoT 持續回復（體力回復術 / 生命的祝福）
 // 💤 【休眠機制】團隊 HoT（持續回復）：整條鏈路目前不可達——DB.skills 內已無任何技能宣告 hot/autoBuff
@@ -1333,10 +1332,13 @@ function pvpRandomAlignment() {
 function pvpRandomLevelOffset() {
     return Math.floor(Math.random() * 21) - 10;
 }
+function pvpClampLevelOffset(offset) {
+    return Math.max(-10, Math.min(10, Math.round(offset)));
+}
 function pvpResolveLevelOffset(entry) {
     let offset = Number(entry && entry.levelOffset);
     if (!Number.isFinite(offset)) offset = pvpRandomLevelOffset();
-    offset = Math.max(-10, Math.min(10, Math.round(offset)));
+    offset = pvpClampLevelOffset(offset);
     if (entry) entry.levelOffset = offset;
     return offset;
 }
@@ -1383,16 +1385,28 @@ function pvpMarkForChase(entry) {
     player.trollPlayers = player.trollPlayers.filter(t => t && t.n !== rec.n);
     player.trollPlayers.push(rec);
 }
+function pvpOpponentLevel(siegeConfigured, siegeLevel, playerLevel, levelOffset, revengeCount, revengeMax, clanAtWar, groupBattle) {
+    let normalizedPlayerLevel = Math.max(1, Math.round(Number(playerLevel) || 1));
+    let normalizedRevengeCount = Math.max(0, Math.min(revengeMax, Math.floor(Number(revengeCount) || 0)));
+    let baseLevel = siegeConfigured
+        ? siegeLevel
+        : normalizedPlayerLevel + levelOffset + normalizedRevengeCount * 3;
+    return Math.max(1, baseLevel + (clanAtWar ? 5 : 0) + (groupBattle ? 3 : 0));
+}
 function pvpTrollLevelOverride(entry) {
     let siegeLevel = Number(entry && entry.siegeLevel);
-    let revengeCount = Math.max(0, Math.min(PVP_KILL_WHISPER_REVENGE_MAX, Math.floor(Number(entry && entry.revengeCount) || 0)));
-    let playerLevel = Math.max(1, Math.round(Number(player.lv) || 1));
-    let baseLevel = Number.isFinite(siegeLevel)
-        ? siegeLevel
-        : playerLevel + pvpResolveLevelOffset(entry) + revengeCount * 3;
-    let clanWarBonus = entry && entry.clanAtWar ? 5 : 0;
-    let groupBattleBonus = entry && entry._npcClanBattle ? 3 : 0;
-    return Math.max(1, baseLevel + clanWarBonus + groupBattleBonus);
+    let siegeConfigured = Number.isFinite(siegeLevel);
+    let levelOffset = siegeConfigured ? 0 : pvpResolveLevelOffset(entry);
+    return pvpOpponentLevel(
+        siegeConfigured,
+        siegeLevel,
+        Number(player.lv),
+        levelOffset,
+        Number(entry && entry.revengeCount),
+        PVP_KILL_WHISPER_REVENGE_MAX,
+        !!(entry && entry.clanAtWar),
+        !!(entry && entry._npcClanBattle)
+    );
 }
 function pvpRegisterKillWhisper(mob) {
     if (!mob || !mob.trollPlayer || mob._siegePlayer || !mob.n || !player || !player.cls) return;
@@ -1773,7 +1787,7 @@ function _trollCurveGearedAC(L) {
 function _trollCurveStretchHv(raw) { if (raw >= 8) return Math.min(20, raw); let e = Math.min(30, 8 - raw), f = e / 30, h = 2 * f - f * f; return 8 - 7 * h; }
 // 第三參 mult（😤 v3.6.24 用戶拍板）：曲線解出的每擊傷害 B「套完單擊帽後」整體倍率——一模板 2.0／二模板 2.5（v3.6.26·首設1.5/2.0）／法師兩模板皆 1（不掛 dmgMult）。
 // 倍率放帽後＝刻意允許超出標準怪單擊上限；骰/db 比例與取整沿用同一套推導。
-function trollCurveDmg(lv, atkSpd, mult) {
+function _trollCurveDmgRaw(lv, atkSpd, mult) {
     lv = Math.max(1, Math.round(lv)); atkSpd = +atkSpd || 0.67;
     mult = (Number(mult) > 0) ? Number(mult) : 1;
     let fast = atkSpd < 2, sd = fast ? 5 / 6 : 2 / 3, n = fast ? 1 : 2;
@@ -1800,15 +1814,44 @@ function trollCurveDmg(lv, atkSpd, mult) {
     while (sides > 99) { n++; sides = Math.max(2, Math.round(2 * eRoll / n - 1)); }
     return { dmg: [n, sides], db: db };
 }
+function trollCurveDmgJson(lv, atkSpd, mult) {
+    return JSON.stringify(_trollCurveDmgRaw(lv, atkSpd, mult));
+}
+function trollCurveDmg(lv, atkSpd, mult) {
+    try {
+        let parsed = JSON.parse(trollCurveDmgJson(lv, atkSpd, mult));
+        if (parsed && Array.isArray(parsed.dmg) && parsed.dmg.length === 2
+            && parsed.dmg.every(Number.isFinite) && Number.isFinite(parsed.db)) return parsed;
+    } catch (e) {}
+    return _trollCurveDmgRaw(lv, atkSpd, mult);
+}
+function scaledEnemyHp(level, coefficient) {
+    return coefficient * level;
+}
+function scaledEnemyArmorClass(level, baseArmorClass, divisor) {
+    return baseArmorClass - Math.floor(level / divisor);
+}
+function scaledEnemyMagicResistance(level, baseResistance, divisor) {
+    return baseResistance + Math.floor(level / divisor);
+}
+function scaledEnemyDamageBonus(level, halfLevel, extra) {
+    return (halfLevel ? Math.floor(level / 2) : level) + extra;
+}
+function scaledEnemyHit(level, baseHit) {
+    return baseHit + Math.floor(level / 2);
+}
+function scaledEnemyThresholdValue(level, threshold, lowValue, highValue) {
+    return level >= threshold ? highValue : lowValue;
+}
 function applyTrollScaling(mob, levelOverride) {
     let requested = Number(levelOverride);
     let L = Number.isFinite(requested) ? Math.round(requested) : Math.round(Number(player.lv) || 1) + pvpRandomLevelOffset();
     L = Math.max(1, L);
     let s = mob.scale || {};
     mob.lv = L;
-    mob.hp = (s.hpC || 12) * L; mob.curHp = mob.hp;
-    mob.ac = (s.acBase !== undefined ? s.acBase : -10) - Math.floor(L / (s.acDiv || 4));
-    mob.mr = (s.mrBase || 0) + Math.floor(L / (s.mrDiv || 5));
+    mob.hp = scaledEnemyHp(L, s.hpC || 12); mob.curHp = mob.hp;
+    mob.ac = scaledEnemyArmorClass(L, s.acBase !== undefined ? s.acBase : -10, s.acDiv || 4);
+    mob.mr = scaledEnemyMagicResistance(L, s.mrBase || 0, s.mrDiv || 5);
     mob.exp = 0; mob.goldMin = 0; mob.goldMax = 0;
     mob.atkSpd = s.atkSpd || 0.67;
     if (s.curveDmg) {   // 🎲 v3.6.22 玩家NPC：普攻骰＝同等級怪物曲線（依本模板攻速）×模板倍率(dmgMult·v3.6.24)＋常駐額外傷害(dbPlus)
@@ -1817,10 +1860,10 @@ function applyTrollScaling(mob, levelOverride) {
         mob.db = _cv.db + (s.dbPlus || 0);
     } else {
         mob.dmg = [1, s.dmgSides || 10];
-        mob.db = (s.dbHalf ? Math.floor(L / 2) : L) + (s.dbPlus || 0);
+        mob.db = scaledEnemyDamageBonus(L, !!s.dbHalf, s.dbPlus || 0);
     }
-    mob.hit = (s.hitBase || 0) + Math.floor(L / 2);
-    mob.regenHp = mob.regenFix || ((L >= 50) ? 60 : 40);
+    mob.hit = scaledEnemyHit(L, s.hitBase || 0);
+    mob.regenHp = mob.regenFix || scaledEnemyThresholdValue(L, 50, 40, 60);
     mob.regenEvery = 20;
     if (s.er) mob.er = s.er;
 }
@@ -1829,19 +1872,19 @@ function applyPledgeEnemyScaling(mob) {
     let L = Math.max(1, player.lv);
     let s = mob.scale || {};
     mob.lv = L;
-    mob.hp = (s.hpC || 20) * L;
+    mob.hp = scaledEnemyHp(L, s.hpC || 20);
     mob.curHp = mob.hp;
-    mob.ac = (s.acBase !== undefined ? s.acBase : -10) - Math.floor(L / (s.acDiv || 2));
-    mob.mr = (s.mrBase || 0) + Math.floor(L / (s.mrDiv || 10));
+    mob.ac = scaledEnemyArmorClass(L, s.acBase !== undefined ? s.acBase : -10, s.acDiv || 2);
+    mob.mr = scaledEnemyMagicResistance(L, s.mrBase || 0, s.mrDiv || 10);
     mob.exp = 0;        // 🔧 血盟敵人：經驗值設為 0
     mob.goldMin = 0;    // 🔧 血盟敵人：金錢設為 0
     mob.goldMax = 0;
     mob.dmg = [1, s.dmgSides || 10];
-    mob.db = s.dbHalf ? Math.floor(L / 2) : L;   // 一般攻擊傷害加成：+(玩家等級)；喬/賽尼斯(dbHalf) 為 +(玩家等級/2)
-    mob.hit = (s.hitBase || 0) + Math.floor(L / 2);      // 額外命中：基底 +(玩家等級/2)
+    mob.db = scaledEnemyDamageBonus(L, !!s.dbHalf, 0);   // 一般攻擊傷害加成：+(玩家等級)；喬/賽尼斯(dbHalf) 為 +(玩家等級/2)
+    mob.hit = scaledEnemyHit(L, s.hitBase || 0);      // 額外命中：基底 +(玩家等級/2)
     mob.atkSpd = s.atkSpd || 0.67;
-    mob.regenHp = (L >= 50) ? 40 : 15;            // 常駐被動：HP 未滿時的回復量
-    mob.regenEvery = (L >= 50) ? 20 : 10;        // 50~100：每2秒回40；50以下：每1秒回15
+    mob.regenHp = scaledEnemyThresholdValue(L, 50, 15, 40);            // 常駐被動：HP 未滿時的回復量
+    mob.regenEvery = scaledEnemyThresholdValue(L, 50, 10, 20);        // 50~100：每2秒回40；50以下：每1秒回15
 }
 
 // 生命的祝福：每 tick 推進；達到間隔時為場上所有血盟怪物（HP 未滿）回復，持續期滿自動結束
@@ -2165,7 +2208,7 @@ function setTarget(idx) {
 // 命中判定值重塑：rawHitValue >= 8(約 40% 命中)以上維持原樣；低於此不再急墜到地板，
 // 而是把「剩下到地板(hitValue=1)的命中差」用遞減方式分配到接下來 30 點 AC，逐步逼近地板，
 // 保留 5% 必中(nat20)＋5% 擦傷(nat19，僅玩家打怪)的命中地板。小數判定值以隨機進位實現期望值。
-function stretchHitValue(raw) {
+function stretchedHitExpectedValue(raw) {
     let hv;
     if (raw >= 8) hv = Math.min(20, raw);
     else {
@@ -2174,6 +2217,10 @@ function stretchHitValue(raw) {
         let h = 2 * frac - frac * frac;     // 凹函數：前段增量大、後段小 → 遞減分配
         hv = 8 - 7 * h;                     // 由 8 遞減到 1（可為小數）
     }
+    return hv;
+}
+function stretchHitValue(raw) {
+    let hv = stretchedHitExpectedValue(raw);
     let lo = Math.floor(hv);
     let hvInt = lo + ((Math.random() < (hv - lo)) ? 1 : 0);
     return Math.max(1, Math.min(20, hvInt));
@@ -2355,7 +2402,7 @@ function consumeArrow() {
 }
 
 // ===== 法杖共鳴：裝備指定魔法杖時，一般攻擊(不論命中與否)有 智力/60 機率免費施展光箭 =====
-const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta', 'wpn_red_crystalwand', 'wpn_laia_wand', 'wpn_icequeen_wand', 'wpn_demon_scythe', 'wpn_darkmage_wand', 'wpn_baphomet_wand', 'wpn_illu_wand', 'wpn_demon_wand_hidden', 'wpn_dark_crystalball', 'wpn_steel_manawand_blue', 'relic_amp_staff', 'relic_elder_thunder', 'relic_cerberus_wand', 'relic_evillizard_eye', 'relic_lightbeam_wand', 'relic_warlock_grimoire', 'relic_windking_roar', 'relic_rockmage_secret', 'wpn_onmyoji_fan', 'relic_sr_kyuubi_wand', 'relic_water_orb', 'relic_unsealed_baphomet_wand'];   // 🏺 v3.7.20 解除封印的巴風特魔杖亦共鳴   // 🏺 v3.5.27 水靈的魔力珠亦共鳴（一般限定＝wandLightArrowProc 開頭 classicMode 早退）   // 🌅 日出之國：陰陽師的扇子（傳說）＋九尾妖狐的怒火（遺物）亦共鳴   // 🏺 遺物 安普長老的拐杖／長老的雷電能量／三頭犬魔杖／邪惡蜥蜴的眼瞳／光束強化魔杖／風精靈王的狂嘯／破岩法師的秘術亦共鳴 // 🔮 幻術士魔杖：共鳴（👹 隱藏的魔族魔杖亦共鳴；🏴‍☠️ 漆黑水晶球亦共鳴）   // 🏅 共鳴：含蕾雅魔杖／冰之女王魔杖／惡魔鐮刀／黑法師之杖／🔧巴風特魔杖（👑惡魔王魔杖已改為魔爆 eff:magicburst）
+const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta', 'wpn_red_crystalwand', 'wpn_laia_wand', 'wpn_icequeen_wand', 'wpn_demon_scythe', 'wpn_darkmage_wand', 'wpn_baphomet_wand', 'wpn_illu_wand', 'wpn_demon_wand_hidden', 'wpn_dark_crystalball', 'wpn_steel_manawand_blue', 'relic_amp_staff', 'relic_elder_thunder', 'relic_cerberus_wand', 'relic_evillizard_eye', 'relic_lightbeam_wand', 'relic_warlock_grimoire', 'relic_windking_roar', 'relic_rockmage_secret', 'wpn_onmyoji_fan', 'relic_sr_kyuubi_wand', 'relic_water_orb', 'relic_unsealed_baphomet_wand', 'wpn_angel_wand'];   // 😇 v3.7.74 天使魔杖亦共鳴   // 🏺 v3.7.20 解除封印的巴風特魔杖亦共鳴   // 🏺 v3.5.27 水靈的魔力珠亦共鳴（一般限定＝wandLightArrowProc 開頭 classicMode 早退）   // 🌅 日出之國：陰陽師的扇子（傳說）＋九尾妖狐的怒火（遺物）亦共鳴   // 🏺 遺物 安普長老的拐杖／長老的雷電能量／三頭犬魔杖／邪惡蜥蜴的眼瞳／光束強化魔杖／風精靈王的狂嘯／破岩法師的秘術亦共鳴 // 🔮 幻術士魔杖：共鳴（👹 隱藏的魔族魔杖亦共鳴；🏴‍☠️ 漆黑水晶球亦共鳴）   // 🏅 共鳴：含蕾雅魔杖／冰之女王魔杖／惡魔鐮刀／黑法師之杖／🔧巴風特魔杖（👑惡魔王魔杖已改為魔爆 eff:magicburst）
 function wandLightArrowProc(target) {
     if (player.classicMode) return;   // 🎮 經典模式：停用共鳴
     let wpn = player.eq.wpn;

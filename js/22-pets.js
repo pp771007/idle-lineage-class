@@ -1,7 +1,7 @@
 ﻿// ============================================================
 // js/22-pets.js — 🐾 夥伴系統 v2（v3.2.17 依「夥伴更新.md」全面取代舊項圈系統）
 //   ・寵物＝獨立實體（等級/經驗/HP/MP/技能），非道具；捕捉入「寵物保管」（同模式全角色共通、上限＝PET_STORAGE_MAX·v3.6.37 用戶調整為 32）
-//   ・出戰上限 4 隻＋魅力門檻（6/12/15/20）；經驗＝玩家實得複製一份均分給出戰寵物；升級需求＝玩家表 1/10
+//   ・出戰上限 4 隻＋魅力門檻（6/12/15/20）；每隻未倒地寵物各得玩家完整經驗；升級需求＝玩家表 1/10
 //   ・死亡 5 秒後復活卷軸自動復活；返生術可立即復活；回到安全區（非野外）免費復活
 //   ・戰鬥：無敵人在狩獵區八方向閒晃；有敵人自動攻擊最近的敵人（受擊權重 物理4/特殊3/魔法2）
 //   ・進化（包武·Lv30+·僅一般型態·v3.2.63）：一般＋進化果實→對應高等；一般＋勝利果實→黃金龍（兩果實都有→可選）；高等/黃金龍皆最終型態；進化後 Lv1、HP/MP=進化前 50%
@@ -807,17 +807,17 @@ function petGearUnequip(uidv, key) {
     try { renderSquadPanel(); } catch (e) {}
 }
 
-// ---------- 六、經驗（玩家應得份額複製一份·出戰寵物均分·需求=玩家1/10；玩家滿等仍可養寵）----------
+// ---------- 六、經驗（每隻未倒地出戰寵物各得玩家完整份額·需求=玩家1/10；玩家滿等仍可養寵）----------
 function petsGainExp(playerGain) {
     if (!(playerGain > 0)) return;
     let outs = petsOutList().filter(p => !p._downed);
     if (!outs.length) return;
     let _cap = Math.min(100, (player.lv || 1));   // 🐾 v3.2.40 用戶指定：寵物等級不得超過玩家等級（達上限比照 Lv100 不累積經驗·玩家升級後恢復成長）
     outs.forEach(p => { if ((p.lv || 1) >= _cap) p.exp = 0; });   // 滿等者不囤經驗（原規則）
-    // 🐾 v3.2.69 用戶指定：已滿等（=玩家等級）寵物無法獲得的經驗 → 由其他尚未滿等的出戰寵物平分（＝全額只均分給未滿等者·滿等者不佔份額）
+    // 🐾 v3.7.62 經驗不再由寵物平分：每隻未滿等且未倒地的出戰寵物都拿完整份額。
     let elig = outs.filter(p => (p.lv || 1) < _cap);
     if (!elig.length) { petMarkDirty(); return; }
-    let each = Math.floor(playerGain / elig.length);
+    let each = Math.floor(playerGain);
     if (each <= 0) return;
     elig.forEach(p => {
         p.exp = (p.exp || 0) + each;
@@ -883,7 +883,8 @@ function petsTick() {
         if (d.castItv > 0 && def.sk.length && !((pst.silence || 0) > 0 || (pst.magicseal || 0) > 0)) {
             p._castCd = (p._castCd != null ? p._castCd : (d.castItv - 1)) - 1;
             if (p._castCd <= 0 && (p._actionCd || 0) <= 0) {
-                if (petCastSkill(p, d, tgt)) { p._castCd = d.castItv; p._actionCd = 4; }
+                let _ok; if (typeof threatWrap === 'function') threatWrap(p, () => { _ok = petCastSkill(p, d, tgt); }); else _ok = petCastSkill(p, d, tgt);   // 🎯 v3.7.97 仇恨：寵物技能傷害→記給該寵物
+                if (_ok) { p._castCd = d.castItv; p._actionCd = 4; }
                 else p._castCd = Math.min(10, d.castItv);
             }
         }
@@ -892,7 +893,7 @@ function petsTick() {
         p._stunCycle = false;
         if (p._atkCd <= 0 && (p._actionCd || 0) <= 0) {
             tgt = _petPickTarget(p);   // 技能可能已擊殺
-            if (tgt) { petAttackOnce(p, d, tgt); p._actionCd = 3; }
+            if (tgt) { if (typeof threatWrap === 'function') threatWrap(p, () => petAttackOnce(p, d, tgt)); else petAttackOnce(p, d, tgt); p._actionCd = 3; }   // 🎯 v3.7.97 仇恨：寵物普攻傷害→記給該寵物
             p._atkCd = Math.ceil(d.atkItv * ((pst.slowAtk || 0) > 0 ? 2 : 1));
         }
     });
@@ -1444,6 +1445,7 @@ function _petAnimApply() {
         if (!host || !layer) return;
         let outs = (typeof player !== 'undefined' && player && player.cls) ? petsOutList() : [];
         if (typeof summonRenderList === 'function') outs = outs.concat(summonRenderList());   // 🧙 v3.2.19 召喚物 v2 共用寵物圖層（同欄位協定：uid/form/_px/_py/_dir/_animAct/_downed）
+        if (typeof guardRenderList === 'function') outs = outs.concat(guardRenderList());   // 🏰 城堡護衛 v2 共用寵物圖層（同欄位協定·八方向 assets/anim/<form>/d<dir>）
         let show = _petInWild() && !(bv && bv.classList.contains('hidden'));
         // 清掉不在場的
         layer.querySelectorAll('[data-pet]').forEach(el => { if (!show || !outs.some(p => p.uid === el.getAttribute('data-pet'))) el.remove(); });

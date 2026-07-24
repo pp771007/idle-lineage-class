@@ -160,12 +160,21 @@ function _clanNormalizeMode(raw) {
     if (!name || !leaderId) return null;
     let faction = raw.faction === 'esti' ? 'esti' : 'tros';
     let castle = Object.prototype.hasOwnProperty.call(CLAN_CASTLE_NAMES, raw.castle) ? raw.castle : null;
+    // 🏰 城堡護衛名冊（血盟模式共用·招募後全模式主操作角色跟隨；持續到宣戰別城或失去城堡）。
+    //   ⚠️ normalize 是白名單制，新欄位必須在此保留，否則讀/寫各過一次就被剃掉。
+    let guards = null;
+    if (raw.guards && typeof raw.guards === 'object' &&
+        Object.prototype.hasOwnProperty.call(CLAN_CASTLE_NAMES, raw.guards.city)) {
+        let cnt = Math.max(0, Math.min(4, Math.floor(Number(raw.guards.count) || 0)));
+        if (cnt > 0) guards = { city:raw.guards.city, count:cnt, hiredAt:Math.max(0, Math.floor(Number(raw.guards.hiredAt) || 0)) };
+    }
     return {
         name:name,
         leaderId:leaderId,
         faction:faction,
         createdAt:Math.max(0, Math.floor(Number(raw.createdAt) || 0)),
-        castle:castle
+        castle:castle,
+        guards:guards
     };
 }
 

@@ -227,7 +227,7 @@
         var sheet = document.getElementById('m-log-sheet');
         if (!sheet) {
             sheet = document.createElement('div'); sheet.id = 'm-log-sheet';
-            sheet.innerHTML = '<div id="m-log-hd"><span id="m-log-title">📜 戰鬥日誌</span><span style="display:flex;align-items:center;"><button type="button" class="m-log-sw">⇆ 切換</button><button type="button" id="m-log-close">✕ 關閉</button></span></div><div id="m-log-body"></div>';
+            sheet.innerHTML = '<div id="m-log-hd"><span id="m-log-title">📜 戰鬥／系統日誌</span><span style="display:flex;align-items:center;"><button type="button" class="m-log-sw">⇆ 切換</button><button type="button" id="m-log-close">✕ 關閉</button></span></div><div id="m-log-body"></div>';
             document.body.appendChild(sheet);
             sheet.querySelector('#m-log-close').addEventListener('click', closeLog);
             sheet.querySelector('.m-log-sw').addEventListener('click', switchLog);
@@ -245,10 +245,16 @@
         var sheet = document.getElementById('m-log-sheet'); if (sheet) sheet.remove();
         document.body.classList.remove('mlog-open');
     }
+    // ⚠ #syslog-panel 的 id 是歷史遺留名，實際內容是「世界頻道」(上游 v3.6.50 起)；
+    //   真正的系統日誌 #sys-log 在 #combat-log-panel 內、由核心 switchLogTab('sys') 切換。
+    //   故手機 ⇆ 切換＝在「戰鬥/系統日誌面板」與「世界頻道」之間切，標題要照這個對應。
+    function setLogTitle() {
+        var t = document.getElementById('m-log-title'); if (!t) return;
+        t.textContent = document.body.classList.contains('mlog-sys') ? '🌐 世界頻道' : '📜 戰鬥／系統日誌';
+    }
     function switchLog() {
         document.body.classList.toggle('mlog-sys');
-        var t = document.getElementById('m-log-title');
-        if (t) t.textContent = document.body.classList.contains('mlog-sys') ? '📜 系統與物品日誌' : '📜 戰鬥日誌';
+        setLogTitle();
     }
     function openLog() { moveLogToSheet(); document.body.classList.add('mlog-open'); updateNavActive(); }
     function closeLog() { document.body.classList.remove('mlog-open'); updateNavActive(); }
@@ -335,11 +341,15 @@
         else updateNavActive();
         if (justEntered) autoOpenSysLog();   // 必須在 setView 之後:setView 會 closeLog,先開會被關掉
     }
-    // 登入即開日誌並停在「系統與物品」頁:離線掛機結算摘要印在系統日誌,一進遊戲就看得到(使用者要求)。
+    // 登入即開日誌並切到「系統日誌」分頁:離線掛機結算摘要印在系統日誌,一進遊戲就看得到(使用者要求)。
+    // ⚠ 系統日誌在 #combat-log-panel 內、由核心 switchLogTab('sys') 切;不是 #syslog-panel(那是世界頻道)。
+    //   舊寫法 switchLog() 會把 mlog-sys 打開→顯示世界頻道、把離線摘要藏起來(標題也錯標成系統日誌)。
     // 只在「這次進入遊戲」做一次(nav 重建=重新登入才再做),之後玩家自己開關/切頁不受干擾。
     function autoOpenSysLog() {
         openLog();
-        if (!document.body.classList.contains('mlog-sys')) switchLog();
+        if (document.body.classList.contains('mlog-sys')) switchLog();   // 確保顯示戰鬥/系統面板,不是世界頻道
+        try { if (typeof switchLogTab === 'function') switchLogTab('sys'); } catch (e) {}   // 面板內分頁切到系統日誌(離線摘要在此)
+        setLogTitle();
     }
     function navTick() {
         var gs = document.getElementById('game-screen');
@@ -381,7 +391,8 @@
     navTick();
 
     // ── 對外介面（afk-offline 沿用 isMobile；setView/openLog 供離線結算後開日誌）──
-    window.__afkm = { version: '2.0.0', isMobile: detectMobile, setView: setView, openLog: openLog, setLog: function () { openLog(); } };
+    //   setLog('sys')＝離線結算後把日誌切到「系統日誌」分頁（摘要印在那）；其餘只開日誌。
+    window.__afkm = { version: '2.0.0', isMobile: detectMobile, setView: setView, openLog: openLog, setLog: function (which) { if (which === 'sys') autoOpenSysLog(); else openLog(); } };
 
     try { console.log('[AFK-mobile] hooks OK — 手機薄殼（橫幅讓位·版面用上游原版）。'); } catch (e) {}
 })();

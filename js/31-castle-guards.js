@@ -214,10 +214,14 @@ function castleGuardSync(force) {
 }
 
 // ---------- tick（js/03 召喚階段呼叫） ----------
+let _guardSyncCd = 0;   // 🩹 v3.8.0 名冊驗證節流計數：castleGuardSync 會讀血盟共用狀態（localStorage＋LZ＋簽章＋JSON.parse），每 tick 讀取在補跑時嚴重拖慢
 function castleGuardTick() {
     if (typeof player === 'undefined' || !player || !player.cls) return;
     if (player.dead) { if ((player.guardsV2 || []).length) { player.guardsV2 = []; renderGuardPanel(true); } return; }
-    castleGuardSync(false);
+    // 名冊驗證改「每 ~1 秒一次」，且補跑期間完全跳過（此期間玩家無法招募/遣散·名冊不會變）→ 免去補跑每 tick 的血盟狀態重讀
+    if (!(typeof catchupActive === 'function' && catchupActive())) {
+        if ((_guardSyncCd = (_guardSyncCd | 0) - 1) <= 0) { _guardSyncCd = 10; castleGuardSync(false); }
+    }
     let list = player.guardsV2 || [];
     if (!list.length) return;
 
@@ -343,6 +347,7 @@ function renderGuardTeamHTML() {
     } catch (e) { return ''; }
 }
 function renderGuardPanel(force) {
+    if (!force && typeof catchupActive === 'function' && catchupActive()) return;   // 🩹 v3.8.0 補跑期間不重繪隊伍面板（renderSquadPanel 無補跑閘·會每 tick 全量重建 DOM）；補跑結束後下一個 tick 自動刷新
     try {
         let sig = guardTeamSignature();
         if (!force && sig === _guardPanelSig) return;

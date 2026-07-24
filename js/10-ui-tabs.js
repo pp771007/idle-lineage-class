@@ -2514,6 +2514,10 @@ function _allyAutoBuffChips(a) {
 }
 
 function renderSquadPanel() {
+    // 🩹 v3.8.1 補跑期間不重建隊伍面板：傭兵/寵物/召喚物/城堡護衛 的 HP 變動都經由此函式（22 處呼叫·多為每 tick/每擊），
+    //    而它會整區重建 team 分頁 DOM——補跑上千 tick 時是主要拖慢來源（比照 renderMobs/flushTickRender 已有的 catchupActive 閘）。
+    //    補跑結束後由下一個 tick 的各實體 render 或 js/23 的 500ms interval 自動刷新（補跑中面板不可見·無感）。
+    if (typeof catchupActive === 'function' && catchupActive()) return;
     let panel = document.getElementById('squad-panel');
     if (!panel) return;
     if (!_autoCollapseInit) { _autoCollapseInit = true; }   // 🔧 v2.6.76 收合偏好停用：自動化設定已改分頁內嵌(v2.6.74)、傭兵隊伍面板取消收合恆展開（舊 fb5_*_collapsed 偏好不再套用·防「收合過就永遠展不開」）

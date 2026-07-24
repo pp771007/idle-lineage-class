@@ -1224,6 +1224,16 @@
     // 不設「近期活躍就略過」的鎖:重新整理也照常結算那一小段 → 配合存活回原狩獵圖,刷新不會被丟回村莊。
     // 攀登/遺忘之島不受「村莊/攻城」這兩道略過閘:它本來就不是村莊/攻城圖,且即使 gap≈0(立即重整)也要把人放回原地續掛。
     if (!isClimb && !isObl) {
+      // 🧑‍🤝‍🧑 受僱傭兵：上游把傭兵鎖在安全區、不能自行掛機（線上也一樣）→ 一進來就跳過，不進 runCatchup。
+      //   放在村莊閘之前＝就算離線錨點還凍在上一張狩獵圖，也不會白跑 24h、更不會誤發掛機收益（經驗改由待領帳本領）。
+      //   用不走 2 秒記憶的 currentRoleIsMercenary（memo 可能殘留剛切換前的角色值），try 包底＝偵測失敗就照常往下走。
+      var _asMerc = false;
+      try { _asMerc = (typeof currentRoleIsMercenary === 'function') && currentRoleIsMercenary(); } catch (e) {}
+      if (_asMerc) {
+        console.info('[AFK] 受僱傭兵：被鎖在安全區、不自行掛機，略過離線結算。');
+        skipNote('這隻角色目前受僱為其他角色的傭兵，無法自行掛機，想恢復離線掛機請先解散傭兵身分。');
+        return;
+      }
       if (!savedMap || savedMap.indexOf('town_') === 0) {
         console.info('[AFK] 關閉時位於村莊/無有效地圖，無離線戰鬥收益。');
         skipNote('上次關閉時人在村莊/安全區（' + (savedMap ? mapName(savedMap) : '無地圖') + '），離線期間沒有戰鬥收益。要離線掛機請先前往狩獵地圖再關閉遊戲。');

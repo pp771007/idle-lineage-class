@@ -67,7 +67,7 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 | `afk-lzcache.js` | 存檔解壓快取(同一份壓縮字串只解一次;核心每殺一隻怪都重讀整包血盟狀態,離線結算 4×) |
 | `afk-ui.js` | 共用彈窗:接管 alert、`AFK_UI.confirm`、openLayer/closeLayer(返回鍵/ESC 關最上層) |
 | `afk-extradata.js` | dex/wiki 共用手動補充資料(`AFK_EXTRA`:itemAcquire/武器特性白話/mapName) |
-| `afk-offline.js` | **⏸ 暫停使用中**(2026-07-21;開關被鎖成不可勾)——離線掛機整套,改由上游 js/27 接手,見下方離線章節 |
+| `afk-offline.js` | 離線掛機整套(關遊戲也結算掛機收益;monkey-patch loadGame/saveGame/changeMap/killMob/gainItem,見下方離線章節) |
 | `afk-mobile.js` | 手機版面薄殼(底部導覽列切三欄、手機幾何的彈窗讓位、浮動日誌;版面用上游原版) |
 | `afk-backnav.js` | 手機返回鍵/手勢在子畫面回上層而不是關 PWA |
 | `afk-battlehud.js` | 手機戰鬥狀態列(取代上游只有 HP/MP 的 #mobile-vitals;自己量橫幅) |
@@ -113,18 +113,12 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 
 > **獨立頁與跨頁連結(dex↔wiki)**:`?view=dex`/`?view=wiki` 鋪滿整頁+頁首導覽;跨頁一律走對方暴露的 mode-aware `goto`(`AFK_DEX_API.goto({q})`/`AFK_WIKI_API.goto({tab,cls,q})`,自動判斷模態連模態/網址連網址);「名字→跳掉落查詢」inline 連結用 `<span class="m-dexlink" data-dexq="名字">`(全域委派);開對方前先 `close()` 來源模態。新增跨頁連結要重用/擴充 `goto`,不要在呼叫端自己判斷。
 
-## 🗺️ 離線掛機——⏸ 目前整套停用,走上游 js/27
+## 🗺️ 離線掛機——✅ 啟用中(afk-offline)
 
-**2026-07-21 起 afk-offline 暫停使用**:上游從 v3.6.97 開始自帶離線收益、v3.7.17 又把背景分頁也收進同一套,**作者仍在持續改動**,我方跟著包一層的成本與風險都太高(這次同步就踩到「補丁讓位掉取樣鉤子、結算路徑卻沒讓位 → 背景 3 小時收益 0 還把 buff 扣光」)。故整套讓位:
+**歷史**:2026-07-21 曾整套暫停(上游 v3.6.97~v3.7.17 自帶離線收益、又持續改動,我方讓位)。**2026-07-24 恢復啟用**:上游 v3.7.94 反手把 `js/27-offline-rewards.js` 從 index.html **整個移除**(不再載入)、還主動清掉 `lineage_idle_offline_v1_*` 殘骸——上游自己放棄離線收益了。讓位對象消失 → 不恢復的話玩家關遊戲=**零離線收益**,故解鎖。恢復動作:`afk-toggles` 拿掉 `offline`/`history` 的 `locked`、`afk-slotinfo` 還原掛機地圖/時間顯示(開關名稱改回「選角掛機資訊」)、smoke `need` 加回 `[AFK]`/`[AFK-history]`。**實測**(真實 Lv.97 存檔·CPU throttle 模擬手機·24h 滿載):收益/掉落正常、存檔簽章與內容無損、撞死即停在;耗時 桌機 5s / 4x 手機 43s / 6x 低階手機 80s。
 
-- `afk-toggles` 的 `offline` 項目帶 `locked` 字串 → `enabled('offline')` 一律回 false(**不管玩家 localStorage 存過什麼**),面板上該列 disabled、不可勾、顯示停用原因。老玩家存過 `'1'` 也一樣關閉。
-- **補丁 8 已整個移除**,`js/27-offline-rewards.js` 回到純上游鏡像(blob 對得上上游),上游的離線/背景結算全程生效。
-- 連帶處理:`afk-slotinfo` 的「📍 掛機地圖」與「⏱ 已掛機多久」都不顯示(資料源 `afk_map_`/`afk_ts_` 沒人蓋,老玩家會凍在最後一次遊玩;地圖中文名還要走已不存在的 `window.__afk.mapName`,會直接露英文 id),只剩席琳世界狀態,開關名稱改為「選角附加資訊」;smoke 的 `need` 拿掉 `[AFK]`。
-- `afk-history`(離線掛機紀錄)同樣鎖成不可勾:不會再有新紀錄,留著只會讓玩家以為功能還在(舊的 `afk_hist_<slot>` 沒有刪,恢復後直接看得到)。
-- **恢復時要一起還原**:上面每一項 + 把 `locked` 拿掉。afk-offline.js 本體與它包 `settleBackgroundMs` 的邏輯都原封留著,沒有刪。
-
-以下是 afk-offline 的原始設計原則,**恢復啟用前必讀**(檔案還在,邏輯沒動):
-
+- **補丁 8 不需要、也沒恢復**:它當初是「讓上游 js/27 讓位給 afk-offline」用的,但 js/27 現在**根本不載入**,afk-offline 直接就是唯一離線收益來源。上游哪天若把 js/27 加回 index.html,才要重新評估雙方會不會搶(見下方兩條 🚨)。
+- `afk-slotinfo` 的「📍 掛機地圖」「⏱ 已掛機多久」資料源 `afk_map_`/`afk_ts_` 由 afk-offline 心跳蓋、中文名走 `window.__afk.mapName`——afk-offline 一旦再停用,這兩段要跟著關(否則露凍住的假數字/英文 id)。
 
 核心原則:**離線掛機=把「在線上會發生的掛機」照跑一遍**(同圖續掛、撞死即停結算到死前、存活回原地)。「離線」定義=**關閉遊戲**;分頁切背景不算(遊戲照跑、心跳照蓋錨點,是預期行為,不要「順手修」)。
 
@@ -136,9 +130,8 @@ CI 版:GitHub Actions `sync-upstream.yml`(**只有 `workflow_dispatch`,無 GitHu
 - **判準:遊戲邏輯的時間判斷用 `state.ticks`,不用 `Date.now()`**(補跑壓縮時間,牆鐘幾乎凍結)。例外=「關遊戲也該倒數」的(攻城冷卻)留牆鐘。
 - **ff 洩漏判準**:補跑(`state.ff`)期間,戰鬥路徑**直接**呼叫的 `render*`/重副作用(`saveGame`)要被 `!state.ff` 擋住或函式內早退;**自己跑的 timer(setInterval/rAF)也要問「補跑期間它還在跑嗎」**。守衛用 `state.ff && !state.ffSmall`(小補跑要放行)。上游是原文改不得→這類守衛由 afk-offline 以 wrapper 實作(如 sprite ticker、音效靜音)。
 - debug:`window.__afk.forceCatchup(分鐘, noFast)`。全模擬慢是戰鬥模擬本身,不是掃描/記憶體,別往那優化。
-- **🚨 背景分頁回前景由 afk-offline 包 `settleBackgroundMs` 接管,交回核心 `queueCatchupMs` 逐 tick 補跑**:上游 v3.7.17 把 visibilitychange/bfcache 從 `queueCatchupMs` 改成 `settleBackgroundMs` → `offlineSettleCatchup`(統計一次結算)。那套要靠上游自己的實戰取樣,而取樣鉤子正是補丁 8 讓位掉的 → 我方沒有 profile,它走「沒有合格樣本」分支:只推進 `state.ticks`、扣光 buff/冷卻/藥水時間、清掉 `_tickDebt`,**零收益返回**(實測背景 3 小時=0 金幣,同期核心補跑 2,326 萬)。判準:**上游只要再動 js/01 的 visibilitychange/pageshow 或 js/27 的 catchup 入口,就要重驗這條**——「離線=關遊戲、背景=遊戲照跑補回來」是本外掛的前提,不是可調偏好。核心補跑本來就有時間預算讓步(`FF_BUDGET_MS`)＋抽樣快轉(債>10 分鐘 1 抵 10),不會凍住分頁。
-- **上游 v3.6.97 起自帶離線收益(js/27),已由補丁 8 讓位**:它包的是 loadGame/saveGame/killMob/changeMap ——跟 afk-offline 同一批。上游之後若再擴這套,先確認補丁 8 的錨點還在、且沒繞過 guard 另開入口。
-- **🚨 測「離線回來」時,時間戳要三處一起回撥**:afk-offline 的 `afk_ts_<slot>`、上游的 `lineage_idle_offline_v1_*`、**以及存檔裡的 `player.offlineHunt.awaySince`**(存檔 payload 是 `{v,p:player,...}`,在 `d.p.offlineHunt`)。漏掉存檔內那份 → 上游一律判定「離線 0 分鐘」不結算,看起來像「兩套和平共存」,**實際上線會雙重發獎**(踩過:據此下過「沒有重複發獎」的錯誤結論)。
+- **🚨 背景分頁回前景由 afk-offline 包 `settleBackgroundMs` 接管,交回核心 `queueCatchupMs` 逐 tick 補跑**:上游 v3.7.17 把 visibilitychange/bfcache 從 `queueCatchupMs` 改成 `settleBackgroundMs` → `offlineSettleCatchup`(統計一次結算),那套本來要靠上游自己的實戰取樣。我方直接把 `settleBackgroundMs` 包成 `queueCatchupMs(ms)`,不走上游的一次結算(核心補跑有時間預算讓步 `FF_BUDGET_MS`＋抽樣快轉,不會凍住分頁)。判準:**上游只要再動 js/01 的 visibilitychange/pageshow 或 catchup 入口,就要重驗這條**——「離線=關遊戲、背景=遊戲照跑補回來」是本外掛的前提,不是可調偏好。
+- **🚨 目前 js/27 不載入 → afk-offline 是唯一離線收益來源、無雙重發獎**。但上游若哪天把 `js/27-offline-rewards.js` 加回 index.html,兩套就會搶(它也包 loadGame/saveGame/killMob/changeMap)→ 屆時測「離線回來」時,時間戳要三處一起回撥:afk-offline 的 `afk_ts_<slot>`、上游的 `lineage_idle_offline_v1_*`、**以及存檔裡的 `player.offlineHunt.awaySince`**(在 `d.p.offlineHunt`)。漏掉存檔內那份 → 上游判定「離線 0 分鐘」看似和平共存,**實際會雙重發獎**(踩過)。
 
 ## 📦 Service Worker / PWA(sw.js 我方檔)
 

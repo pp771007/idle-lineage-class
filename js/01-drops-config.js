@@ -1235,7 +1235,7 @@ function repairMasteryState(p) {
 }
 // 🌟 v3.0.99 隊長團隊光環：任一隊員(玩家或未倒地傭兵)維持該 buff 即全隊生效。清單供「傭兵可維持/隊伍面板可開關/避免重複施放」使用。
 //   ⚠️不含完全免疫類(絕對屏障/大地屏障/魔法屏障·刻意不給傭兵)。golem/ogre/lich 為幻術幻象召喚(illuSummon)·此處僅列其「光環」由玩家提供·傭兵暫不維持(見 _isMercSelfBuff)。
-const TEAM_AURA_SKILLS = ['sk_elf_earthbless', 'sk_royal_burnweapon', 'sk_royal_shield'];   // 傭兵可維持的團隊光環（大地祝福AC-7·灼熱武器傷害/命中+5·閃亮之盾AC-8）。任一來源施放一次即惠及玩家、傭兵、寵物與召喚物，同技能不重複疊加。鋼鐵防護為施法者自身 AC-10，不列入團隊光環。⚠️v3.4.45 水之元氣/化身已改「單體共享」(TEAM_SHARE_BUFFS)→移出此清單。⚠️此陣列＝唯一註冊點（勿在 DB.skills 加 teamAura 旗標·無人讀取）。
+const TEAM_AURA_SKILLS = ['sk_elf_earthbless', 'sk_royal_burnweapon', 'sk_royal_shield', 'sk_elf_dancefire'];   // 傭兵可維持的團隊光環（大地祝福AC-7·灼熱武器傷害/命中+5·閃亮之盾AC-8·🔥v3.8.3 舞躍之火近距離傷害+3）。任一來源施放一次即惠及玩家、傭兵、寵物與召喚物，同技能不重複疊加。鋼鐵防護為施法者自身 AC-10，不列入團隊光環。⚠️v3.4.45 水之元氣/化身已改「單體共享」(TEAM_SHARE_BUFFS)→移出此清單。⚠️此陣列＝唯一註冊點（勿在 DB.skills 加 teamAura 旗標·無人讀取）。
 // 🤝 v3.4.45 單體輔助共享清單：施法者(玩家/傭兵)自己有清單內 buff、隊友沒有 → 由 shareTeamBuffs(js/06) 一次補滿所有缺者(逐一扣施法者 MP)。與「自動維持勾選」解耦(只看清單＋是否持有)。
 //   ⚠️其中原為全隊光環者(幻覺歐吉/巫妖/鑽石高崙/化身·水之元氣)已於本版改單體：移出 TEAM_AURA_SKILLS＋teamIlluAura/teamAcBonus/teamDmgReduceMult 只對寵物/召喚保留(forMinion)；玩家/傭兵改各自持有(recompute d)＋此共享逐人補。
 const TEAM_SHARE_BUFFS = new Set(['sk_holy_wpn', 'sk_dex_up', 'sk_haste_spell', 'sk_greater_haste', 'sk_bless_wpn', 'sk_str_up', 'sk_holy_barrier', 'sk_illu_ogre', 'sk_illu_focus', 'sk_illu_lich', 'sk_illu_golem', 'sk_illu_avatar', 'sk_elf_watervital', 'sk_elf_windshot', 'sk_elf_earthshield', 'sk_elf_preciseshot', 'sk_elf_stormeye', 'sk_heal_energy_storm']);   // 🌀 v3.4.71 治癒能量風暴＝單體輔助共享（施法者有→幫缺的傭兵/玩家補·各自 320s 結束才再補）；v3.5.87 補強力加速術（漏列·原本「只有強力加速術」的施法者不分享加速）

@@ -1776,6 +1776,40 @@ function _wcLogOptionalNpcLine(id, npc, kind, question, fallback, className) {
         if (target) target.textContent = rewritten;
     }).catch(function () {});
 }
+
+function syncNpcLanguageSetting() {
+    let checkbox = document.getElementById('set-npc-language-on');
+    let control = document.getElementById('npc-language-setting');
+    if (!checkbox) return;
+    let language = (typeof window !== 'undefined') ? window.idleLineageNpcLanguage : null;
+    let status = null;
+    try {
+        status = language && typeof language.getStatus === 'function'
+            ? language.getStatus()
+            : null;
+    } catch (e) {}
+    let available = !!(language && typeof language.setEnabled === 'function' && status && status.installed);
+    checkbox.disabled = !available;
+    checkbox.checked = !!(available && status.enabled);
+    if (control) {
+        control.classList.toggle('opacity-50', !available);
+        control.classList.toggle('cursor-not-allowed', !available);
+        control.classList.toggle('cursor-pointer', available);
+        control.title = !language
+            ? '僅限 Idle Lineage 安裝版'
+            : (!available ? '本機 NPC AI 模型未安裝' : (checkbox.checked ? 'NPC AI 對話已開啟' : 'NPC AI 對話已關閉'));
+    }
+}
+
+function setNpcLanguageEnabled(enabled) {
+    let language = (typeof window !== 'undefined') ? window.idleLineageNpcLanguage : null;
+    try {
+        if (language && typeof language.setEnabled === 'function')
+            language.setEnabled(enabled === true);
+    } catch (e) {}
+    syncNpcLanguageSetting();
+}
+
 function _wcCanIdleChat() {
     if (typeof document === 'undefined') return false;
     let game = document.getElementById('game-screen');
@@ -2266,6 +2300,7 @@ function _wcAddGrudge(npc, opts) {
         }
         if (typeof initWorldLogLock === 'function') initWorldLogLock();
         if (!_wcIdleTimer) _wcIdleTimer = setInterval(_wcPostIdleChat, 60 * 1000);
+        if (typeof syncNpcLanguageSetting === 'function') syncNpcLanguageSetting();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
     else bind();

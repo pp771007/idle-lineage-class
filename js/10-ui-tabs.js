@@ -2474,6 +2474,7 @@ function switchTab(t, btn) {
     if(t === 'audit' && typeof renderAuditTab === 'function') renderAuditTab();
     if(t === 'pvp' && typeof renderPvpTab === 'function') renderPvpTab();
     if(t === 'clan' && typeof renderClanTab === 'function') renderClanTab();
+    if(t === 'automation' && typeof syncNpcLanguageSetting === 'function') syncNpcLanguageSetting();
 }
 
 // ===== 🤝 協力傭兵隊伍面板（Phase 1：顯示血/魔/經驗條＋每傭兵攻擊技能/治癒魔法設定）=====
@@ -2489,7 +2490,10 @@ function _allySkillOptions(ally, kind, cur) {
     let sorted = [...skills].filter(s => DB.skills[s] && !DB.skills[s].procOnly).sort((a, b) => (DB.skills[a].tier || 0) - (DB.skills[b].tier || 0));
     sorted.forEach(sid => {
         let sk = DB.skills[sid];
-        // ⚠️ ally.skills 皆為「該傭兵已學會」的技能→一律可選；不可用 skillReqLv/reqEle 判可用性（那會依『目前玩家』職業誤判，使跨職業傭兵如幻術士的攻擊技全被 disabled）
+        // ⚠️ ally.skills 皆為「該傭兵已學會」的技能→一律可選；不可用 skillReqLv 判可用性（那會依『目前玩家』職業誤判，使跨職業傭兵如幻術士的攻擊技全被 disabled）
+        // 🧝 v3.8.5 唯一例外＝妖精屬性閘：改讀 **ally.elfEle**（傭兵快照自帶）而非 player.elfEle 就不會誤判。
+        //    來源角色換屬性後那些魔法在他自己身上已是灰色不可用 → 擔任傭兵時直接不列（施放端 js/06 同步停放）。
+        if (typeof allySkillElementOk === 'function' && !allySkillElementOk(ally, sid)) return;
         let match = (kind === 'atk')
             ? (sk.type === 'atk' && !sk.healSlot)
             : (kind === 'convert')
@@ -2534,7 +2538,8 @@ function renderSquadPanel() {
         + '||P:' + _pets.map(p => p.uid + ':' + p.lv + ':' + (p._downed ? 'D' : '') + ':' + Math.round(p.hp / Math.max(1, p.mhp) * 20) + ':' + Math.round(p.mp / Math.max(1, p.mmp) * 20) + ':' + Math.round((p.exp || 0) / Math.max(1, petExpReq(p.lv)) * 20) + ':' + (p.potPct || 0) + ':' + Math.ceil((p._reviveCd || 0) / 10)).join('|')
         + '||S:' + ((typeof summonTeamSignature === 'function') ? summonTeamSignature() : '')   // team 分頁：名單/倒地/等級＋寵物/召喚血量(5%階)變動才重建
         + '||G:' + ((typeof guardTeamSignature === 'function') ? guardTeamSignature() : '');   // 🏰 城堡護衛血量/倒地/復活倒數變動才重建
-    let sigSkill = _sigAllies;   // 🩹 v3.2.74 skill 分頁只看傭兵名單/等級→戰鬥中寵物/召喚掉血不重建·開啟的技能下拉不被關
+    let sigSkill = _sigAllies + '||E:' + allies.map(a => a.elfEle || '').join(',');   // 🩹 v3.2.74 skill 分頁只看傭兵名單/等級→戰鬥中寵物/召喚掉血不重建·開啟的技能下拉不被關
+    // 🧝 v3.8.5 追加 elfEle：來源妖精換屬性後 refreshAllyOnce 重建快照時名字/等級都沒變 → 簽章不動 → 技能下拉與自動維持勾選會停在舊屬性的清單（該隱藏的沒隱藏）
     let _squadRebuilt = false;
     if (sigTeam !== _squadSigTeam) {
         _squadSigTeam = sigTeam;

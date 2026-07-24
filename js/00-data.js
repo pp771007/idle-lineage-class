@@ -1,6 +1,6 @@
 ﻿/** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v3.8.1';   // 🏷️ 版本號：末段 0~99 線性遞增，達 100 進位（中位 +1、末段歸 0）
+const GAME_VERSION = 'v3.8.5';   // 🏷️ 版本號：末段 0~99 線性遞增，達 100 進位（中位 +1、末段歸 0）
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -2888,7 +2888,7 @@ const DB = {
         // 四階 (Lv 40)
         "sk_elf_magicerase": { n: "魔法消除", type: "atk", tier: 4, reqE: 40, mp: 30, dmgType: "magic", status: { kind: "mrhalf", pbase: 150, dur: 16 } },
         "sk_elf_summon": { n: "召喚屬性精靈", type: "buff", tier: 4, reqE: 40, mp: 30, dur: 3600, reqEleAny: true, desc: "向締結契約的元素祈求援助，召來與自身屬性相同的精靈並肩作戰。", summon: { n: "夥伴：{ele}之精靈", dmgDice: [1, 40], elemScale: 20, dmgMult: 1.00, mrPenBase: 10, interval: 10, kind: "ranged", eleFromPlayer: true, hitLvOff: 10 } },   // ⚠️ 以下召喚數值欄位(dmgDice/elemScale/dmgMult/mrPenBase/interval/hitLvOff)已被 _elfSpiritKingOverride(js/07·讀 js/23 _spiritSpec 規格表)無條件覆蓋·僅存參考
-        "sk_elf_dancefire": { n: "舞躍之火", type: "buff", tier: 4, reqE: 40, mp: 30, dur: 1200, reqEle: "fire", d: { meleeDmg: 5 } },
+        "sk_elf_dancefire": { n: "舞躍之火", type: "buff", tier: 4, reqE: 40, mp: 30, dur: 1200, reqEle: "fire", d: { meleeDmg: 3 }, msg: "舞動的火焰環繞全隊，所有隊員的近距離傷害提升。" },   // 🔥 v3.8.3 改團隊光環（TEAM_AURA_SKILLS）：任一來源維持即惠及玩家／傭兵／寵物／召喚物／城堡護衛，近距離傷害 +3（原自身 +5）
         "sk_elf_stormeye": { n: "暴風之眼", type: "buff", tier: 4, reqE: 40, mp: 40, dur: 1200, reqEle: "wind", d: { rangedDmg: 2, rangedHit: 2 } },
         "sk_elf_earthshield": { n: "大地屏障", type: "buff", tier: 4, reqE: 40, mp: 50, dur: 8, reqEle: "earth" },
         "sk_elf_lifespring": { n: "生命之泉", type: "heal", tier: 4, reqE: 40, mp: 50, reqEle: "water", valDice: [4, 35], healDice: [5, 50], healBase: 250, fullRestore: true, ignoreWaterVital: true, healCooldownTicks: 200, msg: "生命之泉使傷勢完全復原。" },

@@ -384,7 +384,7 @@ function summonV2AttackOnce(s, d, t, owner) {
     const r = roll(1, 20);
     _petAnimAct(s, 'attack', t.uid);   // 🎬 v3.2.73 補跑中不設→回前景不同步爆播
     if (!((r === 20) || (r !== 1 && hv >= r))) { if (typeof vfxMiss === 'function') vfxMiss(t); logCombat(`<span class="text-purple-300">${s.form}</span> 的攻擊未命中。`, 'miss'); return; }
-    let dmg = ((r === 20 ? d.dice : roll(1, d.dice)) + d.flat + _sgb.dmg) * _attackMult + (_ia ? _ia.ed : 0);
+    let dmg = ((r === 20 ? d.dice : roll(1, d.dice)) + d.flat + _sgb.dmg) * _attackMult + (_ia ? _ia.ed : 0) + (_ia ? (_ia.mel || 0) : 0);   // 🔥 v3.8.3 _ia.mel＝舞躍之火團隊光環近距離傷害+3（召喚物一般攻擊視為近距離）
     dmg = Math.max(1, Math.floor(dmg) - (t.dr || 0));
     dmg += traumaPhysicalBonus(t);
     dmg = Math.max(1, Math.floor(dmg * _ownerDmgMult));
@@ -442,7 +442,7 @@ function spiritAttackOnce(s, t, owner) {
     const flat = Math.floor(cha * (owner.lv || 1) / (spec.scale || 20));
     const mrPen = (spec.mrPenBase || 0) + Math.floor(cha / 10);
     const mult = summonDamageMult(smLike, owner, true, (_ownerIa && _ownerIa.md) || 0);
-    const dmg = summonElementDamage(spec.dice || [1, 40], s.ele, t, flat + _sgb.dmg + ((_ia && _ia.royalEd) || 0), mult, mrPen);   // 👑 灼熱武器：魔法型屬性精靈的一般攻擊亦取得全隊額外傷害
+    const dmg = summonElementDamage(spec.dice || [1, 40], s.ele, t, flat + _sgb.dmg + ((_ia && _ia.royalEd) || 0) + ((_ia && _ia.mel) || 0), mult, mrPen);   // 👑 灼熱武器：魔法型屬性精靈的一般攻擊亦取得全隊額外傷害；🔥 v3.8.3 舞躍之火近距離傷害+3（屬性精靈一般攻擊視為近距離）
     t.justHit = (s.ele && s.ele !== 'none') ? s.ele : 'magic';
     t.curHp -= dmg; if (typeof terrorVisageOnDamage === 'function') terrorVisageOnDamage(t, dmg, 'melee'); mobWake(t);   // 🌅 巨大骷髏：屬性精靈一般攻擊視為近距離
     logCombat(`<span class="text-purple-300">${s.form}</span> 攻擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害。`, 'player');

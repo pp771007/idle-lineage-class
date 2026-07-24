@@ -393,7 +393,13 @@
                 <!-- 🔧 v2.6.74 自動化設定改「分頁內嵌」（原 v2.6.73 浮動視窗取消）：與 能力/技能 同框架，switchTab(automation) 切換；set-* 控制項恆在 DOM 供 saveGame/自動化讀取 -->
                 <div id="tab-automation" class="p-4 text-base overflow-y-auto h-full hidden">
                     <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
-                        <button type="button" class="btn w-24 py-1 mb-2 text-sm font-bold bg-slate-700 hover:bg-slate-600 border-slate-500 text-slate-100" onclick="returnToCharacterSelect()">回選角</button>
+                        <div class="flex items-center gap-2 mb-2">
+                            <button type="button" class="btn w-24 py-1 text-sm font-bold bg-slate-700 hover:bg-slate-600 border-slate-500 text-slate-100" onclick="returnToCharacterSelect()">回選角</button>
+                            <label id="npc-language-setting" class="btn min-w-32 py-1 px-3 text-sm font-bold bg-slate-700 hover:bg-slate-600 border-slate-500 text-cyan-100 cursor-pointer flex items-center justify-center gap-2" title="本機 NPC AI 對話">
+                                <input type="checkbox" id="set-npc-language-on" class="w-4 h-4" onchange="setNpcLanguageEnabled(this.checked)">
+                                <span>NPC AI 對話</span>
+                            </label>
+                        </div>
                         <div class="flex items-center justify-between gap-3">
                             <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-sfx-on" class="w-4 h-4" onchange="try{setSfxOn(this.checked)}catch(e){}"><span class="text-sm text-amber-200 font-bold">🔊 戰鬥音效</span></label>
                             <input type="range" id="set-sfx-vol" min="0" max="100" value="50" step="5" class="flex-1 max-w-[150px]" oninput="try{setSfxVol(this.value)}catch(e){}" title="音效音量">
@@ -545,37 +551,37 @@
     </script>
 
     <script src="js/anim-manifest.js?v=b8c44c096f.7.65"></script>
-    <script src="js/00-data.js?v=917b97df09.7.97"></script>
-<script src="js/01-drops-config.js?v=8e94a96f20.8.0-mastery-reset"></script>
-<script src="js/02-stats-recompute.js?v=a4d89c708e.7.80"></script>
-    <script src="js/03-combat-core.js?v=07ccfed1b4.7.97-threat"></script>
-    <script src="js/04-combat-attack.js?v=81c817b990.7.97-threat"></script>
-<script src="js/05-kill-progression.js?v=baaeb3c847.7.95"></script>
-    <script src="js/06-status-allies.js?v=ed6bdb5063.7.97-threat"></script>
+    <script src="js/00-data.js?v=b3095859a5.8.3-dancefire-team"></script>
+<script src="js/01-drops-config.js?v=83cad59ae6.8.3-dancefire-team"></script>
+<script src="js/02-stats-recompute.js?v=4fb18b4ca7.8.3-dancefire-team"></script>
+    <script src="js/03-combat-core.js?v=33fbf9d29d.8.4-guard-support"></script>
+    <script src="js/04-combat-attack.js?v=84db1f2876.8.3-dancefire-team"></script>
+<script src="js/05-kill-progression.js?v=83a26b7495.8.2-main-gear"></script>
+    <script src="js/06-status-allies.js?v=1bfca08770.8.5-merc-elf-ele"></script>
     <script src="js/07-skills-cast.js?v=69506cd171.7.97-threat"></script>
 <script src="js/08-items-equip.js?v=27f14840e3.7.96"></script>
 <script src="js/09-vfx-render.js?v=dc91665de5.7.95"></script>
-<script src="js/10-ui-tabs.js?v=9c8b56dcfa.8.1-catchup-squadpanel"></script>
+<script src="js/10-ui-tabs.js?v=1780fcc98a.8.5-merc-elf-ele"></script>
 <script src="js/11-world-map.js?v=4dfc9eccdc.7.99-wino-sprite"></script>
 <script src="js/12-npc-quests.js?v=96a2004646.7.56"></script>
-<script src="js/13-shop-save.js?v=c6db2628b3.8.0-mastery-reset"></script>
+<script src="js/13-shop-save.js?v=2baaa626f7.8.2-merc-exp-monotonic"></script>
 <script src="js/14-craft-pandora.js?v=3d0d7eba1c.7.75"></script>
 <script src="js/15-cards.js?v=b1159fb025.7.66"></script>
 <script src="js/16-equip-book.js?v=b33a18a2d7.5.100-audit-tail"></script>
 <script src="js/18-misc-book.js?v=13944acf14.5.100-audit-tail"></script>
-<script src="js/17-audio.js?v=150660913e.7.57"></script>
+<script src="js/17-audio.js?v=07c972f6fe.8.1-monia-sfx"></script>
 <script src="js/19-equipment-window.js?v=3d33f8f53d.7.57"></script>
 <script src="js/20-warehouse-window.js?v=f0ce1aeb02.5.100-audit-tail"></script>
 <script src="js/21-relic-book.js?v=bdeff66680.5.100-audit-tail"></script>
-    <script src="js/23-summons.js?v=01499f8e1a.7.97-threat"></script>
-    <script src="js/22-pets.js?v=d1d0922154.7.97-threat"></script>
+    <script src="js/23-summons.js?v=045a1a1287.8.3-dancefire-team"></script>
+    <script src="js/22-pets.js?v=d5c56b98d8.8.3-dancefire-team"></script>
     <script src="js/24-pandora-relic-market.js?v=e6bd019fcb.7.70"></script>
     <script src="js/25-clan-system.js?v=5186224489.7.96-castle-guards"></script>
-    <script src="js/26-world-channel.js?v=6d034c8bf8.7.95"></script>
+    <script src="js/26-world-channel.js?v=6fca57ef71.8.4-npc-language"></script>
 <script src="js/28-pvp-arena.js?v=6891d40660.7.89-stage33-host-sign"></script>
 <script src="js/29-siege-v2-data.js?v=eae6887df7.7.63-siege-v2"></script>
 <script src="js/30-siege-v2.js?v=616f9643f4.7.89-castle-ring-layout"></script>
-<script src="js/31-castle-guards.js?v=839d3cbb5a.8.0-catchup-perf"></script>
+<script src="js/31-castle-guards.js?v=a0f6d7303f.8.4-guard-support"></script>
 <script src="js/32-threat.js?v=ca37cd7136.7.97-threat"></script>
     <!-- ═══════════ 加掛版外掛層（核心永遠是原作者原版；我們的功能全部是外掛疊上去） ═══════════ -->
     <!-- 此區塊由 scripts/sync-upstream.mjs 於「拉上游 index.html 後」自動注入到 </body> 之前。?v= 由 stamp-code-versions 補。 -->
@@ -591,9 +597,9 @@
     <script src="afk-ui.js?v=c90fb61e51"></script>
     <script src="afk-extradata.js?v=a069862188"></script>
     <!-- 離線快速結算（自己 monkey-patch 包核心 saveGame/loadGame/changeMap/killMob/gainItem；搭配 maybeSpawnMobs 補丁） -->
-    <script src="afk-offline.js?v=1ddc23f304"></script>
+    <script src="afk-offline.js?v=dfc72e78ca"></script>
     <!-- 手機版面 / 返回鍵 -->
-    <script src="afk-mobile.js?v=ab7d37da37"></script>
+    <script src="afk-mobile.js?v=739f787779"></script>
     <script src="afk-backnav.js?v=a02389afc7"></script>
     <script src="afk-battlehud.js?v=fb7e1703ae"></script>
     <script src="afk-mapbar.js?v=048a44152b"></script>
@@ -601,15 +607,15 @@
     <!-- 資訊頁 / 查詢頁 -->
     <script src="afk-slotinfo.js?v=e864548cad"></script>
     <script src="afk-loadslots.js?v=a43834b125"></script>
-    <script src="afk-dex.js?v=8989c7424f"></script>
-    <script src="afk-wiki.js?v=935a35ed4a"></script>
+    <script src="afk-dex.js?v=68a5eab422"></script>
+    <script src="afk-wiki.js?v=548dd70168"></script>
     <!-- 設定選單 / 存檔 / 診斷 / 離線紀錄 -->
     <script src="afk-storage.js?v=302890a0df"></script>
     <!-- 存檔空間警告：localStorage 用量 >80% 時首頁紅色警告(唯讀;與 afk-storage 同一套估算) -->
     <script src="afk-quotawarn.js?v=9743094202"></script>
     <!-- 首頁公告卡（通用框架：檔頭 NOTICE 設成 null 就不顯示，要發公告時填一組設定即可） -->
     <script src="afk-notice.js?v=2ae062cf13"></script>
-    <script src="afk-history.js?v=1b25f8f62c"></script>
+    <script src="afk-history.js?v=a562ed31c4"></script>
     <script src="afk-reissueid.js?v=2cd0b584ff"></script>
     <script src="afk-diag.js?v=731c2dc5b6"></script>
     <script src="afk-powersave.js?v=7bce060db9"></script>

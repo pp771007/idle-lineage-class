@@ -907,6 +907,7 @@ function tick() {
                 try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed && (p.hp || 0) > 0) p.hp = Math.min(p.mhp || 1, (p.hp || 0) + heal); }); } catch (e) {}   // 🩹 v3.2.67 團隊 HoT 也回復出戰寵物
                 try { if (typeof summonV2List === 'function') summonV2List().forEach(s => { if (s && !s._downed && (s.hp || 0) > 0) s.hp = Math.min(s.mhp || 1, (s.hp || 0) + heal); }); } catch (e) {}   // 🩹 v3.2.67 團隊 HoT 也回復召喚物
                 try { if (typeof mercSummonList === 'function') mercSummonList().forEach(s => { if (s && !s._downed && (s.hp || 0) > 0) s.hp = Math.min(s.mhp || 1, (s.hp || 0) + heal); }); } catch (e) {}   // 🩹 v3.4.71 團隊 HoT 也回復傭兵召喚物
+                try { if (typeof guardAliveList === 'function') guardAliveList().forEach(g => { if (g && !g._downed && (g.hp || 0) > 0) g.hp = Math.min(g.mhp || 1, (g.hp || 0) + heal); }); } catch (e) {}   // 🛡️ v3.8.4 團隊 HoT 也回復城堡護衛
                 _h.ticksLeft--;
                 logCombat(`${_h.skName} 為全隊回復了 ${heal} 點 HP。${_h.msg || ''}`, 'heal');
                 if(_h.ticksLeft <= 0) { delete player.hots[_hsk]; logCombat(`${_h.skName} 的持續回復效果結束。`, 'heal'); }

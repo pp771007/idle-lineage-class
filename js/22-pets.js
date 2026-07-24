@@ -954,7 +954,7 @@ function petAttackOnce(p, d, target, forceCrit, addDmg, skName) {
         let heavy = (r === 20) || !!forceCrit;
         if (heavy || (r !== 1 && hv >= r)) {
             let targetDr = Math.floor((target.dr || 0) * (1 - (d.drPierce || 0)));
-            let dmg = (heavy ? d.dice : roll(1, d.dice)) + d.flat + cb.dmg + (addDmg || 0) + pg.dmg + (_ia ? _ia.ed : 0) + (petDevotionGuardOn(p) ? 8 : 0) - targetDr - (_pst.weaken > 0 ? 5 : 0);   // 🏺 v3.6.44 珍愛夥伴的執念：復活後 8 秒額外傷害 +8
+            let dmg = (heavy ? d.dice : roll(1, d.dice)) + d.flat + cb.dmg + (addDmg || 0) + pg.dmg + (_ia ? _ia.ed : 0) + (_ia ? (_ia.mel || 0) : 0) + (petDevotionGuardOn(p) ? 8 : 0) - targetDr - (_pst.weaken > 0 ? 5 : 0);   // 🏺 v3.6.44 珍愛夥伴的執念：復活後 8 秒額外傷害 +8；🔥 v3.8.3 _ia.mel＝舞躍之火團隊光環近距離傷害+3（寵物普攻＝近距離）
             dmg = Math.max(1, Math.floor(dmg));
             dmg += traumaPhysicalBonus(target);
             let atkMult = (d.damageMult || 1) * (d.attackMult || 1);

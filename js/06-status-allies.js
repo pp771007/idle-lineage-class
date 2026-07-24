@@ -2013,10 +2013,10 @@ function allyIronGuardSweep(ally, triggerName) {
 function _allyStrikeWithIllu(ally, mob, opts) {
     let a = teamIlluAura(ally);   // 🌟 v3.0.99 排除本傭兵自身(其自身幻覺攻擊光環已在 ally.d)·只注入其他隊員提供的
     if (!a) return allyStrikeRoll(ally, mob, opts);
-    let b = { ed: ally.d.extraDmg || 0, eh: ally.d.extraHit || 0, md: ally.d.magicDmg || 0 };
-    ally.d.extraDmg = b.ed + a.ed; ally.d.extraHit = b.eh + a.eh; ally.d.magicDmg = b.md + a.md;
+    let b = { ed: ally.d.extraDmg || 0, eh: ally.d.extraHit || 0, md: ally.d.magicDmg || 0, mel: ally.d.meleeDmg || 0 };   // 🔥 v3.8.3 mel＝舞躍之火團隊光環（近距離傷害）
+    ally.d.extraDmg = b.ed + a.ed; ally.d.extraHit = b.eh + a.eh; ally.d.magicDmg = b.md + a.md; ally.d.meleeDmg = b.mel + (a.mel || 0);
     try { return allyStrikeRoll(ally, mob, opts); }
-    finally { ally.d.extraDmg = b.ed; ally.d.extraHit = b.eh; ally.d.magicDmg = b.md; }
+    finally { ally.d.extraDmg = b.ed; ally.d.extraHit = b.eh; ally.d.magicDmg = b.md; ally.d.meleeDmg = b.mel; }
 }
 function allyReactCounter(mob, blocked) {
     if (!player.allies || !player.allies.length) return;
@@ -2562,6 +2562,7 @@ function allyAtkSkillInterval(ally, support, current) {
 // 以「攻擊技能冷卻(_atkSkillCd)」閘門包住職業 act：冷卻好且有攻擊技→本回合施放該技並重設冷卻；否則暫時清空 _atkSkill 讓職業 act 走各自「普攻」路徑(保留妖精連射/黑妖連擊/法師光箭/幻術奇古獸等)。
 function allyActWithSkillGate(ally, actFn) {
     let _sk = ally._atkSkill ? DB.skills[ally._atkSkill] : null;
+    if (_sk && !allySkillElementOk(ally, ally._atkSkill)) _sk = null;   // 🧝 v3.8.5 換屬性後不可用的屬性攻擊技（地面障礙/封印禁地/污濁之水）→視同未設定，走下方普攻分支（會暫清 _atkSkill·職業 act 內部一律退普攻）
     let _mpPct = allyCastMpPct(ally);   // 🆕 v2.6.27 施法MP門檻：MP% 高於此值才施放攻擊技（0=不限）；未達→退回普攻·且不重設冷卻(MP 回滿即施放)
     let _mpOk = (_mpPct <= 0) || ((ally.mp || 0) >= (ally.mmp || 0) * _mpPct / 100);
     // 💙 v3.5.76 究極光裂術（reqJustice）：傭兵以「招募時記錄的來源存檔性向值」判定·非正義（<1000）→本回合退普攻（不設冷卻·同 MP 未達行為）
@@ -2593,12 +2594,13 @@ function healBeneficiaries() {   // 全部「能被治癒/HoT 惠及」的存活
     try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed && (p.hp || 0) > 0) arr.push(p); }); } catch (e) {}
     try { if (typeof summonV2List === 'function') summonV2List().forEach(s => { if (s && !s._downed && (s.hp || 0) > 0) arr.push(s); }); } catch (e) {}
     try { if (typeof mercSummonList === 'function') mercSummonList().forEach(s => { if (s && !s._downed && (s.hp || 0) > 0) arr.push(s); }); } catch (e) {}   // 🩹 v3.4.71 傭兵召喚物（v3.4.50 起有血）也納入治癒受益池·欄位 hp/mhp 與玩家召喚物一致走 _sup* else 分支
+    try { if (typeof guardAliveList === 'function') guardAliveList().forEach(g => { if (g && !g._downed && (g.hp || 0) > 0) arr.push(g); }); } catch (e) {}   // 🛡️ v3.8.4 城堡護衛納入治癒/HoT 受益池（欄位 hp/mhp·無 curHp/skId → 走 _sup* else 分支；無狀態無 MP 故不進淨化/回魔，同召喚物）
     return arr;
 }
 function _supHp(m) { return (m === player) ? (m.hp || 0) : (m && m.curHp != null ? (m.curHp || 0) : (m ? (m.hp || 0) : 0)); }   // 傭兵=curHp·其餘=hp
 function _supMhp(m) { if (m && m !== player && m.curHp == null && m.form && typeof PET_BOOK !== 'undefined' && PET_BOOK[m.form] && typeof petMhpEff === 'function') return petMhpEff(m); return (m && m.mhp) || 1; }   // 🏺 v3.7.20 寵物治癒上限含 petHpAll 光環（蜥蜴領主的王冠 +100）
 function _supHeal(m, amt) { let mx = _supMhp(m), v = Math.min(mx, _supHp(m) + amt); if (m === player) m.hp = v; else if (m.curHp != null) m.curHp = v; else m.hp = v; }
-function _supName(m) { if (m === player) return (player && player.name) || '你'; if (m && m.curHp != null) return '協力·' + (m._allyName || '傭兵'); if (m && m.skId) return '召喚·' + (m.form || '召喚物'); return '寵物·' + ((m && m.form) || '夥伴'); }
+function _supName(m) { if (m === player) return (player && player.name) || '你'; if (m && m.curHp != null) return '協力·' + (m._allyName || '傭兵'); if (m && m.skId) return '召喚·' + (m.form || '召喚物'); if (m && m.city != null) return '護衛·' + (m.form || '城堡護衛'); return '寵物·' + ((m && m.form) || '夥伴'); }   // 🛡️ v3.8.4 護衛以 city 欄位辨識（寵物/召喚物皆無此欄）·否則會被誤標成「寵物·」
 function _supStatuses(m) { return (m && m.statuses) ? m.statuses : ((m && m._statuses) ? m._statuses : null); }   // 玩家/傭兵=statuses·寵物=_statuses
 // 🍶🛡️ v2.6.4：把「喝藥水門檻」與「停耗HP技門檻」拆成兩個獨立設定；皆回退舊 _hpSafePct(相容既有存檔)、再回退 0。
 function allyPotHpPct(ally) { return (ally && ally._potHpPct != null) ? ally._potHpPct : ((ally && ally._hpSafePct != null) ? ally._hpSafePct : 0); }
@@ -2659,6 +2661,22 @@ function _mercAutoOn(ally, sid) {
     if (ally && ally._autoBuff && Object.prototype.hasOwnProperty.call(ally._autoBuff, sid)) return !!ally._autoBuff[sid];   // 🆕 v3.0.97 隊伍面板「逐兵自動維持」覆寫優先（setAllyAutoBuff·存 ally._autoBuff·隨存檔）
     return !!(ally && ally.config && ally.config.autoBuffSkills && ally.config.autoBuffSkills[sid]);   // 否則沿用來源角色存檔的自動施放勾選快照
 }
+// 🧝 v3.8.5 妖精屬性閘（傭兵版·單一真相）：妖精換屬性後，舊屬性的三/四/五階精靈魔法在他自己身上是「灰色不可用」
+//   （玩家端 canCast js/07:395-396 的 reqEle／reqEleAny 閘）。傭兵路徑原本**完全沒有這道閘** → 隊伍面板照列出來、
+//   自動維持照跑（舊屬性 buff 照吃衍生值又照扣 MP）。用戶要求：擔任傭兵時自動隱藏 → 隱藏＋停止施放成對，
+//   否則會變成「看不到卻還在生效」。
+//   ⚠️判定必須用 **ally.elfEle**（傭兵快照自帶·buildAlly 深拷貝來源存檔）——不可用 player.elfEle，那是拿隊長的屬性
+//     去判傭兵的技能（也正是 _allySkillOptions 原註解說「不可用 reqEle 判可用性」的原因；改讀 ally 後就成立了）。
+//   granted（裝備/頭盔賦予）比照玩家豁免屬性閘。非妖精職業的技能無 reqEle/reqEleAny → 一律 true，零影響。
+function allySkillElementOk(ally, sid) {
+    let sk = DB.skills[sid]; if (!sk) return true;
+    if (!sk.reqEle && !sk.reqEleAny) return true;
+    if (ally && ally.grantedSkills && ally.grantedSkills.includes(sid)) return true;
+    let ele = (ally && ally.elfEle) || '';
+    if (sk.reqEle && ele !== sk.reqEle) return false;   // 屬性不符（換屬性後的舊屬性魔法）
+    if (sk.reqEleAny && !ele) return false;             // 尚未選擇屬性
+    return true;
+}
 // 🔮 v2.7.96 幻術士傭兵立方屬性抗性 rider（補 parity）：玩家立方 buff 給 d:{resFire/resEarth/resWind:+30}(recompute 讀 player.buffs)；傭兵立方走 allyCubeTick 不寫 ally.buffs→抗性原本拿不到。改在重算後(buildAlly/_allyLevelRecompute)直接補「已學會＋來源有勾自動施放」的立方抗性到 ally.d（與 allyCubeTick 傷害的勾選閘一致；受屬性攻擊時 js/04:891-894/1007-1010 讀 ally.d.res*）。
 // Helmet-granted and learned versions are the same buff. Prefer the helmet version when both are enabled.
 const _MERC_HELM_BUFF_PRIORITY = { sk_ench_wpn: 'sk_helm_str1', sk_dex_up: 'sk_helm_dex1', sk_reveal: 'sk_helm_str2' };
@@ -2701,6 +2719,7 @@ function allyAutoCastableSkills(ally) {
     for (let i = 0; i < ally.skills.length; i++) {
         let sid = ally.skills[i]; if (seen[sid]) continue;
         let sk = DB.skills[sid]; if (!sk) continue;
+        if (!allySkillElementOk(ally, sid)) continue;   // 🧝 v3.8.5 換屬性後不可用的屬性魔法→不列入「自動維持」勾選（同步下方維持迴圈的閘）
         let cat = null;
         if (sid === 'sk_antidote' || sid === 'sk_holy_light' || sid === 'sk_cancel') cat = '淨化';
         else if (sk.type === 'heal' && sk.hot && sk.autoBuff) cat = '團隊回復';
@@ -2717,7 +2736,7 @@ function allyAutoCastableSkills(ally) {
 }
 const _MERC_AWAKENS = ['sk_dragon_awaken_antares', 'sk_dragon_awaken_falion', 'sk_dragon_awaken_baraka'];
 // 🔮 v3.2.2 攻擊型幻覺光環（會被 recompute 注入玩家 d）：傭兵取得/失去任一 → 需 calcStats 讓玩家即時吃到/退掉。鑽石高崙只給 AC（teamAcBonus 受擊時即時讀）故不在此列。
-const _MERC_ILLU_ATK_AURA = ['sk_illu_avatar', 'sk_illu_ogre', 'sk_illu_lich'];
+const _MERC_ILLU_ATK_AURA = ['sk_illu_avatar', 'sk_illu_ogre', 'sk_illu_lich', 'sk_elf_dancefire'];   // 🔥 v3.8.3 舞躍之火：傭兵取得/失去 → 需刷新玩家 d（recompute 末段注入 teamIlluAura(player).mel 到 d.meleeDmg）
 // 傭兵若在來源存檔中處於卷軸變身，該變身成為受雇期間的維持目標。
 // 到期時直接替該傭兵購買並消耗一張卷軸；不挪用主玩家背包中的卷軸，費用仍套用攻城商店折扣。
 function allyMaintainPoly(ally) {
@@ -2756,6 +2775,7 @@ function allyMaintainBuffs(ally) {
         for (let sid of ally.skills) {
             let sk = DB.skills[sid];
             if (!_isMercSelfBuff(sk, sid)) continue;
+            if (!allySkillElementOk(ally, sid)) continue;   // 🧝 v3.8.5 妖精換屬性後的舊屬性 buff（火焰武器/烈炎武器/大地防護…）不再維持：面板已隱藏·此處同步停放（原本會照吃 d 加成又照扣 MP）
             // 🆕 v2.7.29 傭兵自我增益改「比照玩家 opt-in」：玩家的 buff 是勾選框控制（auto-sk-<id>·預設未勾＝不施放），
             //    存於 config.autoBuffSkills（buildAlly 深拷貝已帶入傭兵快照）。傭兵原本無條件維持「所有已學 buff」→會維持玩家根本沒開的 buff 白扣 MP（王族/龍騎士尤其明顯：MP 只出不進）。
             //    改為：只維持「來源角色有勾選自動施放」的 buff（沒有 config 或未勾＝不維持·與該角色親自遊玩時完全一致）。⚠️summon/HoT 走各自區塊·此閘只管 _isMercSelfBuff 自我增益。
@@ -2792,8 +2812,8 @@ function allyMaintainBuffs(ally) {
         if (!_live) {
             // 👑 v2.7.95 召喚也吃「開啟閘」：只召「來源角色有勾選自動施放」的召喚術（比照玩家 autoActions·玩家沒開→傭兵不耗 MP 召喚）；優先強力版 sk_summon>sk_elf_summon2>其他，但每個候選都須通過 _mercAutoOn
             let _sumSid = (ally.skills.includes('sk_summon') && _mercAutoOn(ally, 'sk_summon')) ? 'sk_summon'
-                : (ally.skills.includes('sk_elf_summon2') && _mercAutoOn(ally, 'sk_elf_summon2')) ? 'sk_elf_summon2'   // 🩸 妖精傭兵優先「召喚強力屬性精靈」(上級精靈)：先學的一般版 sk_elf_summon 排在前面，.find 會先抓到它 → 傭兵永遠只召弱版；顯式優先強力版修正
-                : ally.skills.find(s => { let d = DB.skills[s]; return d && d.type === 'buff' && d.summon && _mercAutoOn(ally, s); });
+                : (ally.skills.includes('sk_elf_summon2') && _mercAutoOn(ally, 'sk_elf_summon2') && allySkillElementOk(ally, 'sk_elf_summon2')) ? 'sk_elf_summon2'   // 🩸 妖精傭兵優先「召喚強力屬性精靈」(上級精靈)：先學的一般版 sk_elf_summon 排在前面，.find 會先抓到它 → 傭兵永遠只召弱版；顯式優先強力版修正。🧝 v3.8.5 屬性精靈召喚是 reqEleAny → 尚未選屬性者不召（比照玩家）
+                : ally.skills.find(s => { let d = DB.skills[s]; return d && d.type === 'buff' && d.summon && _mercAutoOn(ally, s) && allySkillElementOk(ally, s); });
             if (_sumSid) {
                 let _ssk = DB.skills[_sumSid];
                 let _scost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(_ssk.mp, _ssk.tier) : (_ssk.mp || 0);
@@ -2941,12 +2961,13 @@ function alliesTick() {
         let _dpsASnap = _dpsSnap(); _dpsAllyTurn = true;   // 🎯 DPS：逐傭兵量測本回合輸出（攻擊/立方/持續增益），_dpsAllyTurn 期間 _allyDamageMob 不重複計入
         let _iAura = teamIlluAura(ally), _iRn = ally._recompN || 0, _iBase = null;   // 🔮 v2.6.7 幻覺光環注入（傭兵本體回合）→🩹 v3.4.47 修：v3.4.45 誤傳 forMinion=true——這是「傭兵自己的攻擊回合」非寵/召喚路徑，幻覺已改單體(靠共享逐人補·自身 buff 經 recompute 在 ally.d)，再注入其他隊員的光環＝傭兵 +4/+4 變 +8/+8 雙重計算。省略 forMinion→回 null→不注入（召喚物光環由 js/23 內部 teamIlluAura(s,true) 自理·與此無關）
         try {
-        if (_iAura) { _iBase = { ed: ally.d.extraDmg || 0, eh: ally.d.extraHit || 0, md: ally.d.magicDmg || 0 }; ally.d.extraDmg = _iBase.ed + _iAura.ed; ally.d.extraHit = _iBase.eh + _iAura.eh; ally.d.magicDmg = _iBase.md + _iAura.md; }   // 注入本傭兵：額外傷害(歐吉4+化身10)/額外命中(歐吉4)/魔法傷害(巫妖2)
+        if (_iAura) { _iBase = { ed: ally.d.extraDmg || 0, eh: ally.d.extraHit || 0, md: ally.d.magicDmg || 0, mel: ally.d.meleeDmg || 0 }; ally.d.extraDmg = _iBase.ed + _iAura.ed; ally.d.extraHit = _iBase.eh + _iAura.eh; ally.d.magicDmg = _iBase.md + _iAura.md; ally.d.meleeDmg = _iBase.mel + (_iAura.mel || 0); }   // 注入本傭兵：額外傷害(歐吉4+化身10)/額外命中(歐吉4)/魔法傷害(巫妖2)/🔥v3.8.3 近距離傷害(舞躍之火3)
         if (!_ccBlock && ally.cls === 'illusion') allyCubeTick(ally);   // 🔮 幻術士傭兵：立方常駐光環（硬控中不展開）
         if (!_ccBlock && ally.skills && ally.skills.length) for (let _ssid of STORM_BUFF_SKILLS) { let _ssk = DB.skills[_ssid]; if (ally.skills.includes(_ssid) && _mercAutoOn(ally, _ssid) && _ssk && !mapState.current.startsWith('town_') && state.ticks % (_ssk.stormInterval || 40) === 0) allyStormTick(ally, _ssk); }   // 🌨️🔥 傭兵 冰雪颶風/火牢：v2.7.96 加「來源有勾自動施放」閘（比照玩家 autoActions js/07:807·免 MP 但沒開→不展開）；安全區不展開
         // 🍃 傭兵維持團隊 HoT（生命的祝福/體力回復術）：已學會的 hot+autoBuff 技能·該技能團隊 HoT 未在持續中→施放(全隊回復·消耗傭兵MP)·安全區不施放·硬控/沉默/魔封中不施放
         if (!_ccBlock && !_castBlock && (ally._healCastCd || 0) <= 0 && ally.skills && ally.skills.length && !mapState.current.startsWith('town_')) for (let _hid of ally.skills) {   // 🛡️ v2.6.69 審計#19：補 !_castBlock——沉默中不能補血卻能放 HoT 自相矛盾（玩家路徑走 castSkillInner 有沉默閘）
             let _hsk = DB.skills[_hid]; if (!_hsk || !_hsk.hot || !_hsk.autoBuff) continue;
+            if (!allySkillElementOk(ally, _hid)) continue;   // 🧝 v3.8.5 生命的祝福需水屬性：換屬性後不再施放（面板已隱藏其自動維持勾選）
             if (!_mercAutoOn(ally, _hid)) continue;   // 👑 v2.7.95 團隊 HoT(生命的祝福/體力回復術)也吃「開啟閘」：來源角色沒勾自動施放→傭兵不耗 MP 放（比照玩家 autoActions js/07:814-817）
             if (player.hots && player.hots[_hid] && player.hots[_hid].ticksLeft > 0) continue;   // 已在持續→不重複(單一團隊實例·後放取代先放)
             let _hcost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(_hsk.mp || 0, _hsk.tier) : (_hsk.mp || 0);   // 🛡️ v2.6.69 審計#20：套 mpReduce/學徒折扣（比照傭兵攻擊技/淨化）
@@ -2959,7 +2980,7 @@ function alliesTick() {
         // 🔄 傭兵轉換技能：安全區／硬控／沉默不施放，頻率改由自身職業／變身 cast 控制，不再固定每 3 秒。
         if (!_ccBlock && !_castBlock && (ally._convertSkillCd || 0) <= 0 && ally._convertSkill && !mapState.current.startsWith('town_')) {
             let _cvsk = DB.skills[ally._convertSkill];
-            if (_cvsk && _cvsk.type === 'convert' && ally.skills && ally.skills.includes(ally._convertSkill)) {
+            if (_cvsk && _cvsk.type === 'convert' && ally.skills && ally.skills.includes(ally._convertSkill) && allySkillElementOk(ally, ally._convertSkill)) {   // 🧝 v3.8.5 屬性閘一致性（現行 convert 技皆無 reqEle·未來新增即自動涵蓋）
                 let _hs = allyHpSkillPct(ally);
                 let _hpOk = (_hs <= 0) || ((ally.curHp || 0) > (ally.mhp || 1) * _hs / 100);   // 🛡️ 低於停耗HP技門檻→暫停(轉換技耗HP)
                 if (_hpOk && (ally.mp || 0) < (ally.mmp || 0) * 0.9 && allyCastConvert(ally, _cvsk)) ally._convertSkillCd = allyAtkSkillInterval(ally, true, ally._convertSkillCd);
@@ -3019,7 +3040,7 @@ function alliesTick() {
                 }
             }
         }
-        } finally { if (_iAura && _iBase && (ally._recompN || 0) === _iRn) { ally.d.extraDmg = _iBase.ed; ally.d.extraHit = _iBase.eh; ally.d.magicDmg = _iBase.md; }   // 🔮 還原幻覺光環（若本回合發生升級重算→ally.d 已就地重建·跳過還原·避免把光環當基底扣掉）
+        } finally { if (_iAura && _iBase && (ally._recompN || 0) === _iRn) { ally.d.extraDmg = _iBase.ed; ally.d.extraHit = _iBase.eh; ally.d.magicDmg = _iBase.md; ally.d.meleeDmg = _iBase.mel; }   // 🔮 還原幻覺光環＋🔥v3.8.3 舞躍之火近距離傷害（若本回合發生升級重算→ally.d 已就地重建·跳過還原·避免把光環當基底扣掉）
                    _dpsAllyTurn = false; let _ad = _dpsDealt(_dpsASnap); if (_ad > 0) _dpsAddAlly(ally, _ad);
                    if (typeof threatCommitDiff === 'function') threatCommitDiff(_dpsASnap, ally); }   // 🎯 DPS＋v3.7.97 仇恨：逐傭兵回合掉血→記給該傭兵（threatMult＝職業×武器）
     });
@@ -3030,6 +3051,7 @@ function allyTryHeal(ally) {
     let sid = ally._healSkill; if (!sid) return false;
     if ((ally._healCastCd || 0) > 0) return false;   // 🔮 治癒套用與攻擊施法相同的職業／變身 cast 間隔
     let sk = DB.skills[sid]; if (!sk) return false;
+    if (!allySkillElementOk(ally, sid)) return false;   // 🧝 v3.8.5 生命之泉/生命的祝福需水屬性：換屬性後停放（下拉已隱藏·殘留的舊選擇不再生效；換回原屬性即自動恢復）
     // 🩸 v2.6.69 審計#9：治癒欄支援吸血魔法（寒冷戰慄/吸血鬼之吻·type:'atk'+healSlot）——UI 可選但原讀取端只收 type:'heal'，選了永不施放。
     //    吸血只回復施放者本人 → 只看「自身」HP 門檻；有存活目標且 MP 足夠→走 allyCastMagic（其 lifesteal 分支回復 ally.curHp）
     if (sk.type === 'atk' && sk.healSlot) {

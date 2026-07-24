@@ -414,6 +414,10 @@ const MORPH_SKILL_SFX = {};
     MOB_HURT_SFX[r[0]] = r[2];
     if (r[3] != null) MOB_KILL_SFX[r[0]] = r[3];
 });
+// 莫妮亞與牛鬼之子共用同一組戰鬥音效：攻擊 231、受傷 229、死亡 230。
+["莫妮亞", "牛鬼之子"].forEach(function (n) {
+    MOB_ATTACK_SFX[n] = 231; MOB_HURT_SFX[n] = 229; MOB_KILL_SFX[n] = 230;
+});
 // 🐯 v3.4.102 鵺＝借黑虎音（用戶指定）：受擊 168／死亡 173。
 // 🐯 v3.5.0 黑虎/鵺 攻擊音＝老虎揮擊 520（用戶指定「黑虎套用老虎攻擊音效」·來源 list.spr #1310 tiger attack 幀 [520/[521 取首記·520.wav 新補入庫）。
 MOB_HURT_SFX["鵺"] = 168; MOB_KILL_SFX["鵺"] = 173;

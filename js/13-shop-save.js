@@ -1435,6 +1435,29 @@ function saveStateJson() {
     try { return JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks }); }
     finally { if (_sv2 && _sv2.length) player.summonsV2 = _sv2; if (_gv2 && _gv2.length) player.guardsV2 = _gv2; }
 }
+// 🤝 v3.8.2 受僱中角色「經驗只增不減」防護（用戶指定）：擔任傭兵的角色被鎖在安全區、無法自行掛機打怪，
+//    其存檔經驗的唯一來源＝待領帳本領取（additive）。若另一情境（別分頁／先前一次領取）已把「磁碟上的」
+//    經驗墊高，本情境用較舊的記憶體快照存回會覆蓋掉墊高的經驗＝待領經驗遺失。對策：存檔序列化前，
+//    若「目前正擔任傭兵（mercRoleSafeAreaOnly·2 秒快取）」且磁碟等級/經驗高於記憶體 → 吸收磁碟較高值，
+//    保證存回只增不減（不以舊經驗覆蓋主玩家攜帶存回的經驗）。非受僱角色不受影響（閘門快取 false 直接早退）。
+function _mercMonotonicExpGuard() {
+    try {
+        if (typeof mercRoleSafeAreaOnly !== 'function' || !mercRoleSafeAreaOnly()) return;   // 只在「受僱中·被鎖安全區·無法外掛」時啟用
+        if (!player || !player.cls || typeof currentSlot === 'undefined' || currentSlot == null) return;
+        let stored = _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot));
+        if (stored.signed && !stored.ok) return;                                  // 磁碟簽章壞 → 不冒險比對
+        let raw = stored.payload; if (!raw) return;
+        let dp = JSON.parse(raw).p; if (!dp || dp.cls !== player.cls) return;      // 不同職業＝別的角色（同位重創）→ 不吸收
+        if (player.enSeed && dp.enSeed && player.enSeed !== dp.enSeed) return;     // enSeed 不符＝別的角色 → 不吸收
+        let dLv = Math.floor(dp.lv || 1), dExp = Math.floor(dp.exp || 0);
+        let mLv = Math.floor(player.lv || 1), mExp = Math.floor(player.exp || 0);
+        if (!((dLv > mLv) || (dLv === mLv && dExp > mExp))) return;                // 磁碟不比記憶體高 → 照常存回（含記憶體剛領取到的較高值）
+        player.lv = dLv; player.exp = dExp;
+        if (typeof dp.bonus === 'number') player.bonus = Math.max(Math.floor(player.bonus || 0), Math.floor(dp.bonus));   // 配點點數不倒退
+        if (dLv !== mLv && typeof calcStats === 'function') { try { calcStats(); } catch (e) {} }   // 升級 → 重算 HP/MP 上限
+        try { logSys(`<span class="text-emerald-300">受僱中偵測到存檔經驗較新（Lv.${dLv}），已保留較高進度、不以舊經驗覆蓋。</span>`); } catch (e) {}
+    } catch (e) {}
+}
 function saveGame() {
     // 死亡狀態不寫檔：避免把 player.dead=true 存進去，導致下次讀檔卡在死亡狀態而不出怪。
     // 死亡期間沒有可保存的進度，保留上一份「存活」存檔即可。
@@ -1491,6 +1514,7 @@ function saveGame() {
     });
     }   // ← _uiConfigReady 閘（審計#1）
 
+    _mercMonotonicExpGuard();   // 🤝 v3.8.2 受僱中經驗只增不減：序列化前吸收磁碟較高的等級/經驗，防舊快照覆蓋待領帳本領取的經驗
     if(!_lzSet('lineage_idle_save_' + currentSlot, _saveWrap(saveStateJson()))) throw new Error('persistent storage write failed');   // 🔧 寫入成功才回報；並由 saveStateJson 排除戰鬥面向暫存參照
     if(typeof petRosterSave === 'function' && !petRosterSave()) throw new Error('pet roster write failed');
     logSys(`遊戲進度已儲存。`);

@@ -1457,8 +1457,16 @@ function teamIlluAura(forWho, forMinion) {
         let r = (DB.skills.sk_royal_burnweapon && DB.skills.sk_royal_burnweapon.d) || {};
         royalEd = r.extraDmg || 0; ed += royalEd; eh += r.extraHit || 0;
     }
-    if (ed === 0 && eh === 0 && md === 0) return null;
-    return { ed: ed, eh: eh, md: md, royalEd: royalEd };
+    // 🔥 v3.8.3 舞躍之火（團隊光環）：任一隊員維持 → 全隊「近距離傷害 +3」＝玩家／傭兵／寵物／召喚物／城堡護衛。
+    //    受益者自身持有時其 meleeDmg 已由 recomputeStats 的 buff 迴圈算進自身 d → 此處不補（避免雙算），比照上方灼熱武器。
+    //    寵物/召喚/護衛沒有 .buffs 也沒有 d.meleeDmg → 一律取得光環，由各自傷害式直接加 mel。
+    let mel = 0;
+    if (!(forWho && forWho.buffs && (forWho.buffs.sk_elf_dancefire || 0) > 0) && _teamAuraHas('sk_elf_dancefire', forWho)) {
+        let f = (DB.skills.sk_elf_dancefire && DB.skills.sk_elf_dancefire.d) || {};
+        mel = f.meleeDmg || 0;
+    }
+    if (ed === 0 && eh === 0 && md === 0 && mel === 0) return null;
+    return { ed: ed, eh: eh, md: md, mel: mel, royalEd: royalEd };
 }
 function enemyAttackAlly(mob, ally) {
     if (!ally) return;
@@ -2591,8 +2599,7 @@ function allRelicIds() {
 //   命中 0.001% 後，再從「全部遺物」等機率抽 1 件（非依 gachaWeight 權重──遺物權重一律 0，用權重抽會全員 0 抽不出東西）。
 function playerNpcRelicDrop(mob) {
     if (typeof isSiegeArea === 'function' && isSiegeArea(mapState.current)) return;   // 🏰 攻城區一律不掉（比照 pledgeBonusDrop 首行·防無冷卻攻城變成刷遺物場）
-    let _relicX2 = 1;   // 🐰 幸運暴走兔腳（需裝備）：遺物掉落機率 ×2（比照 js/05 怪物掉落表的遺物判定）
-    try { for (let _k in player.eq) { let _e = player.eq[_k]; if (_e && DB.items[_e.id] && DB.items[_e.id].relicDropX2) { _relicX2 = 2; break; } } } catch (e) {}
+    let _relicX2 = (typeof mainPlayerHasEquippedEffect === 'function' && mainPlayerHasEquippedEffect('relicDropX2')) ? 2 : 1;   // 幸運暴走兔腳只讀主操作玩家裝備；傭兵／寵物裝備不影響掉落率
     let _npcRelicRate = 0.00001 * _relicX2 * classicDropMult();
     if (typeof partyDropRate === 'function') _npcRelicRate = partyDropRate(_npcRelicRate);
     if (Math.random() >= _npcRelicRate) return;   // 0.001% 基礎；兔腳與有效隊伍人數倍率依序套用

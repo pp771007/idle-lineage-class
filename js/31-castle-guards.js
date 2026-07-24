@@ -254,10 +254,14 @@ function castleGuardTick() {
 
 function guardAttackOnce(s, d, t) {
     if (typeof _petAnimAct === 'function') _petAnimAct(s, 'attack', t.uid);
-    let hv = stretchHitValue(d.hit - t.lv + mobEffAC(t));
+    // 🛡️ v3.8.4 護衛比照寵物/召喚物吃「全隊攻擊光環」（用戶：護衛一併補齊）：teamIlluAura(自身, forMinion=true)
+    //    → eh 進命中、ed 進傷害（灼熱武器+5/+5·幻覺化身+10/歐吉+4+4 等）、mel 進近距離傷害（舞躍之火+3）。
+    //    防禦向光環（teamAcBonus／teamDmgReduceMult＝大地祝福 AC・鋼鐵防護／化身減傷）在受擊處 enemyAttackGuard／applyMobMagicToGuard 早已接。
+    let _ia = (typeof teamIlluAura === 'function') ? teamIlluAura(s, true) : null;
+    let hv = stretchHitValue(d.hit + (_ia ? (_ia.eh || 0) : 0) - t.lv + mobEffAC(t));
     let r = roll(1, 20);
     if (!((r === 20) || (r !== 1 && hv >= r))) { if (typeof vfxMiss === 'function') vfxMiss(t); logCombat(`<span class="text-cyan-300">${s.form}</span> 的攻擊未命中。`, 'miss'); return; }
-    let dmg = (r === 20 ? d.dice : roll(1, d.dice)) + d.flat;
+    let dmg = (r === 20 ? d.dice : roll(1, d.dice)) + d.flat + (_ia ? (_ia.ed || 0) : 0) + (_ia ? (_ia.mel || 0) : 0);
     dmg = Math.max(1, Math.floor(dmg) - (t.dr || 0));
     dmg += (typeof traumaPhysicalBonus === 'function') ? traumaPhysicalBonus(t) : 0;
     if (typeof markBossPhysicalHit === 'function') markBossPhysicalHit(t);

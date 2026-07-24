@@ -66,6 +66,10 @@
     var orig = window.updateUI;
     window.updateUI = function () {
       var r = orig.apply(this, arguments);
+      // ⚡ 離線補跑期間(catchupActive)不重算能力值分解:核心 updateUI 此時本就早退、畫面沒人看,
+      //   而戰鬥路徑每殺都呼叫 updateUI → buildBreakdown 每殺白跑(離線結算 profile 佔 ~3%)。
+      //   結算尾會正常 updateUI 一次補上;catchupActive 讀不到(舊核心)就照常跑。
+      if (typeof catchupActive === 'function' && catchupActive()) return r;
       try { buildBreakdown(); } catch (e) {}
       return r;
     };

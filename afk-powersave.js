@@ -32,6 +32,9 @@
         if (typeof window[fn] === 'function' && !window[fn].__afkPsThrottle) {
             var o = window[fn];
             window[fn] = function () {
+                // ⚡ 離線補跑期間(catchupActive)透明放行：核心 updateUI/renderMobs 此時本就早退，
+                //   而每殺一隻怪都會呼叫它們 → 這裡每次 on('lowfps') 讀 localStorage 純浪費（離線結算 profile 佔 ~2%）。
+                if (typeof catchupActive === 'function' && catchupActive()) return o.apply(this, arguments);
                 if (on('lowfps')) {
                     var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
                     if (_last[fn] && (now - _last[fn]) < MIN_MS) return;   // 太密就跳過這次渲染（下次 gameLoop 會再來）

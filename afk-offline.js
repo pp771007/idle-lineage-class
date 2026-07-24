@@ -921,7 +921,12 @@
         items: invDeltaList(before, a2),
         kills: hKills,
         died: !!(died || player.dead),
-        keysUsed: isKing ? Math.max(0, kingKeysBefore - countKingKeys()) : 0
+        keysUsed: isKing ? Math.max(0, kingKeysBefore - countKingKeys()) : 0,
+        // ⏱ 本次結算的真實牆鐘耗時＋組成（診斷用·只顯示在離線掛機紀錄，不進遊戲日誌）：
+        //   settleMs＝結算花的實際秒數；simTicks＝逐格真模擬的格數；fastEvents＝快速結算的事件數。
+        settleMs: Math.max(0, Math.round(performance.now() - _perfT0)),
+        simTicks: _realSimTicks,
+        fastEvents: _fastEvents
       };
     }
     // 切到背景 / 關掉 App 前主動存一次:iOS 在背景更容易被系統直接丟掉整個分頁,
@@ -1123,12 +1128,7 @@
     try { if (typeof autoSortInventory === 'function') autoSortInventory(); } catch (e) {}   // 結算期間跳過的背包排序,在此統一補一次(內含玩家開關與節流判斷)
     if (climbSegs && climbSegs.length) summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
     else summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap, kingInfo);   // 遺忘之島:用實際結束地圖顯示地圖名;軍王之室:附帶擊敗輪數/鑰匙消耗摘要
-    // ⏱ 耗時診斷(只在有感結算時印):玩家回報「結算慢」時,這行直接指出時間花在真模擬還是快速段
-    if (done > 0 && (performance.now() - _perfT0) > 1000) {
-      var _perfSec = ((performance.now() - _perfT0) / 1000).toFixed(1);
-      try { logSys('<span class="text-slate-400">⏱ 結算耗時 ' + _perfSec + ' 秒（真模擬 ' + fmt(_realSimTicks) + ' 拍、快速事件 ' + fmt(_fastEvents) + ' 次）</span>'); } catch (e) {}
-      console.info('[AFK] ⏱ 結算耗時 ' + _perfSec + 's（真模擬 ' + _realSimTicks + ' 拍、快速事件 ' + _fastEvents + ' 次）');
-    }
+    // ⏱ 結算耗時（＋真模擬/快速事件組成）不再印進遊戲日誌／console，改存進離線掛機紀錄（見 buildHistRec 的 settleMs/simTicks/fastEvents），平常不顯示。
     if (_runErr) {   // 結算中途拋例外 → 把死因印出來(見上方 catch);沒這行的話玩家只看得到「離線掛機 0 分鐘」,完全不知道發生什麼事
       var _eEsc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
       var _eMsg = _eEsc((_runErr && _runErr.message) ? _runErr.message : _runErr);

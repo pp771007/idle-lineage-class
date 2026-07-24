@@ -28,12 +28,12 @@
 
   var HIST_RE = /^afk_hist_(\d+)$/;
   var CLS_NAME = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
-  var FIELD_DEFS = [{ k: 'exp', label: '經驗' }, { k: 'gold', label: '金錢' }, { k: 'items', label: '道具' }, { k: 'kills', label: '擊殺' }];
+  var FIELD_DEFS = [{ k: 'exp', label: '經驗' }, { k: 'gold', label: '金錢' }, { k: 'items', label: '道具' }, { k: 'kills', label: '擊殺' }, { k: 'perf', label: '結算耗時' }];
 
   // ----- 顯示偏好(存進外掛自己的 afk_hist_prefs 記住,不碰遊戲存檔):看哪個存檔位、排序方式、顯示哪些欄位 -----
   var slotFilter = 'all';
   var sortMode = 'slot';   // 'slot'=依存檔分組(預設);'time'=全部攤平依時間新→舊
-  var fState = { exp: true, gold: true, items: true, kills: true };
+  var fState = { exp: true, gold: true, items: true, kills: true, perf: false };   // perf(結算耗時)＝診斷向,預設關,由工具列開關開啟
 
   var PREFS_KEY = 'afk_hist_prefs';
   function loadPrefs() {
@@ -151,6 +151,13 @@
     if (fState.gold && r.gold > 0) stats.push('<span class="m-hist-stat"><span class="lbl">金錢</span> <b class="v-gold">+' + fmtNum(r.gold) + '</b>'
       + '<span class="avg">平均 ' + fmtNum(per10(r.gold, r.settledMs)) + ' / 10分</span></span>');
     if (stats.length) html += '<div class="m-hist-stats">' + stats.join('') + '</div>';
+    // ⏱ 結算耗時：診斷向，預設關，由工具列「結算耗時」開關開啟；舊紀錄無此資料則不顯示。
+    //   組成改用「遊戲時間」講給玩家聽：完整模擬＝逐格真跑的那段、快轉＝其餘快速結算的那段（合計＝這次補跑的遊戲時間）。
+    if (fState.perf && r.settleMs != null) {
+      var _simMs = (r.simTicks || 0) * 100;                          // 每拍＝100ms 遊戲時間
+      var _fastMs = Math.max(0, (r.settledMs || 0) - _simMs);        // 其餘＝快轉掉的遊戲時間
+      html += '<div class="m-hist-perf">⏱ 結算耗時 ' + (r.settleMs / 1000).toFixed(1) + ' 秒（完整模擬 ' + fmtDur(_simMs) + ' · 快轉 ' + fmtDur(_fastMs) + '）</div>';
+    }
     // 道具(依品階上色)
     if (fState.items && r.items && r.items.length) {
       var its = r.items.map(function (it) {
@@ -316,6 +323,7 @@
       '.m-hist-stat .v-gold{color:#fde047;}',
       '.m-hist-stat .v-lv{color:#86efac;}',
       '.m-hist-stat .avg{color:#64748b;font-size:11.5px;margin-left:3px;}',
+      '.m-hist-perf{color:#64748b;font-size:11.5px;margin-top:4px;}',
       '.m-hist-row{display:flex;gap:8px;margin-top:8px;font-size:13px;}',
       '.m-hist-rowlbl{flex:0 0 auto;color:#94a3b8;font-size:12px;padding-top:1px;}',
       '.m-hist-rowval{flex:1 1 auto;display:flex;flex-wrap:wrap;gap:4px 8px;}',

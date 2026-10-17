@@ -11,6 +11,7 @@
  *   上游走,作者哪天新增一個 key 我們不會知道,漏搬是**安靜失效**(玩家搬完、玩一陣子才發現
  *   東西不見,而且查不出來)。正確性論證很硬:B 變成 A 的完整複本,A 跑得動 B 就跑得動。
  *   → 匯出 localStorage 全部 key,還原時把現有的全部清掉再原樣寫回。新增功能自動涵蓋,零維護。
+ *   唯一例外是 LOCAL_ONLY 那兩個「我們自己存的祕密」(理由寫在那裡):不是遊戲資料,這條不適用。
  *
  * 還原的安全設計(每一條都是「弄壞玩家存檔」的防線):
  *   ① 備份只用**文字建議**(確認框裡提醒「先按上面的匯出」),刻意不做「強制自動下載一份」——
@@ -76,6 +77,17 @@
   var FORMAT = 'idle-lineage-full';
   var SCHEMA = 1;
 
+  // 🔒 只留在這台裝置、不進備份檔也不進轉移碼的 key——全是本專案自己存的祕密,不是遊戲資料:
+  //   lineage_login_saved:登入畫面「記住帳號」(js/00z-my-tweaks.js;舊版連玩家的明文密碼一起存)
+  //   update_page_token  :舊版 update.html 存在 localStorage 的站長 GitHub 通行碼(同網域)。現在改放 sessionStorage、
+  //                       開頁就刪舊的,但還沒打開過新版 update.html 的裝置上舊的那份還在 → 照樣排除
+  //   備份檔會被傳給作者查問題、轉移碼整包上傳到公開的 Litterbox,這兩個一出去就收不回來。
+  //   這不違反檔頭「整包搬、不挑 key」:那條防的是對**上游遊戲資料**做假設——作者改名我們不會知道,漏搬是安靜失效;
+  //   這兩個名字是我們自己取的,而且漏掉的後果只是換裝置後要重新勾一次記住帳號/重貼一次通行碼。
+  //   ⚠️ 改了那兩邊的 key 名要回來同步改這裡,否則祕密又會跟著出去。
+  //   還原時同理:備份檔裡就算有(舊版匯出的檔)也不寫入,這台自己原本的值留著。
+  var LOCAL_ONLY = { lineage_login_saved: 1, update_page_token: 1 };
+
   function lsKeys() {
     var out = [];
     for (var k in localStorage) { if (Object.prototype.hasOwnProperty.call(localStorage, k)) out.push(k); }
@@ -88,10 +100,10 @@
   }
 
   // 檔案裡只有三個「我們自己寫的」欄位:format(認得是不是我們的檔)、exportedAt(給玩家確認)、
-  // keyCount(檔案有沒有被截斷)。keys 內容一律原封不動,不解析、不認識、不判斷。
+  // keyCount(檔案有沒有被截斷)。keys 內容一律原封不動,不解析、不認識、不判斷(LOCAL_ONLY 除外)。
   function buildPack() {
     var keys = {}, n = 0;
-    lsKeys().forEach(function (k) { var v = localStorage.getItem(k); if (v != null) { keys[k] = v; n++; } });
+    lsKeys().forEach(function (k) { if (LOCAL_ONLY[k]) return; var v = localStorage.getItem(k); if (v != null) { keys[k] = v; n++; } });
     return { format: FORMAT, schema: SCHEMA, exportedAt: new Date().toISOString(), keyCount: n, keys: keys };
   }
 
@@ -203,8 +215,11 @@
   }
 
   // 實際寫入:整個清空再原樣寫回。中途失敗立刻停手,回報寫到第幾個。
+  // LOCAL_ONLY:備份檔裡的不寫,這台原本的在 clear() 前先拿出來、最後放回去(放不回去也不算還原失敗)。
   function applyPack(pack) {
-    var names = Object.keys(pack.keys);
+    var names = Object.keys(pack.keys).filter(function (k) { return !LOCAL_ONLY[k]; });
+    var keep = {};
+    Object.keys(LOCAL_ONLY).forEach(function (k) { try { var v = localStorage.getItem(k); if (v != null) keep[k] = v; } catch (e) {} });
     try { localStorage.clear(); }
     catch (e) { return { ok: false, done: 0, err: '清除舊資料時失敗：' + (e && e.message || e) }; }
     for (var i = 0; i < names.length; i++) {
@@ -212,6 +227,7 @@
       try { okw = _lzSetStoredRaw(k, pack.keys[k]) !== false; } catch (e) { okw = false; }
       if (!okw) return { ok: false, err: '儲存空間不足' };
     }
+    Object.keys(keep).forEach(function (k) { try { _lzSetStoredRaw(k, keep[k]); } catch (e) {} });
     return { ok: true, done: names.length };
   }
 

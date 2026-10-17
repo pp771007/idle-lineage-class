@@ -14,6 +14,17 @@ disable-model-invocation: true
    - `git status` + `git log origin/main..HEAD --oneline`(還沒 push 的 commit)
    - `git diff origin/main..HEAD --name-only` 抓出「動到的 `afk-*.js`」清單。
 
+1.5 **先接上主線最新版**(多人一起改時必做;只有自己在改也照做,沒差就是一行指令)
+   - `git fetch origin main`,再看 `git merge-base --is-ancestor origin/main HEAD`:
+     - exit 0 = 已經接在最新主線上,往下走。
+     - exit 1 = 有人(朋友的雲端對話)在你之後合進了主線 → `git rebase origin/main`,把自己的 commit 接到他們後面。
+   - 為什麼:不接上就推,PR 合併時會在版本號檔案卡住;更糟的是合得進去但 `?v=`/sw 版本是照「沒有對方改動」算的 → 新舊混搭(見步驟 2 的踩雷)。
+   - rebase 衝突怎麼處理:
+     - **產生檔**(`sw.js`、`version.json`、`assets-manifest.json`、`anim-manifest.json`,以及 `index.html` 裡只有 `?v=` 那幾行不同)→ 直接取主線那份:`git checkout --ours <檔>`(⚠️ rebase 時 ours＝主線、theirs＝自己正在接上去的 commit,跟 merge 相反)、`git add <檔>`、`git rebase --continue`;版本號等一下的步驟 2、3 會重算,不用手對。
+     - **程式碼本身衝突**(兩人改到同一段)→ `git rebase --abort` 停下來,把兩邊各改了什麼講給使用者聽,讓他決定留哪一版;**不要自己猜著合**。
+   - 接完後 `grep -rn "^<<<<<<<\|^>>>>>>>" --include=*.js --include=*.html --include=*.css --include=*.json .` 必須為空(stamp 不會清衝突標記)。
+   - 接上之後遠端分支的舊 commit 會對不上 → push 一律用 `--force-with-lease=<分支>:<剛 fetch 到的遠端 sha>`(只蓋自己分支上「自己看過的那一版」,別人若也推了同分支會被擋下而不是被蓋掉)。
+
 2. **bump 改動的 `?v=`**
    - **`js/*.js`、`css/*.css`、`afk-*.js` 全部：跑 `node scripts/stamp-code-versions.mjs`**(自動把 `?v=` 對齊「內容 sha1 前 10 碼」，不必手動算、也不會漏；afk-*.js 也在涵蓋範圍，不要手動 bump)。
      🚨 **這步絕不可省**：`?v=` 沒 bump ⇒ URL 沒變 ⇒ 玩家的瀏覽器/SW 繼續用舊快取，而同頁其他有 bump 的檔卻是新的 ⇒ **新舊混搭**。2026-07-11 踩過：遺物移植同時改了 `js/04`(新增 `equipSkillDmgMult`)與 `js/07`(呼叫它)、兩個 `?v=` 都沒 bump → 先快取過舊 `js/04`、之後才抓 `js/07` 的玩家拿到「新 07 + 舊 04」→ 一施放技能就 `Can't find variable: equipSkillDmgMult`，離線結算整段中斷、收益歸零。**看玩家何時快取而定，故低機率、無法重現，極難查**。

@@ -39,6 +39,25 @@ html = html.replace(/((?:js|css)\/[\w.-]+\.(?:js|css)|afk-[\w.-]+\.js)\?v=([0-9a
   return `${path}?v=${want}`;
 });
 
+// 載入進度條(#boot-loader)的 data-scripts / data-script-kb = 它後面 <script src> 的數量與總大小(KB)
+//   (進度條前 80% 用它當分母)。加/刪/改外掛時跟著對齊，不然進度條會停在 80% 前或衝過頭。
+{
+  const at = html.indexOf('id="boot-loader"');
+  if (at >= 0) {
+    const srcs = [...html.slice(at).matchAll(/<script\b[^>]*\bsrc="([^"?]+)/g)].map(m => m[1]);
+    let bytes = 0;
+    for (const s of srcs) { try { bytes += Buffer.byteLength(readFileSync(join(ROOT, s), 'utf8').replace(/\r\n/g, '\n')); } catch {} }
+    const want = { 'data-scripts': String(srcs.length), 'data-script-kb': String(Math.round(bytes / 1024)) };
+    for (const attr in want) {
+      html = html.replace(new RegExp(`(id="boot-loader"[^>]*\\b${attr}=")(\\d+)"`), (whole, pre, cur) => {
+        if (cur === want[attr]) return whole;
+        stale.push({ path: `index.html #boot-loader ${attr}`, cur, want: want[attr] });
+        return `${pre}${want[attr]}"`;
+      });
+    }
+  }
+}
+
 if (!stale.length) {
   console.log('[code-ver] 所有 js/css/afk-*.js 的 ?v= 都與內容一致。');
   process.exit(0);

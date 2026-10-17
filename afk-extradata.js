@@ -14,7 +14,7 @@
 (function () {
   window.AFK_EXTRA = {
 
-    // ── 🗺️ 統一地圖名解析（唯一一份；afk-dex / afk-wiki / js/offline.js(核心) / afk-slotinfo 都呼叫這份）──
+    // ── 🗺️ 統一地圖名解析（唯一一份；afk-dex / afk-wiki / js/offline.js(核心) 都呼叫這份）──
     //   涵蓋：風木地監、遺忘之島、時空裂痕、隱藏狩獵區域(HIDDEN_AREA_NAMES)、攀登(pride_fN / pride_a_b)、
     //   選單地圖(MAP_REGIONS 的 t 優先，其次 MAP_CATEGORIES)、攻城(SIEGE_CITY)、村莊(DB.towns)；查不到回 id。
     //   ⭐ 以後作者新增「不在 MAP_CATEGORIES 的地圖類型」只要改這一處，四支外掛同時生效（免再逐份補）。
@@ -83,15 +83,6 @@
     //   short = 掉落查詢物品卡用的簡短一行
     //   chain = 小百科傳說裝備頁用的完整鏈(可含 <br>;連前置道具的掉落來源都寫清楚)
     itemAcquire: {
-      // 🦴 席琳遺骸 8 部位：怪物不掉、不可製作、商店沒有 → 只能靠這兩條路（同一段文字，逐件掛上）
-      rem_claw:  { short: '席琳神殿「伊奧」用席琳結晶 ×1 兌換（詞綴隨機一種）。' },
-      rem_eye:   { short: '席琳神殿「伊奧」用席琳結晶 ×1 兌換（詞綴隨機一種）。' },
-      rem_blood: { short: '席琳神殿「伊奧」用席琳結晶 ×1 兌換（詞綴隨機一種）。' },
-      rem_flesh: { short: '席琳神殿「伊奧」用席琳結晶 ×1 兌換（詞綴隨機一種）。' },
-      rem_heart: { short: '席琳神殿「伊奧」用席琳結晶 ×1 兌換（詞綴隨機一種）。' },
-      rem_bone:  { short: '席琳神殿「伊奧」用席琳結晶 ×1 兌換（詞綴隨機一種）。' },
-      rem_fang:  { short: '席琳神殿「伊奧」用席琳結晶 ×1 兌換（詞綴隨機一種）。' },
-      rem_scale: { short: '席琳神殿「伊奧」用席琳結晶 ×1 兌換（詞綴隨機一種）。' },
       doll_bag: {
         short: '向威頓村「魔法娃娃商人」用重複的「銀卡」兌換（1:1，需該怪卡片圖鑑已開到金階）。打開隨機獲得一隻一～二階魔法娃娃。',
       },

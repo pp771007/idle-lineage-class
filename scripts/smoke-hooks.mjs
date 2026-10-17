@@ -9,6 +9,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { chromium, devices } from 'playwright';
+import { pathToFileURL } from 'node:url';
 
 const PORT = 8799;
 const MIME = {
@@ -52,8 +53,8 @@ const watch = (pg) => {
 //   故它單獨在「手機模擬」那一輪驗,桌機那輪不列入(否則桌機永遠等不到它、smoke 假性失敗)。
 // afk-battlehud 桌機也會 init(只是 CSS 讓它不顯示)→ 放 need 即可;它取代的是核心手機版 #mobile-vitals。
 // afk-touchtip 只在觸控裝置 init(桌機有 hover,本來就不該掛)→ 桌機那輪永遠等不到,必須放手機輪。
-const needMobileOnly = ['[AFK-touchtip]'];
-const need = ['[AFK]', '[AFK-banner]', '[AFK-nobanner]','[AFK-lzcache]', '[AFK-synccompress]', '[AFK-clanroster]', '[AFK-allyslim]', '[AFK-dollcursor]', '[AFK-mobile]', '[AFK-backnav]', '[AFK-battlehud]', '[AFK-mapbar]', '[AFK-nozoom]', '[AFK-statusicon]', '[AFK-petui]', '[AFK-trackinfo]', '[AFK-trackmaps]', '[AFK-relicguard]', '[AFK-wpnfix]', '[AFK-enhtarget]', '[AFK-retrial]', '[AFK-attrbatch]', '[AFK-cursebatch]', '[AFK-battlebuffs]', '[AFK-skillbar]', '[AFK-slotinfo]', '[AFK-dex]', '[AFK-wiki]', '[AFK-syncinfo]', '[AFK-statpts]', '[AFK-statlist]', '[AFK-pwa]', '[AFK-storage]', '[AFK-fullsave]', '[AFK-quotawarn]', '[AFK-notice]', '[AFK-history]', '[AFK-reissueid]', '[AFK-diag]', '[AFK-mobname]', '[AFK-npclabel]', '[AFK-training]', '[AFK-junkmgr]', '[AFK-bossavoid]', '[AFK-mercguard]', '[AFK-squadsync]', '[AFK-ancdrop]', '[AFK-relicaffix]', '[AFK-relicbatch]', '[AFK-bmprice]', '[AFK-itemsearch]', '[AFK-eqlist]', '[AFK-npclist]', '[AFK-whbatch]', '[AFK-anyclass]', '[AFK-locksafe]', '[AFK-buyercompat]', '[AFK-sellguard]', '[AFK-skin]'];
+const needMobileOnly = ['[AFK-touchtip]', '[AFK-tapclose]'];
+const need = ['[AFK]', '[AFK-banner]','[AFK-lzcache]', '[AFK-synccompress]', '[AFK-clanroster]', '[AFK-allyslim]', '[AFK-dollcursor]', '[AFK-mobile]', '[AFK-backnav]', '[AFK-battlehud]', '[AFK-mapbar]', '[AFK-nozoom]', '[AFK-statusicon]', '[AFK-petui]', '[AFK-trackinfo]', '[AFK-trackmaps]', '[AFK-relicguard]', '[AFK-wpnfix]', '[AFK-enhtarget]', '[AFK-attrbatch]', '[AFK-cursebatch]', '[AFK-battlebuffs]', '[AFK-skillbar]', '[AFK-syncinfo]', '[AFK-statpts]', '[AFK-statlist]', '[AFK-pwa]', '[AFK-storage]', '[AFK-fullsave]', '[AFK-quotawarn]', '[AFK-notice]', '[AFK-history]', '[AFK-reissueid]', '[AFK-diag]', '[AFK-mobname]', '[AFK-npclabel]', '[AFK-townmap]','[AFK-training]', '[AFK-junkmgr]', '[AFK-bossavoid]', '[AFK-mercguard]', '[AFK-squadsync]', '[AFK-itemsearch]', '[AFK-eqlist]', '[AFK-npclist]', '[AFK-whbatch]', '[AFK-anyclass]', '[AFK-sellguard]', '[AFK-skin]'];
 const seen = (list) => list.every((n) => logs.some((l) => l.includes(n) && l.includes('hooks OK')));
 
 // ⚠ 不用 waitUntil:'networkidle':作者新版(.49 起)加了背景音樂 assets/bgm/*.mp3，<audio> 媒體串流會讓網路
@@ -73,7 +74,19 @@ watch(page);
 await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
 const _deadline = Date.now() + 20000;   // 最多等 20 秒讓全部外掛初始化(CI 較慢)
 while (Date.now() < _deadline && !seen(need)) await page.waitForTimeout(200);
-await page.waitForTimeout(300);   // 緩衝:讓 hooks 之後的索引(dex/wiki)與 AFK_EXTRA 建好,再做地圖翻譯檢查
+await page.waitForTimeout(300);   // 緩衝:讓 hooks 之後的索引(dex)與 AFK_EXTRA 建好,再做地圖翻譯檢查
+// afk-forcemobile:電腦/平板用 http 開 index.html 會被導去 phone.html,遊戲跑在裡面的 iframe。
+//   外層 phone.html 沒有任何遊戲全域 → 檢查一律要在「遊戲那一層」做(以前直接 page.evaluate,全部找錯層)。
+async function gameFrame(pg) {
+  if (!/\/phone\.html/.test(pg.url())) return pg.mainFrame();
+  for (let i = 0; i < 100; i++) {
+    const f = pg.frames().find((fr) => fr !== pg.mainFrame() && /\/index\.html/.test(fr.url()));
+    if (f) return f;
+    await pg.waitForTimeout(100);
+  }
+  return pg.mainFrame();
+}
+const game = await gameFrame(page);
 
 // 🚫 只迴避指定頭目(afk-bossavoid):驗「沒挑到的王真的不會觸發瞬移逃離」。
 //   為什麼非驗不可:這支的作法是在 autoActions 跑之前,把玩家沒挑到的 BOSS 實例暫時標上 noAutoTeleport,
@@ -82,7 +95,7 @@ await page.waitForTimeout(300);   // 緩衝:讓 hooks 之後的索引(dex/wiki)�
 //   零錯誤訊息、hooks OK 照印,玩家只會覺得「怎麼連我沒選的也躲」。
 //   ⚠ smoke 停在主選單(沒載入角色),但 player 是物件、currentSlot=1、autoActions 可直接呼叫(實測);
 //     把 useItem 換成計數器就能確定性地看出「有沒有觸發瞬移」,不必真的消耗卷軸。
-const bossAvoidProblems = await page.evaluate(() => {
+const bossAvoidProblems = await game.evaluate(() => {
   const bad = [];
   const origUse = window.useItem;
   try {
@@ -141,40 +154,6 @@ const bossAvoidProblems = await page.evaluate(() => {
   return bad;
 });
 
-// 💰 黑市收購價(afk-bmprice):驗「成交價區間還算得出來」。
-//   為什麼非驗不可:這支不重刻公式,直接借核心的 pandoraBuyOrderAllowed / pandoraBuyOrderPriceProfile /
-//   pandoraCardPriceRange 拿行情價區間。上游改名或改結構(minMult/maxMult 換欄位名)時,itemInfo 只會
-//   安靜回 null → 收購欄那行與物品詳情那行整個不出現,零錯誤、hooks OK 照印,沒人會發現。
-//   ⚠ 不可在這裡呼叫 pandoraBuyOrderPrice——它走 lootRng,會推進存檔內的 committed RNG 序號。
-const bmProblems = await page.evaluate(() => {
-  const bad = [];
-  try {
-    if (!window.AFK_BM || !AFK_BM.itemInfo) return ['AFK_BM 不存在(外掛沒載入或被關掉)'];
-    if (!AFK_BM.rotateFromCore) bad.push('抓不到核心「每 N 分鐘輪換」那句(上游改了黑市標題寫法?)→「平均等多久」會用猜的 10 分鐘');
-    // 一般裝備:區間＝售價×minMult ~ 售價×maxMult,上限至少要大於售價本身
-    const eq = Object.keys(DB.items).find((id) => {
-      const d = DB.items[id];
-      return d && d.p > 0 && d.eff !== 'card' && typeof pandoraBuyOrderAllowed === 'function' && pandoraBuyOrderAllowed(id);
-    });
-    if (!eq) bad.push('全 DB 找不到任何「可指定收購且有售價」的物品(上游改了 pandoraBuyOrderAllowed 的條件?)');
-    else {
-      const info = AFK_BM.itemInfo(eq);
-      if (!info || !(info.max > DB.items[eq].p) || !(info.min > 0) || !(info.min < info.max)) bad.push(`${DB.items[eq].n} 算不出成交價區間(itemInfo 回 ${JSON.stringify(info)})`);
-    }
-    // 怪物卡走另一條路徑(固定區間·與售價無關),要分開驗
-    const card = Object.keys(DB.items).find((id) => DB.items[id] && DB.items[id].eff === 'card' && DB.items[id].cardTier >= 1);
-    if (card) {
-      const ci = AFK_BM.itemInfo(card);
-      if (!ci || !(ci.max > 0)) bad.push(`${DB.items[card].n} 算不出成交價(pandoraCardPriceRange 改了?)`);
-    }
-    // 物品詳情那行真的有印出來(afk-dex 與小百科裝備頁共用同一支 itemDetailHTML)
-    if (eq && window.AFK_DEX_API && AFK_DEX_API.itemDetailHTML) {
-      if (!AFK_DEX_API.itemDetailHTML(eq).includes('黑市成交價')) bad.push('物品詳情裡沒有「黑市成交價」那一行(afk-dex 的插入點掉了?)');
-    }
-  } catch (e) { bad.push('黑市收購價檢查本身出錯:' + e.message); }
-  return bad;
-});
-
 // --- 第二輪:手機模擬(iPhone 13),專驗 afk-mobile 的三欄掛點在作者最新 DOM 上仍成立 ---
 //   afk-mobile 只在手機時 init,桌機那輪印不出 hooks OK;用真手機模擬(pointer:coarse/UA)讓它跑起來才驗得到。
 const mctx = await browser.newContext({ ...devices['iPhone 13'], ...SMOKE_CTX });
@@ -185,16 +164,19 @@ const _mDeadline = Date.now() + 20000;
 while (Date.now() < _mDeadline && !seen(needMobileOnly)) await mpage.waitForTimeout(200);
 
 // --- 第三輪:手機 + 「手機版面」外掛關閉 ---
-//   為什麼要驗這個:玩家可以逐支關外掛,但 afk-toggles 的逃生門按鈕與各外掛入口「不可以跟著消失」——
+//   為什麼要驗這個:外掛開關被關掉時(舊存檔、或站長從主控台關),基礎設施與首頁入口「不可以跟著消失」——
 //   否則玩家關掉某支外掛後連把它開回來的入口都沒有,變成死結(2026-07-20 實際回報)。
-//   歷史成因都是「基礎設施依賴了可被關掉的外掛」:逃生門的 top 讀 afk-mobile 設的 --orig-bar-h、
+//   歷史成因都是「基礎設施依賴了可被關掉的外掛」:開關面板的 top 讀 afk-mobile 設的 --orig-bar-h、
 //   afk-skin 靠 afk-mobile 掛的 body.m-mobile 判斷手機。前兩輪都是「全開」狀態,永遠測不到。
+//   2026-10-15 起開關面板沒有任何玩家入口(按鈕與 ?plugins 網址都拿掉,站長要求「不要有任何連結能打開」)→
+//   這輪改驗「網址打不開面板」,面板版面改用主控台那條路(AFK_TOGGLES.openPanel)開起來驗。
 const octx = await browser.newContext({ ...devices['iPhone 13'], ...SMOKE_CTX });
 const opage = await octx.newPage();
 watch(opage);
 await opage.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
 await opage.evaluate(() => localStorage.setItem('afk_toggle_mobile', '0'));
-await opage.reload({ waitUntil: 'domcontentloaded' });
+// 用舊的網址入口開:面板不可以自己跳出來(下面驗)
+await opage.goto(`http://127.0.0.1:${PORT}/index.html?plugins`, { waitUntil: 'domcontentloaded' });
 await opage.waitForTimeout(3000);
 // 模擬線上的非官方橫幅(本機沒有;逃生門必須避開它)
 await opage.evaluate(() => {
@@ -208,31 +190,44 @@ await opage.evaluate(() => {
   document.body.appendChild(d);
 });
 await opage.waitForTimeout(1500);
-const toggleOffProblems = await opage.evaluate(() => {
+const toggleOffProblems = await opage.evaluate(async () => {
   const bad = [];
+  // 不可以有任何連結能打開外掛開關面板:?plugins 與 #plugins 都要沒反應
+  if (document.getElementById('afk-toggles-overlay')) bad.push('網址加 ?plugins 還是打開了外掛開關面板(站長要求不可以有任何連結能打開)');
+  location.hash = '#plugins';
+  await new Promise((r) => setTimeout(r, 400));
+  if (document.getElementById('afk-toggles-overlay')) bad.push('網址加 #plugins 還是打開了外掛開關面板(站長要求不可以有任何連結能打開)');
+  history.replaceState(null, '', location.pathname);
+  // 面板本身(站長主控台用)開起來版面仍要正常:關閉鈕不可被橫幅蓋住
+  if (window.AFK_TOGGLES && typeof AFK_TOGGLES.openPanel === 'function') AFK_TOGGLES.openPanel();
   // 橫幅讓位:必須由 afk-banner(不可停用)提供 → 關掉「手機版面」後依然要生效。
   //   歷史成因:讓位整組寫在 afk-mobile 裡,平板玩家為了換回三欄把它關掉 → 頂端(冒險地圖標題/黑市/瞬移/右欄分頁)
   //   全被橫幅蓋住(2026-07-23 回報)。
-  const barH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--orig-bar-h')) || 0;
+  //   --orig-bar-h 現在是 calc(橫幅px + env(safe-area-inset-top)) → 讀數字走 AFK_BANNER.bottom()
+  const barH = window.AFK_BANNER ? AFK_BANNER.bottom() : 0;
   const barBottom = document.getElementById('_orig_pbar').getBoundingClientRect().bottom;
   if (barH < barBottom) bad.push(`--orig-bar-h(${barH}px) 沒讓開橫幅(底端 ${barBottom}px)`);
   for (const id of ['app-stage', 'creation-screen']) {
     const el = document.getElementById(id);
     if (el && el.getBoundingClientRect().top < barBottom) bad.push(`#${id} 頂端(${Math.round(el.getBoundingClientRect().top)}px)還在橫幅底下,會被蓋住`);
   }
-  const btn = document.getElementById('afk-toggles-entry');
-  if (!btn) bad.push('左上角「外掛開關」逃生門按鈕不存在');
+  const btn = document.getElementById('afk-tg-close');
+  if (!document.getElementById('afk-toggles-overlay') || !btn) bad.push('AFK_TOGGLES.openPanel() 開不出外掛開關面板');
   else {
     const r = btn.getBoundingClientRect();
     const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    if (!(r.width > 0 && r.height > 0)) bad.push('逃生門按鈕沒有尺寸');
-    else if (!(top === btn || btn.contains(top))) bad.push(`逃生門按鈕被「${(top && (top.id || top.tagName)) || '未知元素'}」蓋住,點不到`);
+    if (!(r.width > 0 && r.height > 0)) bad.push('逃生門面板的「關閉」沒有尺寸');
+    else if (!(top === btn || btn.contains(top))) bad.push(`逃生門面板的「關閉」被「${(top && (top.id || top.tagName)) || '未知元素'}」蓋住,點不到`);
+    else btn.click();   // 收掉面板,後面才驗得到「開始遊戲」沒被擋
   }
-  // 入口(掉落查詢/小百科)在手機上必須直接可見,不可被收進桌機用的 Modal
-  for (const [sel, nm] of [['.m-dex-entry-main', '掉落查詢入口'], ['.m-wiki-entry-main', '小百科入口']]) {
-    const el = document.querySelector(sel);
-    if (!el) { bad.push(nm + '不存在'); continue; }
-    if (el.getBoundingClientRect().height <= 0) bad.push(nm + '高度為 0(被收進桌機 Modal?)');
+  // 首頁唯一的入口「開始遊戲」(圖上的登錄鈕)關掉手機版面後仍要點得到
+  const start = document.getElementById('btn-start-menu');
+  if (!start) bad.push('首頁「開始遊戲」按鈕不存在');
+  else {
+    const r = start.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (!(r.width > 0 && r.height > 0)) bad.push('「開始遊戲」沒有尺寸');
+    else if (!(hit === start || start.contains(hit))) bad.push(`「開始遊戲」被「${(hit && (hit.id || hit.tagName)) || '未知元素'}」蓋住,點不到`);
   }
   return bad;
 });
@@ -250,14 +245,17 @@ const tctx = await browser.newContext({
 });
 const tpage = await tctx.newPage();
 watch(tpage);
-await tpage.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+// ⚠ 用 file:// 開:http 下 afk-forcemobile 會把平板包進 430px 的手機框(phone.html),這道縫不存在、也驗不到遊戲那層;
+//   只有「下載 repo 直接開 index.html」的平板還是 820 寬的上游桌機幾何 → 那才是這輪要守的情境。
+await tpage.goto(pathToFileURL(join(process.cwd(), 'index.html')).href, { waitUntil: 'domcontentloaded' });
 await tpage.waitForTimeout(3000);
 const tabletProblems = await tpage.evaluate(() => {
   const bad = [];
   const SCROLLABLE = ['auto', 'scroll'];
   const oy = (el) => getComputedStyle(el).overflowY;
-  // 前置:只有「我方當手機、上游當桌機」這道縫才有混搭問題;兩邊同調時本檢查不適用。
-  if (!document.body.classList.contains('m-mobile')) return bad;
+  // 前置:只有「我方當手機、上游當桌機」這道縫才有混搭問題。這輪刻意造出這道縫,沒套上手機殼＝測試環境不對,
+  //   不可默默當通過(以前在 phone.html 外層跑,這兩項一直是空轉)。
+  if (!document.body.classList.contains('m-mobile')) return ['平板沒有套上手機殼(body.m-mobile)→ 這輪沒驗到東西'];
   if (matchMedia('(max-width: 768px), (max-height: 520px) and (pointer: coarse)').matches) return bad;
   const gs = document.getElementById('game-screen');
   if (gs && SCROLLABLE.includes(oy(gs))) return bad;   // 外層自己就是捲動容器 → 分頁攤平是安全的
@@ -280,7 +278,7 @@ const tabletProblems = await tpage.evaluate(() => {
 //     ①某條 @media 條件成立(手機),或 ②有一條 `body.afk-*` 規則,而那個 class 現在真的掛在 body 上(平板)。
 const tabletHudProblems = await tpage.evaluate(() => {
   const bad = [];
-  if (!document.body.classList.contains('m-mobile')) return bad;   // 沒套手機殼就不適用
+  if (!document.body.classList.contains('m-mobile')) return ['平板沒有套上手機殼(body.m-mobile)→ 這輪沒驗到東西'];
   const check = [['afk-battlehud-style', '手機戰鬥狀態列'], ['afk-battlebuffs-style', '手機戰鬥狀態欄']];
   for (const [styleId, label] of check) {
     const st = document.getElementById(styleId);
@@ -307,7 +305,7 @@ const tabletHudProblems = await tpage.evaluate(() => {
 // 🗺️ 地圖名翻譯覆蓋檢查:掉落查詢的「出沒地圖」來源＝DB.maps 的 key,經 AFK_EXTRA.mapName 解析。
 //   mapName 查不到任一中文來源時會原樣回傳英文 id(name === id),這就是「漏翻」的精準訊號。
 //   作者新增「不在 MAP_CATEGORIES/MAP_REGIONS/DB.towns…」的地圖結構時會被這裡擋下 → 提醒補進 mapName。
-const untranslatedMaps = await page.evaluate(() => {
+const untranslatedMaps = await game.evaluate(() => {
   const out = [];
   try {
     const mn = (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName : null;
@@ -324,72 +322,22 @@ const untranslatedMaps = await page.evaluate(() => {
 // 🌓 色彩配置宣告:index.html 必須讓 :root 的 color-scheme 是 dark。沒有的話 Android Chrome 的
 //   「自動深色主題」會自己疊一層反轉,逐張圖判定 → 部分 NPC/怪物 sprite 變成白色人形(玩家回報過)。
 //   症狀完全不像我們的 bug(重繪/重登/清快取都無效、重裝才好),沒有這道檢查掉了不會有人發現。
-const colorScheme = await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+const colorScheme = await game.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
 
-// 🔌 桌機外掛入口區塊(afk-skin 的 #afk-plugin-panel):整塊絕對定位在左欄「版本號正上方」。
-//   座標是照上游 4:3 舞台的百分比放的 → 上游改首頁版面(標題變高、搬 #login-meta-layer、換舞台元素)時,
-//   入口不會消失、只會疊到標題/版號上或被舞台的 overflow:hidden 切掉,肉眼不掃根本看不出來。
-const pluginPanelProblems = await page.evaluate(() => {
+// 🔌 首頁只留「開始遊戲」(圖上的登錄鈕):外掛照樣往 #main-menu/舞台塞入口,靠 css/style.css 藏起來。
+//   要驗兩件事:①開始遊戲點得到 ②舞台上沒有漏網的外掛入口(新外掛換了掛法就會冒出來疊在底圖上)。
+const pluginPanelProblems = await game.evaluate(() => {
   const bad = [];
-  const rectOf = (s) => { const el = document.querySelector(s); return el && el.getBoundingClientRect(); };
-  const panel = document.getElementById('afk-plugin-panel');
-  if (!panel) { bad.push('#afk-plugin-panel 不存在(桌機入口沒被放到左欄)'); return bad; }
-  const kids = [...panel.children].map((c) => c.getBoundingClientRect());
-  if (!kids.length) { bad.push('#afk-plugin-panel 是空的(入口沒被搬進來)'); return bad; }
-  const top = Math.min(...kids.map((r) => r.top)), bottom = Math.max(...kids.map((r) => r.bottom));
-  const ver = rectOf('#login-version'), title = rectOf('#login-title-layer'), stage = rectOf('#login-art-stage');
-  if (ver && bottom > ver.top) bad.push(`入口區塊底端(${Math.round(bottom)}px)壓到版本號(頂端 ${Math.round(ver.top)}px)`);
-  if (title && top < title.bottom) bad.push(`入口區塊頂端(${Math.round(top)}px)壓到標題(底端 ${Math.round(title.bottom)}px)`);
-  if (stage && (top < stage.top || bottom > stage.bottom)) bad.push('入口區塊超出 4:3 舞台,會被 overflow:hidden 切掉');
-  for (const [sel, nm] of [['.m-dex-entry-main', '掉落查詢入口'], ['.m-wiki-entry-main', '小百科入口'], ['#afk-stg-gear', '⚙ 其他功能']]) {
-    const r = rectOf(sel);
-    if (!r) { bad.push(nm + '不存在'); continue; }
-    if (!(r.width > 0 && r.height > 0)) { bad.push(nm + '沒有尺寸'); continue; }
-    const el = document.querySelector(sel);
-    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    if (!(hit === el || el.contains(hit))) bad.push(`${nm}被「${(hit && (hit.id || hit.tagName)) || '未知元素'}」蓋住,點不到`);
-  }
-  return bad;
-});
-
-// 🗡️ 裝備頁覆蓋檢查:三件事,都是「畫面正常、只是查不到」的靜默失效。
-//   ① 無條件件數 == DB.items 的裝備數 → 沒有裝備在索引階段被漏掉。
-//   ② 部位按鈕的件數加總 == 總件數 → 上游新增 slot 時,那個部位在篩選面板裡**沒有按鈕**(索引有、篩不到),
-//      而清單只畫前 40 列,不捲到底根本看不到它 —— 加總對不上是唯一會早期爆出來的訊號。
-//   ③ 部位按鈕的名稱不可含英文字母 → 沒補進 EQUIP_GROUPS 的 slot 會直接把原始 key 印在畫面上。
-//   (歷史:魔法娃娃 50 件 + 地龍之魔眼 1 件曾因部位對不上分組桶而整組消失。)
-const equipPageProblems = await page.evaluate(async () => {
-  const bad = [];
-  try {
-    if (!window.AFK_WIKI_API || typeof DB === 'undefined' || !DB.items) return bad;
-    AFK_WIKI_API.goto({ tab: 'equip' });
-    await new Promise((r) => setTimeout(r, 800));
-    const cntEl = document.getElementById('m-eq-cnt');
-    if (!cntEl) { bad.push('裝備頁的控制列不見了(找不到 #m-eq-cnt)→ 篩選器沒渲染出來'); return bad; }
-    const shown = parseInt(String(cntEl.textContent).replace(/[^0-9]/g, ''), 10);
-    let total = 0;
-    for (const id in DB.items) {
-      const d = DB.items[id];
-      if (d && d.n && (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc')) total++;
-    }
-    if (shown !== total) bad.push(`裝備頁無條件時只列 ${shown} 件,DB.items 裡有 ${total} 件裝備 → 有裝備在索引階段被漏掉`);
-    const btn = document.querySelector('[data-lfsheet]');
-    if (!btn) { bad.push('裝備頁找不到「篩選」按鈕'); return bad; }
-    btn.click();
-    await new Promise((r) => setTimeout(r, 200));
-    const chips = [...document.querySelectorAll('#m-eq-sheet [data-lfchip="slot"]')];
-    if (!chips.length) { bad.push('篩選面板裡沒有任何「部位」按鈕'); return bad; }
-    let sum = 0;
-    for (const c of chips) {
-      const i = c.querySelector('i');
-      sum += i ? (parseInt(i.textContent.replace(/[^0-9]/g, ''), 10) || 0) : 0;
-      const label = c.textContent.replace(/[0-9]/g, '');
-      if (/[A-Za-z]/.test(label)) bad.push(`部位按鈕「${label.trim()}」露出英文/原始 key → 該 slot 沒補進 EQUIP_GROUPS`);
-    }
-    if (sum !== total) bad.push(`部位按鈕件數加總 ${sum} ≠ 總件數 ${total} → 有部位在篩選面板裡沒有按鈕(篩不到那批裝備)`);
-    const body = document.getElementById('m-wiki-body');
-    if (body && body.scrollWidth > body.clientWidth) bad.push(`裝備頁有橫向捲動(scrollWidth ${body.scrollWidth} > clientWidth ${body.clientWidth})`);
-  } catch (e) { bad.push('裝備頁檢查本身出錯:' + e.message); }
+  const start = document.getElementById('btn-start-menu');
+  if (!start) { bad.push('首頁「開始遊戲」按鈕不存在'); return bad; }
+  const r = start.getBoundingClientRect();
+  const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  if (!(r.width > 0 && r.height > 0)) bad.push('「開始遊戲」沒有尺寸');
+  else if (!(hit === start || start.contains(hit))) bad.push(`「開始遊戲」被「${(hit && (hit.id || hit.tagName)) || '未知元素'}」蓋住,點不到`);
+  const allowed = (el) => el === start || el.id === 'login-bg-image' || el.id === 'main-menu' || el.id === 'login-art-stage' || el.classList.contains('login-field-hint') || !!el.closest('.login-scroll-note') || !!el.closest('.login-deco') || !!el.closest('.login-remember') || !!el.closest('.login-register') || !!el.closest('.login-msg') || !!el.closest('.login-slash');   // 卷軸上的公告字、logo 與劍光（都不吃點擊）、記住帳號勾選框、註冊帳號鈕與提示、登錄動畫（平常隱藏）
+  const stray = [...document.querySelectorAll('#login-art-stage *')]
+    .filter((el) => !allowed(el) && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+  if (stray.length) bad.push('首頁舞台上多出看得到的元素:' + stray.slice(0, 5).map((el) => el.id || el.className || el.tagName).join('、'));
   return bad;
 });
 
@@ -437,34 +385,17 @@ if (bossAvoidProblems.length) {
   die();
 }
 
-if (bmProblems.length) {
-  console.error('冒煙測試失敗:黑市成交價算不出來(收購欄與物品詳情那兩行會安靜消失):');
-  for (const p of bmProblems) console.error('  ' + p);
-  console.error('  判準:afk-bmprice 不重刻公式,借核心 pandoraBuyOrderAllowed / pandoraBuyOrderPriceProfile /');
-  console.error('       pandoraCardPriceRange 拿行情價區間。上游改名或改欄位就會回 null。');
-  console.error('  ⚠ 修的時候絕不可改用 pandoraBuyOrderPrice——它走 lootRng,查個價就推進玩家存檔的亂數序號。');
-  die();
-}
-
 if (toggleOffProblems.length) {
-  console.error('冒煙測試失敗:關掉「手機版面」外掛後,手機上的逃生門/入口不見了(玩家會無法把外掛開回來):');
+  console.error('冒煙測試失敗:關掉「手機版面」外掛後的手機畫面有問題(開關面板/首頁入口/網址入口):');
   for (const p of toggleOffProblems) console.error('  ' + p);
-  console.error('  判準:不可停用的基礎設施不能依賴可被關掉的外掛提供的 CSS 變數 / body class。');
+  console.error('  判準:不可停用的基礎設施不能依賴可被關掉的外掛提供的 CSS 變數 / body class;外掛開關面板不可以有任何網址入口。');
   die();
 }
 
 if (pluginPanelProblems.length) {
-  console.error('冒煙測試失敗:桌機首頁左欄的外掛入口區塊位置不對(玩家會看到入口疊在標題/版號上或被切掉):');
+  console.error('冒煙測試失敗:首頁不是「只剩開始遊戲」:');
   for (const p of pluginPanelProblems) console.error('  ' + p);
-  console.error('  判準:#afk-plugin-panel 的座標(left/width/top/bottom)是照上游 4:3 舞台算的,');
-  console.error('       上游搬動 #login-title-layer / #login-meta-layer 就要跟著調(見 afk-skin.js 的 CSS)。');
-  die();
-}
-
-if (equipPageProblems.length) {
-  console.error('冒煙測試失敗:小百科「裝備」分頁的覆蓋/版面有問題:');
-  for (const p of equipPageProblems) console.error('  ' + p);
-  console.error('  判準:部位對不上分組桶的裝備要落進「❓ 其他部位」,不可整組消失(見 afk-wiki.js 的 equipGroupKey / EQUIP_GROUPS)。');
+  console.error('  判準:首頁藏外掛入口的規則在 css/style.css 登入首頁那段(#login-art-stage / #main-menu 的 :not 選擇器)。');
   die();
 }
 

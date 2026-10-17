@@ -17,9 +17,13 @@
     const WANDERER_CHANCE = 0.50;
     const GOLD_WANDERER_CHANCE = 0.30;
     const WANDERER_CARD_CHANCE = 0.10;
+    // 🚫 2026-10-14 站長決定：叫賣收購 NPC（龍鑽／金幣收購）與潘朵拉黑市一起永久關閉。
+    //   不再產生、不再叫賣、村莊與釘選列不顯示、對話與「馬上到」都打不開；共用資料（龍鑽餘額等）原樣保留。
+    //   要恢復就把這個改回 false（黑市那邊見 js/14 的 PANDORA_MARKET_CLOSED）。
+    const WANDERERS_CLOSED = true;
 
     // 🚫 v3.5.53 出沒排除（用戶拍板）：攻城三城（限持城者進入·NPC 形同碰不到）＋炎魔謁見所＋席琳神殿；
-    //    其餘安全區皆可出沒（含 傲慢之塔入口/時空裂痕入口/沉默洞穴/長老會議廳/希培利亞村莊/貝希摩斯）。
+    //    其餘安全區皆可出沒（含 傲慢之塔入口/時空裂痕入口/沉默洞穴/長老會議廳）。
     const EXCLUDED_TOWNS = new Set([
         'town_sherine',           // 席琳神殿
         'town_kent_castle',       // 肯特城（攻城據點）
@@ -31,7 +35,7 @@
 
     const PLAYER_AVATARS = [
         '王子', '公主', '男騎士', '女騎士', '男法師', '女法師', '男妖精', '女妖精',
-        '男黑暗妖精', '女黑暗妖精', '男幻術士', '女幻術士', '男龍騎士', '女龍騎士', '男戰士', '女戰士'
+        '男黑暗妖精', '女黑暗妖精'
     ];
     const SILENCE_COMPLAINTS = [
         '吵死了', '安靜一點', '別再喊了', '不要一直廣播', '別洗了', '可以停一下嗎', '別再洗頻了', '安靜啦',
@@ -298,10 +302,14 @@
         });
         delete st.wanderer;
         if (!Array.isArray(st.boards)) st.boards = [];
+        let _gone = id => typeof isRemovedItem === 'function' && isRemovedItem({ id: id });   // 🗑️ 已刪除的物品（脛甲類、魔眼）：收購 NPC／懸賞合約碰到就作廢
+        st.wanderers = st.wanderers.filter(w => !_gone(w.itemId));
         st.boards = [0, 1, 2].map(i => {
             let b = st.boards[i] && typeof st.boards[i] === 'object' ? st.boards[i] : {};
+            let c = b.contract && typeof b.contract === 'object' ? b.contract : null;
+            if (c && (_gone(c.relicId) || (Array.isArray(c.requirements) && c.requirements.some(r => r && _gone(r.id))))) c = null;
             return {
-                contract: b.contract && typeof b.contract === 'object' ? b.contract : null,
+                contract: c,
                 cooldownUntil: Math.max(0, Math.floor(Number(b.cooldownUntil) || 0))
             };
         });
@@ -424,7 +432,7 @@
             : _normalizeAlignmentValue(w.alignmentValue);
         let chase = {
             n: w.name,
-            avatar: w.avatar || '男戰士',
+            avatar: w.avatar || '男騎士',
             alignmentValue: alignmentValue,
             until: Date.now() + 2 * 60 * 60 * 1000
         };
@@ -484,7 +492,7 @@
             try {
                 let res = npcClanAssignOpponent({
                     n: n,
-                    avatar: w.avatar || '男戰士',
+                    avatar: w.avatar || '男騎士',
                     alignmentValue: _normalizeAlignmentValue(w.alignmentValue),
                     levelOffset: 0,
                     pvpRandom: true
@@ -694,7 +702,7 @@
     function _pickWandererItem(st, currency) {
         let items = _wandererItemPool(currency);
         if (!items.length) return null;
-        let wantCard = _rand(st, 'wander-item-kind|' + currency) < WANDERER_CARD_CHANCE;
+        let wantCard = _rand(st, 'wander-item-kind|' + currency) < WANDERER_CARD_CHANCE && !DISABLE_COLLECTION;   // ⛔ 收藏關閉：不賣卡
         let categoryPool = items.filter(id => (DB.items[id] && DB.items[id].eff === 'card') === wantCard);
         if (!categoryPool.length) categoryPool = items;
         return _pickWeightedWandererItem(st, categoryPool, 'wander-item|' + currency + '|' + (wantCard ? 'card' : 'normal'));
@@ -840,6 +848,7 @@
     }
 
     function _announceWanderer(w) {
+    if (WANDERERS_CLOSED) return;
         // ⚠️ 到期守衛放在這裡＝單一真相：tick 路徑（_normalizeState 已濾）與 storage 多開同步路徑共用。
         //    WANDERER_LIFE_MS(2h) 剛好是 BROADCAST_MS(5min) 的整數倍，cycle 邊界正好落在到期瞬間，
         //    去重必然放行 → 另一分頁寫入時會替「已到期但本頁還沒 tick 清掉」的叫賣者重播喊話。
@@ -871,6 +880,7 @@
     }
 
     function _pinnedWanderers(st) {
+    if (WANDERERS_CLOSED) return [];
         return _activeBroadcasters(st || _readState()).slice(0, BROADCAST_PIN_MAX);
     }
 
@@ -927,6 +937,7 @@
     }
 
     function wanderingBuyerSystemTick() {
+    if (WANDERERS_CLOSED) { renderWanderBroadcastPins(); return; }   // 只負責把舊的釘選列清掉
         if (typeof DB === 'undefined' || !DB.items || !DB.towns) return;
         let now = Date.now();
         let bucket = Math.floor(now / CHECK_MS);
@@ -969,6 +980,7 @@
     }
 
     function getWanderingBuyersForTown(townId) {
+    if (WANDERERS_CLOSED) return [];
         let st = _readState();
         let list = _findWanderersForTown(st, townId);
         return list.map((w, index) => Object.assign({
@@ -1042,10 +1054,11 @@
                         if (_afkOk == null) { if (Math.floor(Number(it.en) || 0) !== Math.floor(Number(req.en) || 0)) continue; }
                         else if (!_afkOk) continue;
                     }
-                    found = { source: source.name, index: i, item: it, usedKey: usedKey };
-                    break;
+                    // 符合的有好幾件時交「最不值錢」的那件(白板/低強化優先·權重同製作扣料 consumeMaterialById)，
+                    //   不再是背包→倉庫的第一件——舊寫法會把 +12 祝福屠龍劍交出去、白板留著(玩家回報類)
+                    let _w = ((Number(it.en) || 0) * 100) + (it.anc ? 10 : 0) + (it.bless === true ? 10 : 0) + (it.attr ? 10 : 0) + (it.seteff ? 50 : 0);
+                    if (!found || _w < found._w) found = { source: source.name, index: i, item: it, usedKey: usedKey, _w: _w };
                 }
-                if (found) break;
             }
             if (!found) return { ok: false, matches: matches, missing: req };
             used.add(found.usedKey);
@@ -1153,6 +1166,7 @@
     }
 
     function openWanderingShoutMenu(wandererId, ev) {
+    if (WANDERERS_CLOSED) return;   // 日誌裡舊的叫賣訊息點了也不動作
         if (ev) {
             ev.preventDefault();
             ev.stopPropagation();
@@ -1182,6 +1196,7 @@
     }
 
     function openWanderingTauntMenu(wandererId, ev) {
+    if (WANDERERS_CLOSED) return;
         if (ev) {
             ev.preventDefault();
             ev.stopPropagation();
@@ -1321,6 +1336,7 @@
     }
 
     function hurryToWanderingBuyer(wandererId) {
+    if (WANDERERS_CLOSED) return;
         let st = _readState();
         let w = _findWanderer(st, wandererId);
         if (!_wandererPresent(w)) {
@@ -1383,6 +1399,7 @@
     }
 
     function openWanderingBuyerDialog(wandererId) {
+    if (WANDERERS_CLOSED) return;
         let st = _readState();
         let w = wandererId ? _findWanderer(st, wandererId) : _currentTownWanderer(st);
         if (!_wandererPresent(w)) {

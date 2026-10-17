@@ -118,9 +118,9 @@
 
     function injectCSS() {
       var css = [
-        /* 浮在畫面最頂端,刻意不讓開官方版指引橫幅——直接蓋在它上面(使用者要求),把遊戲畫面完整留給遊戲。
-           z-index 用 int 上限與橫幅打平,再靠 DOM 順序壓過它(見 ensureContainer)。toast 是點擊回饋、3.5 秒自動消失。 */
-        '#m-toast-wrap{position:fixed;left:50%;transform:translateX(-50%);top:14px;z-index:2147483647;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px);pointer-events:none;}',
+        /* 2026-10-14 改浮在畫面正中央(站長:放最上面會跟頂端角色資訊/橫幅疊在一起看不到)。
+           z-index 用 int 上限與橫幅打平,再靠 DOM 順序壓過它(見 ensureContainer)。toast 是點擊回饋、3.5 秒自動消失,點一下也會關。 */
+        '#m-toast-wrap{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px);pointer-events:none;}',
         '#m-toast-wrap .m-toast{pointer-events:auto;background:rgba(15,23,42,.96);border:1px solid #334155;border-left:3px solid #38bdf8;border-radius:10px;padding:10px 14px;box-shadow:0 6px 20px rgba(0,0,0,.5);color:#e2e8f0;font-size:14px;line-height:1.5;word-break:break-word;opacity:0;transform:translateY(-10px);transition:opacity .22s ease,transform .22s ease;}',
         '#m-toast-wrap .m-toast.m-toast-in{opacity:1;transform:translateY(0);}',
         '#m-toast-wrap .m-toast-line + .m-toast-line{margin-top:4px;}',

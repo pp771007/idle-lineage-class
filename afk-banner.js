@@ -67,13 +67,31 @@
         (document.head || document.documentElement).appendChild(st);
     }
 
-    var _barRO = null, _barEl = null;
+    // iPhone 有瀏海／動態島、從主畫面打開（viewport-fit=cover）：畫面延伸到狀態列底下，頂端一排（頭像、名字、金幣）被狀態列蓋住（玩家回報「有些手機上方切到了」）。
+    //   跟橫幅是同一件事（頂端被蓋住、要往下讓），所以把 env(safe-area-inset-top) 一起算進 --orig-bar-h，所有讓位規則照用。
+    //   一般瀏覽器、沒有瀏海的手機是 0 → 不變。--orig-bar-h 本身直接寫 env()（見 applyBarH）；JS 要數字（body.afk-bar、AFK_BANNER.bottom）才用看不見的探針元素量
+    var _safeProbe = null;
+    function safeTop() {
+        if (!document.body) return 0;
+        if (!_safeProbe) {
+            _safeProbe = document.createElement('div');
+            _safeProbe.id = 'afk-safe-probe'; _safeProbe.setAttribute('aria-hidden', 'true');
+            _safeProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top, 0px);visibility:hidden;pointer-events:none;';
+            document.body.appendChild(_safeProbe);
+        }
+        return Math.ceil(_safeProbe.getBoundingClientRect().height) || 0;
+    }
+    var _barRO = null, _barEl = null, _bannerPx = 0;
     function applyBarH() {
         var h = _barEl ? Math.ceil(_barEl.getBoundingClientRect().height) : 0;
         if (h > 0) h += 6;   // 安全邊距：橫幅換行/字重/邊距量測誤差，多讓一點確保完全不被蓋
-        document.documentElement.style.setProperty('--orig-bar-h', h + 'px');
-        // 有橫幅才掛：讓位規則全掛在 body.afk-bar 之下，官方站(無橫幅)整組不生效。
-        if (document.body) document.body.classList.toggle('afk-bar', h > 0);
+        _bannerPx = h;
+        // 狀態列那段直接寫 env()，不寫量到的數字：原本只在開頭 12 秒＋轉向時量，iPhone 從主畫面開、開場或從背景回來時安全區晚給，
+        //   量到 0 就一直是 0 → 頭像列又躲到狀態列底下（站長 2026-10-16 回報「上方又遮住了」）。寫成 env() 由瀏覽器自己隨時算對。
+        //   ⚠ 所以 --orig-bar-h 是 calc(...) 不是單純的 px，JS 要數字請用 AFK_BANNER.bottom()
+        document.documentElement.style.setProperty('--orig-bar-h', 'calc(' + h + 'px + env(safe-area-inset-top, 0px))');
+        // 有橫幅（或有瀏海）才掛：讓位規則全掛在 body.afk-bar 之下，官方站(無橫幅)整組不生效。
+        if (document.body) document.body.classList.toggle('afk-bar', h > 0 || safeTop() > 0);
     }
     function measureBar() {
         var bar = findBanner();
@@ -91,11 +109,7 @@
     window.AFK_BANNER = {
         el: function () { return _barEl; },
         // 橫幅底端 y 座標(含安全邊距)；無橫幅回 0。要「自己算讓位」的外掛用這個，不必各自掃 DOM。
-        bottom: function () {
-            var h = 0;
-            try { h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--orig-bar-h')) || 0; } catch (e) {}
-            return h;
-        },
+        bottom: function () { return _bannerPx + safeTop(); },
         remeasure: measureBar,
         MODAL_HOSTS: MODAL_HOSTS,
         MODAL_BOXES: MODAL_BOXES
@@ -111,5 +125,7 @@
 
     // 橫幅可能晚出現（gameLoop 會重掛）、換行高度隨寬度變 → 量測數次 + resize 時重量。
     window.addEventListener('resize', measureBar);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) measureBar(); });   // 從背景回來：重算 body.afk-bar
+    window.addEventListener('pageshow', measureBar);
     var _n = 0, _iv = setInterval(function () { measureBar(); if (++_n >= 12) clearInterval(_iv); }, 1000);
 })();

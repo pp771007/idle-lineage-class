@@ -25,23 +25,20 @@ const THREAT_MIN = 0.5;                    // 衰減後低於此值即刪除該�
 // ---------- 一、係數 ----------
 function threatClassMult(ent) {
     let c = ent && ent.cls;
-    if (c === 'knight' || c === 'warrior' || c === 'dragon' || c === 'royal') return 2.0;   // 前排：騎士/戰士/龍騎士/王族
-    if (c === 'elf' || c === 'dark') return 1.5;                                            // 妖精/黑暗妖精
-    if (c === 'mage' || c === 'illusion') return 1.0;                                       // 施法者
+    if (c === 'knight' || c === 'royal') return 2.0;   // 前排：騎士/王族
+    if (c === 'elf' || c === 'dark') return 1.5;       // 妖精/黑暗妖精
+    if (c === 'mage') return 1.0;                      // 施法者
     return 1.0;
 }
-// 武器種類 → sourceMult（識別四機制：WEAPON_TAGS 9 近戰標籤＋isBow/isWand/chainsword/qigu 旗標＋矛/武士刀看 w2h＋戰士雙持看 offwpn）
+// 武器種類 → sourceMult（識別機制：WEAPON_TAGS 近戰標籤＋isBow/isWand 旗標＋矛/武士刀看 w2h）
 function weaponSourceMult(ent) {
     let wRef = (ent && ent.eq && ent.eq.wpn) ? ent.eq.wpn : null;
     if (!wRef) return 1.0;                                              // 空手
     let w = DB.items[wRef.id];
     if (!w) return 1.0;
     if (w.isBow || w.ranged) return 0.5;                               // 弓/十字弓/遠程
-    if (w.qigu) return 0.8;                                            // 奇古獸（幻術士魔法向）
     if (w.isWand) return 1.0;                                          // 魔杖普攻（法師施法走 0.8 屬另一軸·本作先簡化為 1.0）
-    if (w.chainsword) return 1.2;                                      // 鎖鏈劍
     let tags = (typeof getWeaponTags === 'function') ? getWeaponTags(wRef.id) : [];
-    if (ent.eq.offwpn && tags.indexOf('單手鈍器') !== -1) return 1.2;  // 戰士雙持單手鈍器
     if (tags.indexOf('武士刀') !== -1) return 1.2;                     // 武士刀（雙標籤·優先於單手劍）
     if (tags.indexOf('雙手劍') !== -1 || tags.indexOf('雙手鈍器') !== -1) return 1.2;
     if (tags.indexOf('矛') !== -1) return w.w2h ? 1.2 : 1.5;           // 雙手矛 1.2／單手矛 1.5

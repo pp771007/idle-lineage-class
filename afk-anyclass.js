@@ -2,12 +2,12 @@
  * afk-anyclass.js — 去除裝備的職業與性別限制（預設關）
  *
  * 開啟後:武器/防具/飾品(含遺物)一律不看職業與性別,任何角色都能裝
- *   (法師拿雙手劍、戰士拿弓、男角穿「冰之女王魅力禮服」…)。
+ *   (法師拿雙手劍、騎士拿弓、男角穿「冰之女王魅力禮服」…)。
  *
  * 作法:核心的裝備資格判定只有一個入口 —— js/08 的 checkCanEquip(裝備、背包紅底、
  *   物品視窗的「裝備」鈕、飾品商店清單、傭兵能不能穿隊長的裝備,全都問它)。本檔包住它,
  *   **只在它執行的那一瞬間**把兩道閘拿掉、跑完立刻還原:
- *     ① 職業:reqAllowsClass / darkEquipOk / illusionEquipOk / dragonEquipOk / warriorEquipOk / royalEquipOk 一律放行
+ *     ① 職業:reqAllowsClass / darkEquipOk / royalEquipOk 一律放行
  *     ② 性別:把該件的 d.reqAvatar 暫時拿掉(核心是寫死在 checkCanEquip 裡的 if,沒有函式可換)
  *   這樣做的理由是**不重寫規則**:遺物、負重強化、劍術精通例外全部照作者原本的邏輯跑,
  *   上游改規則我們自動跟著改;我們只讓「職業」與「性別」那兩關永遠過。
@@ -35,7 +35,7 @@
   function on() { return !!(window.AFK_TOGGLES && AFK_TOGGLES.enabled('anyclass')); }
 
   // 職業那幾關(js/08):checkCanEquip 執行期間暫時一律放行;不在的就跳過(上游改名不會壞)
-  var CLASS_GATES = ['reqAllowsClass', 'darkEquipOk', 'illusionEquipOk', 'dragonEquipOk', 'warriorEquipOk', 'royalEquipOk'];
+  var CLASS_GATES = ['reqAllowsClass', 'darkEquipOk', 'royalEquipOk'];
   function pass() { return true; }
 
   function init() {
@@ -72,14 +72,14 @@
 
   // ── 真夏納變身:跨職業武器也要有攻速/硬直 ────────────────────────────────
   // 核心的真夏納速度表是「逐職業一份」,而每一份只列**那個職業原本能用的武器種類**
-  //   (js/02 SHANNA_APM_PROFILES:龍騎士那份沒有魔杖,因為原版龍騎士拿不到魔杖)。
+  //   (js/02 SHANNA_APM_PROFILES:原版拿不到魔杖的職業,那份就沒有魔杖)。
   //   本外掛讓他拿得到之後,那個組合在核心眼中是不存在的 → apm/hitstun 回 null →
-  //   變身資訊連「攻擊間隔」「受擊硬直」兩行都不顯示,退回角色自己的速度(實測龍騎士拿魔杖
+  //   變身資訊連「攻擊間隔」「受擊硬直」兩行都不顯示,退回角色自己的速度(當時實測拿魔杖
   //   每分 51.4 下,而長劍是 124 下),看起來就像沒拿武器(玩家回報)。
   //
   // 補法:只在原函式「查不到值」時,改用核心自己那張全職業共用的逐武器表 TRUE_SHANNA_APM 補上,
   //   硬直與走速的算式原封不動抄核心同一行 —— 等於把「可用武器家族」那道閘打開,速度數值仍由核心決定。
-  //   ⚠️ 這會改到平衡(龍騎士拿魔杖 51.4→124),所以跟著 anyclass 這個開關走:關掉就完全是原版。
+  //   ⚠️ 這會改到平衡(拿魔杖 51.4→124),所以跟著 anyclass 這個開關走:關掉就完全是原版。
   //   ⚠️ TRUE_SHANNA_APM / SHANNA_DAGGER_LONG_HITSTUN 都是 `const`,**不在 window 上**(同 DB/player),
   //      一律用 typeof 探,寫 window.X 會安靜失效。
   function patchTrueShanna() {
@@ -108,8 +108,8 @@
   //   (js/07 的 castSkill 直接 return、不施法不耗 MP),所以 js/23 necroBookPassiveEnabled
   //   除了「裝著書」還要求「學過造屍術」與「造屍術那一列的自動有勾」。
   //   而造屍術是**六階**法師魔法(js/00 tier:6),依 js/01 skillReqLv 只有法師(Lv24)與
-  //   妖精(Lv48)學得到——王族只能學一/二階(魔法精通再開到三~五階)、騎士/戰士/幻術士/
-  //   龍騎士/黑暗妖精也各自沒有 → 他們裝上書只有「擊殺全隊回 1%」那半段有效
+  //   妖精(Lv48)學得到——王族只能學一/二階(魔法精通再開到三~五階)、騎士/黑暗妖精
+  //   也各自沒有 → 他們裝上書只有「擊殺全隊回 1%」那半段有效
   //   (那段只看有沒有裝),骷髏永遠不會出現(玩家回報)。
   //
   // 補法同 checkCanEquip:只在 necroBookPassiveEnabled 執行的那一瞬間放行那兩支、跑完還原,

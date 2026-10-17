@@ -292,9 +292,10 @@ function enemyAttackGuard(mob, s) {
     let dmg = (heavy ? dc * ds : roll(dc, ds)) + ((mob.db || 0) - (st.weaken > 0 ? 4 : 0) - (st.broken > 0 ? 2 : 0));
     if (mob._sherine) dmg = Math.floor(dmg * (mob._sherineMad ? 3 : 2));
     if (mob._grace) dmg = Math.floor(dmg * 1.5);
-    dmg = Math.max(1, Math.floor(dmg * (typeof riftDamageMult === 'function' ? riftDamageMult() : 1)) - d.dr);
+    dmg = Math.max(1, Math.floor(dmg * (typeof riftDamageMult === 'function' ? riftDamageMult() : 1) * ((typeof evilDmgMult === 'function') ? evilDmgMult(mob) : 1)) - d.dr);
     dmg = Math.max(1, Math.floor(dmg * (typeof teamDmgReduceMult === 'function' ? teamDmgReduceMult(true) : 1)));
     if (typeof ironGuardTauntWeakensAttack === 'function' && ironGuardTauntWeakensAttack(mob)) dmg = Math.floor(dmg * 0.9);   // 🔮 鐵衛 5/5：受嘲諷目標的一般攻擊傷害 -10%
+    if (typeof mobHitScale === 'function') dmg = mobHitScale(dmg);   // ⏱️ 份量（js/03 _mobHitW）
     s.hp -= dmg;
     if (typeof _petAnimAct === 'function') _petAnimAct(s, 'hurt');
     logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 攻擊 <span class="text-cyan-300">${s.form}</span>，造成 ${dmg} 點傷害。`, 'enemy-attack', 'enemy');
@@ -311,7 +312,7 @@ function applyMobMagicToGuard(mob, sk, s) {
     let extra = (sk.db || 0) + (sk.dbLv ? (mob.lv || 0) * (sk.dbLvMult || 1) : 0);
     let dmg = sk.fixedDmg ? (baseM + extra) : (Math.floor((baseM + extra) * (typeof mrMult === 'function' ? mrMult(mr) : 1)) - dr);
     dmg = Math.max(1, Math.floor(Math.max(1, dmg * shMul) * (typeof teamDmgReduceMult === 'function' ? teamDmgReduceMult(true) : 1)));
-    dmg = Math.max(1, Math.floor(dmg * (typeof riftDamageMult === 'function' ? riftDamageMult() : 1)));
+    dmg = Math.max(1, Math.floor(dmg * (typeof riftDamageMult === 'function' ? riftDamageMult() : 1) * ((typeof evilDmgMult === 'function') ? evilDmgMult(mob) : 1)));
     s.hp -= dmg;
     if (typeof _petAnimAct === 'function') _petAnimAct(s, 'hurt');
     logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，對 <span class="text-cyan-300">${s.form}</span> 造成 ${dmg} 點魔法傷害。`, 'enemy');

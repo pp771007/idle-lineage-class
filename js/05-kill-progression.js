@@ -196,9 +196,6 @@ function _auditMobDrops(mobName) {
     if (typeof MOB_DROPS !== 'undefined') push(MOB_DROPS);
     if (typeof DARK_WEAPON_DROPS !== 'undefined') push(DARK_WEAPON_DROPS);
     if (typeof DARK_CRYSTAL_DROPS !== 'undefined') push(DARK_CRYSTAL_DROPS);
-    if (typeof DRAGON_DROPS !== 'undefined') push(DRAGON_DROPS);   // 🐉 龍騎士掉落表全職可掉（書板/鎖鏈劍）；妖魔搜索文件等試煉道具由 push 內 trialDropBlocked 對非龍騎士隱藏
-    if (typeof WARRIOR_DROPS !== 'undefined') push(WARRIOR_DROPS);   // ⚔️ 戰士技能印記掉落表（全職可掉）
-    if (typeof MEM_DROPS !== 'undefined') push(MEM_DROPS);   // 🔮 記憶水晶掉落表（全職可掉）
     return ids;
 }
 function renderAuditDrops(el) {
@@ -241,7 +238,7 @@ setInterval(() => { try { renderAuditTab(); } catch(e) {} }, 2000);   // 開著�
 // 好處：怪物迭代過程中陣列不再位移，徹底杜絕「怪物被跳過回合 / 索引指到錯的怪」這類隱性錯誤。
 // ⚠️v3.0.85 用戶指示：經典模式「掉落率 ×1/10」懲罰移除（歷次：v3.0.82 經驗×0.5／金幣÷2 移除 → v3.0.85 掉落×1/10 移除）。
 //   classicDropMult 恆 1 保留為單一真相掛點（十餘個掉落判定點仍乘它·未來要恢復懲罰只改這裡）；trialItemDropMult（試煉道具豁免）同步恆 1。
-//   經典模式現存差異：死亡損失 5% 經驗（時空裂痕/攻城區除外）、隱藏祝福/精通/席琳、停用武器/盾/騎士特效。
+//   經典模式現存差異：隱藏祝福/精通/席琳、停用武器/盾/騎士特效。（死亡損失 5% 經驗 2026-10-16 起兩模式都有）
 function classicDropMult() { return 1; }
 function trialItemDropMult(id) { return 1; }
 // 🤝 v3.7.62 有效隊伍人數＝主玩家＋未倒地傭兵，最高 8 人。寵物各拿完整經驗，但不佔掉落／金幣倍率名額。
@@ -313,7 +310,7 @@ function monsterGoldRange(mob) {
     let diffMult = (mob && mob.hard && !mob.boss) ? 1.25 : 1;
     let gMin, gMax;
     let cfgMin = Number(mob && mob.goldMin), cfgMax = Number(mob && mob.goldMax);
-    let bossHasConfiguredGold = !!(mob && mob.boss && Number.isFinite(cfgMin) && Number.isFinite(cfgMax) && cfgMin > 0 && cfgMax >= cfgMin);
+    let bossHasConfiguredGold = !!(mob && (mob.boss || mob._goldCustom) && Number.isFinite(cfgMin) && Number.isFinite(cfgMax) && cfgMin > 0 && cfgMax >= cfgMin);   // _goldCustom：試算表改過金幣的一般怪也照表(js/00z 標記)
     if (bossHasConfiguredGold) {
         // spawn 時席琳／恩賜已直接乘入頭目的 goldMin/goldMax，不再重複計算。
         gMin = Math.floor(cfgMin); gMax = Math.floor(cfgMax);
@@ -331,6 +328,10 @@ function killMob(idx) {
     if (!mob || mob._dead) return;        // 冪等保護：同一隻怪只結算一次獎勵
     if (mob._justTransformedTick != null && state.ticks - mob._justTransformedTick <= 5 && mob.curHp > 0) return;   // 🌅 審查修：同一擊內的過時二次 killMob（on-hit 特效先殺→主判定又用舊 target.curHp 呼叫同槽位）→剛變身的滿血新階段不吃這種幽靈擊殺（真死亡 curHp<=0 不受影響）
     if (mob.transformTo && DB.mobs[mob.transformTo]) { doMobTransform(idx); return; }   // 🌅 三段變身：即使 HP=0 也不會死亡而是強制變身（先於 _dead/特效/獎勵）
+    if (idx === mapState.targetIdx && typeof killPauseTicks === 'function') {   // ⏸ 站長規則：打死目前目標後停格再打下一隻（日光術縮短）
+        let _kw = player.eq && player.eq.wpn && DB.items[player.eq.wpn.id];
+        state._killPause = killPauseTicks(!!(_kw && (_kw.isBow || _kw.ranged)));
+    }
     if (state.antharas && mapState.current === 'antharas_lair' && mob.n === '被侵蝕的瘋狂安塔瑞斯' &&
         typeof antharasClaimDailyClear === 'function') {
         let _antClaim = antharasClaimDailyClear();
@@ -374,16 +375,17 @@ function killMob(idx) {
     // 🤝 v3.7.62 組隊經驗不再拆分：主玩家、每名未倒地傭兵、每隻未倒地寵物各取得完整經驗；既有組隊加成保留。
     let _expEach = mob.exp * (1 + partyExpBonusPct() / 100);
     let _petExpGain = Math.floor(_expEach * (1 + dollFieldVal('expBonus') / 100));   // 🐾 每隻存活寵物各得完整玩家份額；玩家滿等不影響養寵
-    let _playerExpGain = Math.floor(_petExpGain * getExpGainMult(player.lv));   // ⚠️v3.0.82 經典×0.5 已移除；Lv100 玩家自身仍不獲得經驗
+    let _rExp = (typeof myRate === 'function') ? myRate('exp') : 1, _rPet = (typeof myRate === 'function') ? myRate('petExp') : 1;   // 試算表「倍率」分頁
+    let _playerExpGain = Math.floor(_petExpGain * getExpGainMult(player.lv) * _rExp);   // ⚠️v3.0.82 經典×0.5 已移除；Lv100 玩家自身仍不獲得經驗
     player.exp += _playerExpGain;
     checkLvUp();
     // 🐾 寵物經驗：每隻未倒地出戰寵物各得完整份額；不受玩家 Lv100 經驗封頂影響（升級需求＝玩家表 1/10）
-    if (typeof petsGainExp === 'function') petsGainExp(_petExpGain);
+    if (typeof petsGainExp === 'function') petsGainExp(Math.floor(_petExpGain * _rPet));
     // 🤝 協力傭兵各得完整份額（以自身等級計 getExpGainMult·滿等歸0·不減其他人）。
     if (player.allies && player.allies.length && mob.exp) {
         player.allies.forEach(a => {
             if (!a || a._downed) return;
-            let _gain = Math.floor(_expEach * getExpGainMult(a.lv || 1));
+            let _gain = Math.floor(_expEach * getExpGainMult(a.lv || 1) * _rExp);
             if (_gain <= 0) return;
             a.exp = (a.exp || 0) + _gain;
             a._expGained = (a._expGained || 0) + _gain;
@@ -399,9 +401,11 @@ function killMob(idx) {
         let g = _goldRange.min + Math.floor(Math.random() * (_goldRange.max - _goldRange.min + 1));
         g = Math.max(1, Math.floor(g * (0.9 + Math.random() * 0.2)));   // 💰 最終金額額外浮動 −10%～+10%
         // ⚠️v3.0.82 經典模式金幣÷2 已移除（一般＝經典；歷次：×1/10 → ×1/3 → ×1/2 → ×1）
-        g = Math.floor(g * (1 + dollFieldVal('goldBonus') / 100) * partyRewardMult());   // 🪆 娃娃加成後再乘有效隊伍人數（最高 ×8）
+        g = Math.floor(g * (1 + dollFieldVal('goldBonus') / 100) * partyRewardMult() * ((typeof myRate === 'function') ? myRate('gold') : 1));   // 試算表「倍率」金幣   // 🪆 娃娃加成後再乘有效隊伍人數（最高 ×8）
         player.gold += g;
         // 🔧 金幣不再逐殺輸出於系統日誌；改由 gameLoop 累積、flushAwaySummary 以「掛機期間獲得總金幣」統一顯示。
+        //    天堂M介面（afk-lmui）的「掉落」分頁另外逐筆顯示：有掛 onMobGoldDrop 才呼叫（補跑期間由那邊自己略過）。
+        if (typeof window.onMobGoldDrop === 'function') window.onMobGoldDrop(mob, g);
 
     }
     // 🦴 v3.1.71 用戶要求：取消「怪物直接掉落席琳遺骸」——遺骸唯一取得管道＝席琳結晶（NPC 伊奧兌換）／菈克希絲拆分舊詞綴裝備。
@@ -433,7 +437,7 @@ function killMob(idx) {
     }
 
     // === 🏅 精通任務：接取後擊敗職業對應頭目必得「精通之證」（身上已有一枚則不再掉落）===
-    if (player.masteryQuest === 'active' && MASTERY_DATA[player.cls] && mob.n === MASTERY_DATA[player.cls].boss
+    if (MASTERY_ON && player.masteryQuest === 'active' && MASTERY_DATA[player.cls] && mob.n === MASTERY_DATA[player.cls].boss
         && !player.inv.some(i => i.id === 'item_mastery_proof')) {
         gainItem('item_mastery_proof', 1);
         logSys('<span class="text-amber-300 font-bold">✦ 你從強敵的殘骸中拾起了「精通之證」——回威頓村找漢吧。</span>');
@@ -488,13 +492,13 @@ function killMob(idx) {
     // === 怪物專屬掉落（依「怪物掉落資料.md」）：每樣物品各自獨立判定一次 ===
     let dropList = _kbNoReward ? [] : (MOB_DROPS[mob.n] || []);   // 🔧 魔獸軍王之室：除頭目外不掉落物品
     let _dropBase = (mob._grace ? 10 : (mob._sherine ? (mob._sherineMad ? 5 : 3) : 1));   // 🔮 席琳的世界 ×3（瘋狂×5）／恩賜怪 ×10
-    let _dropMult = _dropBase * classicDropMult() * partyRewardMult();   // 席琳／恩賜／模式倍率後再乘有效隊伍人數（最高 ×8）
+    let _dropMult = _dropBase * classicDropMult() * partyRewardMult() * ((typeof myRate === 'function') ? myRate('drop') : 1);   // 試算表「倍率」掉寶   // 席琳／恩賜／模式倍率後再乘有效隊伍人數（最高 ×8）
     dropList.forEach(entry => {
         let itemId = entry[0];
         let ratePct = entry[1];               // 機率(%)
         if(!DB.items[itemId]) return;          // 該物品不存在於資料庫則略過
         if(trialDropBlocked(itemId)) return;   // 🔒 試煉兌換道具：僅本職擊殺才掉＋🔥 v3.0.78 須已接取對應試煉且未達需求數量
-        if (typeof trialForced100 === 'function' && trialForced100(itemId)) { grantPartyTrialQuestDrop(itemId, 1); return; }   // 🔥 接取制試煉道具：通過閘門後 100% 掉落
+        if (typeof trialForced100 === 'function' && trialForced100(itemId)) { if (Math.random() < trialQuestDropRate(itemId)) grantPartyTrialQuestDrop(itemId, 1); return; }   // 🔥 接取制試煉道具：通過閘門後照 trialQuestDropRate 掉（15/30/45 級 1%、法師 45 級 10%、50 級 100%）
         let _clMult = (mob.n === '卡瑞' && itemId === 'wpn_dragonslayer') ? 1 : trialItemDropMult(itemId);   // 🔧 v2.6.75 卡瑞·屠龍劍固定 100%（獎勵已綁「擊殺消耗四任務道具」的成本）；trialItemDropMult 現恆 1
         let _relicX2 = (DB.items[itemId].relic && typeof mainPlayerHasEquippedEffect === 'function' && mainPlayerHasEquippedEffect('relicDropX2')) ? 2 : 1;   // 幸運暴走兔腳只讀主操作玩家裝備
         if(Math.random() < partyDropRate((ratePct * _dropBase * _clMult * _relicX2) / 100)) gainItem(itemId, 1);
@@ -543,28 +547,15 @@ function killMob(idx) {
     // === 🔧 三階黑暗精靈水晶掉落 ===
     { let _dcd = (typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[mob.n] : null;
       if (_dcd && !_kbNoReward) _dcd.forEach(e => { if (DB.items[e[0]] && Math.random() < (e[1] * _dropMult) / 100) gainItem(e[0], 1); }); }
-    // === 🐉 龍騎士掉落（任務道具／書板／鎖鏈劍）：僅龍騎士主玩家擊殺時判定 ===
-    { let _drd = (typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null;   // 🐉 龍騎士掉落表改為全職可掉（書板/鎖鏈劍·就算不能裝備也掉）；妖魔搜索文件等試煉道具由 trialDropBlocked 限定 dragon＋接取制
-      if (_drd && !_kbNoReward) _drd.forEach(e => { if (!DB.items[e[0]] || trialDropBlocked(e[0])) return;
-          if (typeof trialForced100 === 'function' && trialForced100(e[0])) { grantPartyTrialQuestDrop(e[0], 1); return; }   // 🔥 v3.0.78 接取制試煉道具：100% 掉落
-          if (Math.random() < (e[1] * _dropBase * partyRewardMult() * trialItemDropMult(e[0])) / 100) gainItem(e[0], 1); }); }   // 🐉 龍騎士試煉道具（trialItemDropMult 恆 1）
-    // === ⚔️ 戰士技能印記掉落（全職可掉·僅戰士可學）===
-    { let _wrd = (typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[mob.n] : null;
-      if (_wrd && !_kbNoReward) _wrd.forEach(e => { if (!DB.items[e[0]] || trialDropBlocked(e[0])) return;   // 🔥 v3.0.78 戰士試煉道具（若列於此表）同樣吃接取制閘門
-          if (typeof trialForced100 === 'function' && trialForced100(e[0])) { grantPartyTrialQuestDrop(e[0], 1); return; }
-          if (Math.random() < (e[1] * _dropMult) / 100) gainItem(e[0], 1); }); }
-    // 🔮 記憶水晶掉落（幻術士法術書·全職可掉，獨立 roll·與 MOB_DROPS 並存）
-    { let _memd = (typeof MEM_DROPS !== 'undefined') ? MEM_DROPS[mob.n] : null;
-      if (_memd && !_kbNoReward) _memd.forEach(e => { if (DB.items[e[0]] && Math.random() < (e[1] * _dropMult) / 100) gainItem(e[0], 1); }); }
     // 🎴 卡片掉落（血盟標籤以外·一般＝經典機率·不乘 classicDropMult·一律進背包不自動賣）
-    if (!_kbNoReward && typeof rollCardDrops === 'function') rollCardDrops(mob);   // 🗝️ 軍王之室小怪零產出（小怪固定 5 秒無限重生＝卡片無限刷）
+    if (!_kbNoReward && !DISABLE_COLLECTION && typeof rollCardDrops === 'function') rollCardDrops(mob);   // 🗝️ 軍王之室小怪零產出（小怪固定 5 秒無限重生＝卡片無限刷）
 
     // === 區域額外掉落：眠龍洞穴1~3樓(zone_15/16/17) / 妖精森林周邊(zone_01) 所有怪物 ===
     // 粗糙的米索莉塊 / 元素石各 2%，學會「世界樹的呼喚」則各 3%；精靈玉維持 20% / 30%
     if (!_kbNoReward && AREA_BONUS_MAPS.includes(mapState.current)) {   // 🗝️ 軍王之室小怪零產出
         let hasWorldTree = player.skills.includes('sk_elf_worldtree');
         AREA_BONUS_ITEMS.forEach(itemId => {
-            let baseRate = (itemId === 'new_item_195') ? (hasWorldTree ? 0.30 : 0.20) : (hasWorldTree ? 0.03 : 0.02);
+            let _wt = SKILL_FX.sk_elf_worldtree, baseRate = (itemId === 'new_item_195') ? (hasWorldTree ? _wt.gemRateLearned : _wt.gemRate) : (hasWorldTree ? _wt.matRateLearned : _wt.matRate);
             let bonusRate = baseRate * _dropMult;   // 🔮 席琳的世界×3
             if(DB.items[itemId] && Math.random() < Math.min(1, bonusRate)) gainItem(itemId, 1);
         });
@@ -946,7 +937,7 @@ const ANT_HELPER_DESC = {
     guard: '主玩家額外獲得指定傭兵 10% MR 的傷害減免（最高 20%）',
     resist: '主玩家額外獲得指定傭兵 100% 的地屬性抗性（最高 +30）',
     precision: '主玩家額外獲得指定傭兵 5% 等級的額外命中（最高 +20）',
-    destroy: '主玩家額外獲得指定傭兵 5% 的近距離傷害、遠距離傷害、魔法傷害、額外魔法點數（每項最高 +20）'
+    destroy: '主玩家額外獲得指定傭兵 5% 的近距離傷害、遠距離傷害、魔攻、額外魔法點數（每項最高 +20）'
 };
 function antharasHelperSlots() { let h = player.antharasHelpers || {}; return Object.keys(h).map(k => h[k] && String(h[k].slot)).filter(Boolean); }
 function _antReadSlotStats(slotN) {   // 輕量讀取存檔位角色能力快照（不建 ally 物件·不動存檔·同模式限定）
@@ -955,6 +946,7 @@ function _antReadSlotStats(slotN) {   // 輕量讀取存檔位角色能力快照
         if (!raw) return null;
         let p = JSON.parse(raw).p;
         if (!p || !p.cls) return null;
+        if (typeof isRemovedClass === 'function' && isRemovedClass(p.cls)) return null;   // 已移除職業：不可擔任助戰者（既有指派由 antharasRefreshHelpers 自動解除）
         if (!!p.classicMode !== !!player.classicMode) return null;
         let d = p.d || {};
         return { slot: String(slotN), enSeed: p.enSeed || ('legacy|' + (p.name || '') + '|' + p.cls), name: p.name || ('存檔' + slotN), lv: p.lv || 1, mr: d.mr || 0, resEarth: d.resEarth || 0,
@@ -962,6 +954,7 @@ function _antReadSlotStats(slotN) {   // 輕量讀取存檔位角色能力快照
     } catch (e) { return null; }
 }
 function antharasHelperAssign(role, slotN) {
+    if (MERC_CLOSED) { logSys('<span class="text-red-400">助戰者已關閉。</span>'); return; }   // 🚫 傭兵關閉（含副本助戰者）
     if (!ANT_HELPER_ROLES[role]) return;
     player.antharasHelpers = player.antharasHelpers || {};
     if (player.allies && player.allies.some(a => a && String(a._slot) === String(slotN))) { logSys('<span class="text-red-400">該角色已受僱為傭兵，請先解僱再指定為助戰者。</span>'); return; }
@@ -1017,7 +1010,7 @@ function renderDorugaBell(div) {   // 🐉 NPC 多魯嘉貝爾：進入副本＋
         <div class="text-slate-300">被侵蝕的龍之巢穴就在村外的地底深處。每個角色每天可擔任主戰或傭兵通關一次；成功時主戰與所有出戰傭兵都會消耗今日次數（UTC+8 凌晨 12 點重置），挑戰失敗不消耗。區內無法選擇地圖，也無法使用傳送術與瞬間移動卷軸。</div>
         ${cleared ? `<div class="text-xs text-amber-300">今日已使用次數：${usedToday.map(ref => ref.name).join('、')}</div>` : ''}
         <button onclick="antharasEnter()" ${cleared ? 'disabled' : ''} class="btn w-full font-bold py-2 rounded ${cleared ? 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed' : 'bg-amber-700 hover:bg-amber-600 border-amber-500'}">${cleared ? '隊伍有角色今日已通關' : '🐉 進入 侵蝕的安塔瑞斯巢穴'}</button>
-        <div class="border-t border-slate-700 pt-2"><div class="font-bold text-amber-300 mb-2">助戰者設定（最多 4 位·未雇傭角色）</div><div class="text-xs text-slate-400 mb-2">每次對話都會依來源角色的最新存檔刷新助戰能力；若角色遭刪除或在同一存檔位重建，將自動解除。助戰限制只套用目前角色的傭兵名單，不影響同模式其他角色。</div>${rows}</div>
+        ${MERC_CLOSED ? '' : `<div class="border-t border-slate-700 pt-2"><div class="font-bold text-amber-300 mb-2">助戰者設定（最多 4 位·未雇傭角色）</div><div class="text-xs text-slate-400 mb-2">每次對話都會依來源角色的最新存檔刷新助戰能力；若角色遭刪除或在同一存檔位重建，將自動解除。助戰限制只套用目前角色的傭兵名單，不影響同模式其他角色。</div>${rows}</div>`}
       </div>`;
 }
 // ---------- 🐉 地龍之魔眼（slot:eye·eyePetrify）：被石化時觸發（js/04 石化分支呼叫） ----------
@@ -1050,10 +1043,10 @@ function antPointsExchange(itemId) {   // 兌換身上全部該材料
 }
 // 傳家之寶獎池（機率%·總和100）：裝備類 10% 機率附加祝福
 const ANT_HEIRLOOM_POOL = [
-    ['gold_1m', 20],
+    ['gold_1m', 28],   // 原 20＋已刪職業專屬武器（毀滅者鎖鏈劍／黑曜石奇古獸）各 4% 併入
     ['rng_water', 6], ['rng_earth', 6], ['rng_wind', 6], ['rng_fire', 6],
-    ['wpn_demon_axe', 4], ['wpn_ori_dagger', 4], ['wpn_official_2h', 4], ['wpn_dual_silver', 4], ['wpn_chain_destroyer', 4],
-    ['wpn_qigu_obsidian', 4], ['wpn_steel_manawand_red', 4], ['wpn_steel_manawand_blue', 4], ['wpn_rotten_longbow', 4],
+    ['wpn_demon_axe', 4], ['wpn_ori_dagger', 4], ['wpn_official_2h', 4], ['wpn_dual_silver', 4],
+    ['wpn_steel_manawand_red', 4], ['wpn_steel_manawand_blue', 4], ['wpn_rotten_longbow', 4],
     ['arm_ancient_dragonscale_wind', 3], ['arm_ancient_dragonscale_fire', 3], ['arm_ancient_dragonscale_earth', 3], ['arm_ancient_dragonscale_water', 3],
     ['armguard_archer', 3], ['armguard_fighter', 3],
     ['rng_sage', 0.5], ['acc_thebes_horus', 0.5], ['acc_thebes_anubis', 0.5], ['blt_thebes_osiris', 0.5]
@@ -1142,7 +1135,7 @@ function enterRift() {
     }
     if (player.riftRewardMs != null) { logSys('<span class="text-amber-300">請先在時空裂痕入口「領取獎勵」，才能再次進入。</span>'); return; }
     let _ci = player.inv.findIndex(i => i.id === 'mat_crack_core' && (i.cnt || 1) >= 1);
-    if (_ci < 0) { logSys('<span class="text-red-400">需要 1 顆 龜裂之核 才能進入時空裂痕（希培利亞村莊・巴特爾，以時空裂痕碎片×100 製作）。</span>'); return; }
+    if (_ci < 0) { logSys('<span class="text-red-400">需要 1 顆 龜裂之核 才能進入時空裂痕（威頓村莊・巴特爾，以時空裂痕碎片×100 製作）。</span>'); return; }
     let _c = player.inv[_ci]; if ((_c.cnt || 1) > 1) _c.cnt -= 1; else player.inv.splice(_ci, 1);
     renderTabs(true);
     state.riftRun = true;
@@ -1269,6 +1262,7 @@ function applySherineBuff(idx) {
         _m._sherine = true;   // 一般攻擊傷害×[2/3]、技能最終傷害×[2/3]、掉落×[3/5]、掉落附帶席琳詞綴／套裝效果
         if (_mad) _m._sherineMad = true;   // 🔮 瘋狂旗標：供傷害/掉落/結晶/套裝效果倍率分流
     }
+    if (typeof applyNightSpawnBuff === 'function') applyNightSpawnBuff(_m);   // 🌙 夜晚的不死／惡魔 HP +20%（js/35）
 }
 // 🔮 席琳的恩賜：席琳的世界中每次刷新 1% 機率讓場上一隻怪獲得恩賜（血盟除外）
 //  一般席琳＝原版：每 3 分鐘最多一次、場上同時僅一隻、頭目(王)不被祝福；🔥 瘋狂席琳：無 3 分鐘冷卻、無「同時一隻」限制、頭目(王)亦可被祝福
@@ -1358,7 +1352,7 @@ function renderRiftEntrance(container) {
         <button onclick="enterRift()" class="btn w-full py-4 text-xl font-bold bg-violet-800 hover:bg-violet-700 border border-violet-400 text-white shadow-lg">🌀 進入時空裂痕</button>
         <button onclick="claimRiftReward()" class="btn w-full py-4 text-xl font-bold ${pending ? 'bg-amber-700 hover:bg-amber-600 border-amber-400' : 'bg-slate-700 border-slate-500'} text-white shadow-lg">🎁 領取獎勵${pending ? '（可領取）' : '（無）'}</button>
         ${rankBlock(player.riftRank, false)}
-        ${player.classicMode ? '' : rankBlock(player.riftRankSherine, true)}
+        ${(player.classicMode || SHERINE_CLOSED) ? '' : rankBlock(player.riftRankSherine, true)}
         <div class="text-slate-500 text-xs">進入需消耗 <span class="text-amber-300">1 顆 龜裂之核</span>（目前持有 ${cores}）。停留越久排名越前、獎勵越好；裂痕內無法傳送，離開後須先領取上次獎勵才能再次進入。${player.classicMode ? '' : '一般與席琳的世界排名各自獨立。'}</div>`;
     container.appendChild(box);
 }
@@ -1421,9 +1415,6 @@ function revive() {
     if (player.cls === 'mage') startMap = 'town_talking';
     else if (player.cls === 'elf') startMap = 'town_elf';
     else if (player.cls === 'dark') startMap = 'town_silent';
-    else if (player.cls === 'illusion') startMap = 'town_hyperia';
-    else if (player.cls === 'dragon') startMap = 'town_behemoth';
-    else if (player.cls === 'warrior') startMap = 'town_heine';   // ⚔️ 戰士：海音
     else if (player.cls === 'royal') startMap = 'town_talking';   // 👑 王族：說話之島
 
     setMapSelectors(startMap);

@@ -12,30 +12,29 @@
 | 做「存檔搬家 / 跨裝置轉移」 | `docs/save-transfer.md`(**評估·尚未實作**;整包 localStorage 的打包/還原做法、五種方案的優缺點) |
 | 改 sw.js / 快取 / PWA | `docs/sw-pwa.md` |
 | 改手機或平板版面、覆寫上游手機樣式 | `docs/mobile.md` |
-| 同步上游 | 跑 `/sync-upstream`;背景與 CI 見 `docs/sync-upstream.md` |
-| 改小百科 / 掉落查詢內容 | 跑 `/update-wiki`(內容準則與版面預算都在那支 skill 裡) |
+| ~~同步上游~~ | **2026-10-11 起已停止同步**(見下方「專案性質」);`/sync-upstream` 與 CI 不要再用 |
 | 準備 push | 跑 `/prepush`;發版跑 `/release` |
 
-## 專案性質與架構（2026-07-19 起・純上游鏡像＋外掛層）
+## 專案性質與架構（2026-10-11 起・自有分支，不再同步原作者）
 
 - 網頁放置遊戲。遊戲本體由原作者(巴哈姆特 秋玥)製作,原版:**https://shines871.github.io/idle-lineage-class/**;本站(加掛版):https://pp771007.github.io/idle-lineage-class/。
-- **架構=「上游原版鏡像＋外掛層」**:核心(`js/NN-*.js`、`css/*`、`index.html`、`assets/`、`public/`)永遠是上游原文/原檔的位元組級鏡像;我們的所有功能都在**外掛層**——根目錄 `afk-*.js`(73 支)＋`sw.js`(PWA,上游沒有)＋極少量**錨點式核心補丁**(`scripts/apply-core-patches.mjs`)。
-- 上游本機 clone:`D:/otherPersonRepos/idle-lineage-class`。**引用上游做任何判斷前先 `git -C <clone> fetch`**——舊 clone 會讓「上游也是這樣」的結論整個相反(踩過)。
-- 同步狀態記在 `upstream-checkpoint.json`(`syncedUpstreamCommit`=目前鏡像的上游 commit)。
-- ⚠️ **`assets/`、`public/` 下不可放我方獨有檔案**——CI 同步用 `rsync --delete` 鏡像,會被刪掉。外掛需要圖優先引用上游既有檔。
+- **2026-10-11 起不再同步原作者**:最後一次同步的上游 commit 記在 `upstream-checkpoint.json`(`syncedUpstreamCommit`,原版 v3.8.34)。之後原作者的更新**不會自動進來**,要的話只能人工挑著移植。
+  - 已停用:`.github/workflows/sync-upstream.yml`(job 設 `if: false`)、`core-file-guard` hook、prepush 的「核心補丁就位」檢查。**不要再跑 `/sync-upstream` 或 `scripts/sync-upstream.mjs`**——它會用原作者的檔案整包蓋掉直接改過的核心檔。
+- **架構**:核心(`js/NN-*.js`、`css/*`、`index.html`、`assets/`、`public/`)＋外掛層(根目錄 `afk-*.js`、`sw.js`)。核心**可以直接改**;既有外掛照舊運作。
+- `scripts/apply-core-patches.mjs` 的 13 組錨點補丁已經套在核心裡,之後不必再跑(直接改核心即可,不用再寫新補丁)。
 
-## ⭐ 修改原則(鐵則)
+## ⭐ 修改原則
 
-**🚨 絕不直接手改核心檔(`js/NN-*.js`/`css/*`/`index.html`)——下次同步上游會整包覆蓋,改了就丟。** 要動遊戲行為,依序考慮:
+**改遊戲行為,選最直接、最好維護的寫法:**
 
-1. **外掛 monkey-patch(首選)**:核心函式都是全域,外掛包裝(`var _orig = fn; fn = function(){...}`)能解決絕大多數需求。afk-offline 連整套離線結算都是這樣掛的。
-2. **錨點式核心補丁(最後手段)**:只有「外掛包不住」的才用——要抽函式、改函式簽名、改寫死的字面值、或改核心的熱點寫法。加進 `scripts/apply-core-patches.mjs`:靠「上游原文特徵字串」定位、冪等、**錨點找不到就 exit 1 大聲失敗**(不會默默壞)。補丁越少越好,現有 13 組(表在 `docs/plugins.md`)。
-3. **index.html 不手改**:它=上游 index＋`scripts/afk-plugin-block.html` 注入到 `</body>` 前(sync 時自動重組)。**新增外掛 → 改 `afk-plugin-block.html`**(載入順序也在那裡管:afk-toggles 最先、afk-skin 最後),再把它的 `<script>` 行同步補進現行 index.html(或重跑 sync),有 DOM 掛點的加進 `scripts/smoke-hooks.mjs` 的 `need`。
-4. **CSS 覆寫**寫在外掛注入的 `<style>` 裡(如 afk-mobile),不改 `css/*.css`。
+1. **直接改核心檔**(`js/NN-*.js`、`css/*`、`index.html`)是正常做法——改寫死的數值、改函式本體、改版面,都直接動原檔。
+2. **外掛仍然適合「可開關」的功能**:要讓玩家能在外掛面板關掉的(例如 afk-lmui 天堂M介面、隱藏職業/遺物/黑市),維持寫成 `afk-*.js`。
+3. **index.html**:可以直接改。新增外掛的 `<script>` 行加進 index.html,`scripts/afk-plugin-block.html` 也同步補一行(載入順序以那份為準:afk-toggles 最先、afk-skin 最後)。
+4. **改到外掛已經包住的核心函式時**:先 grep 有哪些 `afk-*.js` 包了它(`window.<函式名> = function`),確認外掛的假設還成立。
+5. `assets/`、`public/` 現在可以放我們自己的檔案(已經沒有 `rsync --delete` 同步會刪它)。
 
-> 此規則已有 hook 強制:PreToolUse(Edit/Write/MultiEdit)的 `.claude/hooks/core-file-guard.mjs` 會擋下對 `js/*.js`、`css/*.css`、`index.html`、`assets/`、`public/` 的直接編輯(腳本經 node 寫檔不受影響)。被擋到就改走外掛/補丁,不要繞過。
-
-**外掛開關(afk-toggles.js,載入順序第一)**:每支外掛可被玩家單獨關掉——某支壞掉時玩家關掉它就能用原版繼續玩(逃生門)。契約:
+**外掛開關(afk-toggles.js,載入順序第一)**:每支外掛可被單獨關掉——某支壞掉時關掉它就能用原版繼續玩(逃生門)。
+⚠️ 2026-10-15 起**玩家沒有任何入口打開開關面板**(按鈕與 `?plugins`/`#plugins` 網址都拿掉,站長要求不要有任何連結能打開;只剩站長主控台 `AFK_TOGGLES.openPanel()`)→ 不要叫玩家去外掛面板關東西;新外掛壞了只能改程式碼修,上線前要測夠。契約:
 - 純新增型外掛檔頭 `if (window.AFK_TOGGLES && !AFK_TOGGLES.enabled('<id>')) return;`;包核心函式型在 wrapper 內每次先問 `enabled()`,關掉就透明放行原函式。
 - 載入時 `AFK_TOGGLES.register({id,name,desc,group,def})` 進開關面板。讀不到 AFK_TOGGLES 一律當開啟。afk-toggles 自己不可被關、不依賴任何外掛。
 - **子選項**:`register({..., parent:'<父外掛id>'})` → 面板上縮排排在父項底下,且**父項關掉時 `enabled(子)` 一律回 false**(子項自己不必再問父項)。
@@ -76,13 +75,13 @@
 
 **寫的順序:先把按鈕文字定下來,再問「還缺什麼玩家非知道不可」**——反過來先寫說明段落,就會不自覺把設計理由倒進畫面。自我檢查:每一句單獨拿出來問「刪掉會怎樣」,答不出具體後果就刪。
 
-> 同一個精神在別處已經各寫過一次(發版說明「只寫玩家有感的、白話」、`/update-wiki` 的版面預算),但那兩條都綁死在各自場合 → 寫外掛 UI 時一條都不適用,才會失守。這節是通則,涵蓋所有玩家看得到的字。
+> 同一個精神在別處已經各寫過一次(發版說明「只寫玩家有感的、白話」),但它綁死在發版場合 → 寫外掛 UI 時一條都不適用,才會失守。這節是通則,涵蓋所有玩家看得到的字。
 
 ## 🚨 push 前(→ 跑 `/prepush`)
 
 - **本 repo 的 `git push` 一定要使用者親口說了才能做**(全域那條「push 不必再問」在這裡不適用):使用者開口後,在指令尾端加註解 `#user-approved` 才放行,**沒得到同意不可以自己加**。已由 `prepush-guard.mjs` 硬擋(Bash / PowerShell 兩個工具都收,實測過)。「誰決定上線」與「內容夠不夠格上線」是兩層,各擋各的——有你同意但 stamp 沒跑,照樣擋。
 - 完整步驟在 skill 裡,這裡只留一條原則:**commit 階段不 bump/stamp**——那是 push/發版流程的事(功能做完就 commit,等說要 push 才跑 /prepush 一次處理)。
-- 其餘不必自己記:`?v=` 沒對齊內容、核心補丁掉了、sw.js 的 `CODE_VERSION` 過時、rebase 衝突標記殘留、afk-*.js 沒在 index.html 引用、音檔索引沒重產、**外掛錨到已不存在的 DOM id**(`scripts/check-dom-ids.mjs`;同步上游流程尾端也會跑) —— `.claude/hooks/prepush-guard.mjs` 會在 `git push` 前 exit 2 硬擋並印出要跑的指令。(`?v=` 漏 bump 的後果是**新舊混搭**:玩家快取時序決定,低機率無法重現,踩過整晚收益歸零——所以才做成硬擋。)
+- 其餘不必自己記:`?v=` 沒對齊內容、核心補丁掉了、sw.js 的 `CODE_VERSION` 過時、rebase 衝突標記殘留、afk-*.js 沒在 index.html 引用、音檔索引沒重產、**外掛錨到已不存在的 DOM id**(`scripts/check-dom-ids.mjs`;同步上游流程尾端也會跑)、**CSS 用 `:has()` 看 `.hidden`**(`scripts/check-css-has.mjs`;會讓手機戰鬥整頁重算樣式而卡頓) —— `.claude/hooks/prepush-guard.mjs` 會在 `git push` 前 exit 2 硬擋並印出要跑的指令。(`?v=` 漏 bump 的後果是**新舊混搭**:玩家快取時序決定,低機率無法重現,踩過整晚收益歸零——所以才做成硬擋。)
 
 ## 暫存 / 測試
 

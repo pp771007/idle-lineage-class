@@ -57,6 +57,10 @@ function recomputeStats() {
     let pn = player.panacea || {};
     d.str = b.str + a.str + (pn.str||0); d.dex = b.dex + a.dex + (pn.dex||0); d.con = b.con + a.con + (pn.con||0); d.int = b.int + a.int + (pn.int||0); d.wis = b.wis + a.wis + (pn.wis||0);
     d.cha = (b.cha || 0) + (a.cha || 0) + (pn.cha||0);   // 魅力：第六屬性（配點＋萬能藥本就≤60；裝備／buff 可突破 60）
+    // 🧙 職業隱藏魅力(站長規則)：目前只有法師 +6。算進總魅力→寵物可攜帶量、召喚物等所有吃魅力的地方都一起受益；
+    //   能力介面顯示成「8 (隱藏+6)」(js/08 updateUI 讀 _hiddenCha)。不動配點/創角上限(那些看 base/alloc，不看 d.cha)。
+    player._hiddenCha = ({ mage: 6 })[player.cls] || 0;
+    d.cha += player._hiddenCha;
 
     d.ac = 10; d.er = 0; d.dr = 0;
     d.meleeDmg = 0; d.meleeHit = 0; d.meleeCrit = 0;
@@ -77,7 +81,7 @@ function recomputeStats() {
     d.fullHpMpHalf = false;  // 🏺 遺物 巫師的黑暗魔導書：滿血時技能 MP 減半（v3.2.39 稽核修：補歸零——原本卸下後永久殘留）
     d.eleWpnMult = null;     // 🏺 遺物 四之牙臂甲：裝備對應屬性武器時一般攻擊傷害 ×mult（{ele,mult}·js/03 getPhysicalDmg＋js/06 傭兵攻擊）
     d.rangedDmg = 0; d.rangedHit = 0; d.rangedCrit = 0;
-    d.extraDmg = 0; d.extraHit = 0; d.equipExtraAtk = 0;   // 🐉 d.equipExtraAtk：裝備授予的額外一般攻擊次數（龍鱗臂甲）
+    d.extraDmg = 0; d.extraHit = 0;
     d.magicDmg = 0; d.magicHit = 0; d.magicCrit = 0; d.extraMp = 0; d.mpReduce = 0;
     let _baseCritDmg = (p.cls === 'dark') ? 100 : 50;   // 🔧 黑暗妖精基礎爆擊傷害 100%（其餘職業 50%）；裝備/精通等加成於其上疊加
     d.meleeCritDmg = _baseCritDmg; d.rangedCritDmg = _baseCritDmg; d.magicCritDmg = _baseCritDmg;
@@ -90,6 +94,7 @@ function recomputeStats() {
     // ===== Phase 1：先把所有「屬性(STR/DEX/INT/CON/WIS)」來源加總完畢 =====
     // 【修正】裝備與增益提供的屬性，必須在換算戰鬥數值「之前」全部計入，
     //         否則屬性數字會變，但近/遠/魔法傷害·命中·爆擊·AC·ER·HP·MP 不會跟著變。
+    for (let _k in p.eq) { if (p.eq[_k] && !DB.items[p.eq[_k].id]) p.eq[_k] = null; }   // 孤兒裝備(已刪除的物品)當成沒穿:讀檔清不到的傭兵快照會讓下面 DB.items[id].str 丟錯→傭兵被誤判解散
     if (p.eq.wpn) { let w = DB.items[p.eq.wpn.id]; if (w.str) d.str += w.str; if (w.dex) d.dex += w.dex; if (w.int) d.int += w.int; if (w.con) d.con += w.con; if (w.wis) d.wis += w.wis; if (w.cha) d.cha += w.cha; }   // 🔧 與防具迴圈一致讀取六項屬性（含魅力 cha）
     for (let k in p.eq) {
         let e = p.eq[k];
@@ -120,13 +125,8 @@ function recomputeStats() {
     }
 
     // ❄️ 套裝「屬性」加成提前套用：力量/體質須在 Phase 2 換算近傷/HP 之前計入，才會實際吃進戰鬥與 HP；其餘 flat 加成（AC/HP+100/恢復/抗性）仍於 Phase 3 套裝段套用。
-    { let _setEarly = {}, _ssEarly = {};
-      for (let _k in p.eq) { let _e = p.eq[_k]; if (!_e || _k === 'wpn' || _k === 'offwpn') continue; let _ed = DB.items[_e.id]; if (_ed && _ed.set && !_ssEarly[_e.id]) { _ssEarly[_e.id] = true; _setEarly[_ed.set] = (_setEarly[_ed.set] || 0) + 1; } }
-      if (_setEarly['icequeen_charm'] >= 3) { d.str += 2; d.cha += 2; }   // 冰之女王魅力：力量+2/魅力+2（提前→力量實際吃近距傷害/命中/爆擊）
-      if (_setEarly['frost'] >= 3) { d.con += 3; }                         // 寒冰：體質+3（提前→實際吃 HP 與 HP 自然恢復上限）
-      if (_setEarly['orin'] >= 2) { d.str += 1; d.dex += 1; d.con += 1; d.int += 1; d.wis += 1; d.cha += 1; }   // 🔱 歐林西瑪：全六屬性+1（提前→實際吃進 AC/MR/HP/MP/近遠傷害/命中/爆擊等衍生值，否則只改顯示數字不入戰鬥）
-      if (_setEarly['darkelf'] >= 3) { d.str -= 2; d.dex += 2; }   // 🏝️ 黑暗妖精：力量-2/敏捷+2（提前→敏捷實際吃 AC/迴避/遠距傷害命中、力量實際吃近距傷害命中，否則只改顯示數字不入戰鬥）
-      if (_setEarly['bluepirate'] >= 4) { d.int += 1; }   // 🏴‍☠️ 藍海賊套裝：智力+1（提前→吃進 MP/魔法；AC-1/HP+10 flat 於 Phase 3 套裝段）
+    { let _setEarly = countSetPieces(p.eq);   // 六屬性照 DB.sets 表套用（套裝表是單一真相）
+      for (let _code in _setEarly) { if (!setIsActive(_code, _setEarly)) continue; let _s = DB.sets[_code]; SET_STAT_EARLY.forEach(k => { if (_s[k]) d[k] += _s[k]; }); }
     }
     // 🦻 詛咒耳環套裝：淨化之耳環 + 對應色詛咒耳環 同時裝備 → 屬性提前套用（吃進近/遠/魔/HP/MP 等衍生值）
     { let _eqHas = id => Object.values(p.eq).some(e => e && e.id === id);
@@ -138,7 +138,7 @@ function recomputeStats() {
     }
     // 🪆 魔法娃娃全收集：裝備收集冊 doll 部位全收集(50 隻) → 六維各 +1（提前套用→吃進 AC/HP/MP/近遠魔傷害/命中/爆擊等衍生值；受下方 100 上限夾擠）。
     //    收集判定走 player.equipDex(共用桶)；傭兵經 buildAlly/_allyLevelRecompute 換身（player 暫指向傭兵）時借用隊長共用桶，同樣吃到此加成。label 由 js/16 EQUIP_CAT_BONUS.doll 顯示。
-    if (typeof equipCatComplete === 'function' && equipCatComplete('doll')) { d.str += 1; d.dex += 1; d.con += 1; d.int += 1; d.wis += 1; d.cha += 1; }
+    if (!DISABLE_COLLECTION && typeof equipCatComplete === 'function' && equipCatComplete('doll')) { d.str += 1; d.dex += 1; d.con += 1; d.int += 1; d.wis += 1; d.cha += 1; }
 
     // 🏺 v3.6.44 巨靈的三個願望（六維類願望）：掃裝備實體 gw 的 str1/dex1/int1/wis1/con1/cha1（非六維願望於防具迴圈套用·置於上限夾擠前）
     if (p.eq) { for (let _gk in p.eq) { let _ge = p.eq[_gk]; if (_ge && _ge.gw && Array.isArray(_ge.gw)) _ge.gw.forEach(w => { if (w === 'str1') d.str += 1; else if (w === 'dex1') d.dex += 1; else if (w === 'int1') d.int += 1; else if (w === 'wis1') d.wis += 1; else if (w === 'con1') d.con += 1; else if (w === 'cha1') d.cha += 1; }); } }
@@ -192,27 +192,6 @@ function recomputeStats() {
         d.meleeDmg += Math.floor(p.lv / 5);    // 每提升5 近距離傷害+1
         d.rangedDmg += Math.floor(p.lv / 8);   // 每提升8 遠距離傷害+1
         d.extraHit += Math.floor(p.lv / 3);    // 每提升3 額外命中+1（額外命中＝近+遠命中，對近/遠攻擊皆生效）
-    } else if (p.cls === 'illusion') {         // 幻術士
-        d.mr = 20;                             // 基本 MR = 20
-        d.ac -= Math.floor(p.lv / 7);          // 每提升7 AC-1
-        d.mr += Math.floor(p.lv / 2);          // 每提升2 MR+1
-        d.er += Math.floor(p.lv / 4);          // 每提升4 ER+1
-        d.extraDmg += Math.floor(p.lv / 5);    // 每提升5 額外傷害+1
-        d.extraHit += Math.floor(p.lv / 5);    // 每提升5 額外命中+1
-    } else if (p.cls === 'dragon') {           // 龍騎士
-        d.mr = 18;                             // 基本 MR = 18
-        d.ac -= Math.floor(p.lv / 7);          // 每提升7 AC-1
-        d.mr += Math.floor(p.lv / 2);          // 每提升2 MR+1
-        d.er += Math.floor(p.lv / 4);          // 每提升4 ER+1
-        d.extraDmg += Math.floor(p.lv / 3);    // 每提升3 額外傷害+1
-        d.extraHit += Math.floor(p.lv / 3);    // 每提升3 額外命中+1
-    } else if (p.cls === 'warrior') {          // ⚔️ 戰士
-        d.mr = 0;                              // 基本 MR = 0
-        d.ac -= Math.floor(p.lv / 8);          // 每提升8 AC-1
-        d.mr += Math.floor(p.lv / 10);         // 每提升10 MR+1
-        d.er += Math.floor(p.lv / 4);          // 每提升4 ER+1
-        d.extraDmg += Math.floor(p.lv / 4);    // 每提升4 額外傷害+1
-        d.extraHit += Math.floor(p.lv / 3);    // 每提升3 額外命中+1
     } else if (p.cls === 'royal') {            // 👑 王族
         d.mr = 10;                             // 基本 MR = 10
         d.ac -= Math.floor(p.lv / 7);          // 每提升7 AC-1
@@ -260,18 +239,17 @@ function recomputeStats() {
         let c = Math.max(1, Math.ceil(baseMp * (1 - d.mpReduce / 100)));
         if (p._setApprentice5 && p.mp < p.mmp * 0.3) c = Math.max(1, Math.ceil(c / 2));   // 🔮 學徒 5/5：MP 低於最大值 30% 時，所有技能耗魔減半
         if (d.fullHpMpHalf) { let _hpNow = (p.curHp != null) ? p.curHp : p.hp; if (_hpNow >= (p.mhp || 1)) c = Math.max(1, Math.ceil(c / 2)); }   // 🏺 v3.1.80 巫師的黑暗魔導書：滿血時技能消耗 MP 減半（玩家 p.hp／傭兵 p.curHp·recompute 共用）
-        if (p.mastery === 'i_mana') c *= 2;   // 🔮 魔力精通：所有技能MP消耗加倍（與 MP 上限加倍配套）
         return c;
     };
 
     // HP / MP（職業等級1基礎 + (等級-1) x (職業加成 + 屬性加成)，依最終 CON / WIS）
-    let hpBase   = p.cls === 'knight' ? 16 : (p.cls === 'elf' ? 15 : (p.cls === 'dark' ? 12 : (p.cls === 'illusion' ? 14 : (p.cls === 'dragon' ? 16 : (p.cls === 'warrior' ? 16 : (p.cls === 'royal' ? 14 : 12))))));
-    let hpClsInc = p.cls === 'knight' ? 8.5 : (p.cls === 'elf' ? 7.3 : (p.cls === 'dark' ? 10.5 : (p.cls === 'illusion' ? 7.5 : (p.cls === 'dragon' ? 4.5 : (p.cls === 'warrior' ? 9 : (p.cls === 'royal' ? 10 : 4.3))))));
+    let hpBase   = p.cls === 'knight' ? 16 : (p.cls === 'elf' ? 15 : (p.cls === 'dark' ? 12 : (p.cls === 'royal' ? 14 : 12)));
+    let hpClsInc = p.cls === 'knight' ? 8.5 : (p.cls === 'elf' ? 7.3 : (p.cls === 'dark' ? 10.5 : (p.cls === 'royal' ? 10 : 4.3)));
     let conInc   = getConGrowth(d.con, p.cls);
     p.mhp = hpBase + (p.lv - 1) * (hpClsInc + conInc);   // 小數隱藏不捨去（顯示時取floor）
 
-    let mpBase   = p.cls === 'knight' ? 1 : (p.cls === 'elf' ? 5 : (p.cls === 'dark' ? 3 : (p.cls === 'illusion' ? 5 : (p.cls === 'dragon' ? 2 : (p.cls === 'warrior' ? 1 : (p.cls === 'royal' ? 2 : 6))))));
-    let mpClsInc = p.cls === 'knight' ? 1 : (p.cls === 'elf' ? 2.83 : (p.cls === 'dark' ? 3 : (p.cls === 'illusion' ? 3.2 : (p.cls === 'dragon' ? 0.7 : (p.cls === 'warrior' ? 0.5 : (p.cls === 'royal' ? 1.5 : 4.5))))));
+    let mpBase   = p.cls === 'knight' ? 1 : (p.cls === 'elf' ? 5 : (p.cls === 'dark' ? 3 : (p.cls === 'royal' ? 2 : 6)));
+    let mpClsInc = p.cls === 'knight' ? 1 : (p.cls === 'elf' ? 2.83 : (p.cls === 'dark' ? 3 : (p.cls === 'royal' ? 1.5 : 4.5)));
     let wisInc   = getWisGrowth(d.wis);
     p.mmp = mpBase + (p.lv - 1) * (mpClsInc + wisInc);
 
@@ -329,13 +307,6 @@ function recomputeStats() {
 
     }
 
-    // ⚔️ 迅猛雙斧副手武器：祝福/遠古/屬性比照主武器計入 global d（與其他裝備一致疊加；玩家＋傭兵 buildAlly 換身共用本函式）。剋制屬性仍走 getPhysicalDmg 副手揮擊（用 offwpn 自身屬性）
-    if (p.eq.offwpn) {
-        applyBlessStats(d, p.eq.offwpn.bless, 'wpn'); applyAncStats(d, p.eq.offwpn.anc, 'wpn');
-        let _oAtt = getAttrAffix(p.eq.offwpn.attr);
-        if (_oAtt) { d.extraDmg += _oAtt.dmg; d.extraMp += _oAtt.mp; }   // 🔥 副手屬性詞綴：額外傷害/魔法點數
-    }
-
     let setCheck = {}, _setSeen = {};
     p._equipHaste = false;   // 裝備常駐加速（如伊娃之盾）：每次重算先清除，卸下即消失（同 _setPoly 模式）
     if (p.eq.wpn) { let _hw = DB.items[p.eq.wpn.id]; if (_hw && (_hw.eff === 'haste' || _hw.equipHaste)) p._equipHaste = true; }   // 🔧 武器常駐加速（惡魔之劍 eff:haste／惡魔雙刀·鋼爪·十字弓 equipHaste）
@@ -377,7 +348,6 @@ d.mr += (baseMr + bonusMr);
         if(ed.magicHit)  d.magicHit  += ed.magicHit;          // 🪆 裝備固定魔法命中（魔法娃娃：墮落/巴風特）
         if(ed.er)        d.er         += ed.er;                // 🪆 裝備固定 ER（魔法娃娃：飛龍/吸血鬼/林德拜爾）
         if(ed.extraMp)   d.extraMp    += ed.extraMp;          // 🪆 裝備固定額外魔法點數（魔法娃娃：思克巴女皇）
-        if(ed.extraAtk)  d.equipExtraAtk += ed.extraAtk;      // 🐉 裝備額外一般攻擊次數（龍鱗臂甲 +1）
         if(ed.immStone) d.immStone = true;                    // 紅騎士盾牌：免疫石化
         if(ed.immPoison) d.immPoison = true;                  // 潔尼斯戒指：免疫中毒/猛毒/麻痺
         if(ed.immSilence) d.immSilence = true;                // 🏺 v3.5.27 被敲爛的半邊頭盔：免疫沉默
@@ -450,8 +420,8 @@ d.mr += (baseMr + bonusMr);
         }
     }
     
-    // 騎士／王族／戰士：背包中持有的魔法頭盔也授予技能（擁有即可、不需裝備；背包與裝備都沒有對應頭盔時技能才會消失）
-    if (p.cls === 'knight' || p.cls === 'royal' || p.cls === 'warrior') {
+    // 騎士／王族：背包中持有的魔法頭盔也授予技能（擁有即可、不需裝備；背包與裝備都沒有對應頭盔時技能才會消失）
+    if (p.cls === 'knight' || p.cls === 'royal') {
         (p.inv || []).forEach(it => {
             let _gd = DB.items[it.id];
             if (_gd && _gd.grantSkills && !_gd.grantSkillsEquipOnly) {
@@ -462,28 +432,19 @@ d.mr += (baseMr + bonusMr);
             }
         });
     }
-    // ⚠️ 套裝效果唯一真相在此；DB.sets(js/00) 僅供 initSetTags 反向標記、不承載數值
+    // 🛡️ 套裝效果的數值在 DB.sets（js/00，試算表「套裝」分頁可改）
     p._setPoly = null;   // 套裝變身僅在穿著時生效；每次重算先清除，卸下套裝即消失
-    if(setCheck['leather'] >= 4) { d.ac -= 3; }   // 皮套裝（原作未實作，依 DB.sets 補上）
-    if(setCheck['bone'] >= 3) { d.ac -= 2; p.mhp += 10; }
-    if(setCheck['dk'] >= 4) { d.ac -= 4; p._setPoly = Object.assign({}, SET_POLY_FORMS.dk); }   // 🔧 死亡騎士套裝：變身升級為 真‧死亡騎士
-    if(setCheck['silver'] >= 4) { d.ac -= 3; }
-    if(setCheck['oasis'] >= 4) { d.ac -= 3; }
-    if(setCheck['gnome'] >= 3) { d.ac -= 1; p.mhp += 5; }
-    if(setCheck['mage'] >= 2) { p.mmp += 50; d.mpR += 1; }   // 🧙 法師套裝：MP+50、MP自然恢復+1
-    if(setCheck['kurt'] >= 4) { d.ac -= 4; p._setPoly = Object.assign({}, SET_POLY_FORMS.kurt); }   // 🔧 克特套裝：變身升級為 真‧克特
-    if(setCheck['steel'] >= 5) { d.ac -= 2; d.dr += 2; }
-    if(setCheck['mr'] >= 3) { d.mr += 5; }
-    if(setCheck['guard'] >= 3) { d.ac -= 1; }
-    if(setCheck['kinglord'] >= 4) { p.mhp += 30; p.mmp += 30; d.hpR += 10; d.mpR += 10; d.cha += 3; }   // 🔧 四大軍王套裝：HP/MP+30、HP/MP自然恢復+10、魅力+3
-    if(setCheck['demon'] >= 4) { d.ac -= 2; d.hpR += 5; p._setPoly = Object.assign({}, SET_POLY_FORMS.demon); }   // 🗼 惡魔套裝：AC-2、HP自然恢復+5、變身惡魔（額外傷害/命中/魔法傷害/MP/攻速由變身提供）
-    if(setCheck['darkelf'] >= 3) { d.ac -= 3; d.hpR -= 2; d.mpR -= 7; p._setPoly = Object.assign({}, SET_POLY_FORMS.darkelf); }   // 🏝️ 黑暗妖精套裝：AC-3、HP自然恢復-2、MP自然恢復-7、變身高等黑暗精靈（遠距離傷害/命中+5、攻速+30%）（力量-2/敏捷+2 已於 Phase 1 前 _setEarly 提前套用→吃進近/遠戰鬥值）
-    if(setCheck['orin'] >= 2) { d.ac -= 5; p.mhp += 50; }   // 🔱 歐林西瑪套裝：AC-5、HP+50（全六屬性+1 已於 Phase 1 前 _setEarly 提前套用→吃進 AC/MR/HP/MP/傷害等衍生值）
-    if(setCheck['icequeen_charm'] >= 3) { d.ac -= 5; p.mhp += 100; d.mpR += 4; d.resWater += 20; }   // ❄️👸 冰之女王魅力套裝（公主限定）：AC-5、HP+100、MP自然恢復+4、水屬性抗性+20（力量+2/魅力+2 已於 Phase 1 前提前套用）
-    if(setCheck['frost'] >= 3) { d.ac -= 5; p.mhp += 100; d.hpR += 8; d.mpR += 4; d.mr += 15; d.resWater += 20; }   // ❄️ 寒冰套裝（王族／龍騎士）：AC-5、HP+100、HP自然恢復+8、MP自然恢復+4、MR+15、水屬性抗性+20（體質+3 已於 Phase 1 前提前套用）
-    if(setCheck['bluepirate'] >= 4) { d.ac -= 1; p.mhp += 10; }   // 🏴‍☠️ 藍海賊套裝（頭巾＋皮盔甲＋手套＋長靴）：AC-1、HP+10（智力+1 已於 Phase 1 前提前套用）
-    if(setCheck['emperor'] >= 5) { d.ac -= 20; p.mhp += 100; p.mmp += 20; d.hpR += 10; d.atkSpdPct += 30; d.meleeDmg += 5; d.rangedDmg += 5; }   // 🌑 v3.3.33 真‧冥皇套裝（披風/鎧甲/面甲/護手/鋼靴 5 件·黑暗妖精聖地.md）：防禦-20、HP+100、MP+20、HP自然恢復+10、攻速額外+30%（atkSpdPct 管線·與加速/勇敢藥水乘算堆疊）、額外傷害+5（近/遠皆加）
-    if(setCheck['priest'] >= 5) { d.ac -= 50; d.mr += 50; p.mhp += 300; d.mpR += 30; d.meleeCrit += 5; d.rangedCrit += 5; d.magicCrit += 5; d.meleeCritDmg += 50; d.rangedCritDmg += 50; d.magicCritDmg += 50; }   // 🏺 v3.7.52 司祭苦行套裝（5 件遺物·純 flat 免 _setEarly）：AC-50、MR+50、HP+300、MP自然恢復+30、近/遠/魔法爆擊率+5%、近/遠/魔法爆擊傷害+50%
+    { let _sc = countSetPieces(p.eq);   // 🛡️ 照 DB.sets 表套用（六屬性已於前面提前套用）
+      for (let _code in _sc) {
+        if (!setIsActive(_code, _sc)) continue;
+        let _s = DB.sets[_code];
+        if (_s.ac) d.ac -= _s.ac;
+        if (_s.mhp) p.mhp += _s.mhp;
+        if (_s.mmp) p.mmp += _s.mmp;
+        SET_STAT_LATE.forEach(k => { if (_s[k]) d[k] = (d[k] || 0) + _s[k]; });
+        if (_s.poly && SET_POLY_FORMS[_s.poly]) p._setPoly = Object.assign({}, SET_POLY_FORMS[_s.poly]);
+      }
+    }
     // 🌑 v3.4.0 受詛咒的真．冥皇執行劍：裝備時變身 死亡騎士（走 _setPoly 管線＝卸下即消失·速度覆蓋沿 POLY_TIERS 死亡騎士；套裝變身優先於本劍故加 !p._setPoly 守衛）
     if(!p._setPoly && p.eq && p.eq.wpn && p.eq.wpn.id === 'wpn_cursed_emperor_blade') { let _ceb = findPolyForm('死亡騎士'); if(_ceb) p._setPoly = makePolyState(_ceb.form, _ceb.color); }
     // 🌑 v3.4.67 解除詛咒的真死亡騎士．冥皇執行劍：裝備時變身 真死亡騎士 冥皇丹特斯（equip-only·per-weapon APM 攻速·套裝變身優先故加 !p._setPoly 守衛）
@@ -551,22 +512,19 @@ d.mr += (baseMr + bonusMr);
     if (typeof miscCollectionBonus === 'function') miscCollectionBonus(p, d);
 
     // 🏅 生存精通：MR+15（藥水恢復 +25% 於 useItem 套用）
-    if (p.mastery === 'k_survive') d.mr += 15;
-    if (player.skills.includes('sk_warrior_crush')) d.meleeDmg += 2 + Math.max(0, p.lv - 44);   // ⚔️ 粉碎：近距離傷害+2；玩家等級45起每升一級+1
+    if (masteryOf(p) === 'k_survive') d.mr += 15;
     
     let spdMult = 1.0;
     let _mercPots = !!p._mercPermanentPotions;   // 🤝 傭兵預設常駐職業藥水效果（不消耗道具、不寫入一般 buff 計時）
-    if(p.buffs.haste > 0 || p._equipHaste || _mercPots) spdMult *= (1/1.33);   // 加速術／加速藥水／裝備加速：攻速+33%（🔧 v3.5.37 名實相符：1/1.33＝速度×1.33，取代舊 0.67＝實際+49%）；傭兵全職常駐
-    if(p.buffs.brave > 0 || (_mercPots && ['knight','dragon','warrior','royal'].includes(p.cls))) spdMult *= (1/1.33);   // 勇敢藥水：攻速+33%（🔧 v3.5.37 1/1.33）；可用職業傭兵常駐
+    if(p.buffs.haste > 0 || p._equipHaste || _mercPots) spdMult *= (1/SKILL_FX.haste.spd);   // 加速術／加速藥水／裝備加速：攻速+33%（🔧 v3.5.37 名實相符：1/1.33＝速度×1.33，取代舊 0.67＝實際+49%）；傭兵全職常駐
+    if(p.buffs.brave > 0 || (_mercPots && ['knight','royal'].includes(p.cls))) spdMult *= (1/1.33);   // 勇敢藥水：攻速+33%（🔧 v3.5.37 1/1.33）；可用職業傭兵常駐
     if(p.buffs.elfcookie > 0 || (_mercPots && p.cls === 'elf')) spdMult *= (1/1.15); // 精靈餅乾：攻速+15%（🔧 v3.5.37 1/1.15·取代舊 0.85＝實際+17.6%）；妖精傭兵常駐
-    if(p.buffs.sk_dark_walkhaste > 0) spdMult *= (1/1.15); // 🔧 行走加速：攻速+15%（v3.5.37 1/1.15）（與加速術等相乘疊加）
-    { let _clvW = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; let _clvOn = !p.classicMode && ((p.statuses && p.statuses.cleave > 0) || (p.mastery === 'k_cleave' && _clvW && _clvW.eff === 'cleave')); if(_clvOn) spdMult *= (p.mastery === 'k_cleave' ? (1/1.5) : (1/1.2)); }   // 切割：攻速+20%（🏅 切割精通：+50%・持切割武器常駐），與其他加速相乘疊加；🎮 經典模式停用
+    if(p.buffs.sk_dark_walkhaste > 0) spdMult *= (1/SKILL_FX.sk_dark_walkhaste.spd); // 🔧 行走加速：攻速+15%（v3.5.37 1/1.15）（與加速術等相乘疊加）
+    { let _clvW = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; let _clvOn = !p.classicMode && ((p.statuses && p.statuses.cleave > 0) || (masteryOf(p) === 'k_cleave' && _clvW && _clvW.eff === 'cleave')); if(_clvOn) spdMult *= (masteryOf(p) === 'k_cleave' ? (1/1.5) : (1/1.2)); }   // 切割：攻速+20%（🏅 切割精通：+50%・持切割武器常駐），與其他加速相乘疊加；🎮 經典模式停用
     if (typeof player !== 'undefined' && p === player && !p._allyName && (p._crushFuryUntil || 0) > state.ticks) spdMult *= (1/1.2);   // 🔨 v3.6.47 重裝戰士的粉碎鎚：即死觸發攻速+20%（8秒·js/04 授予·js/03 到期重算·經典亦生效比照即死本體；傭兵版走 _crushFuryTicks 於 js/06 攻擊間隔）
     { let _ffOn = typeof player !== 'undefined' && p === player && !p._allyName && (p._fangFuryUntil || 0) > state.ticks; let _ffw = p.eq.wpn && DB.items[p.eq.wpn.id]; spdMult *= critFurySpeedMultiplier(_ffOn, _ffw && _ffw.critFuryHaste && _ffw.critFuryHaste.pct); }   // 🏺 v3.7.52 邪惡利牙：爆擊觸發攻速+30%（5秒·js/04 授予·js/03 到期重算；傭兵版走 _fangFuryTicks 於 js/06 攻擊間隔）
-    { let _swMelee = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(p.mastery === 'e_sword' && _swMelee && !_swMelee.w2h && !_swMelee.isBow && !_swMelee.ranged) spdMult *= (1/1.5); }   // 🏅 劍術精通：持單手近戰武器攻速+50%（與加速/勇敢/餅乾/變身相乘疊加）
-    { let _aw = p.eq.wpn ? getWeaponTags(p.eq.wpn.id) : []; let _ow = p.eq.offwpn ? getWeaponTags(p.eq.offwpn.id) : []; if(p.mastery === 'k_giantaxe' && (_aw.includes('雙手鈍器') || _ow.includes('雙手鈍器'))) spdMult *= (1/1.3); else if(p.mastery === 'k_dualaxe' && _aw.includes('單手鈍器') && p.eq.offwpn && _ow.includes('單手鈍器')) spdMult *= (1/1.3); }   // ⚔️ 巨斧精通(主手或副手任一持雙手鈍器·符合「持雙手鈍器+30%」描述·含混裝)／雙斧精通(主副手皆單手鈍器)：攻速+30%
-    { let _rw = p.eq.wpn ? getWeaponTags(p.eq.wpn.id) : []; if(p.mastery === 'k_royal_sword' && (_rw.includes('單手劍') || _rw.includes('雙手劍'))) spdMult *= (1/1.5); }   // 👑 劍術精通：裝單手劍／雙手劍攻速+50%
-    { let _iw = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(p.cls === 'illusion' && _iw && !_iw.isBow && ((p.mastery === 'i_qigu' && _iw.qigu) || (p.mastery === 'i_magicsword' && !_iw.qigu && !isWandWeapon(_iw)))) spdMult *= (1/1.3); }   // 🔮 奇古獸精通(裝奇古獸)／魔劍精通(裝非奇古獸·排除魔杖)：攻速+30%
+    { let _swMelee = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(masteryOf(p) === 'e_sword' && _swMelee && !_swMelee.w2h && !_swMelee.isBow && !_swMelee.ranged) spdMult *= (1/1.5); }   // 🏅 劍術精通：持單手近戰武器攻速+50%（與加速/勇敢/餅乾/變身相乘疊加）
+    { let _rw = p.eq.wpn ? getWeaponTags(p.eq.wpn.id) : []; if(masteryOf(p) === 'k_royal_sword' && (_rw.includes('單手劍') || _rw.includes('雙手劍'))) spdMult *= (1/1.5); }   // 👑 劍術精通：裝單手劍／雙手劍攻速+50%
     // 🏺 v3.6.44 魔力凝聚的法陣（長靴·statArray）：每 5 體質→攻速 +1%、每 5 敏捷→近傷 +1、每 5 力量→遠傷 +1（用最終六維·置於攻速%消費前）
     if (p.eq.boots && (DB.items[p.eq.boots.id] || {}).statArray) { d.atkSpdPct += statArrayBonus(d.con); d.meleeDmg += statArrayBonus(d.dex); d.rangedDmg += statArrayBonus(d.str); }
     // 🏺 v3.6.44 守護獸的難題（斗篷·playerHardSkin）：裝備→硬皮池初始化 30；卸下→清除（僅主玩家·傭兵換身 _allyName 不吃·runtime 欄位不入檔）
@@ -578,7 +536,7 @@ d.mr += (baseMr + bonusMr);
     { let _mhw = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(d.meleeHaste > 0 && _mhw && !_mhw.isBow && !_mhw.ranged) spdMult *= (1 / (1 + d.meleeHaste / 100)); }   // 🏺 遺物 狂野的鬃毛外套：裝備近距離武器時攻速 +meleeHaste%
     if(p.buffs.blue > 0) d.mpR += getWisBlueBonus(d.wis);          // 藍色藥水：依精神提升MP恢復
     if(p.buffs.cautious > 0 || (_mercPots && p.cls === 'mage')) { d.magicDmg += 2; d.mpR += 2; }      // 慎重藥水；法師傭兵常駐
-    if(p.buffs.sk_reduction_armor > 0) d.dr += Math.floor(p.lv/10);   // 增幅防禦：等同傷害減免 floor(等級/10)，併入 DR 顯示與計算
+    if(p.buffs.sk_reduction_armor > 0) d.dr += Math.floor(p.lv/SKILL_FX.sk_reduction_armor.lvDiv);   // 增幅防禦：等同傷害減免 floor(等級/10)，併入 DR 顯示與計算
     if(p.statuses && p.statuses.evilAura > 0) { d.ac += 10; d.er -= 10; }   // 🔧 邪靈之氣減益：AC+10、ER−10（持續6秒，由黑暗精靈使施放）
     
     // 技能buff（非屬性部分；STR/DEX/INT/CON/WIS 已於 Phase 1 計入）
@@ -607,10 +565,11 @@ d.mr += (baseMr + bonusMr);
 
     // 單屬性防禦：所選屬性抗性 +50
     if(p.buffs.sk_elf_singleres > 0 && p.elfEle) {
-        if(p.elfEle === 'fire')  d.resFire  += 50;
-        if(p.elfEle === 'water') d.resWater += 50;
-        if(p.elfEle === 'earth') d.resEarth += 50;
-        if(p.elfEle === 'wind')  d.resWind  += 50;
+        let _sr = SKILL_FX.sk_elf_singleres.res;
+        if(p.elfEle === 'fire')  d.resFire  += _sr;
+        if(p.elfEle === 'water') d.resWater += _sr;
+        if(p.elfEle === 'earth') d.resEarth += _sr;
+        if(p.elfEle === 'wind')  d.resWind  += _sr;
     }
 
     // 🏺 v3.5.27 黑騎士的精銳長槍＋鎧衛隊的漆黑塔盾 同時裝備：近距離傷害 +15（格檔100%／經典模式亦可格檔＝js/04 受擊路徑）
@@ -667,11 +626,8 @@ d.mr += (baseMr + bonusMr);
     }
     if (d.hitstunReduce > 0) d.hitstun = Math.max(0, (d.hitstun || 0) - d.hitstunReduce);   // 🏺 不動的鋼鐵堅壁：硬直減免統一套用點（置於變身速度覆蓋後→變身形態的 pf.stun 也吃減免·夾下限 0）
 
-    if(p.buffs.sk_soul_up > 0) { p.mhp = Math.floor(p.mhp * 1.2); p.mmp = Math.floor(p.mmp * 1.2); }
-    if (player.skills.includes('sk_warrior_armorbody')) d.dr += Math.floor((10 - d.ac) / (hasMastery('k_tough') ? 5 : 10));   // ⚔️ 護甲身軀：傷害減免 +[(10-AC)/10]；🏅 堅韌精通改 /5
-    if (p.buffs.sk_warrior_endurance > 0) p.mhp = Math.floor(p.mhp * (1 + (p.lv / 2) / 100));   // ⚔️ 體能強化：HP上限 +(等級/2)%
+    if(p.buffs.sk_soul_up > 0) { p.mhp = Math.floor(p.mhp * SKILL_FX.sk_soul_up.mult); p.mmp = Math.floor(p.mmp * SKILL_FX.sk_soul_up.mult); }
     if (_shN('狂怒') >= 3) p.mhp = Math.floor(p.mhp * 1.2);   // 😡 狂怒 3/5：最大HP +20%（於各 flat HP 加成後套用）
-    if(p.mastery === 'i_mana') p.mmp = Math.floor(p.mmp * 2);   // 🔮 魔力精通：MP 上限加倍（耗魔亦加倍，見 getMpCost）
     // 血盟 Buff：由角色自行開啟，每小時消耗貢獻；能力依全模式共用血盟等級決定。
     if (typeof getClanBuffStats === 'function') {
         let _cb = getClanBuffStats(p);
@@ -688,16 +644,7 @@ d.mr += (baseMr + bonusMr);
         }
     }
 
-    // 🐉 龍騎士 覺醒（安塔瑞斯/法利昂/巴拉卡斯）：d:{} 內的 AC/抗性/屬性/額外命中已由上方 buff 迴圈套用；此處補非標準效果與攻速
-    {
-        let _awakenOn = false;
-        if(p.buffs.sk_dragon_awaken_antares > 0) { _awakenOn = true; d.immPoison = true; p.mhp += 2 * p.lv; }   // 安塔瑞斯：免疫中毒與麻痺、HP+(2×等級)
-        if(p.buffs.sk_dragon_awaken_falion > 0)  { _awakenOn = true; d.mr = Math.floor(d.mr * 1.15); }          // 法利昂：MR+15%
-        if(p.buffs.sk_dragon_awaken_baraka > 0)  { _awakenOn = true; }                                          // 巴拉卡斯：屬性/額外命中已由 buff 迴圈套用
-        if(_awakenOn) spdMult *= (p.mastery === 'k_awaken' ? (1/1.5) : (1/1.2));   // 覺醒攻速：🏅覺醒精通+50%、否則+20%（不疊加；多覺醒只算一次）
-    }
-    if(p.buffs.sk_dragon_bloodlust > 0) spdMult *= (1/1.15);   // 🐉 血之渴望：攻速+15%（速度×1.15；與加速/覺醒/變身相乘疊加）
-    // 🌟 v3.0.100 玩家攻擊也吃「傭兵提供的幻覺攻擊光環」(化身+10/歐吉+4傷+4命/巫妖+2魔傷)：玩家自身幻覺已由上方 buff 迴圈套入 d·此處只補「傭兵來源」(teamIlluAura(p) 已排除玩家自身避免雙算)·限玩家(_recomputingAlly=false·傭兵走 alliesTick 注入)。傭兵化身狀態變動時由 allyMaintainBuffs 觸發 calcStats 刷新此段。
+    // 🌟 v3.0.100 玩家攻擊也吃「傭兵提供的團隊攻擊光環」：玩家自身光環已由上方 buff 迴圈套入 d·此處只補「傭兵來源」(teamIlluAura(p) 已排除玩家自身避免雙算)·限玩家(_recomputingAlly=false·傭兵走 alliesTick 注入)。
     if (!_recomputingAlly && typeof teamIlluAura === 'function') { let _mia = teamIlluAura(p); if (_mia) { d.extraDmg += _mia.ed; d.extraHit += _mia.eh; d.magicDmg += _mia.md; d.meleeDmg += (_mia.mel || 0); } }   // 🔥 v3.8.3 mel＝舞躍之火團隊光環（近距離傷害·自身持有時已由上方 buff 迴圈算入·此處只補其他隊員來源）
     // 🏺 人面獅身的漆黑羽翼（drPerEr）：傷害減免 +（完整 ER ÷ N）。ER 的迴避效益遞減由 effResistPct 處理，此處不設上限。
     if (p.eq) { for (let _dk in p.eq) { let _de = p.eq[_dk]; if (!_de) continue; let _dd = DB.items[_de.id];
@@ -714,7 +661,7 @@ d.mr += (baseMr + bonusMr);
     // 🐉 v3.7.57 安塔瑞斯副本助戰者（僅主玩家·快照制 player.antharasHelpers）：精準=等級5%額外命中(≤20)·破壞=近/遠/魔傷/SP各5%(各≤20)·
     //    抵抗=地抗100%(≤+30)·護衛=MR10%傷害減免(≤20%·存 p._antHelperDr·js/04 受擊點消費——⚠️獨立函式不動被 C# 包裝的 teamDmgReduceMult)
     p._antHelperDr = 0;
-    if (!_recomputingAlly && p.antharasHelpers) {
+    if (!_recomputingAlly && p.antharasHelpers && !MERC_CLOSED) {   // 🚫 助戰者關閉時不給加成
         let _ah = p.antharasHelpers;
         if (_ah.precision) d.extraHit += antHelperPrecisionBonus(_ah.precision.lv);
         if (_ah.destroy) {
@@ -755,7 +702,7 @@ d.mr += (baseMr + bonusMr);
             if (_ed.weightCap) _cap += _ed.weightCap;
             if (_ed.slot === 'belt') _cap += Math.min(_it.en || 0, 5) * 20;   // 🔧 腰帶強化：每+1 負重上限+20
         }
-        if (p.buffs && p.buffs.sk_load_up > 0) _cap += 50;   // 負重強化增益：負重上限 +50
+        if (p.buffs && p.buffs.sk_load_up > 0) _cap += SKILL_FX.sk_load_up.cap;   // 負重強化增益：負重上限 +50
         if (d._cardWeightBonus) _cap += d._cardWeightBonus;   // 🎴 卡片收集：風木/奇岩完成 → 負重上限加成
         if (d._equipWeightBonus) _cap += d._equipWeightBonus;   // 🗡️ 裝備收集冊：單手/雙手鈍器/臂甲/腰帶部位全收集 → 負重上限加成
         if (d._miscWeightBonus) _cap += d._miscWeightBonus;   // 🧰 道具收集冊：藥水/卷軸類全收集 → 負重上限加成
@@ -768,17 +715,7 @@ d.mr += (baseMr + bonusMr);
         else if (_tier === 3) d.aspd = d.aspd * 3;   // 100%+：攻擊速度 -200%（間隔×3）
     }
 
-    // ⚔️ v3.5.100 副手獨立攻速：以「副手/主手 基礎間隔比」× 已完成全部修正的 d.aspd 推導（0＝沒副手）。
-    //   ⭐ 刻意用比例而不是重算一次：d.aspd 上面經過 spdMult（加速術/勇敢藥水/精靈餅乾/行走加速/切割/劍術/巨斧/
-    //      雙斧/王族劍術/奇古獸/魔劍精通、遺物 atkSpdPct、變身 polyAtkSpdPct、meleeHaste）與負重階懲罰（×2/×3），
-    //      而且還可能被變身 profile 整段覆蓋。若副手重算一次，就得把那十幾條逐一複製——漏一條兩手就會不同步。
-    //      用比例則全部自動繼承，只保留「兩把武器種類不同」這唯一該有的差異。
-    //   ⚠️ 間隔與 APM 成反比 → 比例是 主手APM/副手APM（不是反過來）。
-    d.aspdOff = 0;
-    if (p.eq && p.eq.offwpn && typeof atkSpdApm === 'function') {
-        let _mApm = atkSpdApm(p), _oApm = atkSpdApm(p, p.eq.offwpn.id);
-        if (_mApm > 0 && _oApm > 0) d.aspdOff = d.aspd * (_mApm / _oApm);
-    }
+    d.aspdOff = 0;   // 副手攻速（戰士雙持已移除；js/06、js/28 仍讀此欄→恆 0＝沒副手）
     p.hp = Math.min(p.hp, p.mhp);
     p.mp = Math.min(p.mp, p.mmp);
 }
@@ -925,7 +862,7 @@ const POLY_TIERS = [
     { min:70, max:9999, color:"text-yellow-400", forms:[
         { n:"死亡", lv:70, atk:18, wlk:24, cast:10, stun:7 },
         { n:"反王肯恩", lv:75, atk:14.4, atkApm:100, wlk:18, cast:11, stun:6 },
-        { n:"烈焰的死亡騎士", lv:80, apm:{ '單手劍':120,'單手鈍器':103,'雙手鈍器':103,'弓':90,'十字弓':90,'單手矛':111,'雙手矛':111,'魔杖':120,'匕首':131,'雙手劍':103,'雙刀':120,'鋼爪':120,'奇古獸':120,'鎖鏈劍':111,'雙斧':120 }, wlk:16, cast:7, stun:2 },   // 🌑 v3.4.67 逐武器種類 APM 攻速（用戶「變身速度」CSV·6000/APM/100=秒）
+        { n:"烈焰的死亡騎士", lv:80, apm:{ '單手劍':120,'單手鈍器':103,'雙手鈍器':103,'弓':90,'十字弓':90,'單手矛':111,'雙手矛':111,'魔杖':120,'匕首':131,'雙手劍':103,'雙刀':120,'鋼爪':120 }, wlk:16, cast:7, stun:2 },   // 🌑 v3.4.67 逐武器種類 APM 攻速（用戶「變身速度」CSV·6000/APM/100=秒）
         { n:"莉絲安", lv:80, apm:{ '弓':90, '十字弓':90, '單手劍':90 }, wlk:16, cast:7, stun:2 },   // 🏹 v3.5.7 Lv80 遠距離變身（用戶指定·持弓攻速90→0.67s／攻擊施法85→cast7／硬直0.21s→stun2／走90→wlk16 同烈焰死騎慣例；遠距閘只吃弓/十字弓·單手劍僅 apm fallback 鍵）
     ]},
 ];
@@ -947,18 +884,12 @@ const CONTROL_ONLY_POLY_FORMS = [SHANNA_FORM, TRUE_SHANNA_FORM];
 const SHANNA_APM_PROFILES = {
     full:   { '單手劍':96, '單手鈍器':84, '雙手鈍器':84, '弓':75, '十字弓':75, '單手矛':90, '雙手矛':90, '魔杖':96, '匕首':102, '雙手劍':84 },
     six:    { '單手劍':96, '單手鈍器':84, '雙手鈍器':84, '弓':75, '十字弓':75, '單手矛':90, '雙手矛':90, '魔杖':96, '匕首':102 },
-    dark:   { '單手劍':96, '單手鈍器':84, '雙手鈍器':84, '弓':75, '十字弓':75, '匕首':102, '雙刀':96, '鋼爪':96 },
-    dragon: { '單手劍':96, '單手鈍器':84, '雙手鈍器':84, '單手矛':90, '雙手矛':90, '雙手劍':84, '鎖鏈劍':87 },
-    illu:   { '單手鈍器':84, '雙手鈍器':84, '弓':75, '十字弓':75, '魔杖':96, '奇古獸':96 },
-    warrior:{ '單手鈍器':84, '雙手鈍器':84, '單手矛':90, '雙手矛':90, '雙手劍':84, '雙斧':96 }
+    dark:   { '單手劍':96, '單手鈍器':84, '雙手鈍器':84, '弓':75, '十字弓':75, '匕首':102, '雙刀':96, '鋼爪':96 }
 };
 const SHANNA_PROFILE_BY_AVATAR = {
     '王子':'full', '公主':'full', '男騎士':'full', '女騎士':'full',
     '男妖精':'six', '女妖精':'six', '男法師':'six', '女法師':'six',
-    '男黑暗妖精':'dark', '女黑暗妖精':'dark',
-    '男龍騎士':'dragon', '女龍騎士':'dragon',
-    '男幻術士':'illu', '女幻術士':'illu',
-    '男戰士':'warrior', '女戰士':'warrior'
+    '男黑暗妖精':'dark', '女黑暗妖精':'dark'
 };
 const SHANNA_DAGGER_LONG_HITSTUN = new Set(['王子', '女騎士', '女妖精', '男法師', '男黑暗妖精', '女黑暗妖精']);
 function shannaSpeedForActor(p) {
@@ -966,19 +897,17 @@ function shannaSpeedForActor(p) {
     let profile = SHANNA_APM_PROFILES[SHANNA_PROFILE_BY_AVATAR[av]] || SHANNA_APM_PROFILES.full;
     let wid = p && p.eq && p.eq.wpn ? p.eq.wpn.id : null;
     let fam = wid && typeof atkSpdFamily === 'function' ? atkSpdFamily(wid) : null;
-    if (p && p.eq && p.eq.offwpn) fam = '雙斧';
     let apm = fam ? profile[fam] : null;
     let hitstun = apm == null ? null : ((fam === '匕首' && SHANNA_DAGGER_LONG_HITSTUN.has(av)) ? 4.2 : 3.3);
     return { avatar: av, family: fam, apm, hitstun };
 }
 // 🧝 v3.5.21 真夏納逐武器 APM（用戶 CSV·全職業共用值·可用與否沿夏納 profile 形狀）
-const TRUE_SHANNA_APM = { '單手劍':124, '單手鈍器':107, '雙手鈍器':107, '弓':93, '十字弓':93, '單手矛':115, '雙手矛':115, '魔杖':124, '匕首':135, '雙手劍':107, '雙刀':124, '鋼爪':124, '奇古獸':124, '鎖鏈劍':111, '雙斧':124 };
+const TRUE_SHANNA_APM = { '單手劍':124, '單手鈍器':107, '雙手鈍器':107, '弓':93, '十字弓':93, '單手矛':115, '雙手矛':115, '魔杖':124, '匕首':135, '雙手劍':107, '雙刀':124, '鋼爪':124 };
 function trueShannaSpeedForActor(p) {
     let av = (p && p.avatar) || ATK_AV_BY_CLS[(p && p.cls) || ''] || '王子';
     let allow = SHANNA_APM_PROFILES[SHANNA_PROFILE_BY_AVATAR[av]] || SHANNA_APM_PROFILES.full;   // 可用武器家族＝夏納同形狀（CSV 0 值欄位一致）·清單外（含武士刀/空手）不覆蓋→維持職業速度
     let wid = p && p.eq && p.eq.wpn ? p.eq.wpn.id : null;
     let fam = wid && typeof atkSpdFamily === 'function' ? atkSpdFamily(wid) : null;
-    if (p && p.eq && p.eq.offwpn) fam = '雙斧';
     let apm = (fam && allow[fam] != null) ? (TRUE_SHANNA_APM[fam] || null) : null;
     let hitstun = apm == null ? null : ((fam === '匕首' && SHANNA_DAGGER_LONG_HITSTUN.has(av)) ? 2.6 : 2.1);   // CSV 硬 0.21s·匕首長硬直職業 0.26s
     let wlk = (apm != null && fam === '單手劍') ? 15 : 16;   // CSV 走：單手劍 96/分→wlk15·其餘 90/分＝基準 16
@@ -1026,13 +955,13 @@ function playerMoveDelayMultiplier() {
     let _pfT = p._setPoly || ((buffs.poly > 0 && p.poly) ? p.poly : null);   // 🧝 v3.5.21 真夏納：走速依當前武器（單手劍96/分→wlk15·其餘90/分→wlk16）
     if (_pfT && _pfT.trueShanna && typeof trueShannaSpeedForActor === 'function') pfW = trueShannaSpeedForActor(p).wlk;
     let mult = pfW / 16;
-    if (buffs.haste > 0 || p._equipHaste) mult *= (1/1.33);   // 加速術／加速藥水／裝備加速：移速+33%（🔧 v3.5.37 名實相符 1/1.33＝速度×1.33·取代舊 0.67＝實際+49%→兩瓶疊加 223%→177%）
+    if (buffs.haste > 0 || p._equipHaste) mult *= (1/SKILL_FX.haste.spd);   // 加速術／加速藥水／裝備加速：移速+33%（🔧 v3.5.37 名實相符 1/1.33＝速度×1.33·取代舊 0.67＝實際+49%→兩瓶疊加 223%→177%）
     if (buffs.brave > 0) mult *= (1/1.33);                     // 勇敢藥水：移速+33%（🔧 v3.5.37 1/1.33）
     let windDashOn = (buffs.sk_elf_winddash || 0) > 0;
     let dashSid = windDashOn ? 'sk_elf_winddash' : (((buffs.sk_holy_dash || 0) > 0) ? 'sk_holy_dash' : null);
     if (dashSid) mult *= 1 / ((DB.skills[dashSid] && DB.skills[dashSid].moveSpeedMult) || 1.33);   // 神聖疾走／風之疾走：移速+33%（速度×1.33）；若舊存檔同時殘留，風之疾走優先且不疊加
     if (buffs.elfcookie > 0 && !windDashOn) mult *= (1/1.15);  // 精靈餅乾：移速+15%；風之疾走存在時只保留餅乾攻速，不疊加移速
-    if (buffs.sk_dark_walkhaste > 0) mult *= (1/1.15);         // 行走加速：移速+15%（🔧 v3.5.37 1/1.15）
+    if (buffs.sk_dark_walkhaste > 0) mult *= (1/SKILL_FX.sk_dark_walkhaste.spd);         // 行走加速：移速+15%（🔧 v3.5.37 1/1.15）
     let equipPct = !p._allyName && !_recomputingAlly && p.d && p.d.moveSpeedPct ? Math.max(-95, p.d.moveSpeedPct) : 0;
     if (equipPct) mult *= 1 / (1 + equipPct / 100);            // 裝備移動速度
     return Math.max(0.001, mult);
@@ -1050,6 +979,29 @@ function findPolyForm(name) {
     for (const f of CONTROL_ONLY_POLY_FORMS) if (f.n === name) return { form: f, color: f.c || "text-yellow-400" };
     return null;
 }
+// ── 🛡️ 套裝共用（js/02 套用、js/10 欄位發光／裝備說明、afk-trackinfo 狀態欄都用這幾個）──
+const SET_STAT_EARLY = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+const SET_STAT_LATE = ['mr', 'hpR', 'mpR', 'dr', 'er', 'resFire', 'resWater', 'resEarth', 'resWind', 'meleeDmg', 'rangedDmg', 'extraDmg', 'extraHit', 'magicDmg', 'extraMp', 'atkSpdPct', 'meleeCrit', 'rangedCrit', 'magicCrit', 'meleeCritDmg', 'rangedCritDmg', 'magicCritDmg'];
+const SET_STAT_LABEL = { ac: '防禦', mhp: 'HP', mmp: 'MP', hpR: 'HP回復', mpR: 'MP回復', mr: '魔防', dr: '傷害減免', er: '迴避', str: '力量', dex: '敏捷', con: '體質', int: '智力', wis: '精神', cha: '魅力',
+    resFire: '火抗', resWater: '水抗', resEarth: '地抗', resWind: '風抗', meleeDmg: '近距離傷害', rangedDmg: '遠距離傷害', extraDmg: '額外傷害', extraHit: '命中', magicDmg: '魔法傷害', extraMp: '額外魔法點數',
+    atkSpdPct: '攻速', meleeCrit: '近距離爆擊', rangedCrit: '遠距離爆擊', magicCrit: '魔法爆擊', meleeCritDmg: '近距離爆擊傷害', rangedCritDmg: '遠距離爆擊傷害', magicCritDmg: '魔法爆擊傷害' };
+const SET_STAT_PCT = { atkSpdPct: 1, meleeCrit: 1, rangedCrit: 1, magicCrit: 1, meleeCritDmg: 1, rangedCritDmg: 1, magicCritDmg: 1 };
+function countSetPieces(eq) {   // 每組套裝穿了幾件（同款只算 1 件；武器欄不算）
+    let cnt = {}, seen = {};
+    if (!eq) return cnt;
+    for (let k in eq) { let e = eq[k]; if (!e || k === 'wpn' || k === 'offwpn' || seen[e.id]) continue; let d = DB.items[e.id]; if (!d || !d.set) continue; seen[e.id] = 1; cnt[d.set] = (cnt[d.set] || 0) + 1; }
+    return cnt;
+}
+function setNeed(code) { let s = DB.sets && DB.sets[code]; return s ? (s.need || (s.items || []).length || 1) : 0; }
+function setIsActive(code, cnt) { let s = DB.sets && DB.sets[code]; return !!s && (cnt[code] || 0) >= setNeed(code); }
+function setBonusText(code) {
+    let s = DB.sets && DB.sets[code]; if (!s) return '';
+    let out = [];
+    if (s.ac) out.push('防禦' + (s.ac > 0 ? '-' : '+') + Math.abs(s.ac));   // 防禦(AC) 越低越好：表上正數＝防禦變好＝顯示「防禦-N」
+    ['mhp', 'mmp'].concat(SET_STAT_EARLY, SET_STAT_LATE).forEach(k => { let v = s[k]; if (!v) return; out.push(SET_STAT_LABEL[k] + (v > 0 ? '+' : '') + v + (SET_STAT_PCT[k] ? '%' : '')); });
+    if (s.poly && SET_POLY_FORMS[s.poly]) out.push('變身' + SET_POLY_FORMS[s.poly].n);
+    return out.join('  ');
+}
 function makePolyState(form, color) { return Object.assign({ c: color }, form); }
 // 🗼 套裝專屬變身（不進入隨機變形池）：死亡騎士套裝→真‧死亡騎士、克特套裝→真‧克特、惡魔套裝→惡魔
 // 🗼 v3.0.28 套裝變身改「速度覆蓋＋保留傷害加成」：套用對應速度型變身的速度（atk/wlk/cast/stun），並保留原本傷害/命中提升（ed/eh/rd/rh/mgd 等）。舊 spd% 由速度覆蓋取代故移除。
@@ -1060,7 +1012,7 @@ const SET_POLY_FORMS = {
     darkelf: { n: "高等黑暗精靈", rd: 5, rh: 5,                    atk: 19, wlk: 16, cast: 10, stun: 5, c: "text-violet-300" }     // 速度＝黑暗精靈
 };
 // 🌑 v3.4.67 解除詛咒的真死亡騎士．冥皇執行劍 裝備變身（equip-only·不進隨機變形池；per-weapon APM 攻速·來源 CSV）
-const DANTES_POLY_FORM = { n: "真死亡騎士 冥皇丹特斯", lv: 99, apm: { '單手劍':124,'單手鈍器':103,'雙手鈍器':103,'弓':90,'十字弓':90,'單手矛':111,'雙手矛':111,'魔杖':120,'匕首':131,'雙手劍':103,'雙刀':120,'鋼爪':120,'奇古獸':120,'鎖鏈劍':111,'雙斧':120 }, wlk: 16, cast: 7, stun: 2, c: "text-yellow-300" };
+const DANTES_POLY_FORM = { n: "真死亡騎士 冥皇丹特斯", lv: 99, apm: { '單手劍':124,'單手鈍器':103,'雙手鈍器':103,'弓':90,'十字弓':90,'單手矛':111,'雙手矛':111,'魔杖':120,'匕首':131,'雙手劍':103,'雙刀':120,'鋼爪':120 }, wlk: 16, cast: 7, stun: 2, c: "text-yellow-300" };
 
 // 是否持有「變形控制戒指」(acc_117)
 // 🔧 改為「背包攜帶即可觸發」：裝備中或背包內任一處有戒指都算持有，不需佔用戒指欄位
@@ -1120,6 +1072,10 @@ function playerTeleport() {
 function getPolyState(isDKSet=false, isKurtSet=false) {
     if (isDKSet)   { let r = findPolyForm("死亡騎士"); return makePolyState(r.form, r.color); }
     if (isKurtSet) { let r = findPolyForm("克特");     return makePolyState(r.form, r.color); }
+    // 設定頁「變身卷軸」指定了型態且現在用得了 → 用指定的；否則照舊隨機。
+    //   polyPick 存在玩家自己身上：傭兵換身(player 暫指向傭兵)時讀到的是傭兵物件、沒有這欄 → 自然照舊隨機。
+    let _pick = polyPickUsable(player);
+    if (_pick) return makePolyState(_pick.form, _pick.color);
     let pool = polyRandomCandidates();
     let form = pool[Math.floor(Math.random() * pool.length)];
     let found = findPolyForm(form.n);
@@ -1172,7 +1128,7 @@ function polyFormDesc(f) {
     if (f.rh)  p.push(`遠距離命中+${f.rh}`);
     if (f.ed)  p.push(`額外傷害+${f.ed}`);
     if (f.eh)  p.push(`額外命中+${f.eh}`);
-    if (f.mgd) p.push(`魔法傷害+${f.mgd}`);
+    if (f.mgd) p.push(`魔攻+${f.mgd}`);
     if (f.sp)  p.push(`額外魔法點數+${f.sp}`);
     if (f.mpr) p.push(`MP恢復+${f.mpr}`);
     if (f.ac)  p.push(`AC${f.ac}`);
@@ -1183,6 +1139,40 @@ function polyFormDesc(f) {
 }
 
 // 變形控制戒指：手動使用時開啟「指定變身」選單
+// ── 設定頁「變身卷軸」指定型態 ─────────────────────────────
+// 規則同變形控制戒指選單：等級到了才能選；夏納/真夏納要有戒指；武器類型不符(拿弓選近戰型)時這次改隨機。
+function polyPickUsable(p) {
+    let name = p && p.polyPick; if (!name) return null;
+    let found = findPolyForm(name);
+    if (!found || p.lv < found.form.lv || (found.form.controlOnly && !hasPolyRing()) || !polyFormMatchesEquippedWeapon(found.form)) return null;
+    return found;
+}
+// 下拉清單：列出目前等級變得了的全部型態(高等在前)；遠距離型態標(遠)，換武器時清單不跳動。
+function refreshPolyFormSelect() {
+    let sel = document.getElementById('set-poly-form');
+    if (!sel || typeof player === 'undefined' || !player || !player.cls) return;
+    let opts = [];
+    for (const t of POLY_TIERS) for (const f of t.forms) if (player.lv >= f.lv) opts.push(f);
+    if (hasPolyRing()) for (const f of CONTROL_ONLY_POLY_FORMS) if (player.lv >= f.lv) opts.push(f);
+    opts.sort((a, b) => (b.lv - a.lv) || a.n.localeCompare(b.n, 'zh-Hant'));
+    let pick = player.polyPick || '';
+    if (pick && !opts.some(f => f.n === pick)) pick = '';   // 指定的已經用不了(例:沒戒指了)→ 顯示回隨機，存檔值保留
+    let html = '<option value="">隨機</option>' + opts.map(f => '<option value="' + f.n + '">Lv' + f.lv + ' ' + f.n + (RANGED_POLY_FORMS.has(f.n) ? '(遠)' : '') + '</option>').join('');
+    if (sel.dataset.sig !== html) { sel.dataset.sig = html; sel.innerHTML = html; sel.value = pick; }   // 🖱️ 名單沒變就不動：電腦按下去的瞬間重建選項會把剛打開的下拉關掉(innerHTML 比對永遠不相等)
+    else if (sel.value !== pick && document.activeElement !== sel) sel.value = pick;
+}
+function onPolyPickChange(name) {
+    if (typeof player === 'undefined' || !player || !player.cls) return;
+    player.polyPick = name || '';
+    // 正在用卷軸變身中 → 立刻換成指定的(套裝/武器強制變身 _setPoly 優先，不動)
+    let ok = polyPickUsable(player);
+    if (ok && player.buffs && player.buffs.poly > 0 && !player._setPoly) {
+        player.poly = makePolyState(ok.form, ok.color);
+        if (typeof calcStats === 'function') calcStats();
+        if (typeof updateUI === 'function') updateUI();
+    }
+}
+
 function openPolySelect(uid) {
     let modal = document.getElementById('poly-modal');
     if (!modal) {
@@ -1280,7 +1270,7 @@ function openOsirisBox(uid) {
     if (!item) return;
     let d = DB.items[item.id]; if (!d) return;
     let coreCnt = playerCoreCount();
-    if (coreCnt < 1) { logSys('<span class="text-red-400">缺少 龜裂之核：開啟歐西里斯寶箱每個需消耗 1 顆 龜裂之核（希培利亞・巴特爾可用時空裂痕碎片×100 製作）。</span>'); return; }
+    if (coreCnt < 1) { logSys('<span class="text-red-400">缺少 龜裂之核：開啟歐西里斯寶箱每個需消耗 1 顆 龜裂之核（威頓村・巴特爾可用時空裂痕碎片×100 製作）。</span>'); return; }
     let maxN = Math.min(item.cnt || 1, coreCnt);
     let modal = document.getElementById('osiris-box-modal');
     if (!modal) { modal = document.createElement('div'); modal.id = 'osiris-box-modal'; modal.className = 'hidden fixed inset-0 z-[60] flex items-center justify-center'; document.body.appendChild(modal); }

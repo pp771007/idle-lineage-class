@@ -90,7 +90,21 @@
 
     // ---- 時鐘（可被 debug 覆寫，供測試強制階段） ----
     var _nowOverride = null;
-    function nowMs() { return (_nowOverride != null) ? _nowOverride : Date.now(); }
+    function nowMs() {
+        if (_nowOverride != null) return _nowOverride;
+        var t = Date.now();
+        markSeen(Math.floor(t / CYCLE_MS));
+        return t;
+    }
+    // 記住「看過的最新場次」(全角色共用，因為龍鑽也是共用的)：之後把電腦時間調回去，就押不了已經開獎的場次
+    var _seenCache = null;
+    function seenRace() {
+        if (_seenCache == null) { _seenCache = 0; try { _seenCache = +localStorage.getItem('afk_race_seen') || 0; } catch (e) {} }
+        return _seenCache;
+    }
+    function markSeen(raceId) {
+        if (raceId > seenRace()) { _seenCache = raceId; try { localStorage.setItem('afk_race_seen', String(raceId)); } catch (e) {} }
+    }
 
     // ---- 種子 PRNG ----
     function hash32(n) {
@@ -313,6 +327,8 @@
         if (typeof player === 'undefined' || !player || !player.cls) { logMsg('尚未載入角色，無法下注。', true); return false; }
         var ph = phaseOf(nowMs());
         if (ph.phase !== 'bet') { logMsg('已封盤，等下一場再下注。', true); return false; }
+        // 防「把電腦時間調回去押已經開獎的場次」(nowMs 會記住看過的最新場次)
+        if (ph.raceId < seenRace()) { logMsg('電腦時間不對，請校正時間後再下注。', true); return false; }
         if (!(amount > 0)) return false;
         if (cur === CUR_DIA && !diaReady()) { logMsg('龍之鑽石系統未就緒。', true); return false; }
         if (balanceOf(cur) < amount) { logMsg(cur === CUR_DIA ? '龍之鑽石不足。' : '金幣不足。', true); return false; }
@@ -884,7 +900,9 @@
     }
 
     // ================= debug =================
-    window.__race = {
+    // 除錯介面(可改時間、直接下注/開獎)：只在 localStorage afk_race_debug=1 時才掛上，玩家主控台叫不到
+    var _raceDebug = false; try { _raceDebug = localStorage.getItem('afk_race_debug') === '1'; } catch (e) {}
+    if (_raceDebug) window.__race = {
         CYCLE_MS: CYCLE_MS,
         phases: { CYCLE: CYCLE_MS, BET: BET_MS, PARADE: PARADE_MS, RACE: RACE_MS },
         setNow: function (ms) { _nowOverride = ms; },

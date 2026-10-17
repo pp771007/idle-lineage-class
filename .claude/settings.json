@@ -11,17 +11,6 @@
             "statusMessage": "push 前把關(衝突標記 / 外掛引用 / sw 版本 / ?v= / 核心補丁)"
           }
         ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/core-file-guard.mjs\"",
-            "timeout": 10,
-            "statusMessage": "檢查是否誤改上游鏡像檔"
-          }
-        ]
       }
     ],
     "PostToolUse": [

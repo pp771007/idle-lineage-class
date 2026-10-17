@@ -1,0 +1,77 @@
+name: 自動更新版本號
+
+# 有人上傳(push)了程式檔,就自動把 ?v= 與 sw.js 的 CODE_VERSION 對齊內容,再推回 main。
+# 為什麼要有:?v= 沒跟著改,玩家瀏覽器會拿到「新舊程式混搭」(見 CLAUDE.md「push 前」)。
+#   Claude 上傳前會自己跑 stamp;但用 GitHub 桌面版／網頁直接上傳的人不會——這支替他們補。
+# 已經對齊的上傳(例如 Claude 推的)這裡什麼都不做。
+# 機器人用 GITHUB_TOKEN 推的 commit 不會再觸發任何 workflow → 不會自己觸發自己無限循環。
+# ⚠ 原本那次上傳仍會先部署約 1 分鐘「未對齊」的版本,這支跑完再蓋過去;要零空窗只能上傳前自己 stamp。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'manifest.webmanifest'
+      - 'afk-*.js'
+      - 'js/**'
+      - 'css/**'
+
+permissions:
+  contents: write
+  pages: write
+
+# 與「更新遊戲」共用同一組:兩支都會推 main,同時跑會互相擠掉
+concurrency:
+  group: push-main
+  cancel-in-progress: false
+
+jobs:
+  stamp:
+    runs-on: ubuntu-latest
+    steps:
+      # 素材 1GB+ 用不到;根目錄檔(index.html、afk-*.js、sw.js…)在 sparse 模式下一律會抓
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            js
+            css
+            scripts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 對齊版本號
+        run: |
+          node scripts/stamp-code-versions.mjs
+          before=$(grep -o "const CODE_VERSION = '[^']*'" sw.js)
+          node scripts/stamp-sw-version.mjs
+          after=$(grep -o "const CODE_VERSION = '[^']*'" sw.js)
+          # stamp-sw 每次都會更新建置時間;程式內容沒變(CODE_VERSION 相同)就把那兩檔還原,不製造空 commit
+          if [ "$before" = "$after" ]; then git checkout -- sw.js version.json; fi
+          node scripts/stamp-code-versions.mjs --check
+
+      - name: 上傳
+        id: push
+        run: |
+          if git diff --quiet; then
+            echo "版本號本來就是對的,不用動。" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "pushed=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "stamp: ?v= 與 sw 版本(自動,接在 ${{ github.actor }} 的上傳之後)"
+          git pull --rebase origin main
+          git push
+          echo "pushed=yes" >> "$GITHUB_OUTPUT"
+          git diff --stat HEAD~1 >> "$GITHUB_STEP_SUMMARY"
+
+      # 機器人推的 commit 不一定會自動觸發 Pages 重建 → 主動要一次
+      - name: 重建網站
+        if: steps.push.outputs.pushed == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || echo "要求重建失敗(可能已在自動重建中)。"

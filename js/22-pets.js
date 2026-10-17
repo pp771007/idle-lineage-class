@@ -87,7 +87,7 @@ const _PET_G = {
     mag:  { atk0:1, atkG:0.27, hit0:3, hitG:0.42, acDiv:3.4, acTier:1, drDiv:20, drTier:0, erDiv:8, erCap:15, mr0:25, mrG:0.75, mrTier:8, mrCap:120, skillG:0.85 }
 };
 // 兩隻同等寵物的持續輸出以接近一名同等玩家為目標；裝備、魅力與遺物仍作為額外養成收益。
-const PET_DMG_TUNE = { basic: 1.20, skill: 1.10 };
+const PET_DMG_TUNE = { basic: 0.81, skill: 0.7425 };   // 🔧 站長規則：寵物會喝綠水(攻速×1.33)→傷害 ×0.75，加速後≈原本(1.20/1.10)；2026-10-15 再 ×0.9
 const PET_TIER_DMG_MULT = [1.14, 1.46, 1.00];   // 🐾 與下方生存力曲線合併後：一般平均總傷約+20%、高等約+50%；黃金龍維持原值
 const PET_HIT_TUNE = 5;                         // 🐾 全寵物命中補強（仍受等級差、目標 AC 與骰 1 必失影響）
 function _petClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -108,7 +108,25 @@ function _petPowerCurve(def, lv) {
     return { avgAtk: Math.max(1, (g.atk0 + lv * g.atkG) * speedMul * durableMul * skillMul * tierAtk * PET_DMG_TUNE.basic),
         skillFlat: Math.floor(lv * g.skillG * castMul * skillTier * PET_DMG_TUNE.skill) };
 }
+// 進化前是哪一種：高等＝反查 PET_BOOK 的 evo；黃金龍看進化時記下的 p.evoFrom（舊存檔沒有→當作狼）
+let _petEvoFromMap = null;
+function petEvoOrigin(p) {
+    let def = PET_BOOK[p.form]; if (!def || !(def.tier >= 1)) return null;
+    if (p.evoFrom && PET_BOOK[p.evoFrom] && !(PET_BOOK[p.evoFrom].tier >= 1)) return p.evoFrom;
+    if (!_petEvoFromMap) { _petEvoFromMap = {}; for (let f in PET_BOOK) { let e = PET_BOOK[f].evo; if (e) _petEvoFromMap[e] = f; } }
+    return _petEvoFromMap[p.form] || (def.tier === 2 ? '狼' : null);
+}
+const PET_EVO_POWER = [1, 1.15, 1.15];   // 🔧 2026-10-15 站長：進化提升約 15%（黃金龍再加自己的技能≈25%）
 function petDerive(p) {
+    let def = PET_BOOK[p.form]; if (!def) return null;
+    let _origin = (!def.goldenAtk && !def.goldenMagic) ? petEvoOrigin(p) : null;
+    if (_origin) {   // 進化型：普攻骰子跟原本那隻同等級一樣，傷害倍率 ×1.15，攻速差抵掉（dps＝原本 ×1.15）
+        let o = petDerive({ form: _origin, lv: p.lv, eq: p.eq }), me = _petDeriveOwn(p);
+        if (o && me) { me.dice = o.dice; me.flat = o.flat; me.damageMult = o.damageMult * PET_EVO_POWER[me.tier] * (me.atkItv / Math.max(1, o.atkItv)); return me; }
+    }
+    return _petDeriveOwn(p);
+}
+function _petDeriveOwn(p) {
     let def = PET_BOOK[p.form]; if (!def) return null;
     let g = _PET_G[def.kind], lv = p.lv || 1, t = def.tier || 0;
     let hpAvg = ((def.hpUp && def.hpUp[0]) || 0) / 2 + ((def.hpUp && def.hpUp[1]) || 0) / 2;
@@ -154,7 +172,7 @@ function petDerive(p) {
         stunTicks: Math.round((def.stun || 0.58) * 10)
     };
 }
-function petExpReq(lv) { return Math.max(1, Math.floor(getExpReq(lv) / 10)); }   // 升級需求＝玩家的 1/10（v3.2.71 用戶調整·原 1/4）
+function petExpReq(lv, form) { let m = (form && PET_BOOK[form] && PET_BOOK[form].tier >= 1) ? 2 : 1; return Math.max(1, Math.floor(getExpReq(lv) / 10) * m); }   // 升級需求＝玩家的 1/10（v3.2.71 用戶調整·原 1/4）；🔧 2026-10-15 進化後的寵物 ×2
 const PET_EXP_REQ_VERSION = 3;
 function petMigrateExpReqV3(p) {   // Lv70+ 玩家需求改版時，寵物同樣保留當級進度百分比
     if (!p || (p.expReqV || 0) >= PET_EXP_REQ_VERSION) return false;
@@ -162,7 +180,7 @@ function petMigrateExpReqV3(p) {   // Lv70+ 玩家需求改版時，寵物同樣
     if (lv >= 100) p.exp = 0;
     else if (lv >= 70) {
         let oldReq = Math.max(1, Math.floor(_expReqClassicV2(lv) / 10));
-        let newReq = petExpReq(lv);
+        let newReq = petExpReq(lv, p.form);
         p.exp = Math.min(Math.floor(Math.max(0, p.exp || 0) / oldReq * newReq), newReq - 1);
     }
     p.expReqV = PET_EXP_REQ_VERSION;
@@ -349,7 +367,7 @@ function _petMergeFromBucket(cur, key) {
         }
         // 其他角色出戰中的寵物，以共用桶為即時狀態來源；本角色不可用過期鏡像覆蓋其 HP/MP/等級。
         if (_petOutStateKey(p) && _petOutStateKey(p) !== _petCurrentOwnerKey() && _petOutStateKey(f) === _petOutStateKey(p) && _fOutV === (Number(p.outV) || 0)) {
-            for (let k of ['form','lv','exp','expReqV','mhp','mmp','hp','mp','potPct','name','locked']) if (f[k] !== undefined) p[k] = f[k];
+            for (let k of ['form','lv','exp','expReqV','mhp','mmp','hp','mp','potPct','potId','green','evoFrom','name','locked']) if (f[k] !== undefined) p[k] = f[k];
             // 🩸 v3.5.95 倒地狀態必須跟著 hp 一起搬（上面那行搬 hp 卻不搬 _downed → 多分頁可繞過 v3.5.94 的防免費復活）：
             //   分頁A 寵物倒地寫桶(hp:0,_downed:1) → 分頁B 合併只拿到 hp:0、_downed 仍 undefined → 分頁B 下次
             //   petRosterSave 時 _petPersist 的 `if (p._downed)` 為假 → 把 _downed 從共用桶抹掉、hp:0 留著 →
@@ -423,7 +441,7 @@ function _petTombsWrite(key, tombs) {   // 只留最近 300 筆（uid 不重複�
     try { let ks = Object.keys(tombs); if (ks.length > 300) ks.slice(0, ks.length - 300).forEach(k => delete tombs[k]); _lzSet(key + '_rm', _saveWrap(JSON.stringify(tombs))); } catch (e) {}
 }
 function _petPersist(p) {   // 只序列化長生欄位（戰鬥暫存 _ 前綴不入桶）
-    let o = { uid: p.uid, form: p.form, lv: p.lv, exp: p.exp, expReqV: p.expReqV || PET_EXP_REQ_VERSION, mhp: p.mhp, mmp: p.mmp, hp: p.hp, mp: p.mp, outOwner: p.outOwner ? String(p.outOwner) : null, outSlot: p.outSlot == null ? null : String(p.outSlot), outV: p.outV || 0, eqV: p.eqV || 0, potPct: p.potPct || 0, name: p.name || '', locked: !!p.locked };
+    let o = { uid: p.uid, form: p.form, lv: p.lv, exp: p.exp, expReqV: p.expReqV || PET_EXP_REQ_VERSION, mhp: p.mhp, mmp: p.mmp, hp: p.hp, mp: p.mp, outOwner: p.outOwner ? String(p.outOwner) : null, outSlot: p.outSlot == null ? null : String(p.outSlot), outV: p.outV || 0, eqV: p.eqV || 0, potPct: p.potPct || 0, potId: p.potId || '', green: p.green ? 1 : 0, evoFrom: p.evoFrom || '', name: p.name || '', locked: !!p.locked };
     // 🩸 v3.5.94 倒地狀態必須入桶（例外於「_ 前綴不入桶」通則）：不存的話重新整理後 _downed 消失、
     //    hp 被夾成 1 ＝ 免費復活。_reviveCd 一併存，避免重整規避 5 秒冷卻。
     if (p._downed) { o._downed = 1; if (p._reviveCd > 0) o._reviveCd = p._reviveCd; }
@@ -463,7 +481,7 @@ function _petEnforceCarry() {   // 換角色載入：魅力不足/超過4隻→�
     let cha = Number(player.d.cha), used = 0, n = 0;
     out.forEach(p => {
         let need = (PET_BOOK[p.form] || {}).cha || 6;
-        if (n >= PET_CARRY_MAX || used + need > cha) {
+        if (n >= PET_CARRY_MAX || (n > 0 && used + need > cha)) {   // 站長規則：魅力不夠也至少能帶 1 隻(第一隻不看魅力)
             p.outOwner = null; p.outSlot = null; p.outV = _petNowStamp(); _petRosterDirty = true;
             // 🐾 v3.3.30 補訊息（用戶回報黃金龍「莫名自己收回」＝原本靜默）：說明原因（魅力不足/超過上限）·同一寵收回後不再入 petsOutList→不會重複洗版
             try { logSys(`<span class="text-amber-300">⚠ ${n >= PET_CARRY_MAX ? `超過攜帶上限 ${PET_CARRY_MAX} 隻` : `魅力不足（${petDisplayName(p)} 需 ${need}·已用 ${used}／目前魅力 ${cha}）`}，${petDisplayName(p)} 已自動返回寵物保管。</span>`); } catch (e) {}
@@ -487,7 +505,7 @@ function petStoreAdd(form, srcLabel, deferCommit) {
     list.push(p); _petPendingAddUids[p.uid] = 1;   // 🪣 v3.5.88 登記為「尚未進桶的本地新增」：只有這批可被上限守衛回滾
     petMarkDirty();
     if (!deferCommit && !petRosterSave()) { _petRoster = list.filter(x => x.uid !== p.uid); delete _petPendingAddUids[p.uid]; petMarkDirty(); logSys('<span class="text-red-400">寵物保管寫入失敗，本次取得已取消。</span>'); return false; }
-    if (!deferCommit) logSys(`<span class="text-green-300 font-bold">🐾 ${srcLabel || '捕獲成功'}！${form}（Lv.${p.lv}）已送往寵物保管。</span>`);
+    if (!deferCommit) { logSys(`<span class="text-green-300 font-bold">🐾 ${srcLabel || '捕獲成功'}！${form}（Lv.${p.lv}）已送往寵物保管。</span>`); petGiveCollar(p); }
     try { renderTabs(); } catch (e) {}
     return p;
 }
@@ -547,11 +565,11 @@ function petReleaseSlotAssignments(slot) {
 }
 
 // ---------- 四、道具使用（誘捕/幼龍蛋）與擊殺捕捉 ----------
-function petUseLureItem(d, silent) {   // eff:'petlure' → 掛 600 秒誘捕 buff（重複使用重置時間）
+function petUseLureItem(d, silent) {   // eff:'petlure' → 掛 300 秒誘捕 buff（重複使用重置時間）
     let key = d.lure, cfg = PET_LURES[key];
     if (!cfg) return false;
-    player.buffs[key] = d.dur || 600;
-    if (!silent) logSys(`你使用了 ${d.n}，獲得增益 <span class="text-pink-300 font-bold">${cfg.n}</span>，持續 ${d.dur || 600} 秒。擊殺對應動物即可捕獲！`);
+    player.buffs[key] = d.dur || 300;
+    if (!silent) logSys(`你使用了 ${d.n}，獲得增益 <span class="text-pink-300 font-bold">${cfg.n}</span>，持續 ${d.dur || 300} 秒。打倒對應動物時有機會捕獲。`);
     try { updateUI(); } catch (e) {}
     return true;   // 呼叫端 fallthrough 消耗道具
 }
@@ -587,11 +605,16 @@ function petCaptureOnKill(mob) {   // killMob 掛點：專屬誘捕優先於一�
         let form = PET_LURES[key].mobs[mob.n];
         if (!form) continue;
         if (petRoster().length >= PET_STORAGE_MAX) { logSys(`<span class="text-red-400">寵物保管已滿，${PET_LURES[key].n} 未消耗——請先整理保管。</span>`); return; }
+        // 🔧 站長規則：捕獲率看寵物魅力（6＝45%、12 以上＝25%）；沒抓到誘捕效果也一樣消失（飼料袋的不會）
+        let _cha = (PET_BOOK[form] || {}).cha || 6, _rate = _cha <= 6 ? 0.45 : 0.25;
+        let _roll = (typeof lootRng === 'function') ? lootRng('petcapture') : Math.random();
+        if (!player._allLures) player.buffs[key] = 0;
+        if (_roll >= _rate) { logSys(`<span class="text-slate-300">${form} 掙脫逃走了，${PET_LURES[key].n} 的效果消失了。</span>`); return; }
         let snap = _petMutationSnapshot();
-        if (!player._allLures) player.buffs[key] = 0;   // 🐾 一般誘捕道具捕獲後消耗；飼料袋提供的誘捕不消耗（卸下即失效）
         let added = petStoreAdd(form, null, true);
         if (!added || !_petCommitMutation(snap)) return;
         logSys(`<span class="text-green-300 font-bold">🐾 誘捕成功！${form}（Lv.${added.lv}）已送往寵物保管。</span>`);
+        petGiveCollar(added);
         return;
     }
 }
@@ -615,8 +638,9 @@ function petDeployToggle(uidv) {
     else {
         let outs = petsOutList();
         if (outs.length >= PET_CARRY_MAX) { logSys(`<span class="text-red-400">最多同時攜帶 ${PET_CARRY_MAX} 隻寵物。</span>`); return; }
+        if (petCharmCount() >= COMPANION_PET_CHARM_MAX) { logSys(`<span class="text-red-400">寵物和迷魅的怪合計最多 ${COMPANION_PET_CHARM_MAX} 隻。</span>`); return; }
         let need = (PET_BOOK[p.form] || {}).cha || 6;
-        if (petChaUsed() + need > (player.d.cha || 0)) { logSys(`<span class="text-red-400">魅力不足：攜帶 ${p.form} 需要魅力 ${need}（目前已用 ${petChaUsed()}/${player.d.cha || 0}）。</span>`); return; }
+        if (outs.length > 0 && petChaUsed() + need > (player.d.cha || 0)) { logSys(`<span class="text-red-400">魅力不足：攜帶 ${p.form} 需要魅力 ${need}（目前已用 ${petChaUsed()}/${player.d.cha || 0}）。</span>`); return; }
         p.outOwner = owner; p.outSlot = slot; p.outV = _petNowStamp(); p.hp = Math.max(1, p.hp);
         logSys(`<span class="text-green-300 font-bold">${petDisplayName(p)} 加入了隊伍！</span>`);
     }
@@ -691,6 +715,7 @@ function petEvolve(uidv, fruitId) {   // Lv30+；一般型態：進化果實→�
     let snap = _petMutationSnapshot();
     fruit.cnt--; if (fruit.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== fruit.uid);
     let from = p.form;
+    p.evoFrom = from;   // 進化強度以原本那隻為準（petEvoOrigin）
     p.form = chosen.target; p.lv = 1; p.exp = 0;
     p.mhp = Math.max(1, Math.floor(p.mhp * 0.5)); p.mmp = Math.max(0, Math.floor(p.mmp * 0.5));
     p.hp = p.mhp; p.mp = p.mmp;
@@ -698,7 +723,28 @@ function petEvolve(uidv, fruitId) {   // Lv30+；一般型態：進化果實→�
     if (!_petCommitMutation(snap)) return;
     logSys(`<span class="c-legend font-bold">✨ 進化成功！</span><span class="text-amber-200">${from} 進化為 </span><span class="text-amber-300 font-bold">${p.form}</span><span class="text-amber-200">（Lv.1·HP/MP 為進化前的 50%）！</span>`);
     try { renderTabs(); renderSquadPanel(); } catch (e) {}
-    let _d = document.getElementById('interaction-content'); if (_d) renderPetStorageNPC(_d);
+    let _d = document.getElementById('interaction-content'); if (_d && _d.querySelector('[data-petui]')) renderPetStorageNPC(_d);
+}
+function petEvoFromItem(item) {
+    _petRosterResync();
+    let list = petRoster().filter(p => (p.lv || 1) >= 30 && !_petOwnedByOther(p) && petEvoOptions(p).some(o => o.fruitId === item.id));
+    if (!list.length) { logSys('<span class="text-red-400">沒有可以用這個果實進化的寵物（要 30 級以上、還沒進化過）。</span>'); return; }
+    let old = document.getElementById('pet-evo-overlay'); if (old) old.remove();
+    let ov = document.createElement('div');
+    ov.id = 'pet-evo-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:97;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:12px;';
+    ov.innerHTML = `<div style="width:100%;max-width:340px;max-height:80vh;display:flex;flex-direction:column;background:#0f0c09;border:1px solid #b7791f;border-radius:10px;overflow:hidden;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #4a3f30;color:#fbbf24;font-weight:bold;font-size:16px;">要進化哪一隻？<button type="button" data-x="1" style="background:none;border:0;color:#aaa;font-size:18px;cursor:pointer;">✕</button></div>
+        <div style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;">
+        ${list.map(p => { let o = petEvoOptions(p).find(x => x.fruitId === item.id); return `<button type="button" data-uid="${p.uid}" class="btn font-bold" style="display:flex;align-items:center;gap:8px;padding:8px;text-align:left;"><img src="assets/anim/${encodeURIComponent(p.form)}/d6/idle_0.png" alt="" style="width:40px;height:34px;object-fit:contain;image-rendering:pixelated;" onerror="this.style.visibility='hidden'"><span>${petDisplayName(p)} <span class="text-amber-300">Lv.${p.lv}</span> → <span class="text-amber-200">${o ? o.target : ''}</span></span></button>`; }).join('')}
+        </div></div>`;
+    ov.addEventListener('click', e => {
+        if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; }
+        let b = e.target.closest('[data-uid]'); if (!b) return;
+        ov.remove(); petEvolve(b.getAttribute('data-uid'), item.id);
+    });
+    try { if (typeof closeModal === 'function') closeModal(); } catch (e) {}
+    document.body.appendChild(ov);
 }
 function petEvoChoose(p, avail) {   // 🐉 v3.2.63 兩種果實都有時的進化方向選擇框
     let old = document.getElementById('pet-evo-overlay'); if (old) old.remove();
@@ -723,6 +769,8 @@ function petEvoChoose(p, avail) {   // 🐉 v3.2.63 兩種果實都有時的進�
     document.body.appendChild(ov);
 }
 function petDisplayName(p) { return (p.name ? p.name + '（' + p.form + '）' : p.form); }
+function petSetPotId(uidv, id) { let p = _petFindFresh(uidv); if (!p || _petRejectForeignMutation(p)) return; p.potId = COMPANION_POTS.some(x => x[0] === id) ? id : ''; petMarkDirty(); }
+function petSetGreen(uidv, on) { let p = _petFindFresh(uidv); if (!p || _petRejectForeignMutation(p)) return; p.green = on ? 1 : 0; petMarkDirty(); }
 function petSetPotPct(uidv, v) { let p = _petFindFresh(uidv); if (!p || _petRejectForeignMutation(p)) return; p.potPct = Math.max(0, Math.min(95, parseInt(v, 10) || 0)); petMarkDirty(); }
 
 // ---------- 五之二、寵物個別裝備（v3.2.37：武器 slot:petwpn／防具 slot:petarm·裝備存在寵物身上 p.eq={wpn,arm}·共用桶隨寵物走）----------
@@ -822,8 +870,8 @@ function petsGainExp(playerGain) {
     elig.forEach(p => {
         p.exp = (p.exp || 0) + each;
         let up = 0;
-        while (p.lv < _cap && p.exp >= petExpReq(p.lv)) {
-            p.exp -= petExpReq(p.lv);
+        while (p.lv < _cap && p.exp >= petExpReq(p.lv, p.form)) {
+            p.exp -= petExpReq(p.lv, p.form);
             p.lv++; up++;
             let def = PET_BOOK[p.form];
             let hg = def.hpUp[0] + Math.floor(lootRng('petHp') * (def.hpUp[1] - def.hpUp[0] + 1));   // committed RNG：SL 重讀同結果
@@ -852,13 +900,9 @@ function petsTick() {
     outs.forEach(p => {
         let d = petDerive(p); if (!d) return;
         // 倒地：非野外（安全區）免費復活；野外等 5 秒復活卷軸
-        if (p._downed) {
-            if (!wild) { _petReviveDone(p, '安全區'); return; }
+        if (p._downed) {   // 🔧 站長規則：回村/安全區不再免費復活；設定勾「寵物自動復活」才自動救
             p._reviveCd = (p._reviveCd || 0) - 1;
-            if (p._reviveCd <= 0 || (typeof playerHasAutoReviveEarring === 'function' && playerHasAutoReviveEarring())) {   // 🏺 巨靈的承諾耳環：跳過冷卻立即復活（仍消耗卷軸）
-                let sc = player.inv.find(i => i.id === 'scroll_revive' && (i.cnt || 0) > 0);
-                if (sc) { sc.cnt--; if (sc.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== sc.uid); _petReviveDone(p, '復活卷軸（自動）'); }
-            }
+            if (petAutoReviveOn() && (p._reviveCd <= 0 || (typeof playerHasAutoReviveEarring === 'function' && playerHasAutoReviveEarring()))) petAutoRevive(p);   // 🏺 巨靈的承諾耳環：跳過冷卻立即復活
             return;
         }
         _petStatusTick(p);
@@ -872,6 +916,7 @@ function petsTick() {
         }
         // HP<X% 喝隊長的治癒藥水（邏輯同傭兵：讀 #set-pot 藥水·缺貨可自動補貨）
         petTryPotion(p);
+        companionDrinkGreen(p, !!p.green, `寵物 <span class="text-emerald-300 font-bold">${p.form}</span>`, '寵物');
         if (!wild || player.dead) return;
         let pst = p._statuses || {};
         if ((pst.freeze || 0) > 0 || (pst.stun || 0) > 0 || (pst.stone || 0) > 0 || (pst.sleep || 0) > 0 || (pst.paralyze || 0) > 0) return;
@@ -879,22 +924,23 @@ function petsTick() {
         // 選目標：最近的敵人（依戰場座標；無座標退 getTarget）
         let tgt = _petPickTarget(p);
         if (!tgt) return;
+        let _swPause = !companionReadyFor(p, tgt);   // ⏸ 上一個目標剛死：換下一隻前停頓（同近戰）
         // 技能（依施法速度節奏·MP 足夠才放）
         if (d.castItv > 0 && def.sk.length && !((pst.silence || 0) > 0 || (pst.magicseal || 0) > 0)) {
             p._castCd = (p._castCd != null ? p._castCd : (d.castItv - 1)) - 1;
-            if (p._castCd <= 0 && (p._actionCd || 0) <= 0) {
+            if (p._castCd <= 0 && (p._actionCd || 0) <= 0 && !_swPause) {
                 let _ok; if (typeof threatWrap === 'function') threatWrap(p, () => { _ok = petCastSkill(p, d, tgt); }); else _ok = petCastSkill(p, d, tgt);   // 🎯 v3.7.97 仇恨：寵物技能傷害→記給該寵物
-                if (_ok) { p._castCd = d.castItv; p._actionCd = 4; }
+                if (_ok) { p._castCd = Math.max(3, Math.round(d.castItv * companionSpdMul(p))); p._actionCd = 4; }
                 else p._castCd = Math.min(10, d.castItv);
             }
         }
         // 一般攻擊（依攻擊速度）
         p._atkCd = (p._atkCd != null ? p._atkCd : (d.atkItv - 1)) - 1;
         p._stunCycle = false;
-        if (p._atkCd <= 0 && (p._actionCd || 0) <= 0) {
+        if (p._atkCd <= 0 && (p._actionCd || 0) <= 0 && !_swPause) {
             tgt = _petPickTarget(p);   // 技能可能已擊殺
             if (tgt) { if (typeof threatWrap === 'function') threatWrap(p, () => petAttackOnce(p, d, tgt)); else petAttackOnce(p, d, tgt); p._actionCd = 3; }   // 🎯 v3.7.97 仇恨：寵物普攻傷害→記給該寵物
-            p._atkCd = Math.ceil(d.atkItv * ((pst.slowAtk || 0) > 0 ? 2 : 1));
+            p._atkCd = Math.ceil(d.atkItv * companionSpdMul(p) * ((pst.slowAtk || 0) > 0 ? 2 : 1));   // 喝了綠水：攻擊間隔 ÷1.33
         }
     });
 }
@@ -952,7 +998,7 @@ function petAttackOnce(p, d, target, forceCrit, addDmg, skName) {
         let hv = stretchHitValue(rawHit);
         let r = roll(1, 20);
         let heavy = (r === 20) || !!forceCrit;
-        if (heavy || (r !== 1 && hv >= r)) {
+        if ((heavy || (r !== 1 && hv >= r)) && (forceCrit || companionHitRoll())) {   // 命中率 ×0.9（技能必中的不算）
             let targetDr = Math.floor((target.dr || 0) * (1 - (d.drPierce || 0)));
             let dmg = (heavy ? d.dice : roll(1, d.dice)) + d.flat + cb.dmg + (addDmg || 0) + pg.dmg + (_ia ? _ia.ed : 0) + (_ia ? (_ia.mel || 0) : 0) + (petDevotionGuardOn(p) ? 8 : 0) - targetDr - (_pst.weaken > 0 ? 5 : 0);   // 🏺 v3.6.44 珍愛夥伴的執念：復活後 8 秒額外傷害 +8；🔥 v3.8.3 _ia.mel＝舞躍之火團隊光環近距離傷害+3（寵物普攻＝近距離）
             dmg = Math.max(1, Math.floor(dmg));
@@ -1089,11 +1135,12 @@ function enemyAttackPet(mob, p) {
     dmg -= (d.dr || 0) + petRandomPhysicalDr(p, d) + petHardenDr(p);
     dmg = Math.floor(Math.max(1, dmg) * (typeof teamDmgReduceMult === 'function' ? teamDmgReduceMult(true) : 1) * petMasteryTakenMult() * petArmorDmgReduceMult(p));   // 👑 夥伴精通：受到傷害 −50%；🏺 寵物專用盔甲：受傷 ×(1−petDmgReduce)
     if (typeof ironGuardTauntWeakensAttack === 'function' && ironGuardTauntWeakensAttack(mob)) dmg = Math.floor(dmg * 0.9);   // 🔮 鐵衛 5/5：受嘲諷目標的一般攻擊傷害 -10%
-    dmg = Math.max(1, Math.floor(dmg * riftDamageMult()));
+    dmg = Math.max(1, Math.floor(dmg * riftDamageMult() * ((typeof evilDmgMult === 'function') ? evilDmgMult(mob) : 1)));   // 🌙 夜晚不死／惡魔 ×1.2
     if (petDevotionGuardOn(p)) dmg = 0;   // 🏺 v3.6.44 珍愛夥伴的執念：復活後 8 秒受到傷害 −100%
+    dmg = mobHitScale(dmg);   // ⏱️ 份量（js/03 _mobHitW）：照模擬器加快的怪，每下傷害按比例縮
     p.hp -= dmg;
     _petAnimAct(p, 'hurt');
-    if (!p._stunCycle) { p._atkCd = (p._atkCd || 0) + d.stunTicks; p._stunCycle = true; }   // 硬直：延後下次攻擊
+    if (!p._stunCycle && mobHitProc()) { p._atkCd = (p._atkCd || 0) + d.stunTicks; p._stunCycle = true; }   // 硬直：延後下次攻擊（⏱️ 照份量觸發）
     logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 攻擊寵物 <span class="text-sky-300 font-bold">${p.form}</span>，造成 ${dmg} 點傷害。`, 'enemy-attack', 'enemy');
     if (p.hp <= 0) {
         _petDown(p);
@@ -1131,7 +1178,7 @@ function applyMobMagicToPet(mob, sk, p) {
     let dmg = sk.fixedDmg ? (baseM + extra) : (Math.floor((baseM + extra) * mrMult(mr)) - (d.dr || 0) - petHardenDr(p));
     if (st.freeze > 0 && sk.ext_freeze) { dmg += sk.ext_freeze; if (sk.extUnfreeze) st.freeze = 0; }
     dmg = Math.max(1, Math.floor(Math.max(1, dmg * shMul) * (typeof teamDmgReduceMult === 'function' ? teamDmgReduceMult(true) : 1) * petMasteryTakenMult() * petArmorDmgReduceMult(p)));   // 👑 夥伴精通：受到傷害 −50%；🏺 寵物專用盔甲：受傷 ×(1−petDmgReduce)
-    dmg = Math.max(1, Math.floor(dmg * riftDamageMult()));
+    dmg = Math.max(1, Math.floor(dmg * riftDamageMult() * ((typeof evilDmgMult === 'function') ? evilDmgMult(mob) : 1)));   // 🌙 夜晚不死／惡魔 ×1.2
     if (petDevotionGuardOn(p)) dmg = 0;   // 🏺 v3.6.44 珍愛夥伴的執念：復活後 8 秒受到傷害 −100%（魔法亦免）
     p.hp -= dmg; _petAnimAct(p, 'hurt');
     if (!p._stunCycle) { p._atkCd = (p._atkCd || 0) + d.stunTicks; p._stunCycle = true; }
@@ -1153,36 +1200,214 @@ function applyMobMagicToPet(mob, sk, p) {
     petMarkDirty();
 }
 function petTryPotion(p) {   // HP<X% 用治癒藥水（邏輯同傭兵 allyTryPotion：喝「隊長設定的藥水」·缺貨且勾自動購買→補到100瓶）
-    if (typeof pvpArenaPotionBlocked === 'function' && pvpArenaPotionBlocked()) return;   // 🚫 v3.7.17 決鬥中禁治癒藥水（⚠️寵物不像傭兵會被移到場邊·決鬥時仍在場上→這道閘是真的會擋到東西的那一個）
-    if (!(p.potPct > 0) || p._downed) return;
-    if ((p._potCd || 0) > 0) { p._potCd--; return; }
-    if (p.hp <= 0 || p.hp > petMhpEff(p) * (p.potPct / 100)) return;
+    if (companionDrinkPotion(p, p.potPct, petMhpEff(p), `寵物 <span class="text-emerald-300 font-bold">${p.form}</span>`, '寵物', p.potId)) petMarkDirty();
+}
+// 🧪 夥伴喝水共用（寵物／召喚物／迷魅的怪）：HP 低於 pct% → 喝「設定」裡選的治癒藥水（#set-pot），缺貨且勾自動購買→補 100 瓶。
+//   每隻各自 1 秒冷卻（_potCd·每 tick 呼叫一次）；藥水霜化／汙濁之水減半照舊讀實體自己的 _statuses。回傳 true＝這次有喝。
+function companionDrinkPotion(p, pct, mhp, who, kind, wantId) {
+    if (typeof pvpArenaPotionBlocked === 'function' && pvpArenaPotionBlocked()) return false;   // 🚫 v3.7.17 決鬥中禁治癒藥水（⚠️寵物不像傭兵會被移到場邊·決鬥時仍在場上→這道閘是真的會擋到東西的那一個）
+    if (!(pct > 0) || !p || p._downed) return false;
+    if ((p._potCd || 0) > 0) { p._potCd--; return false; }
+    if (p.hp <= 0 || p.hp > mhp * (pct / 100)) return false;
     let potSel = (typeof document !== 'undefined') ? document.getElementById('set-pot') : null;
-    let potId = potSel ? potSel.value : 'potion_heal';
+    let potId = (wantId && DB.items[wantId]) ? wantId : (potSel ? potSel.value : 'potion_heal');   // 🧪 夥伴自己選的藥水（紅/橙/白）優先
     let pdef = DB.items[potId];
-    if (!pdef || pdef.val == null) return;   // 只認固定 val 的治癒藥水（紅/橙/白）
+    if (!pdef || pdef.val == null) return false;   // 只認固定 val 的治癒藥水（紅/橙/白）
     let stack = player.inv && player.inv.find(i => i.id === potId && (i.cnt || 0) > 0);
     if (!stack) {
         let _buyChk = (typeof document !== 'undefined') ? document.getElementById('set-auto-buy-pot') : null;
-        if (!_buyChk || !_buyChk.checked) return;
+        if (!_buyChk || !_buyChk.checked) return false;
         let _unit = (typeof shopPrice === 'function') ? shopPrice(pdef.p || 0) : (pdef.p || 0);
         let _need = 100;
-        if ((player.gold || 0) < _need * _unit) return;
+        if ((player.gold || 0) < _need * _unit) return false;
         player.gold -= _need * _unit;
         gainItem(potId, _need, true, true);
-        logSys(`自動消耗 ${_need * _unit} 金幣購買了 ${_need} 瓶${pdef.n}（供寵物飲用）。`);
+        logSys(`自動消耗 ${_need * _unit} 金幣購買了 ${_need} 瓶${pdef.n}（供${kind}飲用）。`);
         stack = player.inv.find(i => i.id === potId && (i.cnt || 0) > 0);
-        if (!stack) return;
+        if (!stack) return false;
     }
     stack.cnt--; if (stack.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== stack.uid);   // 🛡️ v3.2.42 稽核修：只移除喝空的那疊（原全背包 filter 會誤刪 cnt 為 undefined 的舊物品）
     let h = Math.max(1, Math.floor(potionHealBase(pdef) * (1 + getConPotionPct((player.d && player.d.con) || 0) / 100)));
     if (p._statuses && p._statuses.potionFrost > 0) h = Math.max(1, Math.floor(h * 0.5));   // 🌅 藥水霜化：寵物也以自己的 MR/狀態判定，不再借用主角色結果
     if (p._statuses && p._statuses.foulWater > 0) h = Math.max(1, Math.floor(h * 0.5));   // 🌊 v3.6.20 汙濁之水：治癒藥水也減半
-    p.hp = Math.min(petMhpEff(p), p.hp + h);
+    p.hp = Math.min(mhp, p.hp + h);
     p._potCd = 10;
-    logCombat(`寵物 <span class="text-emerald-300 font-bold">${p.form}</span> 飲用 ${pdef.n}，恢復 ${h} 點 HP。`, 'heal');
-    petMarkDirty();
+    logCombat(`${who} 飲用 ${pdef.n}，恢復 ${h} 點 HP。`, 'heal');
+    return true;
 }
+// 🟢 夥伴喝綠水（自我加速藥水）：開著時沒加速就喝一瓶（缺貨且勾「自動購買」→買 10 瓶）；加速中攻擊間隔 ÷1.33（加速術同倍率）。
+//   傷害全部 ×0.75（COMPANION_DMG_MULT），喝了綠水 ≈ 改版前的輸出。
+const COMPANION_DMG_MULT = 0.675;   // 0.75（綠水平衡）× 0.9（2026-10-15 站長：再調降 10%）
+// 命中再調降 10%：本來打中的那一下有 10% 變成沒打中（命中率 ×0.9）
+const COMPANION_HIT_MULT = 0.9;
+function companionHitRoll() { return Math.random() < COMPANION_HIT_MULT; }
+// 寵物＋迷魅的怪合計最多 4 隻
+const COMPANION_PET_CHARM_MAX = 4;
+function petCharmCount() { return petsOutList().length + ((typeof player !== 'undefined' && player && player.charmed && player.charmed._charm && !player.charmed._downed) ? 1 : 0); }
+// ⏸ 2026-10-15 站長規則：寵物／召喚物／迷魅打死目標後也要停頓才打下一隻，比照近戰（0.8 秒；主人開日光術 0.6 秒）。
+//   每隻自己記上一個目標；那隻已經不在場上 → 從這一刻起停頓。只是換打另一隻活著的怪不停。
+function companionReadyFor(ent, t) {
+    if (!ent || !t) return true;
+    let now = (typeof state !== 'undefined' && state) ? state.ticks : 0;
+    if (ent._lastTgt && ent._lastTgt !== t.uid) {
+        let prevAlive = (mapState.mobs || []).some(m => m && m.uid === ent._lastTgt && !m._dead && (m.curHp || 0) > 0);
+        if (!prevAlive) ent._swUntil = now + ((typeof killPauseTicks === 'function') ? killPauseTicks(false) : 8);
+    }
+    ent._lastTgt = t.uid;
+    return !((ent._swUntil || 0) > now);
+}
+function companionHasted(ent) { return !!ent && (ent._hasteUntil || 0) > (((typeof state !== 'undefined' && state) ? state.ticks : 0) || 0); }
+function companionSpdMul(ent) { return companionHasted(ent) ? 1 / (((typeof SKILL_FX !== 'undefined' && SKILL_FX.haste && SKILL_FX.haste.spd) || 1.33)) : 1; }
+function companionDrinkGreen(ent, on, who, kind) {
+    if (!on || !ent || ent._downed || companionHasted(ent)) return false;
+    if ((ent._greenCd || 0) > 0) { ent._greenCd--; return false; }
+    if (typeof _petInWild === 'function' && !_petInWild()) return false;   // 村莊裡不喝
+    if (typeof pvpArenaPotionBlocked === 'function' && pvpArenaPotionBlocked()) return false;
+    let pdef = DB.items.potion_haste; if (!pdef) return false;
+    let stack = player.inv && player.inv.find(i => i.id === 'potion_haste' && (i.cnt || 0) > 0);
+    if (!stack) {
+        let _buyChk = document.getElementById('set-auto-buy-pot');
+        let _unit = (typeof shopPrice === 'function') ? shopPrice(pdef.p || 0) : (pdef.p || 0);
+        if (!_buyChk || !_buyChk.checked || (player.gold || 0) < 10 * _unit) { ent._greenCd = 100; return false; }
+        player.gold -= 10 * _unit;
+        gainItem('potion_haste', 10, true, true);
+        logSys(`自動消耗 ${10 * _unit} 金幣購買了 10 瓶${pdef.n}（供${kind}飲用）。`);
+        stack = player.inv.find(i => i.id === 'potion_haste' && (i.cnt || 0) > 0);
+        if (!stack) return false;
+    }
+    stack.cnt--; if (stack.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== stack.uid);
+    ent._hasteUntil = state.ticks + (pdef.dur || 300) * 10;
+    logCombat(`${who} 喝下 ${pdef.n}，動作變快了。`, 'heal');
+    return true;
+}
+// 🐾 寵物自動復活（設定「寵物自動復活」）：返生術（學會且 MP 夠）→ 復活卷軸 → 金幣夠就買一張再用
+function petAutoReviveOn() { let c = document.getElementById('set-pet-revive'); return !!(c && c.checked); }
+function petAutoRevive(p) {
+    let _rk = DB.skills.sk_resurrection;
+    if (_rk && (player.skills || []).includes('sk_resurrection') && !(player.statuses && (player.statuses.silence > 0 || player.statuses.magicseal > 0))) {
+        let cost = (player.d && typeof player.d.getMpCost === 'function') ? player.d.getMpCost(_rk.mp, _rk.tier) : 50;
+        if (player.mp >= cost) { player.mp -= cost; _petReviveDone(p, '返生術（自動）'); return true; }
+    }
+    let sc = player.inv.find(i => i.id === 'scroll_revive' && (i.cnt || 0) > 0);
+    if (!sc) {
+        let sd = DB.items.scroll_revive, unit = sd ? ((typeof shopPrice === 'function') ? shopPrice(sd.p || 0) : (sd.p || 0)) : 0;
+        if (!sd || (player.gold || 0) < unit) return false;
+        player.gold -= unit; gainItem('scroll_revive', 1, true, true);
+        logSys(`自動消耗 ${unit} 金幣購買了 1 張${sd.n}（供寵物復活）。`);
+        sc = player.inv.find(i => i.id === 'scroll_revive' && (i.cnt || 0) > 0);
+        if (!sc) return false;
+    }
+    sc.cnt--; if (sc.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== sc.uid);
+    _petReviveDone(p, '復活卷軸（自動）');
+    return true;
+}
+// 從背包點復活卷軸：選一隻倒下的寵物復活（沒有倒下的寵物 → 回 false 照原本的提示）
+function petReviveChooser() {
+    let downs = petsOutList().filter(p => p && p._downed);
+    if (!downs.length) return false;
+    let old = document.getElementById('pet-revive-overlay'); if (old) old.remove();
+    let ov = document.createElement('div');
+    ov.id = 'pet-revive-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:97;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:12px;';
+    ov.innerHTML = `<div style="width:100%;max-width:320px;background:#0f0c09;border:1px solid #b7791f;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;">
+        <div style="color:#fbbf24;font-weight:bold;font-size:16px;">要復活哪一隻？</div>
+        ${downs.map(p => `<button type="button" data-uid="${p.uid}" class="btn font-bold" style="display:flex;align-items:center;gap:8px;padding:8px;text-align:left;"><img src="${encodeURI('assets/icons/items/項圈 (牧羊犬).png')}" alt="" style="width:28px;height:28px;object-fit:contain;">${petDisplayName(p)} <span class="text-amber-300">Lv.${p.lv}</span></button>`).join('')}
+        <button type="button" data-x="1" class="btn" style="padding:6px;">取消</button></div>`;
+    ov.addEventListener('click', e => {
+        if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; }
+        let b = e.target.closest('[data-uid]'); if (!b) return;
+        ov.remove(); petRevive(b.getAttribute('data-uid'), 'scroll');
+    });
+    document.body.appendChild(ov);
+    return true;
+}
+// ── 🐾 項圈＋寵物召喚笛（站長規則）──
+//   抓到寵物 → 背包得到「項圈」（一隻一個，簽章帶 petUid）；身上有「寵物召喚笛」時點兩下項圈 → 花 5,000 金幣叫出來。
+//   夥伴視窗「寄放」→ 寵物回保管、背包補回項圈。保管人那裡沒項圈的寵物可以按「領項圈」。
+const PET_CALL_COST = 5000;
+function petCollarLabel(item) {
+    let p = (typeof petRoster === 'function') ? petRoster().find(x => x.uid === item.petUid) : null;
+    return p ? petDisplayName(p) + ' Lv.' + p.lv : (item.petForm || '已不在');
+}
+function petHasCollar(uidv) { return (player.inv || []).some(i => i && i.id === 'pet_collar' && i.petUid === uidv); }
+function petGiveCollar(p, silent) {
+    if (!p || !DB.items.pet_collar || petHasCollar(p.uid)) return false;
+    player.inv.push({ id: 'pet_collar', uid: uid(), cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false, petUid: p.uid, petForm: p.form });
+    if (!silent) logSys(`<span class="text-amber-200">獲得 ${p.form} 的項圈。</span>`);
+    return true;
+}
+function petCallFromCollar(item) {
+    let p = _petFindFresh(item.petUid);
+    if (!p) { logSys('<span class="text-red-400">這個項圈的寵物已經不在了。</span>'); return; }
+    let owner = _petCurrentOwnerKey();
+    if (owner && String(p.outOwner || '') === owner) { logSys(`${petDisplayName(p)} 已經在你身邊了。`); return; }
+    if (!(player.inv || []).some(i => i.id === 'pet_whistle' && (i.cnt || 0) > 0)) { logSys('<span class="text-red-400">需要寵物召喚笛才能叫出寵物（一般商店有賣）。</span>'); return; }
+    if (p._downed) { logSys(`<span class="text-red-400">${petDisplayName(p)} 倒下了，先復活才能叫出來。</span>`); return; }
+    if ((player.gold || 0) < PET_CALL_COST) { logSys(`<span class="text-red-400">金幣不足 ${PET_CALL_COST.toLocaleString()}，叫不出寵物。</span>`); return; }
+    petDeployToggle(p.uid);
+    let q = _petFind(p.uid);
+    if (q && owner && String(q.outOwner || '') === owner) {
+        player.gold -= PET_CALL_COST;
+        logSys(`吹響寵物召喚笛，花費 ${PET_CALL_COST.toLocaleString()} 金幣。`);
+        try { updateUI(); } catch (e) {}
+    }
+}
+function petStash(uidv) {   // 寄放：回保管＋補項圈
+    let p = _petFindFresh(uidv); if (!p) return;
+    let owner = _petCurrentOwnerKey();
+    if (!owner || String(p.outOwner || '') !== owner) return;
+    if (p._downed) { logSys(`<span class="text-red-400">${petDisplayName(p)} 倒下了，先復活才能寄放。</span>`); return; }
+    petDeployToggle(uidv);
+    petGiveCollar(p, true);
+}
+function petStashAll() {
+    let outs = petsOutList();
+    if (!outs.length) return;
+    outs.forEach(p => petStash(p.uid));
+    try { updateUI(); } catch (e) {}
+}
+// 保管人「出戰」：領出來收 1,000 金幣（收回免費）
+const PET_NPC_COST = 1000;
+function petNpcDeploy(uidv) {
+    let p = _petFindFresh(uidv); if (!p) return;
+    let owner = _petCurrentOwnerKey();
+    if (owner && String(p.outOwner || '') === owner) { petDeployToggle(uidv); return; }
+    if ((player.gold || 0) < PET_NPC_COST) { logSys(`<span class="text-red-400">金幣不足 ${PET_NPC_COST.toLocaleString()}，領不出寵物。</span>`); return; }
+    petDeployToggle(uidv);
+    let q = _petFind(uidv);
+    if (q && owner && String(q.outOwner || '') === owner) {
+        player.gold -= PET_NPC_COST;
+        logSys(`支付保管費 ${PET_NPC_COST.toLocaleString()} 金幣。`);
+        try { updateUI(); } catch (e) {}
+        let _d = document.getElementById('interaction-content'); if (_d && _d.querySelector('[data-petui]')) renderPetStorageNPC(_d);
+    }
+}
+function petNpcCollar(uidv) {   // 保管人：領項圈
+    let p = _petFindFresh(uidv); if (!p) return;
+    if (petGiveCollar(p)) { try { updateUI(); } catch (e) {} }
+    else logSys(`你身上已經有 ${p.form} 的項圈了。`);
+}
+// 解散：召喚物全部消失並關掉自動重召（不然 2 秒後又召回來）；迷魅：放走那隻怪
+function dismissSummons() {
+    if (typeof player === 'undefined' || !player || !player.cls) return;
+    let skId = (typeof summonV2ActiveSk === 'function') ? summonV2ActiveSk() : '';
+    player.summonsV2 = []; player._summonV2On = false;
+    if (skId && player.buffs) player.buffs[skId] = 0;
+    logSys('召喚物解散了。');
+    try { renderSummonPanel(true); } catch (e) {}
+}
+function dismissCharm() {
+    if (typeof player === 'undefined' || !player || !player.charmed) return;
+    logSys(`${player.charmed.form || '迷魅的怪'} 解除了迷魅。`);
+    player.charmed = null; if (player.buffs) player.buffs.sk_charm = 0;
+}
+function setSummonPotId(id) { if (typeof player === 'undefined' || !player || !player.cls) return; player.sumPotId = id || ''; }
+function setCharmPotId(id) { if (typeof player === 'undefined' || !player || !player.cls) return; player.charmPotId = id || ''; }
+function setSummonGreen(on) { if (typeof player === 'undefined' || !player || !player.cls) return; player.sumGreen = !!on; }
+function setCharmGreen(on) { if (typeof player === 'undefined' || !player || !player.cls) return; player.charmGreen = !!on; }
+// 召喚物／迷魅的怪的喝水門檻（存在角色上：召喚物會重召、迷魅會換怪，設定要留著）
+function setSummonPotPct(v) { if (typeof player === 'undefined' || !player || !player.cls) return; player.sumPotPct = Math.max(0, Math.min(95, parseInt(v) || 0)); }
+function setCharmPotPct(v) { if (typeof player === 'undefined' || !player || !player.cls) return; player.charmPotPct = Math.max(0, Math.min(95, parseInt(v) || 0)); }
 function _petReviveDone(p, via) {
     p._downed = false; p._reviveCd = 0;
     p.hp = Math.max(1, Math.floor(petMhpEff(p) * 0.5)); p.mp = p.mmp + (((typeof petDerive === 'function' && petDerive(p)) || {}).mmpBonus || 0);   // 🦴 v3.2.42 稽核修：復活 MP 補到含防具精神加成的有效上限（與 petsTick _mmpEff 一致）
@@ -1207,7 +1432,7 @@ function petsReviveAtTown() {
     if (!outs.length) return;
     let n = 0;
     outs.forEach(p => {
-        if (p._downed) { p._downed = false; p._reviveCd = 0; p._animAct = null; n++; petDevotionGrant(p); }   // 🏺 v3.6.44 回村復活亦觸發珍愛夥伴 buff
+        if (p._downed) return;   // 🔧 站長規則：倒下的寵物回村不會自動復活（要用復活卷軸／返生術）
         p.hp = petMhpEff(p);   // 🏺 v3.7.20 回村補滿含 petHpAll 光環
         p.mp = (p.mmp || 0) + (((typeof petDerive === 'function' && petDerive(p)) || {}).mmpBonus || 0);
         p._statuses = newMobStatus();
@@ -1273,7 +1498,7 @@ function renderPetStorageNPC(div, confirmUid) {
         let canEvo = _evoOpts.length > 0;
         let _evoTip = _evoOpts.map(o => (DB.items[o.fruitId] ? DB.items[o.fruitId].n : o.fruitId) + '→' + o.target).join('　或　');
         let thumb = 'assets/anim/' + encodeURIComponent(p.form) + '/d6/idle_0.png';
-        let expPct = Math.min(100, Math.floor((p.exp || 0) / petExpReq(p.lv) * 100));
+        let expPct = Math.min(100, Math.floor((p.exp || 0) / petExpReq(p.lv, p.form) * 100));
         let isOut = !!_petCurrentOwnerKey() && String(p.outOwner || '') === _petCurrentOwnerKey();
         let otherOut = !!_petOutStateKey(p) && !isOut;
         if (confirmUid === p.uid && !p.locked) {
@@ -1298,7 +1523,7 @@ function renderPetStorageNPC(div, confirmUid) {
                 ${!otherOut && canEvo && p.lv >= 30 ? `<button onclick="petEvolve('${p.uid}')" class="btn px-2 py-1 text-xs font-bold" style="background:linear-gradient(135deg,#713f12,#ca8a04);color:#fef9c3;border-color:#eab308;" title="進化：${_evoTip}（兩種果實都有可選擇）">進化</button>` : ''}
                 <button onclick="petGearOpen('${p.uid}','wpn')" ${otherOut ? 'disabled' : ''} class="btn px-2 py-1 text-xs font-bold" style="border-color:${p.eq && p.eq.wpn ? '#f59e0b' : '#475569'};color:${p.eq && p.eq.wpn ? '#fcd34d' : '#94a3b8'};${otherOut ? 'opacity:.4;' : ''}" title="${p.eq && p.eq.wpn && DB.items[p.eq.wpn.id] ? DB.items[p.eq.wpn.id].n + ((p.eq.wpn.en || 0) > 0 ? '+' + p.eq.wpn.en : '') : '未裝備寵物武器'}">武器</button>
                 <button onclick="petGearOpen('${p.uid}','arm')" ${otherOut ? 'disabled' : ''} class="btn px-2 py-1 text-xs font-bold" style="border-color:${p.eq && p.eq.arm ? '#f59e0b' : '#475569'};color:${p.eq && p.eq.arm ? '#fcd34d' : '#94a3b8'};${otherOut ? 'opacity:.4;' : ''}" title="${p.eq && p.eq.arm && DB.items[p.eq.arm.id] ? DB.items[p.eq.arm.id].n + ((p.eq.arm.en || 0) > 0 ? '+' + p.eq.arm.en : '') : '未裝備寵物防具'}">防具</button>
-                <button onclick="petDeployToggle('${p.uid}')" ${otherOut ? 'disabled' : ''} class="btn px-2 py-1 text-xs font-bold" style="background:linear-gradient(135deg,${isOut ? '#374151,#4b5563' : (otherOut ? '#334155,#475569' : '#065f46,#059669')});color:${isOut ? '#e5e7eb' : (otherOut ? '#94a3b8' : '#a7f3d0')};border-color:${isOut ? '#6b7280' : (otherOut ? '#64748b' : '#10b981')};${otherOut ? 'opacity:.65;' : ''}">${isOut ? '收回' : (otherOut ? '使用中' : '出戰')}</button>
+                <button onclick="petNpcDeploy('${p.uid}')" ${otherOut ? 'disabled' : ''} class="btn px-2 py-1 text-xs font-bold" style="background:linear-gradient(135deg,${isOut ? '#374151,#4b5563' : (otherOut ? '#334155,#475569' : '#065f46,#059669')});color:${isOut ? '#e5e7eb' : (otherOut ? '#94a3b8' : '#a7f3d0')};border-color:${isOut ? '#6b7280' : (otherOut ? '#64748b' : '#10b981')};${otherOut ? 'opacity:.65;' : ''}">${isOut ? '收回' : (otherOut ? '使用中' : '出戰 1,000')}</button>
                 ${otherOut || p.locked ? '' : `<button onclick="petRelease('${p.uid}')" class="btn px-2 py-1 text-xs font-bold" style="background:linear-gradient(135deg,#7f1d1d,#991b1b);color:#fecaca;border-color:#b91c1c;">放生</button>`}
             </span>
         </div>`;
@@ -1327,7 +1552,7 @@ function renderPetTeamHTML() {
         let _mmpEff = p.mmp + (((typeof petDerive === 'function' && petDerive(p)) || {}).mmpBonus || 0);   // 🦴 v3.2.42 稽核修：MP 條/浮標含防具精神加成（原本米索莉寵顯示 35/30 爆表）
         let _mhpE = petMhpEff(p); let hpPct = Math.max(0, Math.min(100, Math.floor(p.hp / Math.max(1, _mhpE) * 100)));
         let mpPct = Math.max(0, Math.min(100, Math.floor(p.mp / Math.max(1, _mmpEff) * 100)));
-        let expPct = Math.min(100, Math.floor((p.exp || 0) / petExpReq(p.lv) * 100));
+        let expPct = Math.min(100, Math.floor((p.exp || 0) / petExpReq(p.lv, p.form) * 100));
         let thumb = 'assets/anim/' + encodeURIComponent(p.form) + '/d6/idle_0.png';
         // 🐾 v3.2.33 高度減半（用戶指示·樣式/元素不變）：縮圖 36×32→26×22、內距/條高/字級/間距減半（用 inline style 避開預編譯 Tailwind 任意值缺漏）
         if (p._downed) {
@@ -1540,3 +1765,115 @@ function petMigrateLegacy() {
         }
     } catch (e) { console.warn('petMigrateLegacy 失敗', e); }
 }
+
+// ===== 🐾 寵物分頁（能力 → 寵物）：出戰寵物／召喚物／迷魅的怪，一隻一張卡（圖、名稱、等級、HP/MP、剩餘時間）=====
+//   血條沿用寵物原本的樣式（紅/藍漸層＋數字）；寵物卡可直接換寵物武器/防具（petGearOpen）。
+//   召喚物與迷魅的怪沒有 MP，只畫 HP。分頁開著才每 0.5 秒比對一次，有變才重畫。
+function _ptBar(cur, max, kind) {
+    let pct = Math.max(0, Math.min(100, Math.floor((cur || 0) / Math.max(1, max || 1) * 100)));
+    let grad = kind === 'mp' ? '#2563eb,#60a5fa' : '#dc2626,#f87171';
+    return `<div class="bar-bg" style="height:14px;" title="${kind === 'mp' ? 'MP' : 'HP'} ${Math.max(0, Math.floor(cur || 0))}/${max}"><div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${grad});"></div><div class="bar-text text-white" style="font-size:11px;line-height:14px;">${kind === 'mp' ? 'MP' : 'HP'} ${Math.max(0, Math.floor(cur || 0))}/${max}</div></div>`;
+}
+function _ptCard(o) {
+    if (o.head) return o.head;
+    return `<div class="bg-slate-800/80 border rounded" style="padding:6px 8px;border-color:${o.border};${o.down ? 'opacity:.6;' : ''}">
+        <div class="flex items-center gap-2">
+            <span class="shrink-0" style="width:60px;height:56px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgba(0,0,0,.35);border-radius:4px;"><img src="${o.img}" alt="" style="width:110px;max-width:none;flex:none;image-rendering:pixelated;${o.down ? 'filter:grayscale(1);' : ''}" onerror="${o.fallback ? `this.onerror=null;this.style.width='40px';this.src='${o.fallback}'` : `this.style.visibility='hidden'`}"></span>
+            <div class="flex-1 min-w-0 flex flex-col" style="gap:3px;">
+                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span class="font-bold" style="color:${o.color};">${o.tag} ${o.name}</span> <span class="text-amber-300">Lv.${o.lv || 1}</span>${o.down ? ' <span class="text-red-400 font-bold">倒地</span>' : ''}${o.time ? ` <span class="text-slate-400" style="font-size:11px;">剩 ${o.time}</span>` : ''}</div>
+                ${_ptBar(o.hp, o.mhp, 'hp')}
+                ${o.mmp ? _ptBar(o.mp, o.mmp, 'mp') : ''}
+            </div>
+        </div>
+        ${o.extra || ''}
+    </div>`;
+}
+const COMPANION_POTS = [['potion_heal', '紅水'], ['potion_strong', '橙水'], ['potion_ult', '白水']];
+function _ptPot(val, onchange, potId, onPot) {   // inputmode=numeric＋pattern：手機直接跳數字鍵盤；後面選喝哪一種
+    let cur = potId || ((document.getElementById('set-pot') || {}).value) || 'potion_heal';
+    let opts = COMPANION_POTS.map(([id, n]) => `<option value="${id}"${id === cur ? ' selected' : ''}>${n}</option>`).join('');
+    return `<span class="text-slate-400 whitespace-nowrap" style="font-size:12px;display:inline-flex;align-items:center;gap:2px;">HP&lt;<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${val || 0}" onchange="${onchange}" class="bg-slate-900 border border-slate-600 rounded text-center" style="width:2.6rem;font-size:13px;height:22px;padding:0 2px;">%喝<select onchange="${onPot}" class="bg-slate-900 border border-slate-600 rounded" style="font-size:12px;height:22px;padding:0 2px;">${opts}</select></span>`;
+}
+function _ptGreen(on, onchange) {
+    return `<label class="text-green-300 whitespace-nowrap" style="font-size:12px;display:inline-flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" ${on ? 'checked' : ''} onchange="${onchange}" style="width:15px;height:15px;">喝綠水</label>`;
+}
+function _ptTime(sec) { sec = Math.max(0, Math.floor(sec || 0)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+function _ptGearBtn(p, key) {
+    let g = p.eq && p.eq[key], d = g && DB.items[g.id];
+    let label = (key === 'wpn' ? '武器：' : '防具：') + (d ? d.n + ((g.en || 0) > 0 ? ' +' + g.en : '') : '無');
+    return `<button type="button" onclick="petGearOpen('${p.uid}','${key}')" class="btn text-xs font-bold flex-1" style="padding:4px 6px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-color:${d ? '#f59e0b' : '#475569'};color:${d ? '#fcd34d' : '#94a3b8'};">${label}</button>`;
+}
+function _petsTabData() {
+    let out = [];
+    if (typeof player === 'undefined' || !player || !player.cls) return out;
+    const enc = encodeURIComponent;
+    petsOutList().forEach(p => {
+        let mmp = p.mmp + (((typeof petDerive === 'function' && petDerive(p)) || {}).mmpBonus || 0);
+        out.push({ key: 'p' + p.uid, tag: '🐾', color: '#6ee7b7', border: '#475569', name: petDisplayName(p), lv: p.lv, hp: p.hp, mhp: petMhpEff(p), mp: p.mp, mmp: mmp, down: !!p._downed,
+            img: 'assets/anim/' + enc(p.formGfx || p.form) + '/d6/idle_0.png',
+            extra: (p._downed
+                ? `<div class="flex items-center gap-1" style="margin-top:5px;">${(player.skills || []).includes('sk_resurrection') ? `<button type="button" onclick="petRevive('${p.uid}','rez')" class="btn text-xs font-bold flex-1" style="padding:5px;">返生術</button>` : ''}<button type="button" onclick="petRevive('${p.uid}','scroll')" class="btn text-xs font-bold flex-1" style="padding:5px;">復活卷軸${(p._reviveCd || 0) > 0 ? `（${Math.ceil(p._reviveCd / 10)} 秒）` : ''}</button></div>`
+                : `<div class="flex items-center gap-1" style="margin-top:5px;">${_ptGearBtn(p, 'wpn')}${_ptGearBtn(p, 'arm')}<button type="button" onclick="petStash('${p.uid}')" class="btn text-xs font-bold" style="padding:4px 8px;white-space:nowrap;">寄放</button></div>`)
+                + `<div class="flex items-center justify-end gap-3" style="margin-top:4px;">${_ptPot(p.potPct, `petSetPotPct('${p.uid}',this.value)`, p.potId, `petSetPotId('${p.uid}',this.value)`)}${_ptGreen(p.green, `petSetGreen('${p.uid}',this.checked)`)}</div>`,
+            sig: [p.eq && p.eq.wpn && p.eq.wpn.id, p.eq && p.eq.wpn && p.eq.wpn.en, p.eq && p.eq.arm && p.eq.arm.id, p.eq && p.eq.arm && p.eq.arm.en, p.potPct || 0, p.potId || '', p.green ? 1 : 0, Math.ceil((p._reviveCd || 0) / 10)].join(',') });
+    });
+    let skId = (typeof summonV2ActiveSk === 'function') ? summonV2ActiveSk() : '';
+    let remain = (player.buffs && skId) ? (player.buffs[skId] || 0) : 0;
+    let sums = (typeof summonV2List === 'function') ? summonV2List() : [];
+    if (typeof necroSkeletonList === 'function') sums = sums.concat(necroSkeletonList().filter(s => !s._necroOwnerKey || (typeof _necroOwnerByKey === 'function' && _necroOwnerByKey(s._necroOwnerKey) === player)));
+    let _sumAlive = sums.filter(s => s && !s._downed && (s.hp || 0) > 0);
+    if (_sumAlive.length) out.push({ key: 'sh', head: `<div class="flex items-center justify-between gap-2" style="padding:2px 2px 0;"><span class="font-bold" style="color:#d8b4fe;">🔮 召喚物（${_sumAlive.length}）</span><button type="button" onclick="dismissSummons()" class="btn text-xs font-bold" style="padding:3px 10px;">解散</button></div><div class="flex items-center justify-end gap-3" style="padding:0 2px;">${_ptPot(player.sumPotPct, 'setSummonPotPct(this.value)', player.sumPotId, 'setSummonPotId(this.value)')}${_ptGreen(player.sumGreen, 'setSummonGreen(this.checked)')}</div>`, sig: (player.sumPotPct || 0) + (player.sumGreen ? 'g' : '') + (player.sumPotId || '') });
+    _sumAlive.forEach((s, i) => {
+        out.push({ key: 's' + (s.uid || i), tag: '🔮', color: '#d8b4fe', border: '#6b21a8', name: s.form, lv: s.lv, hp: s.hp, mhp: s.mhp, time: remain > 0 ? _ptTime(remain) : '',
+            img: 'assets/anim/' + enc(s.formGfx || s.form) + '/d6/idle_0.png', fallback: encodeURI('assets/icons/skills/召喚術.png') });
+    });
+    let c = player.charmed;
+    if (c && c._charm && !c._downed && (c.hp || 0) > 0) {
+        out.push({ key: 'c', tag: '💫', color: '#f9a8d4', border: '#9d174d', name: c.form, lv: c.lv, hp: c.hp, mhp: c.mhp, time: _ptTime(((c.endTick || 0) - ((typeof state !== 'undefined' && state && state.ticks) || 0)) / 10),
+            img: 'assets/anim/' + enc(c.form) + '/idle_0.png', fallback: encodeURI('assets/icons/skills/迷魅術.png'),
+            extra: `<div class="flex items-center justify-end gap-3" style="margin-top:4px;">${_ptPot(player.charmPotPct, 'setCharmPotPct(this.value)', player.charmPotId, 'setCharmPotId(this.value)')}${_ptGreen(player.charmGreen, 'setCharmGreen(this.checked)')}<button type="button" onclick="dismissCharm()" class="btn text-xs font-bold" style="padding:3px 10px;">解散</button></div>`, sig: (player.charmPotPct || 0) + (player.charmGreen ? 'g' : '') + (player.charmPotId || '') });
+    }
+    return out;
+}
+function _petsPanelFill(el, force) {
+    if (!force && document.activeElement && el.contains(document.activeElement) && /^(INPUT|SELECT)$/.test(document.activeElement.tagName)) return;   // 正在輸入喝水 %／選藥水：弄完(離開欄位)再重畫
+    let list = _petsTabData();
+    let sig = list.map(o => [o.key, o.name, o.lv, Math.floor(o.hp || 0), o.mhp, Math.floor(o.mp || 0), o.mmp, o.down ? 1 : 0, o.time, o.sig].join(':')).join('|');
+    if (!force && sig === el._ptSig) return;
+    el._ptSig = sig;
+    el.innerHTML = list.length ? list.map(_ptCard).join('')
+        : '<div class="text-slate-400 text-sm text-center" style="padding:24px 0;">身邊沒有寵物、召喚物或迷魅的怪。</div>';
+}
+function renderPetsTab(force) {
+    try {
+        let el = document.getElementById('tab-pets');
+        if (!el || (!force && (el.classList.contains('hidden') || !el.offsetParent))) return;
+        _petsPanelFill(el, force);
+    } catch (e) { console.warn('[pets-tab] 繪製失敗', e); }
+}
+// 🐾 夥伴視窗：天堂M介面點夥伴圖示打開（內容同寵物分頁：換寵物裝備、設定喝水）。點視窗外或 ✕ 關閉；寵物裝備清單(z 96)疊在上面。
+function openCompanionPanel() {
+    if (typeof player === 'undefined' || !player || !player.cls) return;
+    closeCompanionPanel();
+    let ov = document.createElement('div');
+    ov.id = 'companion-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:12px;';
+    ov.innerHTML = `<div style="width:100%;max-width:380px;max-height:82vh;display:flex;flex-direction:column;background:#0f0c09;border:1px solid #b7791f;border-radius:10px;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #4a3f30;color:#fbbf24;font-weight:bold;font-size:16px;">🐾 夥伴<span style="flex:1"></span><button type="button" data-close="1" style="background:none;border:0;color:#aaa;font-size:18px;cursor:pointer;">✕</button></div>
+        <div id="companion-overlay-body" class="flex flex-col gap-2" style="flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:8px;"></div>
+    </div>`;
+    ov.addEventListener('click', ev => {
+        if (ev.target === ov || ev.target.closest('[data-close]')) { closeCompanionPanel(); return; }
+    });
+    document.body.appendChild(ov);
+    renderCompanionPanel(true);
+}
+function closeCompanionPanel() { let ov = document.getElementById('companion-overlay'); if (ov) ov.remove(); }
+function renderCompanionPanel(force) {
+    try {
+        let el = document.getElementById('companion-overlay-body'); if (!el) return;
+        if (typeof player === 'undefined' || !player || !player.cls) { closeCompanionPanel(); return; }
+        _petsPanelFill(el, force);
+    } catch (e) { console.warn('[companion-panel] 繪製失敗', e); }
+}
+setInterval(() => { renderPetsTab(false); renderCompanionPanel(false); }, 500);

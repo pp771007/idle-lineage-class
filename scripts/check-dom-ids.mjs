@@ -52,6 +52,7 @@ for (const f of PLUGINS) {
     while ((m = re.exec(src))) {
       const id = m[1];
       if (!/^[A-Za-z][\w:-]*$/.test(id)) continue;   // 拼接/含變數 → 抽不到字面值,略過
+      if (/-$/.test(id)) continue;                    // '#tab-' + tab 這種前綴拼接 → 同上略過
       if (!refs.has(id)) refs.set(id, new Set());
       refs.get(id).add(`${f}:${lineOf(m.index)}`);
     }

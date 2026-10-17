@@ -26,14 +26,17 @@ function walkAssets(dir) {
   for (const name of readdirSync(dir)) {
     if (name === 'desktop.ini') continue;
     const p = dir + '/' + name;
-    if (statSync(p).isDirectory()) out.push(...walkAssets(p));
+    // 🚨 不可用 out.push(...子清單)：子資料夾檔案上萬時展開參數會爆呼叫堆疊(assets/anim 補了八方向走路幀後實際踩到)
+    if (statSync(p).isDirectory()) { for (const f of walkAssets(p)) out.push(f); }
     else out.push(p);
   }
   return out;
 }
 
 if (existsSync('assets')) {
-  const assetFiles = walkAssets('assets').filter((p) => !p.startsWith('assets/anim/') && !p.startsWith('assets/classanim/'));
+  // 村莊地圖資料不跟遊戲發佈(放 Cloudflare R2、檔名帶雜湊不必對帳)，本機有也不列；hero.js、remote.json 照列
+  const r2Only = (p) => /^assets\/townmap\/(towns\.json|hunts\.json|m\d+\.json|m\d+\/)/.test(p);
+  const assetFiles = walkAssets('assets').filter((p) => !p.startsWith('assets/anim/') && !p.startsWith('assets/classanim/') && !r2Only(p));
   const publicFiles = existsSync('public/assets') ? walkAssets('public/assets') : [];
   const manifest = [...assetFiles, ...publicFiles].sort().map((p) => [p, gitBlobSha(readFileSync(p))]);
   writeFileSync('assets-manifest.json', JSON.stringify(manifest) + '\n');

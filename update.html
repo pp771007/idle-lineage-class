@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>更新遊戲</title>
+<!--
+  update.html — 管理員用:按一下觸發 GitHub Actions「更新遊戲」(.github/workflows/apply-sheet.yml),
+  把 Google 試算表的修改套進遊戲。試算表「使用說明」分頁第一列連到這裡(scripts/sheet-export.mjs)。
+  · 需要 GitHub 細粒度通行碼(只給這個 repo 的 Actions 讀寫)，只放 sessionStorage(關掉分頁就忘)，不進 repo、不送到別處。
+    🚨 不可放回 localStorage：<帳號>.github.io 底下所有專案頁共用同一份 localStorage，放進去＝每個頁面(和它們載入的腳本)都讀得到、而且永久留著。
+    舊版存過 localStorage → 載入時刪掉。
+  · 不是遊戲的一部分：index.html 不載入它，玩家不會看到。頁面公開但沒有通行碼什麼都做不了。
+  · owner/repo 從網址推(<owner>.github.io/<repo>/update.html)；本機測試時用 FALLBACK。
+-->
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; min-height: 100vh; background: #0b0907; color: #e7e2d8; font: 16px/1.6 system-ui, "Microsoft JhengHei", sans-serif; display: flex; justify-content: center; }
+  main { width: min(440px, 100%); padding: 32px 16px; box-sizing: border-box; }
+  h1 { color: #fbbf24; font-size: 26px; margin: 0 0 20px; text-align: center; }
+  .box { background: #1a1612; border: 1px solid #b7791f; border-radius: 12px; padding: 18px; }
+  button { width: 100%; padding: 14px; font-size: 20px; font-weight: bold; border-radius: 10px; border: 1px solid #f59e0b; background: linear-gradient(#b45309, #78350f); color: #fff7ed; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  input { width: 100%; box-sizing: border-box; padding: 10px; font-size: 15px; border-radius: 8px; border: 1px solid #64748b; background: #020617; color: #e2e8f0; margin: 8px 0 12px; }
+  #status { margin-top: 16px; min-height: 1.6em; text-align: center; }
+  .ok { color: #4ade80; } .bad { color: #f87171; } .wait { color: #fde68a; }
+  a { color: #93c5fd; }
+  .small { font-size: 13px; color: #94a3b8; text-align: center; margin-top: 18px; }
+  .small button { all: unset; color: #93c5fd; text-decoration: underline; cursor: pointer; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🎮 更新遊戲</h1>
+  <div class="box">
+    <div id="token-row" class="hidden">
+      <div>貼上 GitHub 通行碼（關掉這頁就會忘記）</div>
+      <input id="token" type="password" autocomplete="off" placeholder="github_pat_…">
+    </div>
+    <button id="go" type="button">更新遊戲</button>
+    <div id="status"></div>
+  </div>
+  <div class="small"><button id="reset" type="button">更換通行碼</button></div>
+</main>
+<script>
+(function () {
+  'use strict';
+  var FALLBACK = { owner: 'tiereng799-glitch', repo: 'idle-lineage-class' };
+  var WORKFLOW = 'apply-sheet.yml';
+  var KEY = 'update_page_token';   // 舊版存在 localStorage(跟遊戲同網域)→ afk-fullsave.js 的 LOCAL_ONLY 仍排除它;改名要兩邊一起改
+  var m = location.hostname.match(/^([\w-]+)\.github\.io$/);
+  var OWNER = m ? m[1] : FALLBACK.owner;
+  var REPO = (m && location.pathname.split('/')[1]) || FALLBACK.repo;
+  var API = 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/actions/workflows/' + WORKFLOW;
+
+  var $ = function (id) { return document.getElementById(id); };
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  function getToken() { try { return sessionStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
+  function setToken(t) { try { if (t) sessionStorage.setItem(KEY, t); else sessionStorage.removeItem(KEY); } catch (e) {} }
+  function say(text, cls, link) {
+    var s = $('status'); s.className = cls || ''; s.textContent = text;
+    if (link) { s.appendChild(document.createTextNode(' ')); var a = document.createElement('a'); a.href = link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = '看是哪一格'; s.appendChild(a); }
+  }
+  function showTokenRow() { $('token-row').classList.toggle('hidden', !!getToken()); }
+  function headers(t) { return { 'Authorization': 'Bearer ' + t, 'Accept': 'application/vnd.github+json' }; }
+
+  async function latestRun(t) {
+    var r = await fetch(API + '/runs?per_page=1&event=workflow_dispatch', { headers: headers(t) });
+    if (!r.ok) return null;
+    var j = await r.json();
+    return (j.workflow_runs && j.workflow_runs[0]) || null;
+  }
+
+  async function run() {
+    var t = getToken() || $('token').value.trim();
+    if (!t) { say('先貼上通行碼。', 'bad'); return; }
+    $('go').disabled = true;
+    say('送出中…', 'wait');
+    try {
+      var before = await latestRun(t);
+      var r = await fetch(API + '/dispatches', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, headers(t)), body: JSON.stringify({ ref: 'main' }) });
+      if (r.status === 401 || r.status === 403 || r.status === 404) {
+        // 三種錯分開講：玩家要改的地方不同(複製錯 / 權限沒開 / 沒選到這個專案)
+        var why = r.status === 401 ? '通行碼錯了或已過期：重新複製一次再貼（前後不要多空白）。'
+          : r.status === 403 ? '通行碼沒有開「Actions：Read and write」權限。'
+          : '通行碼沒有選到 ' + REPO + ' 這個專案（Repository access）。';
+        console.warn('[update] dispatch', r.status, await r.text());
+        setToken(''); showTokenRow();
+        say(why, 'bad'); $('go').disabled = false; return;
+      }
+      if (!r.ok) { say('送出失敗，請稍後再試。', 'bad'); console.warn('[update] dispatch', r.status, await r.text()); $('go').disabled = false; return; }
+      setToken(t); showTokenRow();
+      say('更新中，約 1～2 分鐘…', 'wait');
+      // 等新的那次執行出現並跑完
+      var start = Date.now(), run = null;
+      while (Date.now() - start < 6 * 60 * 1000) {
+        await new Promise(function (res) { setTimeout(res, 5000); });
+        var cur = await latestRun(t);
+        if (cur && (!before || cur.id !== before.id)) run = cur;
+        if (run && run.status === 'completed') break;
+      }
+      if (!run || run.status !== 'completed') { say('還在跑，晚點到 GitHub 的 Actions 看結果。', 'wait'); }
+      else if (run.conclusion === 'success') { say('✅ 更新完成，約 5 分鐘後遊戲就是新的。', 'ok'); }
+      else { say('❌ 試算表有地方要改，這次沒有更新。', 'bad', run.html_url); }
+    } catch (e) {
+      console.warn('[update]', e);
+      say('連不上 GitHub，請檢查網路後再試。', 'bad');
+    }
+    $('go').disabled = false;
+  }
+
+  $('go').addEventListener('click', run);
+  $('reset').addEventListener('click', function () { setToken(''); $('token').value = ''; showTokenRow(); say(''); });
+  showTokenRow();
+})();
+</script>
+</body>
+</html>

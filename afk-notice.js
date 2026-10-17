@@ -4,11 +4,9 @@
  * 要發新公告：把下面的 NOTICE 從 null 改成一組設定即可（title / html / 連結），
  * 不必動 index.html、smoke 或其他外掛。公告結束就把 NOTICE 改回 null。
  *
- * 卡片插在首頁左側標題區(#login-title-layer，標題下方)。純顯示、全程唯讀，不動存檔。
- *   - 放 #login-title-layer 而非 #main-menu：桌機寬版是左右分欄(左=標題區、右=按鈕)，
- *     放標題區才會落在「左邊那塊」；手機單欄時標題區在最上、卡片自然落在標題與按鈕之間，
- *     兩種佈局同一個注入點就都對(實測桌機/手機皆不擋按鈕、不破版)。
- *   - #login-title-layer 是上游靜態 DOM(穩定 id)；讀不到才退回 #main-menu。
+ * 卡片插在首頁 #main-menu。純顯示、全程唯讀，不動存檔。
+ *   ⚠ 首頁已改成「只剩開始遊戲」的登入圖：css/style.css 會把 #main-menu 裡開始遊戲以外的東西全藏起來
+ *     → 現在發公告**畫面上看不到**。要再發公告得先在登入圖上規劃位置、並放行 #afk-notice。
  *
  * 掛接：index.html </body> 前 <script src="afk-notice.js">。
  * ========================================================================== */
@@ -40,8 +38,7 @@
 
   function ensureCard() {
     if (document.getElementById('afk-notice')) return;
-    // 左側標題區(桌機=左框、手機=最上)；上游若移除該 id 才退回按鈕欄頂部
-    var host = document.getElementById('login-title-layer') || document.getElementById('main-menu');
+    var host = document.getElementById('main-menu');
     if (!host) return;
     var el = document.createElement('div');
     el.id = 'afk-notice';
@@ -58,7 +55,7 @@
   }
 
   // 只在首頁可見時插卡；每次回到首頁確保還在（比照 afk-quotawarn 的可見性守衛）
-  //   可見性沿用 #main-menu(進遊戲後會被切 .hidden)；卡片本體則掛在標題區。
+  //   可見性沿用 #main-menu(進遊戲後會被切 .hidden)。
   var _wasVisible = false;
   function tick() {
     var menu = document.getElementById('main-menu');

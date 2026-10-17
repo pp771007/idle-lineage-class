@@ -3,13 +3,13 @@
  *
  * 2026-07-10 由外掛 afk-offline.js 移入核心(git mv,歷史保留)。對外相容不變:
  *   - localStorage 鍵沿用 afk_ts_/afk_map_/afk_pride_/afk_obl_/afk_hist_<slot>(玩家零遷移)。
- *   - window.__afk 介面沿用(afk-mobile 用 stamp、afk-slotinfo 用 mapName/capHours、afk-history 用 histKey)。
+ *   - window.__afk 介面沿用(afk-mobile 用 stamp、afk-history 用 histKey)。
  *   - 開機訊息沿用「[AFK] hooks OK」(smoke 檢查認這個前綴)。
  *
  * 設計原則:
  *   - 離線戰鬥直接跑核心 tick()/killMob() 管線,平衡/掉落與在線一致。
  *   - 撞死即停、結算到死亡前(不做不死,避免無敵 exploit);存活則結算後接回原狩獵圖續掛。
- *   - per-slot 心跳:多分頁掛不同角色用各自的 afk_ts_<slot>,互不干擾。
+ *   - per-slot 心跳:每格角色各自的 afk_ts_<slot>,同帳號的角色可以同時離線掛機、各算各的(2026-10-17 取消「一次只掛一隻」)。
  *   - 時間切片 + 進度遮罩,長補跑不凍結頁面。
  *   - 💾 分段檢查點:結算每 ~CKPT_MS 就 saveGame 並把錨點推進到「已結算到的時間點」——
  *     結算中被關頁/重整/系統殺掉,下次載入只補剩下沒算的,整晚收益不再無聲蒸發。
@@ -29,6 +29,10 @@
   if (window.AFK_TOGGLES) AFK_TOGGLES.register({
     id: 'offlinechase', name: '掛機期間遭遇玩家對戰', group: '遊戲玩法', parent: 'offline', def: false,
     desc: '離線掛機也會被記恨你的玩家追殺、被捲入血盟群戰；結算時間會明顯變長'
+  });
+  if (window.AFK_TOGGLES) AFK_TOGGLES.register({
+    id: 'offlinepopup', name: '上線顯示離線收益視窗', group: '遊戲玩法', parent: 'offline', def: true,
+    desc: '關掉就只寫在系統日誌'
   });
   function chaseOn() { return !!(window.AFK_TOGGLES && AFK_TOGGLES.enabled('offlinechase')); }
 
@@ -108,6 +112,9 @@
   // 遺忘之島旅程:原作 saveGame 不存 state.oblivion(且 loadGame 一律回村),同攀登由外掛自己記一份,
   //   登入後還原並接回島上續掛。島/途中地圖(oblivion_island/oblivion_travel)非選單地圖,走 enterOblivionMap 進場(不能用 gotoMap)。
   function readObl()    { try { var s = localStorage.getItem(oblKey()); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+  // 2026-10-16 做過的「同帳號一次只掛一隻」已於 2026-10-17 取消：每格角色各自的錨點互不干擾，都可以離線掛機。
+  //   舊版留在 localStorage 的 afk_end_<格>（停掉別隻用的）不再有作用，載入時順手清掉（見 offlinePreLoad）。
+  function endKey(n)    { return 'afk_end_' + n; }
   // 蓋時間戳(=現在),順手記下「即時所在地圖」(changeMap 不會存檔,光看存檔 blob 會誤判還在村莊)。
   // ⚠ 結算期間(catchingUp)一律跳過:錨點只能由檢查點以「已結算到的時間點」推進——
   //   否則心跳/存檔/落點 changeMap 把錨點蓋成「現在」,結算一被中斷整段離線時間就此蒸發(2026-07-10 修)。
@@ -375,7 +382,7 @@
     } catch (e) { console.warn('[AFK] recordHistory error:', e); }
   }
   // 地圖 id → 顯示名稱(查原作者的 MAP_CATEGORIES);查不到就回 id 本身
-  // 地圖 id → 中文名：統一委派 afk-extradata 共用解析(離線收益摘要 + 選角掛機地點 afk-slotinfo 委派此函式都走這份)。
+  // 地圖 id → 中文名：統一委派 afk-extradata 共用解析(離線收益摘要走這份)。
   //   本檔(核心)比外掛 afk-extradata 早載入,但本函式在「執行期」才被呼叫,屆時 AFK_EXTRA 已就緒;缺了則退回 id。
   function mapName(id) { try { return (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(id) : (id || '?'); } catch (e) { return id || '?'; } }
   // 略過離線結算時,在系統日誌講一句白話原因(先前只寫 console,玩家只看到「載入很快、什麼都沒有」,無從判斷;2026-07-10 加)
@@ -422,6 +429,14 @@
     });
     if (!shown) { try { logSys('（本次攀登無明顯收益）'); } catch (e) {} }
     if (died) { try { logSys('<span class="text-red-500 font-bold">離線攀登中陣亡，已結算至死亡前並送回村莊。</span>'); } catch (e) {} }
+    // 給上線彈窗用的合計(各樓相加;道具同 id 合併)
+    var tot = { gold: 0, exp: 0, lv: 0, items: [], map: '傲慢之塔 ' + fromFloor + ' → ' + reached + ' 樓' }, byId = {};
+    segs.forEach(function (s) {
+      tot.gold += s.gold > 0 ? s.gold : 0; tot.exp += s.exp; tot.lv += s.lv > 0 ? s.lv : 0;
+      s.items.forEach(function (it) { if (byId[it.id]) byId[it.id].d += it.d; else { byId[it.id] = { id: it.id, n: it.n, d: it.d }; tot.items.push(byId[it.id]); } });
+    });
+    tot.items.sort(function (x, y) { return y.d - x.d; });
+    return tot;
   }
   function summarize(before, after, doneTicks, died, huntMap, kingInfo) {
     var mins = Math.round(doneTicks * TICK_MS / 60000);
@@ -490,6 +505,102 @@
       try { logSys('<span class="text-red-500 font-bold">離線期間角色陣亡，進度已結算至死亡前。</span>'); }
       catch (e) { console.log('[AFK] 離線期間陣亡，結算至死亡前。'); }
     }
+    return { gold: dGold, exp: dExp, lv: dLv, items: items, map: mapName(huntMap) };
+  }
+
+  // ----- 🌙 上線彈窗:離線收益一覽(時間/地點/金幣/經驗/升級/擊殺/掉落 + 確認鈕) -----
+  //   系統日誌那份摘要照寫(要回頭查還在);彈窗只是「一進來就看到」。純顯示,不碰存檔。
+  //   門檻 POPUP_MIN_MS:重新整理也會結算那幾秒,每次都跳窗很煩 → 結算不滿 1 分鐘(且沒陣亡)就不跳。
+  var POPUP_MIN_MS = 60 * 1000;
+  function popupOn() { return !window.AFK_TOGGLES || AFK_TOGGLES.enabled('offlinepopup'); }
+  function escH(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function fmtDur(ms) {
+    var m = Math.round(ms / 60000);
+    if (m < 60) return m + ' 分鐘';
+    return Math.floor(m / 60) + ' 小時' + (m % 60 ? ' ' + (m % 60) + ' 分鐘' : '');
+  }
+  function injectResultCSS() {
+    if (document.getElementById('afk-offres-style')) return;
+    var st = document.createElement('style');
+    st.id = 'afk-offres-style';
+    st.textContent = [
+      '#afk-offres{position:fixed;inset:0;top:var(--orig-bar-h,0px);z-index:99990;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.72);font-family:system-ui,"Segoe UI",sans-serif;}',
+      '#afk-offres .or-card{width:min(440px,100%);max-height:calc(100dvh - var(--orig-bar-h,0px) - 32px);display:flex;flex-direction:column;background:linear-gradient(#1c1712,#0e0b08);border:1px solid #8a6a2e;border-radius:10px;box-shadow:0 0 0 1px #000,0 18px 50px rgba(0,0,0,.7),inset 0 0 24px rgba(201,162,77,.08);color:#e8dcc0;overflow:hidden;animation:afkOrIn .22s ease-out;}',
+      '@keyframes afkOrIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}',
+      '#afk-offres .or-head{padding:12px 14px 10px;text-align:center;border-bottom:1px solid #4a3a1c;background:linear-gradient(rgba(201,162,77,.16),transparent);}',
+      '#afk-offres .or-title{font-size:17px;font-weight:bold;color:#f3d48a;letter-spacing:2px;text-shadow:0 1px 2px #000;}',
+      '#afk-offres .or-sub{margin-top:4px;font-size:13px;color:#cdbf9f;}',
+      '#afk-offres .or-sub b{color:#fff3d0;}',
+      '#afk-offres .or-cap{display:inline-block;margin-left:6px;font-size:11px;color:#fcd34d;border:1px solid #b45309;border-radius:5px;padding:0 5px;}',
+      '#afk-offres .or-body{flex:1 1 auto;overflow-y:auto;padding:12px 14px;}',
+      '#afk-offres .or-died{margin-bottom:10px;padding:7px 10px;border:1px solid #991b1b;background:rgba(127,29,29,.35);color:#fca5a5;font-size:13px;font-weight:bold;border-radius:6px;text-align:center;}',
+      '#afk-offres .or-err{margin-bottom:10px;padding:7px 10px;border:1px solid #92400e;background:rgba(120,53,15,.3);color:#fcd34d;font-size:12.5px;border-radius:6px;text-align:center;}',
+      '#afk-offres .or-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;}',
+      '#afk-offres .or-stat{background:rgba(0,0,0,.35);border:1px solid #3a2e17;border-radius:6px;padding:6px 9px;display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:12.5px;color:#a8997a;}',
+      '#afk-offres .or-stat b{font-size:14px;}',
+      '#afk-offres .v-gold{color:#fde047;}#afk-offres .v-exp{color:#c4b5fd;}#afk-offres .v-lv{color:#86efac;}#afk-offres .v-kill{color:#fca5a5;}',
+      '#afk-offres .or-sec{margin:12px 0 6px;font-size:12.5px;color:#d9b866;font-weight:bold;display:flex;align-items:center;gap:6px;}',
+      '#afk-offres .or-sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,#5a4520,transparent);}',
+      '#afk-offres .or-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;}',
+      '#afk-offres .or-it{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;}',
+      '#afk-offres .or-ic{position:relative;width:44px;height:44px;border:1px solid #4a3a1c;border-radius:6px;background:radial-gradient(#2a2216,#120e09);display:flex;align-items:center;justify-content:center;}',
+      '#afk-offres .or-ic img{width:34px;height:34px;object-fit:contain;}',
+      '#afk-offres .or-cnt{position:absolute;right:2px;bottom:0;font-size:11px;font-weight:bold;color:#fff;text-shadow:0 0 2px #000,0 0 2px #000,0 0 2px #000;}',
+      '#afk-offres .or-nm{font-size:11px;line-height:1.25;text-align:center;color:#d6c9ab;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}',
+      '#afk-offres .or-none{color:#8a7d62;font-size:12.5px;text-align:center;padding:6px 0;}',
+      '#afk-offres .or-foot{padding:10px 14px 14px;border-top:1px solid #4a3a1c;display:flex;justify-content:center;}',
+      '#afk-offres .or-ok{min-width:140px;padding:10px 0;font-size:15px;font-weight:bold;letter-spacing:4px;color:#2a1c05;background:linear-gradient(#f6dc94,#c99a3c);border:1px solid #7a5a1c;border-radius:7px;cursor:pointer;box-shadow:0 2px 0 #5a3f10;}',
+      '#afk-offres .or-ok:active{transform:translateY(1px);box-shadow:none;}'
+    ].join('');
+    (document.head || document.documentElement).appendChild(st);
+  }
+  // d = { ms, capped, map, gold, exp, lv, kills, items:[{id,n,d}], died, err }
+  var _popQueue = [];   // 結果視窗還開著時，下一張排隊，前一張按確認才顯示（不互相蓋掉）
+  function showResultPopup(d) {
+    try {
+      if (!d.who) { try { d.who = (player && player.name) || ''; } catch (e) {} }   // 哪一隻的收益（切角色時會連跳兩隻）
+      var old = document.getElementById('afk-offres');
+      if (old && old.parentNode) { _popQueue.push(d); return true; }
+      injectResultCSS();
+      var stats = '';
+      function stat(lbl, cls, v) { stats += '<div class="or-stat"><span>' + lbl + '</span><b class="' + cls + '">' + v + '</b></div>'; }
+      stat('金幣', 'v-gold', '+' + fmt(d.gold > 0 ? d.gold : 0));
+      stat('經驗', 'v-exp', '+' + fmt(d.exp > 0 ? d.exp : 0));
+      if (d.lv > 0) stat('等級', 'v-lv', '+' + d.lv);
+      if (d.kills > 0) stat('擊殺', 'v-kill', fmt(d.kills));
+      var items = (d.items || []).map(function (it) {
+        var db = (typeof DB !== 'undefined' && DB.items) ? DB.items[it.id] : null;
+        var src = '';
+        try { if (db && typeof getIconUrl === 'function') src = getIconUrl(db); } catch (e) {}
+        var cls = itemColorClass(it.id);
+        return '<div class="or-it" title="' + escH(it.n) + ' ×' + fmt(it.d) + '"><div class="or-ic">'
+          + (src ? '<img src="' + escH(src) + '" alt="" onerror="this.style.display=\'none\'">' : '')
+          + '<span class="or-cnt">' + fmt(it.d) + '</span></div><div class="or-nm' + (cls ? ' ' + cls : '') + '">' + escH(it.n) + '</div></div>';
+      }).join('');
+      var box = document.createElement('div');
+      box.id = 'afk-offres';
+      box.innerHTML =
+        '<div class="or-card" role="dialog" aria-modal="true" aria-label="離線掛機結果">' +
+          '<div class="or-head"><div class="or-title">' + (d.who ? escH(d.who) + ' 的' : '') + '離線掛機結果</div>' +
+            '<div class="or-sub"><b>' + escH(fmtDur(d.ms)) + '</b>' + (d.capped ? '<span class="or-cap">已達 ' + CAP_HOURS + ' 小時上限</span>' : '') +
+            '　在 <b>' + escH(d.map || '?') + '</b></div></div>' +
+          '<div class="or-body">' +
+            (d.died ? '<div class="or-died">離線期間陣亡，收益算到死亡前</div>' : '') +
+            (d.err ? '<div class="or-err">結算中途出錯，原因寫在系統日誌</div>' : '') +
+            '<div class="or-stats">' + stats + '</div>' +
+            '<div class="or-sec">獲得道具</div>' +
+            (items ? '<div class="or-items">' + items + '</div>' : '<div class="or-none">沒有撿到道具</div>') +
+          '</div>' +
+          '<div class="or-foot"><button type="button" class="or-ok">確認</button></div>' +
+        '</div>';
+      var layer = null;
+      function hide() { if (box.parentNode) box.parentNode.removeChild(box); layer = null; if (_popQueue.length) { var nx = _popQueue.shift(); setTimeout(function () { showResultPopup(nx); }, 0); } }
+      function close() { if (layer && window.AFK_UI && AFK_UI.closeLayer) AFK_UI.closeLayer(layer); else hide(); }
+      box.querySelector('.or-ok').addEventListener('click', close);
+      document.body.appendChild(box);
+      try { layer = (window.AFK_UI && AFK_UI.openLayer) ? AFK_UI.openLayer(hide) : null; } catch (e) {}
+      return true;
+    } catch (e) { console.warn('[AFK] 離線結果視窗失敗:', e); return false; }
   }
 
   // 切換地圖(關閉 ff 下的 log,switchMap 內部 logSys 會被靜音)
@@ -522,6 +633,7 @@
 
   // ----- 離線補跑(時間切片) ----------------------------------------------
   var catchingUp = false;
+  var _lastCatchup = null;   // 最近一次 runCatchup 的 Promise
   var _gbBlocked = 0;      // 🏴 本次結算擋掉幾次 NPC 血盟群戰(供結算摘要提示玩家)
   var _gbPossible = false; // 本次結算的玩家是否真的處於「會被開團」的處境(每次結算只判一次,見 runCatchup)
   var _settleSeq = 0;   // 本次頁面開啟後跑過幾次結算(連續切角色會累積,用來檢驗「越後面越慢」)
@@ -1359,8 +1471,9 @@
     }
     if (_giDefer) { window.gainItem = _giDefer; _giDefer = null; }   // ⚡ 還原 gainItem(解除強制 deferUi);之後的獲得恢復即時排序/重繪
     try { if (typeof autoSortInventory === 'function') autoSortInventory(); } catch (e) {}   // 結算期間跳過的背包排序,在此統一補一次(內含玩家開關與節流判斷)
-    if (climbSegs && climbSegs.length) summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
-    else summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap, kingInfo);   // 遺忘之島:用實際結束地圖顯示地圖名;軍王之室:附帶擊敗輪數/鑰匙消耗摘要
+    var _sum = null;
+    if (climbSegs && climbSegs.length) _sum = summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
+    else _sum = summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap, kingInfo);   // 遺忘之島:用實際結束地圖顯示地圖名;軍王之室:附帶擊敗輪數/鑰匙消耗摘要
     // ⏱ 結算耗時（＋真模擬/快速事件組成）不再印進遊戲日誌／console，改存進離線掛機紀錄（見 buildHistRec 的 settleMs/simTicks/fastEvents），平常不顯示。
     if (_runErr) {   // 結算中途拋例外 → 把死因印出來(見上方 catch);沒這行的話玩家只看得到「離線掛機 0 分鐘」,完全不知道發生什麼事
       var _eEsc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
@@ -1402,9 +1515,20 @@
     } catch (e) { console.warn('[AFK] 寫離線紀錄失敗:', e); }
     try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
     try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
-    // 手機:離線結算摘要寫在系統日誌,自動打開日誌浮動面板(切到系統)讓玩家一進來就看到
+    // 🌙 上線彈窗(只在真實離線:有 timing;debug forceCatchup 不跳)
+    var _popShown = false;
     try {
-      if (window.__afkm && window.__afkm.isMobile && window.__afkm.isMobile()) {
+      if (_sum && timing && timing.closeTs && popupOn() && (done * TICK_MS >= POPUP_MIN_MS || died)) {
+        _popShown = showResultPopup({
+          ms: done * TICK_MS, capped: ((timing.loginTs || Date.now()) - timing.closeTs) > CAP_MS,
+          map: _sum.map, gold: _sum.gold, exp: _sum.exp, lv: _sum.lv, items: _sum.items,
+          kills: tallySum(killTally || {}), died: !!died, err: !!_runErr
+        });
+      }
+    } catch (e) { console.warn('[AFK] 離線結果視窗失敗:', e); }
+    // 手機:離線結算摘要寫在系統日誌,自動打開日誌浮動面板(切到系統)讓玩家一進來就看到(已跳彈窗就不必)
+    try {
+      if (!_popShown && window.__afkm && window.__afkm.isMobile && window.__afkm.isMobile()) {
         if (window.__afkm.setLog) window.__afkm.setLog('sys');
         if (window.__afkm.openLog) window.__afkm.openLog();
       }
@@ -1455,6 +1579,15 @@
       //   但它不是選單地圖 → setMapSelectors 設不上 → mapState.current 變空 → 空轉、收益歸零(同遺忘之島舊雷)。
       console.info('[AFK] 上次在時空裂痕(時間排名挑戰)中：依設計不自動續、不結算離線收益。');
       skipNote('上次在「時空裂痕」中：時間排名挑戰依設計不結算離線收益（該次挑戰已作廢）。');
+      return;
+    }
+    // ⏸ 天堂M介面的 AUTO 暫停中（afk-lmui 寫 my_autopause_<slot>）：暫停＝不打怪，離線也不該有收益。
+    //   直接讀 localStorage＋開關，不依賴 afk-lmui 有沒有載入；它被關掉時暫停本來就失效，這裡跟著不擋。
+    var _autoPaused = false;
+    try { _autoPaused = localStorage.getItem('my_autopause_' + currentSlot) === '1' && (!window.AFK_TOGGLES || AFK_TOGGLES.enabled('lmui')); } catch (e) {}
+    if (_autoPaused) {
+      console.info('[AFK] 上次離開時 AUTO 是暫停的：不結算離線收益。');
+      skipNote('上次離開時自動戰鬥是暫停的，離線期間沒有收益。');
       return;
     }
     if (savedMap === 'afk_dummy') {
@@ -1508,7 +1641,7 @@
     var ms = Math.min(gap, CAP_MS);
     var ticks = Math.floor(ms / TICK_MS);
     if (ticks <= 0 && !isClimb && !isObl) return;   // 一般圖 gap≈0 直接 no-op;攀登/遺忘之島 gap≈0 仍要回到原地(ticks=0 補跑空轉,落點會 enterPrideFloor/enterOblivionMap)
-    runCatchup(Math.max(0, ticks), ticks > OVERLAY_MIN_TICK, savedMap, prePride, preObl, { closeTs: last, loginTs: now });   // timing → 供寫離線歷史紀錄(done>0 才會真的記)
+    _lastCatchup = runCatchup(Math.max(0, ticks), ticks > OVERLAY_MIN_TICK, savedMap, prePride, preObl, { closeTs: last, loginTs: now });   // timing → 供寫離線歷史紀錄(done>0 才會真的記)
   }
 
   // ----- 核心掛點(loadGame / saveGame / changeMap 直呼;2026-07-10 起不再 monkey-patch) -------
@@ -1528,6 +1661,7 @@
         map = (_pj && _pj.ms && _pj.ms.current) || '';
       } catch (e) {}
     }
+    try { localStorage.removeItem(endKey(currentSlot)); } catch (e) {}   // 舊版「一次只掛一隻」留下的停止記號：已取消，清掉
     return { map: map, ts: readTs(), pride: readPride(), obl: readObl() };
   };
   // js/13 loadGame 成功載入(state.running=true 之後)呼叫:決定要不要結算離線

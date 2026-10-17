@@ -1248,15 +1248,12 @@
             }
             if (typeof DARK_WEAPON_DROPS !== 'undefined') _offlineRollTable(mob, kills, DARK_WEAPON_DROPS, dropMult, loot, false);
             if (typeof DARK_CRYSTAL_DROPS !== 'undefined') _offlineRollTable(mob, kills, DARK_CRYSTAL_DROPS, dropMult, loot, false);
-            if (typeof DRAGON_DROPS !== 'undefined') _offlineRollTable(mob, kills, DRAGON_DROPS, dropBase * party, loot, false);
-            if (typeof WARRIOR_DROPS !== 'undefined') _offlineRollTable(mob, kills, WARRIOR_DROPS, dropMult, loot, false);
-            if (typeof MEM_DROPS !== 'undefined') _offlineRollTable(mob, kills, MEM_DROPS, dropMult, loot, false);
             _offlineRollCards(mob, kills, loot, party);
             if (typeof AREA_BONUS_MAPS !== 'undefined' && AREA_BONUS_MAPS.includes(map) &&
                 typeof AREA_BONUS_ITEMS !== 'undefined') {
                 let worldTree = Array.isArray(player.skills) && player.skills.includes('sk_elf_worldtree');
                 AREA_BONUS_ITEMS.forEach(id => {
-                    let baseRate = id === 'new_item_195' ? (worldTree ? 0.30 : 0.20) : (worldTree ? 0.03 : 0.02);
+                    let _wt = SKILL_FX.sk_elf_worldtree, baseRate = id === 'new_item_195' ? (worldTree ? _wt.gemRateLearned : _wt.gemRate) : (worldTree ? _wt.matRateLearned : _wt.matRate);
                     _offlineGainItem(id, _offlineBinomial(kills, Math.min(1, baseRate * dropMult)), mob, loot);
                 });
             }

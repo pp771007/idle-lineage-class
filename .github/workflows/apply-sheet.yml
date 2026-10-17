@@ -1,0 +1,72 @@
+name: 更新遊戲
+
+# 從 Google 試算表(網址在 sheet-config.json)讀數值 → 檢查 → 產生 js/00y-my-tweaks-data.js
+# → 對齊 ?v= 與 sw 版本 → commit 推上 main → 觸發 Pages 重建。
+# 用法:GitHub → Actions → 「更新遊戲」→ Run workflow。
+# 試算表填錯時不會推任何東西,錯在哪一格會寫在這次執行的摘要頁。
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pages: write
+
+# 與「自動更新版本號」共用同一組:兩支都會推 main,同時跑會互相擠掉
+concurrency:
+  group: push-main
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      # 素材 1GB+ 用不到,只抓程式與腳本
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            js
+            css
+            scripts
+            assets/custom
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安裝轉換工具
+        run: npm install --no-audit --no-fund
+
+      - name: 讀試算表並檢查
+        id: apply
+        run: |
+          node scripts/sheet-apply.mjs
+          # stamp 的版本號含時間,沒變動也會產生差異 → 只有試算表真的改了東西才往下走
+          if git diff --quiet; then echo "changed=no" >> "$GITHUB_OUTPUT"; else echo "changed=yes" >> "$GITHUB_OUTPUT"; fi
+
+      - name: 對齊版本號
+        if: steps.apply.outputs.changed == 'yes'
+        run: |
+          node scripts/stamp-code-versions.mjs
+          node scripts/stamp-sw-version.mjs
+          node scripts/stamp-code-versions.mjs --check
+
+      - name: 上傳
+        id: push
+        if: steps.apply.outputs.changed == 'yes'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "更新遊戲:套用試算表的修改(由 ${{ github.actor }} 觸發)"
+          git pull --rebase origin main
+          git push
+          echo "pushed=yes" >> "$GITHUB_OUTPUT"
+          echo "✅ 已上傳,約 5 分鐘後網站更新。" >> "$GITHUB_STEP_SUMMARY"
+
+      # 機器人推的 commit 不一定會自動觸發 Pages 重建 → 主動要一次
+      - name: 重建網站
+        if: steps.push.outputs.pushed == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || echo "要求重建失敗(可能已在自動重建中),稍後看 Actions 的 pages-build-deployment。"

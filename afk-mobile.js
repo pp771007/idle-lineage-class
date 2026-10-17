@@ -53,7 +53,7 @@
             //   兩層巢狀捲動打架＝滾一下就卡住(使用者回報)。把它的 min-height 改成剛好=讓位後可視高度 → 只剩它單層捲。
             'body.m-mobile #load-select-panel:not(.hidden){ min-height: calc(100dvh - var(--orig-bar-h, 0px)) !important; overscroll-behavior: contain !important; }\n'
             // 選角面板顯示時，讓外層 #creation-screen 完全不捲(它自己會捲)→ 只剩 panel 單層捲，不再兩層打架卡住。
-            + 'body.m-mobile #creation-screen:has(#load-select-panel:not(.hidden)){ overflow: hidden !important; }\n'
+            + 'body.m-mobile.load-select-open #creation-screen{ overflow: hidden !important; }\n'   // load-select-open 由核心 js/10 同步(不用 :has，會讓整頁樣式一直重算)
             //   ① 置中類 Tailwind modal(.fixed.inset-0·flex 置中)：padding 把置中內容夾進安全區(遊戲畫面容器用 id 非這組 class，不受影響)。
             + 'body.m-mobile .fixed.inset-0{ padding-top: var(--orig-bar-h, 0px); padding-bottom: var(--m-nav-h, 0px); }\n'
             //   ② A 型·頂端錨定的浮動窗(倉庫/道具詳情/黑市·NPC)：核心手機把它們釘 top:8px + 100dvh 高、無視橫幅與導覽
@@ -111,38 +111,9 @@
             //   ⑦b 上游 floating-ui.css 給裝備框/倉庫框寫死 touch-action:none(桌機用來讓滑鼠拖曳視窗不被瀏覽器搶手勢)。
             //      祖先只要有一層不允許捏合,整個子樹就縮放不了 → 手機在倉庫裡怎麼捏都沒反應。改成 pinch-zoom:
             //      單指原生捲動照舊關著(拖曳視窗邏輯不受影響),只把兩指縮放放行。
-            + 'body.m-mobile :is(.equipment-window-frame, .warehouse-window-frame){ touch-action: pinch-zoom !important; }\n'
-            // 登入頁：上游用「絕對定位藝術舞台」——#main-menu(top:31%) 與 #login-meta-layer(版權·pin bottom:4%) 各自絕對定位。
-            //   我方往 #main-menu 注入了掉落查詢/小百科/外掛框後它變很高 → 蓋到底部版權層(文字重疊·使用者回報)。
-            //   手機改成「流式堆疊」(DOM 序 title→menu→meta 自然由上而下排)，不再重疊；藝術背景圖 absolute inset:0 照樣鋪滿。
-            + 'body.m-mobile #login-art-stage{ height:auto !important; min-height:100dvh; aspect-ratio:auto !important; display:flex !important; flex-direction:column !important; justify-content:flex-start !important; }\n'
-            + 'body.m-mobile #login-title-layer, body.m-mobile #main-menu, body.m-mobile #login-meta-layer{ position:static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; width:auto !important; transform:none !important; }\n'
-            + 'body.m-mobile #login-title-layer{ margin-top:14px; }\n'
-            + 'body.m-mobile #login-meta-layer{ margin:10px auto 18px !important; text-align:center; }';
+            + 'body.m-mobile :is(.equipment-window-frame, .warehouse-window-frame){ touch-action: pinch-zoom !important; }';
+            // (登入頁不再需要手機專屬規則:首頁改成直式底圖+單一按鈕,桌機手機同一套,見 css/style.css)
         (document.head || document.documentElement).appendChild(st);
-    }
-
-    // 選角畫面（手機直式）：#load-art-stage 是 overflow:hidden 的固定高（1040px）舞台，動作鈕區
-    //   #load-action-panel 絕對定位在 top:854px；選到「有角色」的槽時鈕會變成 4 顆全寬（進入/匯出/刪除/返回）
-    //   ＝222px 高 → 底端 1076px 超出舞台，最後一顆「返回」被裁掉一截。鈕數隨選中槽狀態變動，
-    //   所以用量測撐高（min-height 壓得過 CSS 的 height）而不是寫死一個新高度，上游日後增減鈕也不會再壞。
-    var LOAD_STAGE_PAD = 16;                                        // 撐高後留給底部的呼吸空間
-    var LOAD_MOBILE_MQ = '(max-width: 600px) and (orientation: portrait)';   // 與 css/style.css 那條手機選角規則同條件
-    var _loadMQ = null, _loadRO = null;
-    function fitLoadStage() {
-        var stage = document.getElementById('load-art-stage');
-        var panel = document.getElementById('load-action-panel');
-        if (!stage || !panel) return;
-        if (!_loadMQ) { try { _loadMQ = matchMedia(LOAD_MOBILE_MQ); } catch (e) { return; } }
-        if (!_loadMQ.matches) { stage.style.minHeight = ''; return; }   // 桌機是 aspect-ratio 版面，不可干預
-        stage.style.minHeight = (panel.offsetTop + panel.offsetHeight + LOAD_STAGE_PAD) + 'px';
-    }
-    function watchLoadStage() {
-        var panel = document.getElementById('load-action-panel');
-        if (!panel) return;
-        fitLoadStage();
-        if (_loadRO || typeof ResizeObserver !== 'function') return;
-        try { _loadRO = new ResizeObserver(fitLoadStage); _loadRO.observe(panel); } catch (e) {}
     }
 
     // body.m-mobile：只是「現在是手機」的標記（afk-toast/mobname/diag/skin/training/dograce 靠它做各自的
@@ -155,12 +126,11 @@
     function run() {
         syncMobileClass();
         ensureOffsetStyle();
-        watchLoadStage();
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
     else run();
-    window.addEventListener('resize', function () { syncMobileClass(); fitLoadStage(); });
+    window.addEventListener('resize', function () { syncMobileClass(); });
 
     // ── 底部導覽列 + 浮動日誌（手機外殼）─────────────────────────
     // 上游手機把三欄（#col-left 狀態/隊伍/技能、#col-center 戰鬥/地圖/日誌、#col-right 背包分頁）直向堆疊。
@@ -186,6 +156,10 @@
             'body.m-mobile.mview-left #col-left{display:flex !important;}',
             'body.m-mobile.mview-center #col-center{display:flex !important;}',
             'body.m-mobile.mview-right #col-right{display:flex !important;}',
+            // 戰鬥特效圖層(#vfx-layer:傷害數字、命中/死亡特效)是 position:fixed 掛在 #app-stage,不跟著 #col-center 藏
+            //   → 打怪時切到背包/能力等畫面,特效會浮在那些畫面上。不在戰鬥那一欄就藏起來;用 visibility 不用 display,
+            //   特效動畫照跑、animationend 照觸發,元素照常自己清掉,切回戰鬥不會一次冒出一堆舊特效。
+            'body.m-mobile:not(.mview-center) #vfx-layer{visibility:hidden !important;}',
             // 底部讓位：--m-nav-h=導覽實測高度(含 iPhone safe-area 的 env padding；量測見 applyNavH)。
             //   寫死 60px 在實機 iPhone 會不夠(導覽 ~59px + home 條 safe-area ~34px)→ 清單最後一兩列被蓋。
             'body.m-mobile #game-screen{padding-bottom:calc(8px + var(--m-nav-h,0px)) !important;}',

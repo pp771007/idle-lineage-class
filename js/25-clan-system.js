@@ -21,8 +21,7 @@ const CLAN_BUFF_BY_LEVEL = [
     { hp:150, mp:50, extraDmg:5, extraHit:5, mr:10, magicDmg:5, hpR:10, mpR:10, ac:-5 }
 ];
 const CLAN_CLASS_NAMES = {
-    royal:'王族', knight:'騎士', elf:'妖精', mage:'法師', dark:'黑暗妖精',
-    dragon:'龍騎士', warrior:'戰士', illusion:'幻術士'
+    royal:'王族', knight:'騎士', elf:'妖精', mage:'法師', dark:'黑暗妖精'
 };
 const CLAN_CASTLE_NAMES = { kent:'肯特城', windwood:'風木城', heine:'海音城' };
 const NPC_CLAN_WORLD_COUNT = 20;
@@ -70,7 +69,7 @@ const NPC_CLAN_NAME_CURATED = [
     'NoMercy','OnlyOne','JustPlay','Lineage魂','NeverDie','LastOrder','OneShot','RoyalGuard',
     '夜貓俱樂部','夏夜微光','午後紅茶會','星空下集合','記得帶回卷','今天有出寶','明天再攻城',
     '別問掉寶率','全村的希望','盟主又迷路','補師先別睡','騎士向前衝','妖精站後排','法師沒魔了',
-    '黑妖不隱身','王族在開會','龍騎很忙','戰士喝紅水','幻術都是夢'
+    '黑妖不隱身','王族在開會'
 ];
 const NPC_CLAN_DISSOLVE_REASONS = [
     '內部為了盟倉分配吵到翻桌，成員一夜散光。',
@@ -303,7 +302,7 @@ function _npcClanNormalizeEntry(raw, legacyCombinedWar) {
 function _npcClanNormalizeMembership(raw) {
     if (!raw || typeof raw !== 'object') return null;
     let clanId = raw.clanId == null ? null : String(raw.clanId).slice(0, 64);
-    let avatar = (typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[raw.avatar]) ? raw.avatar : '男戰士';
+    let avatar = (typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[raw.avatar]) ? raw.avatar : '男騎士';
     return {
         clanId:clanId,
         leader:!!raw.leader,
@@ -653,7 +652,7 @@ function npcClanSocialRoster(p) {
         let clan = rec.clanId ? _npcClanById(world, rec.clanId) : null;
         return {
             n:String(name).slice(0, 24),
-            avatar:rec.avatar || '男戰士',
+            avatar:rec.avatar || '男騎士',
             alignmentValue:rec.alignmentValue,
             levelOffset:rec.levelOffset,
             clanId:clan ? clan.id : null,
@@ -1044,7 +1043,7 @@ function npcClanAssignOpponent(entry, opts) {
             rec = {
                 clanId:chosen ? chosen.id : null,
                 leader:false,
-                avatar:(typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[entry.avatar]) ? entry.avatar : '男戰士',
+                avatar:(typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[entry.avatar]) ? entry.avatar : '男騎士',
                 alignmentValue:typeof pvpClampAlignment === 'function' ? pvpClampAlignment(entry.alignmentValue) : Math.max(-32767, Math.min(32767, Math.round(Number(entry.alignmentValue) || 0))),
                 levelOffset:Math.max(-10, Math.min(10, Math.round(Number(entry.levelOffset) || 0))),
                 assignedAt:Date.now()
@@ -1109,7 +1108,7 @@ function npcClanUpdateMemberAlignment(name, alignmentValue, p) {
 function npcClanCreateGroupBattleOpponent(clanId) {
     let entry = typeof pvpCreateRandomOpponent === 'function'
         ? pvpCreateRandomOpponent(null, { skipClanAssign:true })
-        : { n:'敵盟玩家', avatar:'男戰士', alignmentValue:0, levelOffset:0, pvpRandom:true };
+        : { n:'敵盟玩家', avatar:'男騎士', alignmentValue:0, levelOffset:0, pvpRandom:true };
     entry._npcClanBattle = true;
     return npcClanAssignOpponent(entry, { forceClanId:clanId, noLeader:false });
 }
@@ -1241,7 +1240,7 @@ function npcClanGroupBattleFill() {
     if (!npcClanGroupBattleActive() || mapState._npcClanBattleFilling) return;
     mapState._npcClanBattleFilling = true;
     try {
-        let slots = typeof backSlotsActive === 'function' && backSlotsActive() ? 5 : 3;
+        let slots = typeof mobSlotCount === 'function' ? mobSlotCount() : 3;
         for (let i = 0; i < slots; i++) {
             if (!mapState.mobs[i]) spawnMob(i);
         }
@@ -1713,7 +1712,7 @@ function clanDonateDiamonds() {
     let result = _clanAdjustContribution(points);
     if (!result.ok) {
         let refund = window.pandoraAdjustSharedDiamonds(amount);   // 退鑽也可能失敗（共用桶寫入異常）：如實回報，勿讓鑽石默默蒸發
-        alert((result.error || '捐獻失敗。') + ((refund && refund.ok) ? '' : ' 且龍之鑽石退回失敗，請重新整理後於黑市確認鑽石數量。'));
+        alert((result.error || '捐獻失敗。') + ((refund && refund.ok) ? '' : ' 且龍之鑽石退回失敗，請重新整理後確認龍之鑽石數量。'));
         return;
     }
     if (typeof logSys === 'function') logSys(`<span class="text-cyan-300">捐獻 ${amount.toLocaleString()} 顆龍之鑽石，獲得 ${points.toLocaleString()} 貢獻與血盟經驗。</span>`);
@@ -1856,7 +1855,7 @@ function _clanRoleDisplayName(p) {
 
 function _clanBuffText(buff) {
     if (!buff) return '';
-    return `HP +${buff.hp}、MP +${buff.mp}、額外傷害 +${buff.extraDmg}、額外命中 +${buff.extraHit}、魔法防禦 +${buff.mr}、魔法傷害 +${buff.magicDmg}、HP/MP 自然恢復 +${buff.hpR}、防禦 ${buff.ac}`;
+    return `HP +${buff.hp}、MP +${buff.mp}、額外傷害 +${buff.extraDmg}、額外命中 +${buff.extraHit}、魔法防禦 +${buff.mr}、魔攻 +${buff.magicDmg}、HP/MP 自然恢復 +${buff.hpR}、防禦 ${buff.ac}`;
 }
 
 function setClanPanelView(view) {

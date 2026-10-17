@@ -27,7 +27,7 @@
   }
 
   var HIST_RE = /^afk_hist_(\d+)$/;
-  var CLS_NAME = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
+  var CLS_NAME = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', royal: '王族' };
   var FIELD_DEFS = [{ k: 'exp', label: '經驗' }, { k: 'gold', label: '金錢' }, { k: 'items', label: '道具' }, { k: 'kills', label: '擊殺' }, { k: 'perf', label: '結算耗時' }];
 
   // ----- 顯示偏好(存進外掛自己的 afk_hist_prefs 記住,不碰遊戲存檔):看哪個存檔位、排序方式、顯示哪些欄位 -----

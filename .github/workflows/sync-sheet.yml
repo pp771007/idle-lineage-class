@@ -1,0 +1,63 @@
+name: 同步試算表
+
+# 遊戲資料檔有人改了(新增/刪除物品、怪物…)→ 把 Google 試算表重做成對得上新遊戲的版本,直接蓋回雲端硬碟(網址不變)。
+#   試算表裡「已經改了、還沒按更新遊戲」的內容與 my_ 新物品都保留(scripts/sheet-rebuild.mjs)。
+#   比對基準＝試算表自己記的「匯出時的遊戲版本」(使用說明分頁最後一列),所以不會把別人剛改的數值當成舊值寫回去。
+# 需要 GitHub Secret「GDRIVE_SA_KEY」(Google 服務帳戶 JSON),且試算表已共用給該服務帳戶(編輯者)。
+# 也可以在 Actions 頁手動按 Run workflow(例如第一次設定好之後測試)。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/00-data.js'
+      - 'js/01-drops-config.js'
+      - 'js/11-world-map.js'
+      - 'scripts/sheet-*.mjs'   # 試算表工具改了(新分頁/新欄位)也重做一次，大家不用手動換檔
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-sheet
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # 要用到舊版本的資料檔來比對 → 抓完整歷史,但不下載用不到的大檔(blob:none,用到才補抓)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          sparse-checkout: |
+            js
+            scripts
+            assets/custom
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安裝轉換工具
+        run: npm install --no-audit --no-fund
+
+      - name: 下載目前的試算表
+        run: |
+          id=$(node -e "const c=require('./sheet-config.json');const m=String(c.googleSheet||'').match(/\/d\/([\w-]{20,})/);if(!m)process.exit(1);console.log(m[1])")
+          curl -sfL -o current.xlsx "https://docs.google.com/spreadsheets/d/$id/export?format=xlsx"
+          head -c 2 current.xlsx | grep -q PK || { echo "讀不到試算表:請確認共用設成「知道連結的任何人可以檢視」。" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; }
+
+      - name: 重做試算表
+        run: |
+          node scripts/sheet-rebuild.mjs current.xlsx rebuilt.xlsx | tee rebuild.log
+          { echo '```'; grep -E '比對基準|拿掉的列|^  ' rebuild.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 蓋回雲端硬碟
+        env:
+          GDRIVE_SA_KEY: ${{ secrets.GDRIVE_SA_KEY }}
+        run: |
+          if [ -z "$GDRIVE_SA_KEY" ]; then echo "還沒設定 GitHub Secret「GDRIVE_SA_KEY」,沒辦法更新雲端硬碟。" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
+          node scripts/sheet-upload.mjs rebuilt.xlsx | tee -a "$GITHUB_STEP_SUMMARY"

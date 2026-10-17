@@ -253,7 +253,7 @@
     b.id = 'm-bav-entry'; b.type = 'button';
     // col-span-2:那一排勾選框是 grid-cols-2,不佔滿兩欄的話按鈕會被塞進單一窄格、文字折成好幾行。
     //   (上游自己的「弓箭耗盡自動購買」那列也是這樣佔滿;此 class 在 index.html 已字面出現過＝預建置 css 裡有)
-    b.className = 'm-bav-entrybtn col-span-2';
+    b.className = 'm-bav-entrybtn';   // 佔一欄：右邊那格放「寵物自動復活」
     b.addEventListener('click', openPanel);
     host.parentElement.insertBefore(b, host.nextSibling);
     syncButton();

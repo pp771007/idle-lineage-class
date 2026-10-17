@@ -6,9 +6,11 @@
     <style>:root{color-scheme:dark}</style>
     <!-- afk-toggles 必須最先載入：外掛開關中樞（逃生門，自己不可被關；某支外掛壞掉時玩家關掉它就能用原版繼續玩） -->
     <script src="afk-toggles.js"></script>
+    <!-- afk-forcemobile：一律使用手機版面(已鎖定、無開關)——寬螢幕導去 phone.html（手機寬 iframe 包 index.html）；緊接 afk-toggles，越早導走外層白跑越少 -->
+    <script src="afk-forcemobile.js"></script>
     <!-- afk-banner：非官方轉載橫幅讓位（基礎設施、無開關；不可掛在 afk-mobile 裡，玩家關掉手機版面就會整個頂端被蓋住） -->
     <script src="afk-banner.js"></script>
-    <!-- afk-nobanner：隱藏非官方橫幅（預設關；只藏不刪＝不跟 gameLoop 的重掛打架，確認過才生效） -->
+    <!-- afk-nobanner：隱藏非官方橫幅（已鎖定一律隱藏、無開關） -->
     <script src="afk-nobanner.js"></script>
     <!-- 存檔解壓快取：必須排在所有會讀 localStorage 的外掛之前（核心每殺一隻怪都重解壓一次血盟狀態） -->
     <script src="afk-lzcache.js"></script>
@@ -34,10 +36,8 @@
     <!-- afk-petui：手機寵物保管面板改兩排（純 CSS，只在窄畫面生效） -->
     <script src="afk-petui.js"></script>
     <!-- 資訊頁 / 查詢頁 -->
-    <script src="afk-slotinfo.js"></script>
-    <script src="afk-loadslots.js"></script>
-    <script src="afk-dex.js"></script>
-    <script src="afk-wiki.js"></script>
+    <script src="afk-dexload.js"></script>
+    <template id="afk-lazy-dex" data-file="afk-dex.js"></template>
     <!-- 設定選單 / 存檔 / 診斷 / 離線紀錄 -->
     <script src="afk-storage.js"></script>
     <!-- 整包備份／還原（本機檔案）：入口掛在 afk-storage 的設定選單裡，必須排在它之後 -->
@@ -62,14 +62,6 @@
     <script src="afk-mercguard.js"></script>
     <!-- 傭兵技能清單即時更新：隊伍面板 skill 分頁的重建簽章沒把技能清單算進去，傭兵換了授予技能的裝備/學了新魔法，下拉停在舊清單 -->
     <script src="afk-squadsync.js"></script>
-    <!-- 遠古系裝備的來源與傳承：上游是「絕版」(rollAffixesNew 恆回 anc:false)，這裡把產生管道接回來（金卡怪掉落／該分類收滿後的非打怪取得），並讓製作/精煉把本體的詞綴帶到成品（上游只替祝福做了這件事） -->
-    <script src="afk-ancdrop.js"></script>
-    <!-- 重複的遺物會帶詞綴：遺物收集冊已收錄的那件，之後再打到的每一件各自 50% 擲祝福／遠古系／屬性（屬性只上武器遺物）。需核心補丁 11 的 __afkRelicAffix 鉤子 -->
-    <script src="afk-relicaffix.js"></script>
-    <!-- 遺物整理：重複的遺物一次清掉（賣金幣走核心 getSellPrice／回收換龍鑽 3 顆一件）；每個遺物 id 自動保留最好的 1 件（布告欄搜尋的抽獎池看的是「你現在手上有沒有」，全清掉會搜回剛丟的那件）。排在 afk-relicaffix 之後＝在最外層包 renderRelicBook，入口不會被它的說明行擠掉 -->
-    <script src="afk-relicbatch.js"></script>
-    <!-- 黑市收購價提示：收購欄下方即時顯示必中價/命中率/平均要等多久（遊戲只能靠掛單試）；也開 AFK_BM 給 afk-dex 的物品詳情標價 -->
-    <script src="afk-bmprice.js"></script>
     <!-- 只迴避指定頭目：把上游「迴避頭目(瞬移卷軸)」的範圍從「全部的王」縮小到玩家挑的那幾隻（每張地圖各自一份） -->
     <script src="afk-bossavoid.js"></script>
     <script src="afk-bossring.js"></script>
@@ -79,6 +71,8 @@
     <script src="afk-npclist.js"></script>
     <!-- afk-npclabel：村莊 NPC 名牌不要跑出畫面（包核心的名牌排版，補左右夾邊） -->
     <script src="afk-npclabel.js"></script>
+    <!-- afk-townmap：說話之島村莊換成會動的地圖、角色自己走（包 renderTownNPCMap；排在 npclist 之後＝最外層，NPC 藏不藏已定） -->
+    <script src="afk-townmap.js"></script>
     <script src="afk-mobname.js"></script>
     <script src="afk-trackinfo.js"></script>
     <!-- afk-trackmaps：追蹤選單補上選不到的圖（黑暗妖精聖地＝地獄奴隸唯一產地、傲慢之塔2~10樓、六張隱藏區域）；三批來歷不同,檔頭有表 -->
@@ -89,7 +83,6 @@
     <!-- 快速強化目標上限 +12→+15（包 buildQuickEnhanceHeader 補下拉選項） -->
     <script src="afk-enhtarget.js"></script>
     <!-- 試煉重複挑戰：已完成的職業試煉可重置再刷（包 trialQHTML/build50TrialHTML） -->
-    <script src="afk-retrial.js"></script>
     <!-- 碧恩賦予屬性一鍵衝到指定階段/星數（包 renderBianAttr，批次呼叫 doBianAttr） -->
     <script src="afk-attrbatch.js"></script>
     <!-- 詛咒卷軸一鍵弱化＋補回滿強化裝備的入口（包 openModal，批次呼叫 executeCurseDeEnhance） -->
@@ -100,7 +93,11 @@
     <script src="afk-battlebuffs.js"></script>
     <!-- 手機戰鬥框下方的主動技能列：排在 afk-battlebuffs 之後 → 插入時看得到 #m-battle-buffs，才排得到它上面（那支關掉就直接接戰鬥框） -->
     <script src="afk-skillbar.js"></script>
+    <!-- afk-lmui：天堂M風格介面（afk-mobile 子選項）——戰鬥滿版＋浮動 HUD／技能列／聊天框、導覽列圖示化；排在 afk-skillbar 之後 -->
+    <script src="afk-lmui.js"></script>
     <script src="afk-toast.js"></script>
+    <!-- 點視窗外空白處＝關閉最上面那個視窗（走視窗自己的關閉路徑） -->
+    <script src="afk-tapclose.js"></script>
     <!-- 手機長按 .tip-host 顯示原版資料框（倉庫清單由 afk-warehouse 自理，故排在它之前無妨） -->
     <script src="afk-touchtip.js"></script>
     <!-- 關閉物品懸停資訊框（預設關;嫌 hover 擋路的人自行開啟;不印 hooks OK 故不在 smoke need 內） -->
@@ -109,12 +106,11 @@
     <script src="afk-dollcursor.js"></script>
     <!-- afk-anyclass：去除裝備職業限制（預設關）——包 checkCanEquip，執行期間暫時放行職業那幾關 -->
     <script src="afk-anyclass.js"></script>
-    <!-- afk-locksafe：上鎖的裝備不會被潘朵拉收購/遺物布告欄拿走（包入口，執行期間把上鎖物品從背包暫時抽掉） -->
-    <script src="afk-locksafe.js"></script>
-    <!-- afk-buyercompat：收購 NPC 向下兼容（收 +6 也可以繳 +15）——需搭配 apply-core-patches 補丁 13 的 __afkBuyerEnMatch 鉤子；排在 afk-locksafe 之後＝在最外層，算候選時看得到完整背包 -->
-    <script src="afk-buyercompat.js"></script>
+    <!-- afk-norelic：隱藏遺物系統——遺物不再掉落/販售/製作/抽到，收藏遺物冊與黑市遺物布告欄隱藏；已擁有的不動 -->
+    <script src="afk-norelic.js"></script>
+    <!-- afk-noblackmarket：黑市永久關閉（已鎖定、無開關）——村莊潘朵拉、地圖面板黑市鈕、世界頻道黑市跑馬燈都藏起來並擋下 -->
+    <script src="afk-noblackmarket.js"></script>
     <!-- 傳統模式(偽)/自動衝裝：需搭配 scripts/apply-core-patches.mjs 的 gainItem _tEn 鉤子 -->
-    <script src="afk-traditional.js"></script>
     <script src="afk-warehouse.js"></script>
     <!-- 倉庫批次存取(預設關):勾選/全選一次搬完(核心是一件一件搬、每件都 saveGame,幾千格搬不動);排在 afk-warehouse 之後 → afterRender 在它的注入之後才跑 -->
     <script src="afk-whbatch.js"></script>

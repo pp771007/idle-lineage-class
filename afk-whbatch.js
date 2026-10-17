@@ -9,7 +9,7 @@
  * 作法(不改核心·全部走核心自己的交易保護):
  *   進「批次模式」後點清單=勾選(不搬移),按執行才一次搬完:
  *     whTxnSnapshot() → 迴圈搬 N 件 → whTxnCommit() 一次 → 重繪一次。
- *   這正是核心 whOneClickDeposit(js/12:393) 的既有模式,只是改由玩家勾選要搬哪些。
+ *   (原本照的是核心 whOneClickDeposit 的模式;那支已隨「一鍵存入」拿掉)
  *   ⚠️ 合併/uid 換發/廢品旗標/收集冊登錄/倉庫上限 全部逐條比照核心 whDeposit/whWithdraw,
  *      不自己另立規則(唯一差別:批次一律「整疊」搬,不看「數量」欄)。
  *
@@ -264,7 +264,8 @@
             var d = defs[i];
             var list = document.getElementById(d.id); if (!list) continue;
             var bar = document.getElementById('afk-whb-bar-' + d.side);
-            if (!_batch) { if (bar) bar.remove(); continue; }
+            // 倉庫面板一次只顯示一個分頁(倉庫/背包),另一份清單 display:none → 它的工具列也不放
+            if (!_batch || list.style.display === 'none') { if (bar) bar.remove(); continue; }
             if (!bar) {
                 bar = document.createElement('div');
                 bar.id = 'afk-whb-bar-' + d.side;
@@ -317,15 +318,15 @@
     }
 
     function injectToggle() {
-        var anchor = document.querySelector('button[onclick*="sortWarehouse"]');
+        // 排在搜尋框後面(倉庫／背包兩個分頁都有)
+        var anchor = document.getElementById('wh-search-input');
         if (!anchor || document.getElementById('afk-whb-toggle')) return;
         var b = document.createElement('button');
         b.id = 'afk-whb-toggle';
         b.type = 'button';
         b.textContent = '🗂️ 批次';
-        b.className = 'btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center';
+        b.className = 'whx-btn';
         b.title = '批次模式：點清單只勾選不搬移，勾完按「批次存入／取出」一次搬完（整疊）。搬幾百格也只存檔一次，比一件一件點快得多。';
-        b.setAttribute('style', 'background: linear-gradient(135deg, #164e63 0%, #0e7490 28%, #0c3f52 52%, #0891b2 76%, #082f3d 100%); color: #cffafe; border-color: #06b6d4;');
         if (_batch) b.classList.add('on');
         b.addEventListener('click', function () {
             _batch = !_batch;

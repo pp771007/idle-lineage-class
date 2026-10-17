@@ -11,6 +11,7 @@
  *   4. js/sfx-index.js 與 assets/sfx|bgm 對不上 → 新音檔安靜失效
  *   5. 某支 js/css/afk-*.js 的 `?v=` 沒對齊內容 → 玩家拿到新舊混搭(低機率、無法重現)
  *   6. 核心補丁沒套上 → 依賴補丁的外掛安靜失效
+ *   7. CSS 用 :has() 看 .hidden → 手機戰鬥中整頁樣式一直重算、卡頓(scripts/check-css-has.mjs)
  *
  * 任一不過 → exit 2 擋下 git push,並把要修什麼印到 stderr 給 Claude。
  * 非 git push 的指令一律放行(exit 0)。
@@ -117,12 +118,14 @@ try {
   }
 } catch {}
 
-// ── 5+6+7. 直接跑既有的 --check 腳本(?v= 對齊 / 核心補丁就位 / 外掛 DOM 錨點還在)──
+// ── 5+6. 直接跑既有的 --check 腳本(?v= 對齊 / 外掛 DOM 錨點還在)──
 //   都是「漏跑會安靜壞掉、且腳本自己就會判」的東西,不要在這裡重刻一份算法。
+//   ⚠️ 2026-10-11 起不再同步上游、核心檔可直接改 → 拿掉「核心補丁就位」檢查(apply-core-patches --check):
+//      直接改到補丁附近的原文就會讓它誤判失敗、擋住正常的 push。
 for (const [script, why] of [
   ['scripts/stamp-code-versions.mjs', '先跑「node scripts/stamp-code-versions.mjs」再 push,否則玩家會拿到新舊混搭'],
-  ['scripts/apply-core-patches.mjs', '先跑「node scripts/apply-core-patches.mjs」再 push,否則靠補丁的外掛會安靜失效'],
   ['scripts/check-dom-ids.mjs', '跑「node scripts/check-dom-ids.mjs」看是哪個 id,改錨到還存在的元素——getElementById 拿到 null 不報錯,那段功能會安靜消失'],
+  ['scripts/check-css-has.mjs', '跑「node scripts/check-css-has.mjs」看是哪條,把那個元素加進 js/10 syncViewStateClasses 的 MAP、CSS 改讀 body class——否則手機戰鬥會一直卡頓'],
 ]) {
   if (!existsSync(resolve(ROOT, script))) continue;
   const r = spawnSync(process.execPath, [resolve(ROOT, script), '--check'], { cwd: ROOT, encoding: 'utf8' });

@@ -101,6 +101,32 @@
     // ── 首頁設定面板 ──
     window.AFK_SETTINGS = window.AFK_SETTINGS || { _items: [], add: function (it) { this._items.push(it); } };
     AFK_SETTINGS.add({ label: '🔋 省電模式', onClick: openPanel });
+
+    // ── 遊戲中入口：設定頁「🔌 外掛」列 ──
+    //   首頁改成只剩「開始遊戲」後，上面那個首頁選單已經點不到 → 遊戲中要有自己的入口。
+    //   與 afk-dexload / afk-training 同一列、同一份 markup(誰先載入誰建列)。
+    function injectAutoNav() {
+        var panel = document.getElementById('tab-automation');
+        if (!panel) { console.warn('[AFK-powersave] 找不到 #tab-automation,遊戲中入口停用。'); return; }
+        var row = document.getElementById('m-afk-navrow');
+        if (!row) {
+            row = document.createElement('div');
+            row.id = 'm-afk-navrow';
+            row.className = 'bg-slate-800 p-3 rounded-lg border border-slate-700';
+            row.innerHTML = '<div class="text-sm text-amber-400 mb-2 border-b border-slate-700 pb-1 font-bold">🔌 外掛</div>' +
+                '<div id="m-afk-navrow-btns" style="display:flex;gap:8px;"></div>';
+            panel.appendChild(row);
+        }
+        if (document.getElementById('m-afk-nav-psave')) return;
+        var b = document.createElement('button');
+        b.id = 'm-afk-nav-psave'; b.type = 'button';
+        b.className = 'btn py-2 text-sm bg-slate-700 hover:bg-slate-600 border-slate-500';
+        b.style.flex = '1';
+        b.textContent = '🔋 省電模式';
+        b.addEventListener('click', openPanel);
+        row.querySelector('#m-afk-navrow-btns').appendChild(b);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectAutoNav); else injectAutoNav();
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
     // ── 原版本來就有的四個開關,收進同一個面板 ─────────────────────

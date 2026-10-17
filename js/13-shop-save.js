@@ -22,7 +22,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     elf_forest: 'assets/area/森林.jpg', zone_01: 'assets/area/森林.jpg', mirror_forest: 'assets/area/森林.jpg',   // 🌲 妖魔森林/妖精森林周邊/鏡子森林（野外·共用森林背景）
     zone_15: 'assets/area/洞窟.jpg', zone_16: 'assets/area/洞窟.jpg',   // 🕳️ 眠龍洞穴1~2樓
     zone_17: 'assets/area/龍之谷地監深層.jpg',   // 🐉 眠龍洞穴3樓（改龍之谷地監深層·area-fit）
-    zone_22: 'assets/area/洞窟.jpg', zone_23: 'assets/area/洞窟.jpg', zone_24: 'assets/area/洞窟.jpg', zone_25: 'assets/area/洞窟.jpg',   // 🕳️ 沙漠地監1~4樓
+    zone_22: 'assets/area/洞窟.jpg', zone_23: 'assets/area/洞窟.jpg', zone_24: 'assets/area/洞窟.jpg', zone_25: 'assets/area/洞窟.jpg',   // 🕳️ 騎士洞穴1~4樓（2026-10-14 站長：原名沙漠地監）
     zone_26: 'assets/area/洞窟.jpg', zone_27: 'assets/area/洞窟.jpg', zone_28: 'assets/area/洞窟.jpg',   // 🕳️ 龍之谷地監1~3樓
     zone_29: 'assets/area/龍之谷地監深層.jpg', zone_30: 'assets/area/龍之谷地監深層.jpg', zone_31: 'assets/area/龍之谷地監深層.jpg',   // 🐉 龍之谷地監4~6樓（改深層·area-fit）
     zone_32: 'assets/area/洞窟.jpg',   // 🐜 螞蟻洞窟1樓（共用洞窟背景）
@@ -87,7 +87,7 @@ const TOWN_AREA_BG = { village: 'village.png', castle: 'castle.png', tower: 'Tow
 // 🖼️ v3.2.80 高解析場景圖：assets/area/1920x1080/<名>.jpg＝新一批 1920×1080(16:9)全景圖。
 //   AREA_1920＝目前資料夾內既有檔名(單一真相·同步判定·無探測閃爍)。狩獵區同名圖＋fallback 圖，凡名稱在此集合者一律優先取 1920x1080 版；安全區走下方 TOWN_BG_1920 逐城對應。
 //   ⚠️日後新增 assets/area/1920x1080/ 的圖，檔名(不含 .jpg)務必加進本集合才會被採用（否則退回舊 assets/area/ 或分類 fallback）。
-const AREA_1920 = new Set(['亞丁城鎮','伊娃王國','傲慢之塔','傲慢之塔11~20樓','傲慢之塔1樓','傲慢之塔21~30樓','傲慢之塔2~10樓','傲慢之塔31~40樓','傲慢之塔41~50樓','傲慢之塔51~60樓','傲慢之塔61~70樓','傲慢之塔71~80樓','傲慢之塔81~90樓','傲慢之塔91~100樓','冥法軍王之室','冥法軍訓練場','古代巨人之墓','古魯丁','古魯丁地監1樓','古魯丁地監2樓','古魯丁地監3樓','古魯丁地監4樓','古魯丁地監5樓','古魯丁地監6樓','古魯丁地監7樓','國境要塞','地下通道1樓','地下通道2樓','地下通道3樓','地監','地監深層','城鎮周邊','夢幻之島','大洞穴隱遁者村莊地區','奇岩','奇岩地監1樓','奇岩地監2樓','奇岩地監3樓','奇岩地監4樓','奇岩城鎮','妖精森林周邊','妖精森林村莊','妖魔森林','威頓村莊','安塔瑞斯','安塔瑞斯棲息地','巴拉卡斯','巴拉卡斯巢穴','希培利亞','席琳神殿','底比斯','底比斯 歐西里斯祭壇','底比斯 沙漠','底比斯 金字塔內部','底比斯沙漠','拉斯塔巴德','拉斯塔巴德地下洞穴1樓','拉斯塔巴德地下洞穴2樓','拉斯塔巴德地下洞穴3樓','拉斯塔巴德正門','提卡爾 庫庫爾坎祭壇','提卡爾神廟地區','提卡爾神廟地區深處','新兵修練場','時空裂痕入口','暗影神殿','暗殺軍王之室','村莊周邊','格蘭肯神殿．長老之室','森林','歐瑞','歐瑞村莊','歐瑞雪原','歐瑞雪壁','水晶洞穴','水晶洞穴1樓','水晶洞穴2樓','水晶洞穴3樓','沉默洞穴','沉默洞穴周邊','沙漠','沙漠地監1樓','沙漠地監2樓','沙漠地監3樓','沙漠地監4樓','法令軍王之室','法利昂','法利昂洞穴','洞窟','海賊島','海賊島地監','海賊島村莊','海音','海音城鎮','火龍窟','炎魔謁見所','燃柳村莊','眠龍洞穴1樓','眠龍洞穴2樓','眠龍洞穴3樓','精靈墓穴','肯特','艾爾摩','艾爾摩激戰地','荒野','螞蟻洞穴1樓','螞蟻洞穴2樓','螞蟻洞窟1樓','螞蟻洞窟2樓','說話之島周邊','說話之島地監1樓','說話之島地監2樓','說話之島村莊','說話之島港口','象牙塔','象牙塔4樓','象牙塔5樓','象牙塔6樓','象牙塔7樓','象牙塔8樓','象牙塔深層','象牙塔（1~3樓）','貝希摩斯','軍王之室','遺忘之島','銀騎士地區','銀騎士村莊','鏡子森林','風木','魔族神殿','魔獸訓練場','魔獸軍王之室','黃昏山脈','黑魔法研究室','龍之谷','龍之谷地監1樓','龍之谷地監2樓','龍之谷地監3樓','龍之谷地監4樓','龍之谷地監5樓','龍之谷地監6樓','龍之谷地監深層']);
+const AREA_1920 = new Set(['亞丁城鎮','伊娃王國','傲慢之塔','傲慢之塔11~20樓','傲慢之塔1樓','傲慢之塔21~30樓','傲慢之塔2~10樓','傲慢之塔31~40樓','傲慢之塔41~50樓','傲慢之塔51~60樓','傲慢之塔61~70樓','傲慢之塔71~80樓','傲慢之塔81~90樓','傲慢之塔91~100樓','冥法軍王之室','冥法軍訓練場','古代巨人之墓','古魯丁','古魯丁地監1樓','古魯丁地監2樓','古魯丁地監3樓','古魯丁地監4樓','古魯丁地監5樓','古魯丁地監6樓','古魯丁地監7樓','國境要塞','海音地監1樓','海音地監2樓','海音地監3樓','地監','地監深層','城鎮周邊','夢幻之島','大洞穴隱遁者村莊地區','奇岩','奇岩地監1樓','奇岩地監2樓','奇岩地監3樓','奇岩地監4樓','奇岩城鎮','妖精森林周邊','妖精森林村莊','妖魔森林','威頓村莊','安塔瑞斯','安塔瑞斯棲息地','巴拉卡斯','巴拉卡斯巢穴','席琳神殿','底比斯','底比斯 歐西里斯祭壇','底比斯 沙漠','底比斯 金字塔內部','底比斯沙漠','拉斯塔巴德','拉斯塔巴德地下洞穴1樓','拉斯塔巴德地下洞穴2樓','拉斯塔巴德地下洞穴3樓','拉斯塔巴德正門','提卡爾 庫庫爾坎祭壇','提卡爾神廟地區','提卡爾神廟地區深處','新兵修練場','時空裂痕入口','暗影神殿','暗殺軍王之室','村莊周邊','格蘭肯神殿．長老之室','森林','歐瑞','歐瑞村莊','歐瑞雪原','歐瑞雪壁','水晶洞穴','水晶洞穴1樓','水晶洞穴2樓','水晶洞穴3樓','沉默洞穴','沉默洞穴周邊','沙漠','騎士洞穴1樓','騎士洞穴2樓','騎士洞穴3樓','騎士洞穴4樓','法令軍王之室','法利昂','法利昂洞穴','洞窟','海賊島','海賊島地監','海賊島村莊','海音','海音城鎮','火龍窟','炎魔謁見所','燃柳村莊','眠龍洞穴1樓','眠龍洞穴2樓','眠龍洞穴3樓','精靈墓穴','肯特','艾爾摩','艾爾摩激戰地','荒野','螞蟻洞穴1樓','螞蟻洞穴2樓','螞蟻洞窟1樓','螞蟻洞窟2樓','說話之島周邊','說話之島地監1樓','說話之島地監2樓','說話之島村莊','說話之島港口','象牙塔','象牙塔4樓','象牙塔5樓','象牙塔6樓','象牙塔7樓','象牙塔8樓','象牙塔深層','象牙塔（1~3樓）','軍王之室','遺忘之島','銀騎士地區','銀騎士村莊','鏡子森林','風木','魔族神殿','魔獸訓練場','魔獸軍王之室','黃昏山脈','黑魔法研究室','龍之谷','龍之谷地監1樓','龍之谷地監2樓','龍之谷地監3樓','龍之谷地監4樓','龍之谷地監5樓','龍之谷地監6樓','龍之谷地監深層']);
 AREA_1920.add('古魯丁村莊');
 AREA_1920.add('決鬥競技場');
 ['肯特外門區','肯特內城','風木外門區','風木內城','海音外門區','海音內城','時空裂痕戰場','日出之國城墎','日出之國東之地','日出之國西之地','日出之國北之地'].forEach(name => AREA_1920.add(name));
@@ -99,8 +99,8 @@ const TOWN_BG_1920 = {
     town_aden: '亞丁城鎮', town_giran: '奇岩城鎮', town_heine: '海音城鎮', town_oren: '歐瑞村莊',
     town_kent_castle: '肯特城', town_windwood_castle: '風木城', town_heine_castle: '海音城',
     town_elf: '妖精森林村莊', town_talking: '說話之島村莊', town_gludio: '燃柳村莊', town_gludin: '古魯丁村莊', town_witon: '威頓村莊',
-    town_hyperia: '希培利亞', town_silver_knight: '銀騎士村莊', town_ivory_tower: '象牙塔（1~3樓）',
-    town_sherine: '席琳神殿', town_silent: '沉默洞穴', town_behemoth: '貝希摩斯', town_flame_audience: '炎魔謁見所',
+    town_silver_knight: '銀騎士村莊', town_ivory_tower: '象牙塔（1~3樓）',
+    town_sherine: '席琳神殿', town_silent: '沉默洞穴', town_flame_audience: '炎魔謁見所',
     town_pride: '傲慢之塔1樓', town_rift: '時空裂痕入口', town_pirate_village: '海賊島村莊',
     town_elder_council: '長老會議廳'   // 🌑 v3.3.33 黑暗妖精聖地樞紐安全區
 };
@@ -203,19 +203,33 @@ let _currentShopNpc = ''; // 用來記住目前是哪位商人
 
 // 根據 NPC ID 取得該商人販售的所有物品
 const SHOP_LISTS = {
-    npc_boni: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle'],   // 🏴‍☠️ 波尼（海賊島村莊 雜貨商人）·🚫 v3.2.17 肉已移除
+    npc_boni: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','pet_whistle','lantern','wpn_5','wpn_22','candle'],   // 🏴‍☠️ 波尼（海賊島村莊 雜貨商人）·🚫 v3.2.17 肉已移除
     npc_linda: ['bk_elf_mr','bk_elf_mind','bk_elf_worldtree','bk_elf_purify','bk_elf_firewpn','bk_elf_windshot','bk_elf_earthguard','bk_elf_eleres','bk_elf_singleres'],
     npc_bayes: ['bk_fireball','bk_vampire','bk_rock_prison','bk_thunder','bk_ice_spike','bk_bless_wpn'],
     npc_gilen: ['bk_heal1','bk_sunlight','bk_shield','bk_lightarrow','bk_teleport','bk_icearrow','bk_windblade','bk_holy_wpn','bk_antidote','bk_cold_shiver','bk_poison_curse','bk_ench_wpn','bk_reveal','bk_load_up','bk_firearrow','bk_hell_fang','bk_heal_mid','bk_shield2','bk_energy_sense','bk_chill','bk_aurora','bk_dark_blind','bk_undead_bane'],
     npc_vangil: ['arm_103','arm_105','arm_108','arm_42','arm_43','hlm_mr','arm_68','arm_66','arm_67','amr_robe','arm_65','arm_63','arm_69','arm_60','arm_61','arm_62','amr_plate'],
     npc_evert: ['new_item_189','new_item_188','new_item_187'],
     npc_wino: ['wpn_shortsword','wpn_9','wpn_scimitar','wpn_37','wpn_invader','wpn_longsword','wpn_damascus','wpn_silversword','wpn_2hsword','wpn_katana','wpn_10','wpn_13','wpn_1','wpn_battleaxe','wpn_19','wpn_38','wpn_20','wpn_silveraxe','wpn_witchwand','wpn_18','wpn_giantaxe','wpn_28','wpn_14','wpn_6','wpn_3','wpn_17','wpn_15','wpn_7','wpn_21','wpn_16','wpn_halberd','wpn_12'],
-    npc_skvati: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle','wpn_claw_bronze','wpn_claw_steel','wpn_claw_shadow','wpn_claw_damascus','wpn_dual_bronze','wpn_dual_steel','wpn_dual_shadow','wpn_dual_damascus'],
+    npc_skvati: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','pet_whistle','lantern','wpn_5','wpn_22','candle','wpn_claw_bronze','wpn_claw_steel','wpn_claw_shadow','wpn_claw_damascus','wpn_dual_bronze','wpn_dual_steel','wpn_dual_shadow','wpn_dual_damascus'],
     npc_saedia: ['bk_dark_str','bk_dark_mrup','bk_dark_stealth','bk_dark_poison','bk_dark_refine','bk_dark_dex','bk_dark_poisonres','bk_dark_burn','bk_dark_walkhaste'],
-    npc_sphere: ['mem_confuse','mem_mirror','mem_crush','mem_ogre','mem_focus','mem_skullbreak','mem_lich','mem_endure'],   // 🔮 史菲爾只販賣這 8 種記憶水晶；其餘水晶改由掉落/製作/兌換取得（日光術改由吉蘭購得）
-    npc_sempal: ['bk_dragon_guardbreak','bk_dragon_slaughter','bk_dragon_flameslash','bk_dragon_terror'],   // 🐉 森帕爾：4 種龍騎士書板（消滅者鎖鏈劍改為潘朵拉/普洛凱爾試煉取得）
-    default: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','potion_brave','new_item_140','new_item_139','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle']   // 🚫 v3.2.17 哨子/肉已隨舊項圈系統移除
+    default: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','potion_brave','new_item_140','new_item_139','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','pet_whistle','lantern','wpn_5','wpn_22','candle']   // 🚫 v3.2.17 哨子/肉已隨舊項圈系統移除
 };
+// 🗡️ 2026-10-15 奇岩試煉商人（拉克）：各職業試煉的武器與裝備（魔法書／精靈水晶不賣）。
+//   售價照試煉等級分，不改道具本身的 p（賣回商店、黑市等仍照原本的價格）。
+const TRIAL_SHOP_TIERS = [
+    [200000,  ['arm_53', 'arm_115', 'arm_50', 'arm_51', 'arm_shadowmask', 'clk_royal_red']],                                   // 15 級
+    [500000,  ['wpn_redknight', 'shd_redknight', 'wpn_crystalwand', 'arm_85', 'arm_shadowglove', 'clk_royal_majesty']],         // 30 級
+    [1000000, ['acc_134', 'wpn_manawand', 'arm_89', 'arm_102', 'arm_shadowboots', 'acc_royal_guard']],                          // 45 級
+    [3000000, ['wpn_blackflame_sword', 'bot_courage', 'wpn_redflame_bow', 'wpn_redflame_sword', 'bot_sephia', 'wpn_mana_orb', 'bot_mana', 'wpn_golden_scepter', 'bot_divine_will', 'wpn_death_finger']]   // 50 級
+];
+const TRIAL_SHOP_PRICE = {};
+TRIAL_SHOP_TIERS.forEach(t => t[1].forEach(id => { TRIAL_SHOP_PRICE[id] = t[0]; }));
+SHOP_LISTS.npc_trial_shop = TRIAL_SHOP_TIERS.reduce((a, t) => a.concat(t[1]), []);
+// 商店單價的基準（再交給 shopPrice 套攻城 8 折）：試煉商人用上表，其餘照道具的 p
+function shopUnitBase(id) {
+    if (_currentShopNpc === 'npc_trial_shop' && TRIAL_SHOP_PRICE[id]) return TRIAL_SHOP_PRICE[id];
+    return (DB.items[id] && DB.items[id].p) || 0;
+}
 // 🔧 商店販售清單（單一來源）：getShopItemsForNpc 與潘朵拉權重覆寫共用此表
 function getShopItemsForNpc(npcId) {
     let list = SHOP_LISTS[npcId] || SHOP_LISTS.default;
@@ -225,7 +239,7 @@ function getShopItemsForNpc(npcId) {
         // 🔧 武器/防具：不限職業，全部販售（買得到；能否裝備仍由 equipItem/checkCanEquip 白名單把關）。
         if (d.type === 'wpn' || d.type === 'arm') return true;
         // 飾品（acc）：仍以「實際可裝備」判定（涵蓋各職業白名單）。
-        if (d.type === 'acc') return checkCanEquip({ id });
+        if (d.type === 'acc') return checkCanEquip({ id }, true);   // 等級限制不影響買不買得到
         // 其餘（消耗品/技能書/材料等）：沿用職業白名單
         return reqAllowsClass(d, player.cls) || loadUpAllows(id);
     });
@@ -262,13 +276,12 @@ function renderShopItems() {
         el.style.cssText = 'display:flex !important; justify-content:space-between !important; align-items:center !important; width:100% !important; box-sizing:border-box !important;';
         let imgUrl = getIconUrl(d);
         let glowClass = getGlowClass(null, d);
-        let learned = d.type === 'skillbk' && player.skills.includes(d.sk);
-        let cantLearn = d.type === 'skillbk' && !learned && DB.skills[d.sk] && skillReqLv(DB.skills[d.sk], d.sk) === undefined;   // 🔧 該職業無法學習（如黑暗妖精三階以上法師魔法）：以「已習得」相同暗色呈現
-        let dim = learned || cantLearn;
+        let skSt = d.type === 'skillbk' ? skillBookStatus(d.sk) : null;   // 📖 魔法書：學習／需 Lv.N／已學會／無法學習（js/08）
+        let dim = !!(skSt && (skSt.learned || skSt.label === '無法學習'));   // 已學會、職業學不了 → 整列變暗
 
         // 箭矢與肉的顯示判斷
         let nameDisp = id === 'wpn_5' ? '箭 (1000根)' : (id === 'wpn_22' ? '銀箭 (1000根)' : d.n);
-        let priceDisp = id === 'wpn_5' ? shopPrice(100).toLocaleString() : (id === 'wpn_22' ? shopPrice(200).toLocaleString() : shopPrice(d.p || 0).toLocaleString());
+        let priceDisp = id === 'wpn_5' ? shopPrice(100).toLocaleString() : (id === 'wpn_22' ? shopPrice(200).toLocaleString() : shopPrice(shopUnitBase(id)).toLocaleString());
 
         el.innerHTML = `
             <div class="flex items-center gap-4 min-w-0 flex-1 ${dim ? 'opacity-50' : ''}">
@@ -277,7 +290,7 @@ function renderShopItems() {
                 </div>
                 <div class="flex flex-col items-start gap-1.5">
                     <span class="${getItemColor({ id })} font-bold text-lg leading-none truncate">
-                        ${nameDisp}${learned ? ' <span class="text-slate-500 text-xs font-normal">已習得</span>' : (cantLearn ? ' <span class="text-red-500 text-xs font-normal">無法學習</span>' : '')}
+                        ${nameDisp}
                     </span>
                     <div class="flex items-center gap-2">
                         <span class="text-yellow-400 font-bold text-base leading-none">${priceDisp} 金幣</span>
@@ -285,10 +298,10 @@ function renderShopItems() {
                     </div>
                 </div>
             </div>
-            ${ d.type === 'skillbk'
-                ? (cantLearn
-                    ? `<button class="btn bg-slate-700 border-slate-600 text-slate-500 py-2 px-6 font-bold shrink-0 cursor-not-allowed opacity-60" disabled>無法學習</button>`
-                    : `<button class="btn bg-blue-700 hover:bg-blue-600 border-blue-500 py-2 px-6 font-bold shrink-0 shadow" onclick="buyItem('${id}')">${learned ? '再買' : '購買'}</button>`)
+            ${ skSt
+                ? (skSt.can
+                    ? `<button class="btn bg-blue-700 hover:bg-blue-600 border-blue-500 py-2 px-6 font-bold shrink-0 shadow" onclick="buySkillBook('${id}')">學習</button>`
+                    : `<button class="btn bg-slate-700 border-slate-600 text-slate-400 py-2 px-6 font-bold shrink-0 cursor-not-allowed opacity-70" disabled>${skSt.label}</button>`)
                 : `<div class="flex items-center gap-2 shrink-0">
                        <input type="number" id="shop-qty-${id}" value="1" min="1" class="w-16 bg-slate-900 border border-slate-600 text-center text-white rounded py-1 outline-none">
                        <button class="btn bg-blue-700 hover:bg-blue-600 border-blue-500 py-2 px-5 font-bold shadow" onclick="buyItem('${id}', document.getElementById('shop-qty-${id}').value)">購買</button>
@@ -335,15 +348,21 @@ function _slotBadgeHtml(party){
     return `<span class="load-slot-status"><span class="load-slot-badge load-badge-party"><strong>擔任傭兵</strong></span></span>`;
 }
 
+// 已移除的職業：舊存檔仍可能是這些職業 → 選角畫面顯示「此職業已停用」、loadGame 拒絕載入（存檔原樣保留）。
+//   名稱只留給「停用」卡片顯示用；遊戲其他地方不再有這三職業的任何資料。
+const REMOVED_CLASS_NAMES = { illusion:'幻術士', dragon:'龍騎士', warrior:'戰士' };
+function isRemovedClass(cls){ return !!REMOVED_CLASS_NAMES[cls]; }
+
 function _summaryFromRaw(s){
     if(!s) return null;
     s = _saveUnwrap(s).payload;   // 🛡️ 先解存檔簽章（摘要顯示不驗章、僅取 payload；舊明文檔原樣回傳）
     try { let d = JSON.parse(s); let p = d.p;
-        let clsName = { knight:'騎士', mage:'法師', elf:'妖精', dark:'黑暗妖精', illusion:'幻術士', dragon:'龍騎士', warrior:'戰士', royal:'王族' }[p.cls] || p.cls;
+        let clsName = { knight:'騎士', mage:'法師', elf:'妖精', dark:'黑暗妖精', royal:'王族' }[p.cls] || REMOVED_CLASS_NAMES[p.cls] || p.cls;
         return {
             name: p.name || '',
             cls: clsName,
             rawCls: p.cls || '',
+            removed: isRemovedClass(p.cls),
             lv: p.lv || 1,
             gold: p.gold || 0,
             classic: !!p.classicMode,
@@ -356,12 +375,41 @@ function _summaryFromRaw(s){
             mp: p.mp || 0,
             mmp: p.mmp || p.maxMp || 0,
             ac: p.d && typeof p.d.ac === 'number' ? p.d.ac : '',
-            base: p.base || {}
+            base: p.base || {},
+            // 選角畫面顯示的六項能力＝遊戲中看到的最終值(p.d：基礎＋升級配點＋萬能藥＋裝備)；舊檔沒有 p.d 就退回基礎＋配點
+            stats: ['str','dex','con','int','wis','cha'].reduce((o, k) => {
+                let fin = p.d && typeof p.d[k] === 'number' ? p.d[k] : ((p.base || {})[k] || 0) + ((p.alloc || {})[k] || 0) + ((p.panacea || {})[k] || 0);
+                o[k] = Math.floor(fin); return o;
+            }, {})
         };   // 🎮 經典模式旗標：供存檔位顯示與傭兵同模式招募限制（🏛️v3.0.83 傳統已取消·未載入過的舊傳統存檔以 classicMode 歸類）；avatar＝職業性別頭像名（assets/character/<avatar>.png）；name 未命名時留空字串（顯示端自行省略）
     } catch(e){ return null; }
 }
 const SAVE_SLOT_MAX = 16;   // 🔌 加掛版補丁：存檔位 8 → 16（匯入重複掃描/傭兵招募/選角面板共用）
 function slotSummary(n){ return _summaryFromRaw(_lzGet('lineage_idle_save_' + n)); }
+
+// ===== 角色名字規則（創角＋遊戲內改名共用）=====
+//   2~12 字、只能中英數、不可重複（英文不分大小寫）。
+//   ⚠ 目前存檔只在這台裝置，「不可重複」只能查本機所有存檔位（含選角看不到的 4~16 格、停用職業的舊角色）；
+//     日後改成線上版，把 characterNamesInUse 換成問伺服器即可，其他地方不用動。
+const CHARACTER_NAME_RE = /^[㐀-䶿一-鿿A-Za-z0-9]{2,12}$/;
+function characterNameKey(name){ return String(name || '').trim().toLowerCase(); }
+// 本機已被使用的名字（exceptSlot＝改名時排除自己那格）。會解壓每一格存檔，別在每次按鍵時呼叫——呼叫端自己快取。
+function characterNamesInUse(exceptSlot){
+    const set = new Set();
+    for(let n = 1; n <= SAVE_SLOT_MAX; n++){
+        if(n === exceptSlot) continue;
+        try { const s = slotSummary(n); if(s && s.name) set.add(characterNameKey(s.name)); } catch(e){}
+    }
+    return set;
+}
+// 回傳不合格的原因；合格回空字串
+function characterNameProblem(name, inUse){
+    name = String(name || '').trim();
+    if(!name) return '請輸入名字';
+    if(!CHARACTER_NAME_RE.test(name)) return '名字需 2~12 字，只能用中文、英文、數字';
+    if(inUse && inUse.has(characterNameKey(name))) return '這個名字已經有角色在用了';
+    return '';
+}
 
 // ===== 角色多開／刪除保護 =====
 // 每個正在遊戲中的分頁每 2 秒留下心跳。刪角時只要還有其他活躍分頁就拒絕，
@@ -780,10 +828,7 @@ const CREATION_CLASS_ANIM_FRAMES = {
     m_knight: [378, 448], f_knight: [315, 374],
     m_mage: [531, 625], f_mage: [452, 527],
     m_elf: [245, 311], f_elf: [166, 241],
-    m_dark: [90, 162], f_dark: [25, 86],
-    m_illusionist: [968, 1036], f_illusionist: [1039, 1125],
-    m_Dknight: [841, 905], f_Dknight: [908, 965],
-    m_warrior: [1992, 2076], f_warrior: [1908, 1991]
+    m_dark: [90, 162], f_dark: [25, 86]
 };
 const LOAD_NONE_ANIM_FRAMES = [1, 24];
 const LOAD_AVATAR_TO_START_KEY = {
@@ -791,17 +836,16 @@ const LOAD_AVATAR_TO_START_KEY = {
     '男騎士': 'm_knight', '女騎士': 'f_knight',
     '男法師': 'm_mage', '女法師': 'f_mage',
     '男妖精': 'm_elf', '女妖精': 'f_elf',
-    '男黑暗妖精': 'm_dark', '女黑暗妖精': 'f_dark',
-    '男幻術士': 'm_illusionist', '女幻術士': 'f_illusionist',
-    '男龍騎士': 'm_Dknight', '女龍騎士': 'f_Dknight',
-    '男戰士': 'm_warrior', '女戰士': 'f_warrior'
+    '男黑暗妖精': 'm_dark', '女黑暗妖精': 'f_dark'
 };
 const LOAD_CLASS_TO_START_KEY = {
     royal: 'prince', knight: 'm_knight', mage: 'm_mage', elf: 'm_elf',
-    dark: 'm_dark', illusion: 'm_illusionist', dragon: 'm_Dknight', warrior: 'm_warrior'
+    dark: 'm_dark'
 };
+// 一個帳號只能 3 隻角色：選角畫面只列存檔 1~3。第 4 格以後的舊存檔不刪、但選角畫面看不到也進不去。
+const LOAD_SLOT_COUNT = 3;
 let _loadSelectedSlot = 1;
-let _loadPage = 0;
+let _loadPage = 0;   // 已不分頁、恆為 0
 let _loadSlotMeta = {};   // 🔋 存檔位徽章快取（renderLoadSelect 建立）：活刷計時器只重讀輕量 checkpoint／session 名單，不重解壓整份存檔
 let _loadAnimState = { key: null, frame: 0, noneFrame: LOAD_NONE_ANIM_FRAMES[0], lastAt: 0, stepMs: 92 };
 let _loadLastClickSlot = 0;
@@ -810,7 +854,7 @@ function loadEsc(v){
     return String(v === undefined || v === null ? '' : v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 function loadStartKeyFromSummary(sum){
-    if(!sum) return 'none';
+    if(!sum || sum.removed) return 'none';
     if(sum.avatar && LOAD_AVATAR_TO_START_KEY[sum.avatar]) return LOAD_AVATAR_TO_START_KEY[sum.avatar];
     return LOAD_CLASS_TO_START_KEY[sum.rawCls] || LOAD_CLASS_TO_START_KEY[sum.cls] || 'prince';
 }
@@ -832,15 +876,18 @@ function openLoadSelect(){
     if(load) load.classList.remove('hidden');
     _loadLastClickSlot = 0; _loadLastClickAt = 0;
     _loadPage = 0;
-    _loadSelectedSlot = [1,2,3,4].find(n => !!slotSummary(n)) || 1;
+    _loadSelectedSlot = _loadFirstFilledSlot();
     renderLoadSelect();
 }
-function loadSetPage(page){
+function _loadFirstFilledSlot(){
+    for(let n = 1; n <= LOAD_SLOT_COUNT; n++){ const s = slotSummary(n); if(s && !s.removed) return n; }
+    for(let n = 1; n <= LOAD_SLOT_COUNT; n++) if(slotSummary(n)) return n;
+    return 1;
+}
+function loadSetPage(page){   // 已不分頁：保留函式名給外掛呼叫，一律回到唯一的一頁
     _loadLastClickSlot = 0; _loadLastClickAt = 0;
-    _loadPage = page === 2 ? 1 : 0;
-    const start = _loadPage * 4 + 1;
-    const slots = [start, start + 1, start + 2, start + 3];
-    _loadSelectedSlot = slots.find(n => !!slotSummary(n)) || start;
+    _loadPage = 0;
+    _loadSelectedSlot = _loadFirstFilledSlot();
     renderLoadSelect();
 }
 function loadBackToMenu(){
@@ -874,8 +921,8 @@ function returnToCharacterSelect(){
 
     _loadLastClickSlot = 0;
     _loadLastClickAt = 0;
-    _loadPage = currentSlot > 4 ? 1 : 0;
-    _loadSelectedSlot = currentSlot;
+    _loadPage = 0;
+    _loadSelectedSlot = currentSlot <= LOAD_SLOT_COUNT ? currentSlot : _loadFirstFilledSlot();
     renderLoadSelect();
     try { if(typeof _bgmTick === 'function') { _bgmScene = null; _bgmTick(); } } catch(e) {}
     return true;
@@ -884,17 +931,24 @@ function renderLoadSelect(){
     const grid = document.getElementById('load-slot-grid');
     if(!grid) return;
     let html = '';
-    const start = _loadPage * 4 + 1;
-    for(let n = start; n <= start + 3; n++){
+    for(let n = 1; n <= LOAD_SLOT_COUNT; n++){
         const sum = slotSummary(n);
         const key = loadStartKeyFromSummary(sum);
         const selected = n === _loadSelectedSlot;
         const empty = !sum;
         const frame = loadFirstFrame(key);
         _loadSlotMeta[n] = _slotBadgeMeta(n, sum);
-        const title = sum ? `角色 ${n} ${sum.cls} Lv.${sum.lv}` : `角色 ${n} 空`;
-        html += `<button type="button" onclick="loadSelectSlot(${n})" data-slot="${n}" data-key="${key}" class="load-slot-card ${selected ? 'selected' : ''} ${empty ? 'empty' : 'filled'}" title="${loadEsc(title)}">`
-            + `<img src="${loadFrameSrc(key, frame)}" alt="${loadEsc(title)}" draggable="false">`
+        const locked = !empty && sum.removed;
+        const title = sum ? `${sum.name || '未命名'} ${sum.cls} Lv.${sum.lv}` : '建立角色';
+        html += `<button type="button" onclick="loadPickSlot(${n})" data-slot="${n}" data-key="${key}" class="load-slot-card ${selected ? 'selected' : ''} ${empty ? 'empty' : 'filled'} ${locked ? 'locked' : ''}" title="${loadEsc(title)}">`
+            // 空格：底圖拱門已畫好 New Character，只補提示字；有角色：立繪＋名牌(名牌蓋在 New Character 那行字上)；
+            // 已移除職業的舊角色：只有名牌、標示停用(可選取，只能刪除)
+            + (empty
+                ? `<span class="load-slot-hint">(點擊建立角色)</span>`
+                : locked
+                ? `<span class="load-slot-label"><strong>${loadEsc(sum.name || '未命名')}</strong>此職業已停用</span>`
+                : `<img src="${loadFrameSrc(key, frame)}" alt="${loadEsc(title)}" draggable="false">`
+                + `<span class="load-slot-label"><strong>${loadEsc(sum.name || '未命名')}</strong>Lv.${loadEsc(sum.lv)} ${loadEsc(sum.cls)}</span>`)
             + _slotBadgeHtml(_slotPartyStatusNow(_loadSlotMeta[n]))
             + `</button>`;
     }
@@ -904,55 +958,47 @@ function renderLoadSelect(){
     _loadAnimState.key = selectedKey;
     _loadAnimState.frame = loadFirstFrame(selectedKey);
     _loadAnimState.lastAt = 0;
-    const page1 = document.getElementById('load-page-1');
-    const page2 = document.getElementById('load-page-2');
-    if(page1) page1.classList.toggle('active', _loadPage === 0);
-    if(page2) page2.classList.toggle('active', _loadPage === 1);
     updateLoadInfo();
 }
-function updateLoadInfo(){
-    const sum = slotSummary(_loadSelectedSlot);
-    const set = (id, text) => { const el = document.getElementById(id); if(el) el.innerText = text; };
-    const base = (sum && sum.base) || {};
-    const empty = !sum;
-    set('load-info-name', empty ? '' : (sum.name || '未命名'));
-    set('load-info-pledge', empty ? '' : ({ tros:'特羅斯', esti:'依詩蒂' }[sum.pledge] || sum.pledge || '-'));
-    set('load-info-class', empty ? '' : sum.cls);
-    set('load-info-alignment', empty ? '' : (sum.classic ? '經典' : '一般'));
-    set('load-info-hp', empty ? '' : `${Math.floor(sum.hp || 0)} / ${Math.floor(sum.mhp || 0)}`);
-    set('load-info-mp', empty ? '' : `${Math.floor(sum.mp || 0)} / ${Math.floor(sum.mmp || 0)}`);
-    set('load-info-ac', empty ? '' : (sum.ac === '' ? '-' : sum.ac));
-    set('load-info-lv', empty ? '' : sum.lv);
-    set('load-info-str', empty ? '' : (base.str || ''));
-    set('load-info-dex', empty ? '' : (base.dex || ''));
-    set('load-info-con', empty ? '' : (base.con || ''));
-    set('load-info-wis', empty ? '' : (base.wis || ''));
-    set('load-info-cha', empty ? '' : (base.cha || ''));
-    set('load-info-int', empty ? '' : (base.int || ''));
-    const create = document.getElementById('load-btn-create');
-    const importBtn = document.getElementById('load-btn-import');
-    const enter = document.getElementById('load-btn-enter');
-    const exportBtn = document.getElementById('load-btn-export');
-    const del = document.getElementById('load-btn-delete');
-    if(create) create.classList.toggle('hidden', !empty);
-    if(importBtn) importBtn.classList.toggle('hidden', !empty);
-    if(enter) enter.classList.toggle('hidden', empty);
-    if(exportBtn) exportBtn.classList.toggle('hidden', empty);
-    if(del) del.classList.toggle('hidden', empty);
-}
-function loadSelectSlot(n){
+// 點卡片：空格＝直接進創角；有角色＝選取它，下方顯示素質＋「進入遊戲／刪除角色」
+//   (已停用職業的舊角色也能選取，只是不給進入、只能刪除——不然 3 格全被佔住就再也建不了新角色)
+// 雙擊（手機＝連點兩下）同一隻角色＝直接進入遊戲。不用 dblclick 事件：iPhone 不一定送，而且每次點都會重畫卡片
+//   (第二下點到的是新的元素)→ 自己記「上次點哪一格、什麼時候」。
+const LOAD_DOUBLE_TAP_MS = 400;
+function loadPickSlot(n){
+    if(!(n >= 1 && n <= LOAD_SLOT_COUNT)) return;
     const sum = slotSummary(n);
-    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    const doubleClick = !!sum && _loadLastClickSlot === n && now - _loadLastClickAt <= 500;
-    _loadLastClickSlot = doubleClick ? 0 : n;
-    _loadLastClickAt = doubleClick ? 0 : now;
+    const now = Date.now();
+    const isDouble = _loadLastClickSlot === n && now - _loadLastClickAt <= LOAD_DOUBLE_TAP_MS;
+    _loadLastClickSlot = n; _loadLastClickAt = now;
     _loadSelectedSlot = n;
-    if(doubleClick){ loadEnterSelected(); return; }
-    if(document.querySelector(`.load-slot-card.selected[data-slot="${n}"]`)){
-        updateLoadInfo();
-        return;
-    }
+    if(!sum){ loadCreateSelected(); return; }
+    if(isDouble && !sum.removed){ loadEnterSelected(); return; }
     renderLoadSelect();
+}
+// 選取中角色的素質面板(拱門下方)＋進入遊戲／刪除角色；沒選到角色就整塊藏起來
+function updateLoadInfo(){
+    const panel = document.getElementById('load-info-panel');
+    if(!panel) return;
+    const sum = slotSummary(_loadSelectedSlot);
+    panel.classList.toggle('hidden', !sum);
+    if(!sum) return;
+    const set = (id, text) => { const el = document.getElementById(id); if(el) el.textContent = text; };
+    set('load-info-name', sum.name || '未命名');
+    set('load-info-sub', sum.removed ? '此職業已停用' : `Lv.${sum.lv}　${sum.cls}`);
+    const vit = document.getElementById('load-info-vitals');
+    const stats = document.getElementById('load-info-stats');
+    if(vit) vit.classList.toggle('hidden', !!sum.removed);
+    if(stats) stats.classList.toggle('hidden', !!sum.removed);
+    if(!sum.removed){
+        set('load-info-hp', `${Math.floor(sum.hp || 0)} / ${Math.floor(sum.mhp || 0)}`);
+        set('load-info-mp', `${Math.floor(sum.mp || 0)} / ${Math.floor(sum.mmp || 0)}`);
+        set('load-info-ac', sum.ac === '' ? '-' : sum.ac);
+        const st = sum.stats || {};
+        ['str','dex','con','int','wis','cha'].forEach(k => set('load-info-' + k, st[k] != null ? st[k] : '-'));
+    }
+    const enter = document.getElementById('load-btn-enter');
+    if(enter) enter.classList.toggle('hidden', !!sum.removed);   // 停用職業：只能刪除
 }
 function loadCreateSelected(){
     const sum = slotSummary(_loadSelectedSlot);
@@ -964,7 +1010,7 @@ function loadCreateSelected(){
 }
 function loadEnterSelected(){
     const sum = slotSummary(_loadSelectedSlot);
-    if(!sum) return;
+    if(!sum || sum.removed) return;
     _loadLastClickSlot = 0; _loadLastClickAt = 0;
     currentSlot = _loadSelectedSlot;
     loadGame();
@@ -981,15 +1027,40 @@ function loadDeleteSelected(){
         return;
     }
     const expected = sum.name || '未命名';
-    const typed = prompt(`即將刪除存檔 ${slot}：${sum.cls} Lv.${sum.lv} ${expected}\n\n刪除後才能在此欄位創建新角色或匯入進度。\n請輸入角色名稱「${expected}」確認刪除：`, '');
-    if(typed === null) return;
-    if(typed.trim() !== expected){ alert('角色名稱不正確，已取消刪除。'); return; }
+    // 👑 v3.6.01 血盟盟主刪角警告（用戶拍板）：盟主刪除＝clanOnRoleDeleted 會解散該模式血盟並清空同模式所有角色的貢獻，刪前必須講明
+    let clanWarn = '';
+    try { if(typeof clanIsLeaderRole === 'function' && clanIsLeaderRole(_roleReadSavePlayer(slot))) clanWarn = '此角色是血盟盟主：刪除後血盟會解散。'; } catch(e){}
+    // 確認窗用遊戲內的視窗，不用原生 prompt/confirm——LINE/FB 內建瀏覽器、部分 App 內網頁會把原生對話框擋掉，
+    //   按「刪除角色」就毫無反應(玩家回報「刪除角色不能點」)
+    _openDeleteDialog(slot, expected, `${sum.cls} Lv.${sum.lv}`, clanWarn);
+}
+// 刪除確認窗：打對角色名字才能按「確認刪除」
+function _openDeleteDialog(slot, expected, desc, clanWarn){
+    let ov = document.getElementById('load-delete-dialog');
+    if(ov) ov.remove();
+    ov = document.createElement('div');
+    ov.id = 'load-delete-dialog';
+    ov.innerHTML = `<div class="ldd-box" role="dialog" aria-modal="true">
+        <p class="ldd-msg">即將刪除「${loadEsc(expected)}」（${loadEsc(desc)}），刪除後無法復原。</p>
+        ${clanWarn ? `<p class="ldd-warn">${loadEsc(clanWarn)}</p>` : ''}
+        <p class="ldd-msg">請輸入角色名字確認：</p>
+        <input class="ldd-input" type="text" autocomplete="off" spellcheck="false" placeholder="${loadEsc(expected)}">
+        <div class="ldd-actions"><button type="button" class="ldd-cancel">取消</button><button type="button" class="ldd-ok" disabled>確認刪除</button></div>
+    </div>`;
+    (document.getElementById('load-select-panel') || document.body).appendChild(ov);
+    const input = ov.querySelector('.ldd-input'), okBtn = ov.querySelector('.ldd-ok');
+    const close = () => ov.remove();
+    input.addEventListener('input', () => { okBtn.disabled = input.value.trim() !== expected; });
+    input.addEventListener('keydown', (e) => { if(e.key === 'Enter' && !okBtn.disabled) okBtn.click(); if(e.key === 'Escape') close(); });
+    ov.querySelector('.ldd-cancel').addEventListener('click', close);
+    ov.addEventListener('click', (e) => { if(e.target === ov) close(); });
+    okBtn.addEventListener('click', () => { if(input.value.trim() !== expected) return; close(); _loadDoDelete(slot, expected); });
+    setTimeout(() => { try { input.focus(); } catch(e){} }, 30);
+}
+function _loadDoDelete(slot, expected){
+    if(!slotSummary(slot)){ renderLoadSelect(); return; }
     if(_roleOtherActiveSessions().length){ alert('刪除期間偵測到其他遊戲分頁，已取消刪除。請先關閉其他角色後再試。'); return; }
     const oldPlayer = _roleReadSavePlayer(slot), fp = _roleFingerprint(oldPlayer);
-    // 👑 v3.6.01 血盟盟主刪角警告（用戶拍板）：盟主刪除＝clanOnRoleDeleted 會解散該模式血盟並清空同模式所有角色的貢獻，刪前必須講明
-    let _clanWarn = '';
-    try { if(typeof clanIsLeaderRole === 'function' && clanIsLeaderRole(oldPlayer)) _clanWarn = '\n\n⚠ 此角色是血盟盟主：刪除後將解散該模式的血盟，並清空同模式所有角色的血盟貢獻（血盟等級經驗保留）！'; } catch(e){}
-    if(!confirm(`確定永久刪除「${expected}」嗎？\n角色存檔與角色專屬傭兵資料將刪除；共享倉庫、圖鑑與寵物名冊會保留。${_clanWarn}`)) return;
     // 🛡️ 簽章不符／內容毀損的存檔位讀不出 player（fp 為空）→ 無法建立刪除保護。
     //    但這種存檔任何分頁都載入不了，也就不可能被舊分頁寫回，故直接放行刪除；
     //    否則玩家會落入「載不了也刪不掉、該欄位永久報廢」的死局。
@@ -1001,8 +1072,9 @@ function loadDeleteSelected(){
     _lsRemove('lineage_idle_save_' + slot + '_bak');
     if(_lsGet('lineage_idle_save_' + slot)){ alert('角色存檔刪除失敗，請重新整理後再試。'); return; }
     try { if(typeof clanOnRoleDeleted === 'function') clanOnRoleDeleted(oldPlayer); } catch(e){ console.warn('clan delete cleanup', e); }
+    _loadSelectedSlot = _loadFirstFilledSlot();
     renderLoadSelect();
-    alert(`角色「${expected}」已刪除。現在可以在此欄位創建新角色或匯入進度。`);
+    alert(`角色「${expected}」已刪除。`);
 }
 (function animateLoadSelectPreview(){
     function tick(now){
@@ -1011,17 +1083,20 @@ function loadDeleteSelected(){
             _loadAnimState.noneFrame = _loadAnimState.noneFrame >= LOAD_NONE_ANIM_FRAMES[1] ? LOAD_NONE_ANIM_FRAMES[0] : _loadAnimState.noneFrame + 1;
             document.querySelectorAll('.load-slot-card.empty img').forEach(img => { img.src = loadFrameSrc('none', _loadAnimState.noneFrame); });
             const selected = document.querySelector('.load-slot-card.selected.filled');
-            if(selected){
+            const img = selected && selected.querySelector('img');   // 停用職業的卡片沒有立繪
+            if(img){
                 const key = selected.dataset.key || 'prince';
                 const range = CREATION_CLASS_ANIM_FRAMES[key] || CREATION_CLASS_ANIM_FRAMES.prince;
                 if(_loadAnimState.key !== key){
                     _loadAnimState.key = key;
                     _loadAnimState.frame = range[0];
+                    for(let n = range[0]; n <= range[1]; n++) startFrame(key, n);   // 整組排進下載
                 } else {
-                    _loadAnimState.frame = _loadAnimState.frame >= range[1] ? range[0] : _loadAnimState.frame + 1;
+                    // 同創角：下一幀還沒下載完就停在目前這張(避免網路慢時立繪變空白)，載入失敗的幀直接跳過
+                    const next = _loadAnimState.frame >= range[1] ? range[0] : _loadAnimState.frame + 1;
+                    if(startFrameReady(key, next)){ _loadAnimState.frame = next; img.src = loadFrameSrc(key, next); }
+                    else if(startFrameBroken(key, next)) _loadAnimState.frame = next;
                 }
-                const img = selected.querySelector('img');
-                if(img) img.src = loadFrameSrc(key, _loadAnimState.frame);
             }
             _loadAnimState.lastAt = now;
         }
@@ -1031,25 +1106,28 @@ function loadDeleteSelected(){
 })();
 let creationClassAnim = { key: 'prince', frame: 714, first: 714, last: 798, lastAt: 0, stepMs: 82, static: false };
 function creationAnimKey(c){ if(!c || c === 'none') return 'none'; return c === 'm_royal' ? 'prince' : (c === 'f_royal' ? 'princess' : c); }
+// 可創的職業：王族、騎士、法師、妖精、黑暗妖精
 const CREATION_CLASS_BASE_TO_RAW = {
     royal: { m: 'm_royal', f: 'f_royal' }, knight: { m: 'm_knight', f: 'f_knight' },
     mage: { m: 'm_mage', f: 'f_mage' }, elf: { m: 'm_elf', f: 'f_elf' },
-    dark: { m: 'm_dark', f: 'f_dark' }, illusionist: { m: 'm_illusionist', f: 'f_illusionist' },
-    Dknight: { m: 'm_Dknight', f: 'f_Dknight' }, warrior: { m: 'm_warrior', f: 'f_warrior' }
+    dark: { m: 'm_dark', f: 'f_dark' }
 };
 let creationSelectedClassBase = null;
 let creationSelectedGender = 'm';
 function creationClassBaseFromRaw(raw){
     if(!raw) return null;
     if(raw.includes('royal')) return 'royal';
-    if(raw.includes('Dknight')) return 'Dknight';
-    if(raw.includes('illusionist')) return 'illusionist';
     if(raw.includes('dark')) return 'dark';
     if(raw.includes('knight')) return 'knight';
     if(raw.includes('mage')) return 'mage';
     if(raw.includes('elf')) return 'elf';
-    if(raw.includes('warrior')) return 'warrior';
     return null;
+}
+// 名字規則見 characterNameProblem；本機已用的名字在進創角時掃一次存起來(每次按鍵都重掃會解壓所有存檔)
+let _creationNamesInUse = new Set();
+function creationNameValue(){
+    const el = document.getElementById('creation-name');
+    return el ? el.value.trim() : '';
 }
 function rawClassFromBaseAndGender(base, gender){
     const pair = CREATION_CLASS_BASE_TO_RAW[base] || CREATION_CLASS_BASE_TO_RAW.royal;
@@ -1075,20 +1153,6 @@ function updateCreationChoiceButtons(raw){
     if(classBtn) classBtn.classList.add('active');
     if(genderBtn) genderBtn.classList.add('active');
 }
-function resetCreationSelection(){
-    creationSelectedClassBase = null;
-    creationSelectedGender = 'm';
-    curCreate.rawCls = null;
-    curCreate.cls = null;
-    curCreate.str = 0; curCreate.dex = 0; curCreate.con = 0; curCreate.int = 0; curCreate.wis = 0; curCreate.cha = 0;
-    document.querySelectorAll('.creation-class-btn,.creation-gender-btn').forEach(btn => btn.classList.remove('active'));
-    const titleEl = document.getElementById('creation-class-title');
-    if(titleEl) titleEl.innerText = '選擇職業';
-    const descEl = document.getElementById('class-desc');
-    if(descEl) descEl.innerText = '';
-    setCreationClassAnimation('none');
-    updateCreateUI();
-}
 function setCreationClassAnimation(c){
     const key = creationAnimKey(c);
     if(key === 'none'){
@@ -1109,20 +1173,97 @@ function setCreationClassAnimation(c){
         img.style.display = 'block';
     }
     if(typeof playCreationFrameSfx === 'function') playCreationFrameSfx(key, range[0]);
-    for(let n = range[0]; n <= Math.min(range[1], range[0] + 10); n++){
-        const pre = new Image(); pre.src = `assets/start/${key}/${n}.png`;
+    for(let n = range[0]; n <= range[1]; n++) startFrame(key, n);   // 整組排進下載；動畫只播已經到的幀
+}
+// 🖼️ 立繪逐幀動畫的幀快取（創角＋選角共用，路徑 assets/start/<key>/<n>.png）。
+//   動畫每 82ms 換一張：網路慢時「下一張還沒下載完就切過去」→ <img> 變空白（手機/線上實測一進創角就看不到角色）。
+//   所以換幀前先問 startFrameReady：還沒到就停在目前這張，等到了再播；壞圖(載入失敗)直接跳過，免得卡死。
+const _startFrameCache = {};
+function startFrame(key, n){
+    const c = _startFrameCache[key] || (_startFrameCache[key] = {});
+    if(!c[n]){ const im = new Image(); im.src = `assets/start/${key}/${n}.png`; c[n] = im; }
+    return c[n];
+}
+// 進遊戲後，創角／選角立繪還沒下載完的幀就不用了：取消下載(src 清空)並移出快取(回選角時 startFrame 會重新排)，
+//   把頻寬讓給地圖與主角圖。一個職業整組 60~90 張，網路慢時進遊戲那一刻常常還排著幾十張。
+function _startFramesAbortPending(){
+    for(const key in _startFrameCache){
+        const c = _startFrameCache[key];
+        for(const n in c){ const im = c[n]; if(!im.complete){ im.src = ''; delete c[n]; } }
     }
 }
+function startFrameReady(key, n){ const im = startFrame(key, n); return im.complete && im.naturalWidth > 0; }
+function startFrameBroken(key, n){ const im = startFrame(key, n); return im.complete && im.naturalWidth === 0; }
+
+// ⏳ 開遊戲時的載入進度條(#boot-loader)：只等「畫面一定會用到」的圖——登入／選角背景、創角部件、
+//   每組立繪的第 1 幀(約 25 個檔、1MB)。其餘約 750 張立繪幀改在進度條收掉後於背景慢慢載
+//   (動畫遇到還沒到的幀會停在目前這張，不會空白)。全部等完要好幾十秒，玩家回報等太久。
+//   載入失敗也算完成(不卡住)，最多 15 秒一定收掉；離線快取(SW)讓第二次開幾乎瞬間跑完。
+function bootPreload(){
+    const el = document.getElementById('boot-loader');
+    if(!el) return;
+    const fill = el.querySelector('.boot-bar-fill'), pctEl = el.querySelector('.boot-pct');
+    const pics = ['public/assets/login/login.webp', 'public/assets/login/select.webp',
+        ...['title','ico-royal','ico-knight','ico-mage','ico-male','ico-elf','ico-female','btn-minus','btn-plus','btn-back','btn-create'].map(n => `public/assets/create/${n}.png`),
+        'assets/logo/黑暗妖精logo.png'].map(src => { const im = new Image(); im.src = src; return im; });
+    for(const key in CREATION_CLASS_ANIM_FRAMES) pics.push(startFrame(key, CREATION_CLASS_ANIM_FRAMES[key][0]));
+    const total = pics.length;
+    window._bootImgPhase = true;   // 前 80%(程式檔)由 index.html 的 inline script 推，這裡接著跑 80→100
+    let finished = false;
+    const finish = () => {
+        if(finished) return; finished = true;
+        clearInterval(iv); clearTimeout(cap);
+        el.classList.add('done');
+        setTimeout(() => el.remove(), 450);
+        _bootPreloadFramesInBackground();
+    };
+    const iv = setInterval(() => {
+        const done = pics.reduce((s, im) => s + (im.complete ? 1 : 0), 0);
+        const p = 80 + Math.floor(done * 20 / total);
+        if(fill) fill.style.width = p + '%';
+        if(pctEl) pctEl.textContent = p + '%';
+        if(done >= total) finish();
+    }, 100);
+    const cap = setTimeout(finish, 15000);
+}
+// 其餘立繪幀：一次只開 4 張，載完一張再補一張(不跟登入背景音樂搶頻寬)；進遊戲後就停。
+function _bootPreloadFramesInBackground(){
+    const queue = [];
+    for(const key in CREATION_CLASS_ANIM_FRAMES){
+        const r = CREATION_CLASS_ANIM_FRAMES[key];
+        for(let n = r[0] + 1; n <= r[1]; n++) queue.push([key, n]);
+    }
+    const inGame = () => { const gs = document.getElementById('game-screen'); return gs && !gs.classList.contains('hidden'); };
+    const next = () => {
+        if(!queue.length || inGame()) return;
+        const [key, n] = queue.shift();
+        const im = startFrame(key, n);
+        if(im.complete) { next(); return; }
+        im.addEventListener('load', next, { once: true });
+        im.addEventListener('error', next, { once: true });
+    };
+    for(let i = 0; i < 4; i++) next();
+}
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootPreload); else bootPreload();
 (function animateCreationClassPreview(){
+    let abortedForGame = false;
     function tick(now){
         const panel = document.getElementById('creation-panel');
         const img = document.getElementById('class-preview-img');
         const gs = document.getElementById('game-screen');   // 🔊 v3.4.17 已進遊戲→停創角動畫（防 creation-panel classList 殘留→動畫續跑並每 loop 重觸發創角音效）
+        const inGame = !!(gs && !gs.classList.contains('hidden'));
+        if(inGame !== abortedForGame){ abortedForGame = inGame; if(inGame) _startFramesAbortPending(); }   // 每次進遊戲取消一次
         if(panel && img && !panel.classList.contains('hidden') && (!gs || gs.classList.contains('hidden')) && !creationClassAnim.static && now - creationClassAnim.lastAt >= creationClassAnim.stepMs){
-            creationClassAnim.frame = creationClassAnim.frame >= creationClassAnim.last ? creationClassAnim.first : creationClassAnim.frame + 1;
-            img.src = `assets/start/${creationClassAnim.key}/${creationClassAnim.frame}.png`;
-            if(creationClassAnim.frame === creationClassAnim.first && typeof playCreationFrameSfx === 'function') playCreationFrameSfx(creationClassAnim.key, creationClassAnim.frame);
-            creationClassAnim.lastAt = now;
+            const A = creationClassAnim;
+            const next = A.frame >= A.last ? A.first : A.frame + 1;
+            if(startFrameReady(A.key, next)){
+                A.frame = next;
+                img.src = `assets/start/${A.key}/${next}.png`;
+                if(next === A.first && typeof playCreationFrameSfx === 'function') playCreationFrameSfx(A.key, next);
+                A.lastAt = now;
+            } else if(startFrameBroken(A.key, next)){
+                A.frame = next;   // 這張載入失敗：跳過，不換圖
+            }   // 還沒下載完：停在目前這張，下一輪再看
         }
         requestAnimationFrame(tick);
     }
@@ -1135,8 +1276,9 @@ function showCreation() {
     if(main) main.classList.add('hidden');
     if(load) load.classList.add('hidden');
     if(creation) creation.classList.remove('hidden');
-    const classicToggle = document.getElementById('create-classic-toggle');
-    if(classicToggle) classicToggle.checked = false;   // 刪角後同頁重創時不得沿用上一輪的經典模式勾選
+    const nameEl = document.getElementById('creation-name');
+    if(nameEl){ nameEl.value = ''; nameEl.classList.remove('invalid'); }   // 同頁重創時不得沿用上一輪輸入的名字
+    _creationNamesInUse = characterNamesInUse();
 
     creationSelectedClassBase = 'royal';
     creationSelectedGender = 'm';
@@ -1165,44 +1307,12 @@ function selectClass(c) {
 
     setCreationClassAnimation(c);
 
-    // 2. 判斷底層職業（⚠️ Dknight 含 'knight' 子字串，須先判斷；royal 無子字串衝突）
+    // 2. 判斷底層職業
     if(c.includes('royal')) curCreate.cls = 'royal';   // 👑 王族
-    else if(c.includes('Dknight')) curCreate.cls = 'dragon';
-    else if(c.includes('illusionist')) curCreate.cls = 'illusion';
     else if(c.includes('dark')) curCreate.cls = 'dark';
     else if(c.includes('knight')) curCreate.cls = 'knight';
     else if(c.includes('mage')) curCreate.cls = 'mage';
     else if(c.includes('elf')) curCreate.cls = 'elf';
-    else if(c.includes('warrior')) curCreate.cls = 'warrior';   // ⚔️ 戰士
-
-    const titleEl = document.getElementById('creation-class-title');
-    if(titleEl){
-        const titleMap = { royal:'王族', knight:'騎士', mage:'法師', elf:'妖精', dark:'黑暗妖精', illusion:'幻術士', dragon:'龍騎士', warrior:'戰士' };
-        titleEl.innerText = titleMap[curCreate.cls] || '角色介紹';
-    }
-    // 3. 更新說明文字
-    const classDescMap = {
-        royal: "召集成員克服險惡的苦難與逆境\n只為了建立自己國家的遠大夢想\n就能夠犧牲所有的一切，那麼你就\n具備了王族最重要的「心」。\n\n『王族』是個非常特別的職業\n在天堂世界中只有\n『王族』才能創造血盟。\n雖然王族在戰鬥的時候\n沒有任何一個職業的優點\n但是如果想在天堂世界裡\n實現自己遠大的夢想，\n那麼唯有王族才能滿足你的夢想。\n王族必須聚集擁有相同夢想的成員\n並建立屬於自己的城堡。",
-        knight: "沒有什麼特別突出的才能\n只有默默地不間斷地修練，\n奮勇地擋在前端面對危險，\n就像主角一樣。\n\n騎士剛開始是以「自由騎士」\n的身份出發，並自由地到各地旅遊\n與冒險。但是騎士是個最重視\n自己要服從的王族與組織血盟\n並為他們奉獻、\n團體生活時騎士能夠表現出\n他的強大，並擁有堅忍的毅力。\n騎士是戰鬥最基本的職業，\n能夠使用多種武器與與盔甲等\n騎士強大的攻擊力及優越的防禦\n是其他職業無法比擬的\n尤其在近距離戰鬥時\n所表現出的強大戰鬥力。\n但是他們對於魔法的耐性不是很好，\n受到魔法的傷害比其他職業還高。",
-        elf: "妖精擁有比人類更長的壽命\n與美麗的外貌，他們順應自然\n追求融合安定的生活\n並對所有的事情表現較為保守\n因此妖精不喜歡與人類接觸\n在『森林之母』的保護之下\n建立獨自的文化生活。\n\n妖精能夠使用的武器比騎士少\n但是他可以使用大部分的武器\n尤其可以使用遠距離攻擊的弓箭\n比其他武器擁有更多的優勢\n而且能夠使用法師的多種魔法\n可謂是個最均衡的職業。\n\n你想要以妖精的身份存活\n就必須取得妖森守護者\n『那魯帕』的協助，妖精所使用的\n物品都是透過她製造出來的。",
-        mage: "將此世界的神秘現象體制地處理\n並在現實中完成這些事的人\n被人們尊稱為「賢者」\n他們利用「瑪那」的力量\n釋放出神般的偉大力量\n他們的力量甚至能夠導致世界\n的滅亡，在幻想的世界中最為突出\n成為他人最具威脅\n又最受尊崇的對象。\n\n法師優先於精神上的發展與學習\n並能使用多種魔法\n因此法師比其他職業在剛開始時\n看似非常地軟弱\n但是透過冒險逐漸成長後\n最後一定能受到所有人的肯定。\n法師在戰鬥時總是在後方\n給予成員多種的魔法協助。",
-        dark: "黑暗妖精承襲妖精的敏銳與長壽\n卻選擇在陰影中磨練自己的道路。\n他們不以守護森林為使命，\n而是追求更快速、更致命的力量，\n在寂靜之中完成一次決定勝負的攻擊。\n\n黑暗妖精能夠使用匕首、雙刀、鋼爪\n與十字弓等武器，\n並以毒與閃避牽制敵人的行動。\n他們的防禦並不穩固，\n但是敏捷的身手與爆發性的殺傷力\n足以在短時間內扭轉戰局。\n\n你若想以黑暗妖精的身份生存，\n就必須習慣孤獨與危險，\n並相信藏在黑暗中的刀鋒。",
-        illusion: "幻術士研究精神與幻象的力量，\n並將不可見的意志化為現實。\n他們不以強壯的肉體戰鬥，\n而是藉由奇古獸與神秘魔法\n動搖敵人的判斷，支援同伴的行動。\n\n幻術士能夠使用獨特的幻術，\n讓敵人在混亂中失去方向，\n也能以魔法強化自己與隊伍。\n在冒險剛開始時他們並不顯眼，\n但當知識與經驗累積之後，\n幻術士便能在戰場上展現\n任何人都難以忽視的影響力。\n\n若你選擇幻術士的道路，\n就必須學會看穿表象，\n並操縱他人看不見的真實。",
-        dragon: "龍騎士繼承龍的血脈與戰鬥本能，\n他們相信真正的力量\n來自承受痛苦後仍向前踏出的意志。\n在戰場上，龍騎士總是以強韌的身體\n突破敵人的防線，\n並用龍之力量壓制對手。\n\n龍騎士能夠使用鎖鏈劍與龍魔法，\n以生命力換取強大的攻擊能力。\n他們的戰鬥方式比騎士更加猛烈，\n也比一般戰士更具危險性。\n只要掌握敵人的弱點，\n龍騎士便能在瞬間爆發出\n令人畏懼的破壞力。\n\n若你想成為龍騎士，\n就必須接受血脈的代價，\n並將痛楚化為勝利的力量。",
-        warrior: "戰士是在無數戰場中成長的鬥士，\n他們沒有華麗的魔法，\n也不依靠血統或神秘力量，\n只憑強健的身體、沉重的武器\n以及永不退縮的意志生存。\n\n戰士能夠使用斧頭與鈍器，\n並以連續而沉重的攻擊壓迫敵人。\n他們在近距離戰鬥中擁有\n非常可靠的耐久力與破壞力，\n即使被包圍也能站在最前方\n為同伴開出前進的道路。\n\n想以戰士的身份冒險，\n就必須相信自己的雙手，\n並在每一次揮擊中證明力量。"
-    };
-    document.getElementById('class-desc').innerText = classDescMap[curCreate.cls] || "";
-    // 🖋️ v3.2.5 排版自動適配：先重設回 CSS 預設（15px/行高1.5），若文案超出框高（overflow:hidden 會無聲裁切）則
-    //    ①字級 0.5px 步進縮小（地板 11px）→ ②仍超出再微收行高（1.5 → 最低 1.2·仍優於舊版 1.1）。
-    //    行高/字距為相對單位會等比縮放；面板隱藏時 clientHeight=0 → 跳過（開啟創角時 selectClassBase 會再跑一次）。
-    (function () {
-        let _de = document.getElementById('class-desc'); if (!_de || !_de.clientHeight) return;
-        _de.style.fontSize = ''; _de.style.lineHeight = '';
-        let _fs = parseFloat(getComputedStyle(_de).fontSize) || 15;
-        while (_fs > 11 && _de.scrollHeight > _de.clientHeight + 1) { _fs -= 0.5; _de.style.fontSize = _fs + 'px'; }
-        let _lh = 1.5;
-        while (_lh > 1.2 && _de.scrollHeight > _de.clientHeight + 1) { _lh -= 0.05; _de.style.lineHeight = _lh.toFixed(2); }
-    })();
 
     curCreate.str = 0; curCreate.dex = 0; curCreate.con = 0; curCreate.int = 0; curCreate.wis = 0; curCreate.cha = 0;
     updateCreateUI();
@@ -1214,7 +1324,7 @@ function adjStat(s, v) {
     let b = createBase[curCreate.cls];
     let spent = curCreate.str + curCreate.dex + curCreate.con + curCreate.int + curCreate.wis + curCreate.cha;
     let left = b.pts - spent;
-    let capN = 20;   // 創角階段各屬性最高點到 20（含魅力，與其他屬性一致；之後靠升級點數突破至上限 60）
+    let capN = 18;   // 創角階段各屬性最高點到 18（站長 2026-10-16：照天堂官方·原本 20；含魅力；之後靠升級點數突破至上限 60）
     if (v > 0 && left > 0 && (b[s] + curCreate[s]) < capN) curCreate[s]++;
     else if (v < 0 && curCreate[s] > 0) curCreate[s]--;
     updateCreateUI();
@@ -1231,19 +1341,35 @@ function updateCreateUI() {
         return;
     }
     let b = createBase[curCreate.cls];
-    ['str','dex','con','int','wis','cha'].forEach(s => document.getElementById(`c-${s}`).innerText = b[s] + curCreate[s]);
+    // 數值旁標「+N」＝這一項自己加了幾點(職業基礎值以外)
+    ['str','dex','con','int','wis','cha'].forEach(s => {
+        const add = curCreate[s];
+        document.getElementById(`c-${s}`).innerHTML = (b[s] + add) + (add > 0 ? `<small class="creation-stat-plus">+${add}</small>` : '');
+    });
     let left = b.pts - (curCreate.str + curCreate.dex + curCreate.con + curCreate.int + curCreate.wis + curCreate.cha);
     document.getElementById('creation-pts').innerText = left;
-    document.getElementById('btn-start').disabled = left <= 0 ? false : true;
+    // 名字有打但不合格才標紅框（空白時不標，免得一進畫面就是紅的）
+    const name = creationNameValue(), nameProblem = characterNameProblem(name, _creationNamesInUse), nameOk = !nameProblem;
+    const nameEl = document.getElementById('creation-name');
+    if(nameEl) nameEl.classList.toggle('invalid', !!name && !nameOk);
+    // 按不下去的原因寫在名字下方：先講名字，名字沒問題再講點數
+    const hint = document.getElementById('creation-hint');
+    if(hint){
+        let msg = nameProblem, warn = !!name && !nameOk;
+        if(!msg && left > 0) msg = `還有 ${left} 點能力值沒分配`;
+        hint.textContent = msg;
+        hint.classList.toggle('warn', warn);
+    }
+    document.getElementById('btn-start').disabled = !(left <= 0 && nameOk);
 }
 
-function onToggleClassic(el) {
-    if (!el.checked) return;   // 取消勾選不需確認
-    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 死亡 → 損失該等級 5% 最大經驗（不會降等）\n‧ 無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n確定要以「經典模式」創建此角色嗎？');   // 🎮 v3.2.9 文案精簡：移除「無法賦予裝備祝福」與「掉落率/經驗值/金幣相同」說明（用戶要求）
-    if (!ok) { el.checked = false; return; }
-}
 function startGame() {
     if(!curCreate.cls || !curCreate.rawCls) return;
+    const createName = creationNameValue();
+    // 按下的當下再查一次重複(其他分頁可能剛用掉這個名字)
+    _creationNamesInUse = characterNamesInUse();
+    const _nameProblem = characterNameProblem(createName, _creationNamesInUse);
+    if(_nameProblem){ updateCreateUI(); alert(_nameProblem); return; }
     if(slotSummary(currentSlot)){
         alert(`存檔 ${currentSlot} 已有角色，無法直接覆蓋。請返回角色選擇畫面並先刪除原角色。`);
         backToMenu();
@@ -1274,16 +1400,13 @@ function startGame() {
         'm_knight': '男騎士', 'f_knight': '女騎士',
         'm_mage': '男法師', 'f_mage': '女法師',
         'm_elf': '男妖精', 'f_elf': '女妖精',
-        'm_dark': '男黑暗妖精', 'f_dark': '女黑暗妖精',
-        'm_illusionist': '男幻術士', 'f_illusionist': '女幻術士',
-        'm_Dknight': '男龍騎士', 'f_Dknight': '女龍騎士',
-        'm_warrior': '男戰士', 'f_warrior': '女戰士'
+        'm_dark': '男黑暗妖精', 'f_dark': '女黑暗妖精'
     };
     player.avatar = avatarMap[curCreate.rawCls] || '男騎士';
     player.cls = curCreate.cls;
     player.bloodPledge = null;   // 血盟改由同模式王族花費金幣創立，不再於創角時自動加入。
-    player.classicMode = !!(document.getElementById('create-classic-toggle') && document.getElementById('create-classic-toggle').checked);   // 🎮 經典模式：依創角開關決定（此角色永久生效）；🏛️v3.0.83 傳統模式已取消（traditionalMode 由 SAVE_DEFAULTS 恆 false）
-    player.name = null;   // 預設未取名，狀態欄顯示「點擊取名」，玩家可點擊命名
+    player.classicMode = false;   // 🎮 創角畫面已拿掉經典模式勾選：新角色一律一般模式（舊的經典模式角色不受影響）
+    player.name = createName;     // 創角時必填名字（2~12 字）；取了就不能改（js/14 startEditName 只給沒名字的舊角色取一次）
     player.enSeed = 'es' + uid() + uid();   // 🎲 強化決定論種子（創角產生一次、存進存檔永久固定）：讓強化成敗由種子決定、不可用 save/load 刷
     player._roleEpoch = _roleEpoch();        // 🛡️ 角色世代：刪除後舊分頁不得把同欄位的舊角色寫回
     if (typeof clanSyncCurrentPlayer === 'function') clanSyncCurrentPlayer();   // 同模式已有血盟時，新角色自動成為成員。
@@ -1296,6 +1419,7 @@ function startGame() {
     player.skills = [];
     player.summon = null; player.charmed = null; player.manualCd = {}; player.hots = {}; player.elfEle = null; player.buffs = { haste: 0, brave: 0, blue: 0, cautious: 0, elfcookie: 0, poly: 0, shield: 0 };   // 🔧 v3.5.94 移除零讀取的舊制孤兒欄位 hot(單數)；團隊 HoT 休眠機制狀態一律存 hots(複數 dict)
     
+    if (typeof refreshPolyFormSelect === 'function') setTimeout(refreshPolyFormSelect, 0);   // 變身卷軸下拉：新角色顯示回「隨機」(等 player 建好)
     resetConfigDomToDefaults();   // 🧼 v3.7.73 設定面板還原為預設：原本只清下面 7 個勾選框，藥水/施法門檻(HP%、MP%)、技能下拉與其餘勾選會被新角色繼承
     ['set-haste', 'set-brave', 'set-blue', 'set-cautious', 'set-poly', 'set-auto-buy-pot', 'set-auto-buy-arrow'].forEach(id => {
         let el = document.getElementById(id);
@@ -1313,18 +1437,6 @@ function startGame() {
         gainItem('wpn_11', 1, true, true);        // 🔧 匕首（黑暗妖精起始武器，非歐西斯匕首）
         gainItem('amr_jacket', 1, true, true);    // 皮夾克
         gainItem('potion_heal', 100, true, true); // 紅色藥水 x 100
-    } else if (player.cls === 'illusion') {
-        gainItem('wpn_10', 1, true, true);        // 🔧 木棒（幻術士起始武器）
-        gainItem('amr_jacket', 1, true, true);    // 皮夾克
-        gainItem('potion_heal', 100, true, true); // 紅色藥水 x 100
-    } else if (player.cls === 'dragon') {
-        gainItem('wpn_10', 1, true, true);        // 🐉 木棒（龍騎士起始武器）
-        gainItem('amr_jacket', 1, true, true);    // 皮夾克
-        gainItem('potion_heal', 100, true, true); // 治癒藥水 x 100
-    } else if (player.cls === 'warrior') {
-        gainItem('wpn_1', 1, true, true);         // ⚔️ 斧（戰士起始武器）
-        gainItem('amr_jacket', 1, true, true);    // 皮夾克
-        gainItem('potion_heal', 100, true, true); // 治癒藥水 x 100
     } else if (player.cls === 'royal') {
         gainItem('wpn_11', 1, true, true);        // 👑 匕首（王族起始武器）
         gainItem('amr_jacket', 1, true, true);    // 皮夾克
@@ -1353,15 +1465,6 @@ function startGame() {
     } else if (player.cls === 'dark') {
         equipItem(player.inv.find(i=>i.id==='wpn_11'));        // 🔧 匕首
         equipItem(player.inv.find(i=>i.id==='amr_jacket'));
-    } else if (player.cls === 'illusion') {
-        equipItem(player.inv.find(i=>i.id==='wpn_10'));        // 🔧 木棒
-        equipItem(player.inv.find(i=>i.id==='amr_jacket'));
-    } else if (player.cls === 'dragon') {
-        equipItem(player.inv.find(i=>i.id==='wpn_10'));        // 🐉 木棒
-        equipItem(player.inv.find(i=>i.id==='amr_jacket'));
-    } else if (player.cls === 'warrior') {
-        equipItem(player.inv.find(i=>i.id==='wpn_1'));         // ⚔️ 斧
-        equipItem(player.inv.find(i=>i.id==='amr_jacket'));
     } else if (player.cls === 'royal') {
         equipItem(player.inv.find(i=>i.id==='wpn_11'));        // 👑 匕首
         equipItem(player.inv.find(i=>i.id==='amr_jacket'));
@@ -1378,9 +1481,6 @@ function startGame() {
     if (player.cls === 'mage') startMap = 'town_talking';
     else if (player.cls === 'elf') startMap = 'town_elf';
     else if (player.cls === 'dark') startMap = 'town_silent';
-    else if (player.cls === 'illusion') startMap = 'town_hyperia';
-    else if (player.cls === 'dragon') startMap = 'town_behemoth';
-    else if (player.cls === 'warrior') startMap = 'town_heine';   // ⚔️ 戰士：海音
     else if (player.cls === 'royal') startMap = 'town_talking';   // 👑 王族：說話之島
 
     setMapSelectors(startMap);
@@ -1403,7 +1503,7 @@ function startGame() {
 //   於本檔求值當下擷取——index.html 的設定面板 markup 在 <script> 標籤之前，此時取到的就是 HTML 預設值。
 const CONFIG_DOM_IDS = ['set-pot', 'set-hp-pot', 'set-auto-buy-pot', 'set-mp-atk', 'sel-atk-skill', 'set-mp-heal', 'sel-heal-skill',
     'set-hp-skill', 'set-hp-convert', 'sel-convert-skill', 'set-haste', 'set-brave', 'set-blue', 'set-cautious',
-    'set-elfcookie', 'set-poly', 'set-magicbarrier', 'set-teleport', 'set-auto-buy-arrow'];
+    'set-elfcookie', 'set-poly', 'set-magicbarrier', 'set-teleport', 'set-auto-buy-arrow', 'set-pet-revive'];
 const CONFIG_DOM_DEFAULTS = (function () {
     let d = {};
     try { CONFIG_DOM_IDS.forEach(id => { let el = document.getElementById(id); if (el) d[id] = (el.type === 'checkbox') ? el.checked : el.value; }); } catch (e) {}
@@ -1425,12 +1525,12 @@ function resetConfigDomToDefaults() {
     try { document.querySelectorAll('#auto-buff-skills input[type="checkbox"]').forEach(c => { c.checked = false; }); } catch (e) {}
 }
 function updateClassPotionRows() {
-    // 勇敢藥水：騎士／龍騎士限定；慎重藥水：法師／幻術士限定；精靈餅乾：妖精限定
+    // 勇敢藥水：騎士／王族限定；慎重藥水：法師限定；精靈餅乾：妖精限定
     let braveRow = document.getElementById('ui-brave-row');
     let cautiousRow = document.getElementById('ui-cautious-row');
     let elfRow = document.getElementById('ui-elfcookie-row');
-    if(braveRow) braveRow.classList.toggle('hidden', player.cls !== 'knight' && player.cls !== 'dragon' && player.cls !== 'warrior' && player.cls !== 'royal');
-    if(cautiousRow) cautiousRow.classList.toggle('hidden', player.cls !== 'mage' && player.cls !== 'illusion');
+    if(braveRow) braveRow.classList.toggle('hidden', player.cls !== 'knight' && player.cls !== 'royal');
+    if(cautiousRow) cautiousRow.classList.toggle('hidden', player.cls !== 'mage');
     if(elfRow) elfRow.classList.toggle('hidden', player.cls !== 'elf');
 }
 
@@ -1540,6 +1640,7 @@ function saveGame() {
         setPoly: document.getElementById('set-poly').checked,
         setMagicbarrier: document.getElementById('set-magicbarrier').checked,
         setTeleport: document.getElementById('set-teleport').checked,
+        setPetRevive: !!(document.getElementById('set-pet-revive') || {}).checked,
         setAutoBuyArrow: document.getElementById('set-auto-buy-arrow').checked,   // 🧪 v3.3.15 各藥水/卷軸「自動購買」已併入「自動使用」→移除獨立收集；弓箭自動購買維持
         autoBuffSkills: {} // 用來儲存動態生成的法術 Buff
     };
@@ -1613,6 +1714,14 @@ function purgeOrphanItems(warehouse) {
             player.inv = player.inv.filter(i => i && !isOrphan(i.id));
             removed += before - player.inv.length;
         }
+        // 身上穿著的也要清（移除戰士/幻術士/龍騎士時，其他職業也可能穿著共用欄位的專屬遺物等）——
+        //   留著的話裝備欄讀 DB.items[id] 會是 undefined
+        if (player.eq && typeof player.eq === 'object') {
+            for (let slot in player.eq) {
+                let it = player.eq[slot];
+                if (it && isOrphan(it.id)) { player.eq[slot] = null; removed++; }
+            }
+        }
         try {
             if (typeof loadWarehouse === 'function' && typeof saveWarehouse === 'function') {
                 let wh = warehouse && typeof warehouse === 'object' ? warehouse : loadWarehouse();
@@ -1650,6 +1759,9 @@ function loadGame() {
         //    → 該欄位在載入畫面顯示為空、empty=true → 「匯入進度」可見而「刪除角色」被 hidden。
         //    舊文案多寫的「仍可用『刪除角色』清空」正好點名此情境唯一看不見的那顆按鈕，故移除。
         let d; try { d = JSON.parse(s); } catch(e){ alert('此存檔位的資料已毀損，無法載入。\n此欄位在載入畫面會顯示為空，請直接按「匯入進度」還原先前匯出的 .json 備份檔。'); return; }
+        // 🔒 已移除職業(戰士/幻術士/龍騎士)的舊角色：一律不載入，存檔原樣保留。
+        //    選角畫面已鎖住；這裡是最後一道——任何入口(例如手機的「切換角色」)走到這都擋下，且在改動全域 player 之前擋。
+        if (d && d.p && isRemovedClass(d.p.cls)) { alert('此角色的職業已停用，無法進入遊戲。'); return; }
         player = d.p; mapState = d.ms;
         delete player.offlineHunt;   // 🗑️ v3.7.94 離線掛機已移除：舊存檔的逐地圖速率快照沒有讀取者，載入即丟掉（否則每次存檔都白帶一份）
         normalizeFacingRefsForSave();   // 舊存檔若含 v3.2.12 面向物件副本，載入時立即轉為 UID／隊員鍵並移除物件參照
@@ -1699,6 +1811,15 @@ function loadGame() {
         // 相容舊存檔：單一 partner → partners 陣列
         if(player.partners === undefined) player.partners = (player.partner ? [player.partner] : []);
         if(player.allies === undefined || !Array.isArray(player.allies)) player.allies = [];   // 協力角色（其他存檔位）
+        // 🚫 傭兵關閉：舊存檔帶著的傭兵一律解散（經驗照常記入待領帳本，原角色下次載入／回村時領取）；副本助戰者清空
+        if (typeof MERC_CLOSED !== 'undefined' && MERC_CLOSED) {
+            if (player.allies.length) {
+                try { player.allies.forEach(a => { try { if (typeof _settleAllyExp === 'function') _settleAllyExp(a, 'dismiss'); } catch (e) {} }); } catch (e) {}
+                player.allies = [];
+                try { if (typeof syncMercenaryEmploymentRegistry === 'function') syncMercenaryEmploymentRegistry(true); } catch (e) {}
+            }
+            if (player.antharasHelpers && Object.keys(player.antharasHelpers).length) player.antharasHelpers = {};
+        }
         // 🐾 v3.2.17 夥伴系統 v2：舊項圈/肉/哨子/舊進化果實/舊 petStorage 一次性轉換與清除（項圈→新寵物入共用保管）
         try { if (typeof petMigrateLegacy === 'function') petMigrateLegacy(); } catch (e) { console.warn('petMigrateLegacy', e); }
         // 舊網頁版匯入資料的倉庫可能很大。下方清理、套裝修正與三種圖鑑遷移共用同一份解析結果，
@@ -1714,6 +1835,10 @@ function loadGame() {
         // 修復舊版「召喚死亡後 buff 未清除」卡關：載入時若目前沒有召喚物，清除殘留的召喚 buff，
         // 讓自動施放能立即重新召喚（不必等死亡復活或 buff 自然倒數）。
         if(player.charmed === undefined) player.charmed = null;   // 相容舊存檔：迷魅獨立槽位
+        if(player.charmed && !player.charmed._charm) {   // 🩸 改版前(或遺物魅惑之吻)迷魅到的怪沒有血量：照原怪補上，才看得到血條、也會被打
+            let _cn = String(player.charmed.n || '').replace(/^迷魅：/, ''), _cm = Object.values(DB.mobs).find(m => m && m.n === _cn && !m.boss);
+            if (_cm) Object.assign(player.charmed, { _charm: true, form: _cn, lv: _cm.lv || 1, hp: Math.max(1, _cm.hp || 1), mhp: Math.max(1, _cm.hp || 1), ac: (_cm.ac != null ? _cm.ac : 10), mr: _cm.mr || 0 });
+        }
         if(player.summon && ['sk_zombie', 'sk_elf_summon', 'sk_elf_summon2'].includes(player.summon.skId)) player.summon = null;   // 🧟 v3.2.21 造屍術/屬性精靈改走 v2 實體制：清除舊管線殘留（勾選仍在→v2 自動重新召喚）
         player.summonsV2 = [];   // 🧙 v3.2.40 稽核修：v2 召喚實體不入檔（本行清 v3.2.39 以前舊檔殘留·防改名 null-deref）·勾選仍在→自動重施
         player.guardsV2 = [];    // 🏰 城堡護衛實體不入檔（讀檔後 castleGuardSync 依血盟名冊重建）
@@ -1727,9 +1852,8 @@ function loadGame() {
         if(player.name === undefined) player.name = null;   // 相容舊存檔：未取名則狀態欄顯示「點擊取名」
         delete player.blessings;      // 舊版血盟祝福已移除；新版血盟 Buff 不使用角色 blessings。
         delete player.blessingAuto;
-        // 🔥 v3.0.78 試煉接取制：初始化任務狀態；幻術士/戰士/龍騎士 50 級試煉原以 demonTempleOpen 為唯一狀態 → 統一遷移為 trialStage=2（最終兌換階段·一次性）
+        // 🔥 v3.0.78 試煉接取制：初始化任務狀態
         if(!player.trialQ || typeof player.trialQ !== 'object') player.trialQ = {};
-        if(['illusion','warrior','dragon'].includes(player.cls) && player.demonTempleOpen && (player.trialStage || 0) < 2) player.trialStage = 2;
         // 🔥 v3.0.77 屬性詞綴改版遷移：舊12代碼→新5階代碼（fire1/3/5→fr1/fr2/fr3…名稱身分不變·冪等）；
         //    屬性詞綴只能存在於武器→防具/飾品上的舊屬性詞綴一律清除；非法值（true/未知碼）清除。
         //    倉庫刻意不改寫（資料遺失敏感）——讀取路徑 getAttrAffix 相容舊碼，提領後下次載入在此轉正。
@@ -1832,6 +1956,10 @@ function loadGame() {
         // 日後新增欄位只需登錄於 SAVE_DEFAULTS；上方逐項 if(undefined) 為歷史遷移，不必再增列。
         applySaveDefaults(player);
         if (typeof repairMasteryState === 'function') _masteryRepair = repairMasteryState(player);
+        // 🏅 精通系統關閉：劍術精通給的「妖精拿騎士單手武器」失效 → 拿著的卸回背包（詛咒中的卸不下就照原作規則留著）
+        if (typeof MASTERY_ON !== 'undefined' && !MASTERY_ON && player.mastery === 'e_sword' && player.eq && player.eq.wpn) {
+            try { let _mw = DB.items[player.eq.wpn.id]; if (_mw && !reqAllowsClass(_mw, player.cls) && !loadUpAllows(player.eq.wpn.id) && !(typeof isEquipCursed === 'function' && isEquipCursed('wpn'))) returnEquipToInv('wpn'); } catch (e) {}
+        }
         if (!player.siege || typeof player.siege !== 'object') player.siege = {};
         if (player.ismaelAccUsed && !(player.siege.accCdUntil > 0)) player.siege.accCdUntil = Date.now() + 24 * 3600 * 1000;
         delete player.ismaelAccUsed;   // 舊版「攻城獲勝重置額度」遷移為購買後 24 小時冷卻。
@@ -1856,13 +1984,14 @@ function loadGame() {
         if (player.eq && player.eq.ring3 === undefined) player.eq.ring3 = null;   // 🔧 舊存檔補上第三戒指欄
         if (player.eq && player.eq.ring4 === undefined) player.eq.ring4 = null;   // 🔧 舊存檔補上第四戒指欄
         // 🔧 負重改版遷移：負重強化不再開放重甲，卸下現在無法裝備的裝備到背包
-        ['wpn','arrow','helm','armor','shin','shield','cloak','tshirt','gloves','boots','ring1','ring2','ring3','ring4','amulet','belt'].forEach(_sl => {
+        ['wpn','arrow','helm','armor','shield','cloak','tshirt','gloves','boots','ring1','ring2','ring3','ring4','amulet','belt'].forEach(_sl => {
             let _e = player.eq && player.eq[_sl]; if (!_e) return;
             let _ok = true; try { _ok = checkCanEquip(_e); } catch(err) { _ok = true; }
             if (!_ok) {
                 if (!invMergeBack(_e)) player.inv.push(_e);   // 🔒 v3.6.92 單一真相 invMergeBack（js/01）
                 player.eq[_sl] = null;
-                logSys(`<span class="text-amber-300">因負重強化改版，無法再裝備的 ${DB.items[_e.id] ? DB.items[_e.id].n : '裝備'} 已自動卸下至背包。</span>`);
+                let _need = (typeof itemLvNeed === 'function') ? itemLvNeed(DB.items[_e.id]) : 0;   // 🎚️ 等級下限（js/00 ITEM_MIN_LV）
+                logSys(`<span class="text-amber-300">${_need ? `等級 ${_need} 以上才能裝備，` : '因負重強化改版，無法再裝備的 '}${DB.items[_e.id] ? DB.items[_e.id].n : '裝備'} 已自動卸下至背包。</span>`);
             }
         });
         syncShahaArrow();   // 🏝️ 沙哈之弓：載入時校正無限箭狀態
@@ -1904,8 +2033,10 @@ function loadGame() {
             if (c.setCautious !== undefined) document.getElementById('set-cautious').checked = c.setCautious;
             if (c.setElfcookie !== undefined) document.getElementById('set-elfcookie').checked = c.setElfcookie;
             if (c.setPoly !== undefined) document.getElementById('set-poly').checked = c.setPoly;
+            if (typeof refreshPolyFormSelect === 'function') refreshPolyFormSelect();   // 變身卷軸下拉：指定型態存在 player.polyPick
             if (c.setMagicbarrier !== undefined) document.getElementById('set-magicbarrier').checked = c.setMagicbarrier;
             if (c.setTeleport !== undefined) document.getElementById('set-teleport').checked = c.setTeleport;
+            { let _pr = document.getElementById('set-pet-revive'); if (_pr) _pr.checked = !!c.setPetRevive; }
             if (c.setAutoBuyArrow !== undefined) document.getElementById('set-auto-buy-arrow').checked = c.setAutoBuyArrow;   // 🧪 v3.3.15 各藥水/卷軸「自動購買」勾選已移除（併入自動使用）→不再還原
             
             // 動態魔法 Buff 設定還原

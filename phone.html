@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>放置天堂 - 日出之國</title>
+<!--
+  phone.html — 「一律使用手機版面」的外框頁(afk-forcemobile 在寬螢幕把 index.html 導來這裡)。
+  上游手機版面靠 media query(max-width:768px 等)與 innerWidth 判斷,外掛也各自讀同一條 MQ,
+  寬螢幕上無法用樣式「假裝」成手機 → 改成把整個遊戲放進手機寬度的 iframe,所有條件自然成立。
+  同源 iframe:localStorage / SW 與直接開 index.html 完全相同,存檔不受影響。
+  已鎖定一律開啟,沒有開關。
+-->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="pwa-icon-192.png">
+<meta name="theme-color" content="#000000">
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body { display: flex; justify-content: center; }
+  #game-frame { width: min(430px, 100%); height: 100vh; height: 100dvh; border: 0; display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.8); }
+</style>
+<!-- 一律手機版面已鎖定：不再依 afk_toggle_forcemobile 導回 index.html -->
+</head>
+<body>
+<iframe id="game-frame" allow="autoplay; fullscreen; clipboard-read; clipboard-write" title="放置天堂"></iframe>
+<script>
+  (function () {
+    var f = document.getElementById('game-frame');
+    f.src = 'index.html' + location.search + location.hash;
+    f.addEventListener('load', function () {
+      try { f.contentWindow.focus(); if (f.contentDocument.title) document.title = f.contentDocument.title; } catch (e) {}
+    });
+  })();
+</script>
+</body>
+</html>

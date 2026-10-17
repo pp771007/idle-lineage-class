@@ -1,5 +1,8 @@
-// 🔊 戰鬥音效引擎（取樣音檔 · HTMLAudioElement 池）
+// 🔊 戰鬥音效引擎（取樣音檔 · 網站用 Web Audio，file:// 用 HTMLAudioElement 池）
 //   音檔放 assets/sfx/<file>.<mp3|ogg|wav>；缺檔→該事件靜音（優雅降級、無錯誤）。
+//   ⚡ http(s)（網站／加到主畫面）改用 Web Audio：音檔解碼一次存成 AudioBuffer，每次播放只建一個 BufferSource。
+//     原本每次命中都對 <audio> 做 currentTime=0＋play()，iPhone 上每次都要動用媒體管線、卡住主執行緒——
+//     玩家實測「省電模式關掉音效就不卡」。某個音檔解碼失敗（格式不支援）→ 只有那一個退回 <audio> 池。
 //   ⚠️用 <audio> 元素載入而非 fetch：Chromium 會擋下對 file:// 本機檔案的 fetch()，
 //     打包版(Electron·loadFile→file://) 與「直接雙擊網頁(file://)」都會因此無聲；
 //     <audio>（媒體元素）與 <img> 一樣可讀 file://／asar，故網頁版(http/file://)與打包版「行為完全一致」。
@@ -22,10 +25,7 @@ const CREATION_FRAME_SFX = {
     f_elf: { frame: 166, sound: 1595 }, m_elf: { frame: 245, sound: 1596 },
     f_knight: { frame: 315, sound: 1601 }, m_knight: { frame: 378, sound: 1602 },
     f_mage: { frame: 452, sound: 1599 }, m_mage: { frame: 531, sound: 1600 },
-    princess: { frame: 629, sound: 1597 }, prince: { frame: 714, sound: 1598 },
-    m_Dknight: { frame: 841, sound: 4764 }, f_Dknight: { frame: 908, sound: 4765 },
-    m_illusionist: { frame: 968, sound: 4766 }, f_illusionist: { frame: 1039, sound: 4767 },
-    m_warrior: { frame: 1992, sound: 6779 }, f_warrior: { frame: 1908, sound: 6787 }
+    princess: { frame: 629, sound: 1597 }, prince: { frame: 714, sound: 1598 }
 };
 Object.keys(CREATION_FRAME_SFX).forEach(function (key) {
     SFX_DEFS['creation_' + key] = { file: '' + CREATION_FRAME_SFX[key].sound, vol: 0.65, throttle: 0 };
@@ -43,12 +43,59 @@ function _sfxLoadCfg() {
 }
 function _sfxSaveCfg() { try { if (typeof _lsSet === 'function') _lsSet('fb5_sfx', JSON.stringify(_sfxCfg)); } catch (e) {} }
 
-// 載入單一音效：素材庫以 ogg 為主，依序試 ogg→mp3→wav；第一個能播者→建立 N 個元素的播放池；全部失敗→該事件保持靜音
-function _sfxTryLoad(key, def) {
-    var exts = ['ogg', 'mp3', 'wav'], i = 0;
+// 音檔索引(js/sfx-index.js)查副檔名：有索引→只回那一個(缺檔回空陣列＝不發請求)；索引沒載到→退回依序試。
+function _audioExts(index, file, fallback) {
+    if (index && typeof index === 'object') return index[file] ? [index[file]] : [];
+    return fallback;
+}
+
+// ── Web Audio（只在 http(s)：file:// 下 fetch 讀不到本機檔，維持 <audio>，見檔頭）──
+var _sfxCtx = null, _sfxCtxFailed = false;
+function _sfxCtxGet() {
+    if (_sfxCtx || _sfxCtxFailed) return _sfxCtx;
+    try {
+        var AC = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+        if (!AC || typeof location === 'undefined' || !/^https?:$/.test(location.protocol) || typeof fetch !== 'function') { _sfxCtxFailed = true; return null; }
+        _sfxCtx = new AC();
+        // iOS：AudioContext 要在使用者手勢裡 resume 才會出聲；被系統打斷（來電、切走）後也會回到 suspended → 每次點擊都補一次
+        var unlock = function () { if (_sfxCtx && _sfxCtx.state !== 'running') { try { var p = _sfxCtx.resume(); if (p && p.catch) p.catch(function () {}); } catch (e) {} } };
+        ['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, unlock, true); });
+    } catch (e) { _sfxCtx = null; _sfxCtxFailed = true; }
+    return _sfxCtx;
+}
+// 抓檔＋解碼成 AudioBuffer：ok(buf)；檔案不存在 → missing()；解碼失敗（格式不支援）→ undecodable()
+function _sfxLoadBuffer(url, ok, missing, undecodable) {
+    var ctx = _sfxCtxGet(); if (!ctx) { undecodable(); return; }
+    fetch(url).then(function (r) {
+        if (!r.ok) { missing(); return; }
+        return r.arrayBuffer().then(function (ab) {
+            var done = false;
+            var good = function (b) { if (done) return; done = true; ok(b); };
+            var bad = function () { if (done) return; done = true; undecodable(); };
+            try { var pr = ctx.decodeAudioData(ab, good, bad); if (pr && pr.catch) pr.catch(bad); } catch (e) { bad(); }   // 舊版 Safari 只認 callback 寫法
+        });
+    }).catch(function () { missing(); });
+}
+
+// 載入單一音效：素材庫以 ogg 為主，依序試 ogg→mp3→wav；第一個能播者→建立播放池；全部失敗→該事件保持靜音
+//   池的形狀：Web Audio＝[{ buf, live:[播放中的 source] }]（長度 1）；<audio>＝N 個元素。其餘程式只看「有沒有、長度」。
+//   onDone(可省)：這個音效有結果了(可播／確定沒有)才呼叫，供 _sfxInit 一個一個排隊預載。
+function _sfxTryLoad(key, def, onDone) {
+    var exts = _audioExts(typeof SFX_INDEX !== 'undefined' ? SFX_INDEX : null, def.file, ['ogg', 'mp3', 'wav']), i = 0;
     function tryNext() {
-        if (i >= exts.length) { _sfxPool[key] = null; return; }
+        if (i >= exts.length) { _sfxPool[key] = null; if (onDone) onDone(); return; }
         var url = 'assets/sfx/' + def.file + '.' + exts[i++];
+        if (_sfxCtxGet()) {
+            _sfxLoadBuffer(url, function (buf) {
+                if (_sfxPool[key]) return;
+                _sfxPool[key] = [{ buf: buf, live: [] }]; _sfxIdx[key] = 0;
+                if (onDone) onDone();
+            }, tryNext, function () { loadElements(url); });   // 缺檔 → 下一個副檔名；解碼不了 → 這個音效改用 <audio>
+            return;
+        }
+        loadElements(url);
+    }
+    function loadElements(url) {
         var probe = new Audio();
         probe.preload = 'auto';
         probe.addEventListener('canplaythrough', function () {
@@ -56,6 +103,7 @@ function _sfxTryLoad(key, def) {
             var arr = [probe];
             for (var j = 1; j < SFX_POOL_N; j++) { var a = new Audio(url); a.preload = 'auto'; arr.push(a); }
             _sfxPool[key] = arr; _sfxIdx[key] = 0;
+            if (onDone) onDone();
         }, { once: true });
         probe.addEventListener('error', function () { tryNext(); }, { once: true });   // 缺檔／格式不支援 → 換下一個副檔名
         probe.src = url;
@@ -64,10 +112,43 @@ function _sfxTryLoad(key, def) {
     tryNext();
 }
 
+// 播放池裡的一個音：Web Audio → 新建 BufferSource（可無限重疊、幾乎零成本）；<audio> → round-robin 元素。回傳有沒有播。
+function _sfxStart(poolKey, arr, vol) {
+    var v = Math.max(0, Math.min(1, (vol || 0.5) * (_sfxCfg.vol / 100)));   // 每音效基準 × 全域音量
+    var e0 = arr[0];
+    if (e0 && e0.buf) {
+        var ctx = _sfxCtx; if (!ctx) return false;
+        if (ctx.state === 'suspended') { try { var rp = ctx.resume(); if (rp && rp.catch) rp.catch(function () {}); } catch (e) {} }
+        var src = ctx.createBufferSource(), g = ctx.createGain();
+        src.buffer = e0.buf; g.gain.value = v;
+        src.connect(g); g.connect(ctx.destination);
+        e0.live.push(src);
+        src.onended = function () { var k = e0.live.indexOf(src); if (k >= 0) e0.live.splice(k, 1); try { g.disconnect(); } catch (e) {} };
+        src.start(0);
+        return true;
+    }
+    var idx = _sfxIdx[poolKey] || 0;
+    var a = arr[idx % arr.length]; _sfxIdx[poolKey] = idx + 1;   // round-robin → 可重疊播放
+    a.volume = v;
+    try { a.currentTime = 0; } catch (e) {}
+    var p = a.play();
+    if (p && p.catch) p.catch(function () {});   // autoplay 尚未解鎖（無互動）→忽略；首次互動後即正常
+    return true;
+}
+
+// 預載一次只抓一個：全部同時開會跟登入圖、地圖、主角圖搶頻寬(手機無痕／第一次開最明顯)。
+//   iOS 不理 preload、canplaythrough 可能永遠不來 → 每個最多等 3 秒就換下一個，不會卡住整條。
 function _sfxInit() {
     if (_sfxInited) return; _sfxInited = true;
     _sfxLoadCfg();
-    Object.keys(SFX_DEFS).forEach(function (k) { var def = SFX_DEFS[k]; if (def.preload !== false) _sfxTryLoad(k, def); });
+    var queue = Object.keys(SFX_DEFS).filter(function (k) { return SFX_DEFS[k].preload !== false; });
+    (function next() {
+        if (!queue.length) return;
+        var k = queue.shift(), moved = false;
+        var go = function () { if (moved) return; moved = true; clearTimeout(t); next(); };
+        var t = setTimeout(go, 3000);
+        _sfxTryLoad(k, SFX_DEFS[k], go);
+    })();
     _sfxSyncUI();
 }
 // 將 UI 控制項（設定面板的開關 + 音量滑桿）初值同步為目前偏好
@@ -80,9 +161,9 @@ function setSfxOn(on) { _sfxCfg.on = !!on; _sfxSaveCfg(); if (on) playSfx('attac
 function setSfxVol(v) { _sfxCfg.vol = Math.max(0, Math.min(100, parseInt(v, 10) || 0)); _sfxSaveCfg(); }
 
 // 🔊 攻擊音效依「武器類型」分檔(attack_<weaponcat>·用 equipCatKey)；受傷依「職業群組+性別」分檔(hurt_<group>_<m|f>)；其餘事件共用單檔。缺對應變體檔→自動退回通用 key(attack/hurt)。
-//   受傷群組(4組)：knight=騎士/戰士/龍騎士、mage=法師/幻術士、elf=妖精/黑暗妖精、royal=王族；性別由 player.avatar(/女|公主/→f否則m) 判定。
+//   受傷群組(4組)：knight=騎士、mage=法師、elf=妖精/黑暗妖精、royal=王族；性別由 player.avatar(/女|公主/→f否則m) 判定。
 //   武器類型(equipCatKey·js/16)：dagger/sword1/sword2/katana/blunt1/blunt2/spear/claw/dual/chainsword/bow/xbow/wand/qigu/wpn_other；徒手→unarmed。
-var _SFX_GROUP = { knight: 'knight', warrior: 'knight', dragon: 'knight', mage: 'mage', illusion: 'mage', elf: 'elf', dark: 'elf', royal: 'royal' };
+var _SFX_GROUP = { knight: 'knight', mage: 'mage', elf: 'elf', dark: 'elf', royal: 'royal' };
 var _sfxVariantTried = {};
 function _sfxClassGroup() { return (typeof player !== 'undefined' && player && player.cls) ? (_SFX_GROUP[player.cls] || null) : null; }
 function _sfxGender() { var a = (typeof player !== 'undefined' && player && player.avatar) ? player.avatar : ''; return /女|公主/.test(a) ? 'f' : 'm'; }
@@ -140,20 +221,14 @@ function playSfx(key) {
     var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     if (def.throttle && _sfxLast[key] && (now - _sfxLast[key]) < def.throttle) return;   // 節流用 base key（同角色一次只一種變體）
     _sfxLast[key] = now;
-    try {
-        var idx = _sfxIdx[poolKey] || 0;
-        var a = arr[idx % arr.length]; _sfxIdx[poolKey] = idx + 1;   // round-robin → 可重疊播放
-        a.volume = Math.max(0, Math.min(1, (def.vol || 0.5) * (_sfxCfg.vol / 100)));   // 每音效基準 × 全域音量
-        try { a.currentTime = 0; } catch (e) {}
-        var p = a.play();
-        if (p && p.catch) p.catch(function () {});   // autoplay 尚未解鎖（無互動）→忽略；首次互動後即正常
-    } catch (e) {}
+    try { _sfxStart(poolKey, arr, def.vol); } catch (e) {}
 }
 
 function stopCreationFrameSfx() {
     if (!_creationSfxActiveKey) return;
     var arr = _sfxPool[_creationSfxActiveKey];
     if (arr && arr.length) arr.forEach(function (a) {
+        if (a.buf) { a.live.slice().forEach(function (s) { try { s.stop(); } catch (e) {} }); a.live.length = 0; return; }   // Web Audio
         try { a.pause(); a.currentTime = 0; } catch (e) {}
     });
     _creationSfxActiveKey = null;
@@ -439,15 +514,31 @@ function _mobAtkSfxNum(name) {   // 解析怪名→攻擊音編號（精確→�
 function _sfxPlayPool(poolKey, vol) {   // 直接播放指定 pool key（不查 SFX_DEFS、不額外節流；節流由呼叫端負責）
     if (typeof catchupActive === 'function' && catchupActive()) return false;
     var arr = _sfxPool[poolKey]; if (!arr || !arr.length) return false;
-    try {
-        var idx = _sfxIdx[poolKey] || 0; var a = arr[idx % arr.length]; _sfxIdx[poolKey] = idx + 1;
-        a.volume = Math.max(0, Math.min(1, (vol || 0.5) * (_sfxCfg.vol / 100)));
-        try { a.currentTime = 0; } catch (e) {}
-        var p = a.play(); if (p && p.catch) p.catch(function () {});
-        return true;
-    } catch (e) { return false; }
+    try { return _sfxStart(poolKey, arr, vol); } catch (e) { return false; }
 }
 function _sfxDynLoad(poolKey, file) { if (typeof catchupActive === 'function' && catchupActive()) return; if (_sfxDynTried[poolKey]) return; _sfxDynTried[poolKey] = true; _sfxTryLoad(poolKey, { file: file || poolKey }); }
+// 🗡️ 首頁登入劈信紙（js/00z 呼叫）：揮劍＝大劍揮擊音 1540（與玩家大劍共用 wpnatk_1540 池）、劈開那一下＝爆擊聲。
+function loginSlashSfxPreload() { if (_sfxCfg.on && _sfxPool.wpnatk_1540 === undefined) _sfxDynLoad('wpnatk_1540', '1540'); }
+function playLoginSlashSfx(stage) {
+    if (!_sfxCfg.on) return;
+    if (stage === 'swing') { if (_sfxPool.wpnatk_1540 === undefined) loginSlashSfxPreload(); else _sfxPlayPool('wpnatk_1540', 0.85); }
+    else if (stage === 'cut') playSfx('crit');
+}
+// 🔨 強化視窗音效（js/33 呼叫）：借原版法術音——成功＝擬似魔法武器(武器)/鎧甲護持(防具·飾品)、裝備消失＝壞物術、
+//   強化值降低＝詛咒、沒有變化＝魔法相消術；蓄力＝通用施法音。開視窗時 enhSfxPreload() 先懶載，第一次強化就有聲。
+const ENH_SFX = { ok_wpn: 113, ok_arm: 137, boom: 100, down: 116, none: 140 };
+function enhSfxPreload() {
+    if (!_sfxCfg.on) return;
+    for (var k in ENH_SFX) if (_sfxPool['enh_' + k] === undefined) _sfxDynLoad('enh_' + k, '' + ENH_SFX[k]);
+}
+function playEnhSfx(kind) {
+    if (!_sfxCfg.on) return;
+    if (kind === 'charge') { playSfx('magic'); return; }
+    var n = ENH_SFX[kind]; if (n === undefined) return;
+    var key = 'enh_' + kind;
+    if (_sfxPool[key] === undefined) { _sfxDynLoad(key, '' + n); return; }
+    _sfxPlayPool(key, 0.70);
+}
 function playMobHurt(mob) {
     if (!_sfxCfg.on || !mob) return;
     var n = MOB_HURT_SFX[mob.n]; if (n === undefined) return;   // 沒對應→不出聲（不退回通用，避免亂套）
@@ -574,14 +665,12 @@ var TOWN_BGM_LIST = [
     'town_witon',         // 威頓村
     'town_pride',         // 傲慢之塔入口
     'town_windwood_castle', // 風木城堡
-    'town_hyperia',       // 希培利亞村莊
-    'town_behemoth',      // 貝希摩斯
     'town_elder_council', // 🌑 v3.4.0 長老會議廳（黑暗妖精聖地.md：music 10）
 ];
-var TOWN_BGM_TRACKS = { 'town_hyperia': 'music97', 'town_behemoth': 'music99', 'town_elder_council': 'music10' };
+var TOWN_BGM_TRACKS = { 'town_elder_council': 'music10' };
 var CREATE_BGM = {
     royal: 'music1', knight: 'music2', elf: 'music3', mage: 'music4',
-    dark: 'music10', illusion: 'music96', dragon: 'music98', warrior: 'music175'
+    dark: 'music10'
 };
 var BGM_TRACKS = { title: 'title', create: 'create', town: 'town', battle: 'battle', boss: 'boss' };
 TOWN_BGM_LIST.forEach(function (id) { BGM_TRACKS[id] = TOWN_BGM_TRACKS[id] || id; });
@@ -593,7 +682,7 @@ var HUNT_BGM = { 'tikal_area': 'music122', 'tikal_deep': 'music123', 'tikal_alta
     'sunrise_castle': 'music161', 'sunrise_east': 'music167', 'sunrise_west': 'music167', 'sunrise_north': 'music167',   // 🌅 v3.4.98 日出之國：城墎=music161·東/西/北之地=music167
     'antharas_nest_1': 'music128', 'antharas_nest_2': 'music130', 'antharas_nest_3': 'music130', 'antharas_lair': 'music133' };   // 🐉 v3.7.57 侵蝕的安塔瑞斯巢穴：入口128·通道/深處130·棲息地133（規格書指定）
 Object.keys(HUNT_BGM).forEach(function (id) { BGM_TRACKS[HUNT_BGM[id]] = HUNT_BGM[id]; });   // 註冊曲目 scene=檔名，_bgmInit 會預解析 URL
-var _bgmUrl = {}, _bgmEls = [null, null], _bgmActive = -1, _bgmScene = null, _bgmFadeTimer = null, _bgmInited = false;
+var _bgmUrl = {}, _bgmEls = [null, null], _bgmActive = -1, _bgmScene = null, _bgmFadeTimer = null, _bgmInited = false, _bgmUnlocked = false;
 
 function _bgmLoadCfg() {
     try {
@@ -605,7 +694,13 @@ function _bgmSaveCfg() { try { if (typeof _lsSet === 'function') _lsSet('fb5_bgm
 function _bgmTargetVol() { return Math.max(0, Math.min(1, _bgmCfg.vol / 100)); }
 
 // 預解析各場景的實際 URL（依序試 mp3→ogg→wav）；缺檔→_bgmUrl[scene]=null
+//   有音檔索引就直接查表、不發請求(原本每首各開一個 <audio> 探測，一進遊戲就是幾十個請求在搶頻寬)。
 function _bgmResolve(scene, file) {
+    if (typeof BGM_INDEX !== 'undefined') {
+        var ext = _audioExts(BGM_INDEX, file, null)[0];
+        _bgmUrl[scene] = ext ? 'assets/bgm/' + file + '.' + ext : null;
+        return;
+    }
     var exts = ['mp3', 'ogg', 'wav'], i = 0;
     (function tryNext() {
         if (i >= exts.length) { _bgmUrl[scene] = null; return; }
@@ -653,8 +748,14 @@ function _bgmCrossfade(oldEl, newEl) {
     }, 50);   // 20 步 × 50ms = 1 秒交叉淡化
 }
 
+// 玩家還沒點過畫面前瀏覽器不准播 → 那時先別設 src(否則登入畫面一開就下載 1.6MB 標題曲，跟登入圖搶頻寬)。
+function _bgmCanPlay() {
+    if (_bgmUnlocked) return true;
+    try { return !!(navigator.userActivation && navigator.userActivation.hasBeenActive); } catch (e) { return false; }
+}
 function _bgmSwitch(scene) {
     if (!_bgmCfg.on) return;
+    if (!_bgmCanPlay()) return;   // 還不能播：不更新場景，點過之後的下一輪輪詢再切
     if (scene === _bgmScene) return;
     var url = _bgmUrl[scene];
     if (!url) return;   // 該場景無音檔（或尚未解析完）→不更新場景、保持目前曲目，下次輪詢再試
@@ -687,7 +788,7 @@ function _bgmInit() {
     Object.keys(BGM_TRACKS).forEach(function (s) { _bgmResolve(s, BGM_TRACKS[s]); });
     _bgmSyncUI();
     setInterval(_bgmTick, 1000);   // 自我輪詢場景（每秒；只在場景改變時切換）
-    var kick = function () { _bgmScene = null; _bgmTick(); };   // 首次互動立即啟動（autoplay 解鎖）
+    var kick = function () { _bgmUnlocked = true; _bgmScene = null; _bgmTick(); };   // 首次互動立即啟動（autoplay 解鎖）
     document.addEventListener('pointerdown', kick, { once: true });
     document.addEventListener('keydown', kick, { once: true });
 }

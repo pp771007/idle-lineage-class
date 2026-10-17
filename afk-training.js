@@ -3,8 +3,7 @@
  *
  * 在遊戲「⚙️ 自動化」面板加一顆「🥊 木人場」入口。進去後：
  *  - 選 1~5 隻怪（每隻可不同，預設第 1 格妖魔 orc），用 select+input 篩選挑選。
- *  - 可選「世界模式」（一般／席琳的世界／瘋狂的席琳世界）：重用原作 applySherineBuff 對訓練怪
- *    套用席琳強度（AC/MR/命中/減傷＋怪傷×2/×3 旗標），數值永遠與遊戲一致、作者改倍率自動跟上。
+ *  - （原「世界模式」席琳／瘋狂席琳選單已隨席琳的世界關閉拿掉；worldMode 固定 'normal'）
  *  - 可勾「召喚骷髏」：死靈之書的骷髏只在「擊殺」時喚起，而木人場的怪打不死＝永遠沒有擊殺 → 不補這一手
  *    就永遠量不到骷髏的輸出。做法是缺額時呼叫原作的 necroBookOnKill（走原本那條路，不自己造骷髏）。
  *  - 怪打不死、玩家/傭兵/寵物/召喚物/城堡護衛也都打不死，跑「真實戰鬥」量輸出。
@@ -303,7 +302,7 @@
   //   每拍取增量即可，不必自己重做一套歸因。_dps 是 let 宣告→不在 window 上，用裸名讀。
   //   寵物與召喚：核心只有 pet／summon 兩個總桶 → 借 threatWrap／summonTick（每個實體的一次攻擊
   //   各自包一個快照視窗）逐實體量，再依名字併成「每種」一列。
-  //   兩邊的差額（走不到上面兩條的來源，如寵物的中毒出血 DoT、幻術立方）進「其他」列——
+  //   兩邊的差額（走不到上面兩條的來源，如寵物的中毒出血 DoT）進「其他」列——
   //   寧可有一列說不清楚，也不要讓各列相加對不上總 DPS。
   function coreDps() { return (typeof _dps !== 'undefined' && _dps) ? _dps : null; }
   function grow(now, before) { var d = (now || 0) - (before || 0); return d > 0 ? d : 0; }   // 中途被玩家按「重置」→ 桶歸零，增量以 0 計
@@ -776,8 +775,7 @@
     var winDmg = 0; for (var w = 0; w < dps.window.length; w++) winDmg += dps.window[w];
     var instTotal = winSec > 0 ? winDmg / winSec : 0;
 
-    var modeTag = (worldMode === 'mad') ? '<div class="m-train-mode-tag m-train-mode-mad">🔥 瘋狂的席琳世界</div>'
-      : (worldMode === 'sherine') ? '<div class="m-train-mode-tag">🔮 席琳的世界</div>' : '';
+    var modeTag = '';
     if (noMp) modeTag += '<div class="m-train-mode-tag m-train-mode-nomp">💧 MP 不消耗</div>';   // 數字是「無限藍」下的，要標出來免得跟真實消耗的紀錄搞混
     totalEl.innerHTML = modeTag +
       '<div class="m-train-total-inst">即時 <b>' + fmt(instTotal) + '</b> <span>/秒</span></div>' +
@@ -861,11 +859,6 @@
         '<div class="m-train-modal-head">🥊 木人場 — 選擇怪物' +
         '<button id="m-train-modal-x" type="button">✕</button></div>' +
         '<div class="m-train-modal-note">選 1~5 隻怪（每隻可不同）。怪打不死、你也打不死，旁邊即時顯示 DPS。<br>每格先在左邊輸入關鍵字篩選，再從右邊下拉選怪。</div>' +
-        '<div class="m-train-mode-row"><span>世界模式</span><select id="m-train-mode">' +
-        '<option value="normal">一般（無強化）</option>' +
-        '<option value="sherine">🔮 席琳的世界</option>' +
-        '<option value="mad">🔥 瘋狂的席琳世界</option>' +
-        '</select></div>' +
         '<label class="m-train-opt-row" title="勾起來：玩家／傭兵／寵物的 MP 都不會見底，量的是無限藍的爆發上限。不勾＝真實消耗（想重來一輪按「重新計算」就會補滿）。">' +
         '<input type="checkbox" id="m-train-nomp"><span>MP 不消耗</span></label>' +
         '<label class="m-train-opt-row" title="木人場的怪不會死＝沒有擊殺，骷髏平常靠擊殺喚起。勾起來就直接補到滿，離開木人場時收回。">' +
@@ -883,8 +876,6 @@
       document.getElementById('m-train-go').addEventListener('click', function () {
         readSlotsFromUI();
         if (!slots.some(Boolean)) { alert('至少選 1 隻怪。'); return; }
-        var msel = document.getElementById('m-train-mode');
-        if (msel) worldMode = (msel.value === 'sherine' || msel.value === 'mad') ? msel.value : 'normal';
         var nchk = document.getElementById('m-train-nomp');
         if (nchk) noMp = !!nchk.checked;
         var schk = document.getElementById('m-train-skele');
@@ -894,8 +885,6 @@
       });
     }
     renderPickerRows();
-    var msel0 = document.getElementById('m-train-mode');
-    if (msel0) msel0.value = worldMode;
     var nchk0 = document.getElementById('m-train-nomp');
     if (nchk0) nchk0.checked = noMp;
     var schk0 = document.getElementById('m-train-skele');
@@ -974,7 +963,7 @@
     } catch (e) { /* ignore */ }
     if (!slots.some(Boolean)) slots = [DEFAULT_MOB, null, null, null, null];
     worldMode = 'normal';
-    try { var m = localStorage.getItem(modeKey()); if (m === 'sherine' || m === 'mad') worldMode = m; } catch (e) { /* ignore */ }
+    // 🚫 2026-10-14 席琳的世界已關閉：世界模式選單拿掉，舊存的席琳／瘋狂一律當一般
     noMp = false;
     try { noMp = localStorage.getItem(nompKey()) === '1'; } catch (e) { /* ignore */ }
     skele = false;

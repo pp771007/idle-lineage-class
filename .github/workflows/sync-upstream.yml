@@ -17,6 +17,10 @@ concurrency:
 
 jobs:
   sync:
+    # ⛔ 2026-10-11 起本專案不再同步原作者（核心檔改為直接修改）→ 這個工作永遠不執行。
+    #    跑下去會用原作者的檔案整包蓋掉我們直接改過的 js/css/index.html/assets。
+    #    就算 cf-sync-trigger 的排程還在觸發，也會在這裡停下。要恢復同步請先處理掉所有直接改過的核心檔。
+    if: false
     runs-on: ubuntu-latest
     steps:
       # ── 早退：上游 HEAD 沒變就整包跳過 ──────────────────────────

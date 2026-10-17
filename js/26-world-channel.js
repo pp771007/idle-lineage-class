@@ -24,6 +24,9 @@ let _wcRecentIdleLines = [];                 // 避免短時間重複抽到相�
 let _wcPrivateActiveId = null;               // 目前開啟私訊的 NPC
 let _wcPrivatePendingIds = Object.create(null); // 正在等待模型回覆的 NPC
 const WC_RECENT_CHAT_LIMIT = 60;
+// 🚫 2026-10-14 站長決定：世界頻道的虛擬玩家聊天整個關掉——每分鐘閒聊／兩人互嗆不再出現；
+//    輸入框保留，worldChannelAsk 只把玩家自己的話印出來、不再有人回答（也不觸發群嘲）。野外白目玩家遭遇與擊殺後密語屬於 PVP 玩法（js/03），不在此列。
+const WC_FAKE_CHAT_CLOSED = true;
 
 function _wcSpawnNpc() {
     let clsKeys = (typeof CLAN_CLASS_NAMES === 'object' && CLAN_CLASS_NAMES) ? Object.keys(CLAN_CLASS_NAMES) : ['knight'];
@@ -38,7 +41,7 @@ function _wcSpawnNpc() {
     //      沒有 player.cls（登入畫面）時它原樣返回，clanName 留空＝不顯示，安全。
     let entry = {
         n: _wcMakeName(),
-        avatar: (typeof PVP_AVATARS !== 'undefined' && PVP_AVATARS.length) ? PVP_AVATARS[Math.floor(Math.random() * PVP_AVATARS.length)] : '男戰士',
+        avatar: (typeof PVP_AVATARS !== 'undefined' && PVP_AVATARS.length) ? PVP_AVATARS[Math.floor(Math.random() * PVP_AVATARS.length)] : '男騎士',
         alignmentValue: alignmentValue,
         levelOffset: (typeof pvpRandomLevelOffset === 'function') ? pvpRandomLevelOffset() : 0,
         pvpRandom: true
@@ -179,11 +182,12 @@ function _wcGearFor(cls, slotWanted) {
     return out;
 }
 function _wcMasteryNames(cls) {
+    if (typeof MASTERY_ON !== 'undefined' && !MASTERY_ON) return [];
     try {
         let m = MASTERY_DATA[cls];
         if (!m) return [];
         let list = m.list || m;
-        return Object.keys(list).map(k => (list[k] && list[k].n) || k).filter(Boolean);
+        return Object.keys(list).filter(k => !(typeof masteryHidden === 'function' && masteryHidden(k))).map(k => (list[k] && list[k].n) || k).filter(Boolean);
     } catch (e) { return []; }
 }
 function _wcClsName(cls) { return (typeof CLAN_CLASS_NAMES === 'object' && CLAN_CLASS_NAMES[cls]) || cls || '你的職業'; }
@@ -199,7 +203,7 @@ function _wcLevelFromText(q, fallback) {
     return (Number.isFinite(v) && v >= 1 && v <= 120) ? v : fallback;
 }
 // 問句是否指名某職業（沒指名就用玩家自己的職業）
-// ⚠️ 必須「長名優先」：「黑暗妖精」含有「妖精」、「龍騎士」含有「騎士」，照物件順序掃會被短名搶走。
+// ⚠️ 必須「長名優先」：「黑暗妖精」含有「妖精」，照物件順序掃會被短名搶走。
 function _wcClassFromText(q) {
     try {
         let keys = Object.keys(CLAN_CLASS_NAMES).sort((a, b) => (CLAN_CLASS_NAMES[b] || '').length - (CLAN_CLASS_NAMES[a] || '').length);
@@ -273,9 +277,6 @@ function _wcBuildKnowledge() {
     }
     try { if (typeof MOB_DROPS !== 'undefined') addDropTable(MOB_DROPS); } catch (e) {}
     try { if (typeof DARK_WEAPON_DROPS !== 'undefined') addDropTable(DARK_WEAPON_DROPS); } catch (e) {}
-    try { if (typeof DRAGON_DROPS !== 'undefined') addDropTable(DRAGON_DROPS); } catch (e) {}
-    try { if (typeof WARRIOR_DROPS !== 'undefined') addDropTable(WARRIOR_DROPS); } catch (e) {}
-    try { if (typeof MEM_DROPS !== 'undefined') addDropTable(MEM_DROPS); } catch (e) {}
     try { if (typeof DARK_CRYSTAL_DROPS !== 'undefined') addDropTable(DARK_CRYSTAL_DROPS); } catch (e) {}
     try {
         if (typeof SHOP_LISTS !== 'undefined') Object.keys(SHOP_LISTS).forEach(k => (SHOP_LISTS[k] || []).forEach(id => shopItems.add(id)));
@@ -440,8 +441,8 @@ function _wcItemSourceAnswers(itemId) {
         `這個不是靠專屬怪物掉落，去翻村莊商店比較快，別跟野外怪耗到天亮。`
     ];
     if (d.gachaWeight > 0) return [
-        `${d.n}目前在怪物專屬掉落表查不到直接來源，但有進潘朵拉黑市池；也可能屬於製作、任務或兌換品。`,
-        `查不到哪隻怪會直接掉${d.n}。先看製作與任務 NPC，潘朵拉黑市也有機會出現。`
+        `${d.n}目前在怪物專屬掉落表查不到直接來源，可能屬於製作、任務或兌換品。`,
+        `查不到哪隻怪會直接掉${d.n}。先看製作與任務 NPC。`
     ];
     return [
         `${d.n}目前不在怪物專屬掉落表，也不在一般村莊商店清單；多半要走製作、任務或特殊兌換。`,
@@ -461,7 +462,7 @@ function _wcBuildPetSources() {
             let eggId = Object.keys(DB.items).find(id => DB.items[id] && DB.items[id].eff === eff);
             if (!eggId) continue;
             let rows = (k.itemDrops[eggId] || []).slice(0, 3).map(r => _wcDropPlace(r));
-            push(RELIC_EGG_PETS[eff].pet, `使用「${DB.items[eggId].n}」孵化${rows.length ? `，蛋要打 ${rows.join('、')}` : ''}；潘朵拉黑市搜「未知遺物」也可能開到`);
+            push(RELIC_EGG_PETS[eff].pet, `使用「${DB.items[eggId].n}」孵化${rows.length ? `，蛋要打 ${rows.join('、')}` : ''}`);
         }
     } catch (e) {}
     // ② 誘捕：PET_LURES[key].mobs = { 怪名: 型態名 }
@@ -559,6 +560,10 @@ function _wcItemInfoAnswers(itemId) {
     if (!d) return WC_UNKNOWN_LINES;
     let desc = String(d.d || '').replace(/<[^>]*>/g, '').trim();
     let req = d.req && d.req !== 'all' ? String(d.req).split(',').map(_wcClsName).join('／') : '全職業';
+    if (d.slot === 'petwpn' || d.slot === 'petarm') {   // 🦴 寵物裝備是給寵物穿的，不講職業
+        if (desc) return [`${d.n}：${desc}`, `${d.n}的物品說明寫的是：${desc}`];
+        return [`${d.n}是寵物裝備，能力以物品資訊面板顯示為準。`];
+    }
     if (desc) return [`${d.n}：${desc} 可用職業是${req}。`, `${d.n}的物品說明寫的是：${desc}`];
     return [`${d.n}可用職業是${req}；這件沒有額外用途文字，能力以物品資訊面板顯示為準。`];
 }
@@ -584,7 +589,7 @@ function _wcTrialAnswers(q) {
         let reqs = trial.reqs.map(p => _wcTrialReqText(p[0], p[1])).join('；');
         let rewards = trial.rewards.map(id => (DB.items[id] || {}).n || id).join('＋');
         return [
-            `${_wcClsName(trial.cls)} ${trial.lv} 級試煉找${trial.npc}接取。需求是 ${reqs}；接取後指定試煉品必掉，備齊回去可一次領 ${rewards}。`,
+            `${_wcClsName(trial.cls)} ${trial.lv} 級試煉找${trial.npc}接取。需求是 ${reqs}；接取後指定試煉品掉率 ${typeof trialDropPctText === 'function' ? trialDropPctText(trial.reqs.map(p => p[0])) : '1%'}，備齊回去可一次領 ${rewards}。`,
             `先去找${trial.npc}接${trial.lv}級試煉，沒接任務打多久都不會出。接著收集 ${reqs}，最後獎勵是 ${rewards}。`
         ];
     }
@@ -617,7 +622,7 @@ const WC_GOTO_SPECIAL = [
         '海音找依斯巴，跟他說要出海就對了；中途會先打一段遺忘之島途中，撐過去就到了。'
     ] },
     { words: ['時空裂痕'], lines: [
-        '時空裂痕從地圖選單進，但要先有 1 顆龜裂之核；核去希培利亞找巴特爾用時空裂痕碎片做。',
+        '時空裂痕從地圖選單進，但要先有 1 顆龜裂之核；核去威頓村找巴特爾用時空裂痕碎片做。',
         '先收集時空裂痕碎片找巴特爾做龜裂之核，有核才進得了裂痕；進去後就不能傳送了，自己斟酌。'
     ] },
     { words: ['傲慢之塔', '傲塔'], lines: [
@@ -723,10 +728,7 @@ const WC_TOPICS = [
                 mage: '站遠放技能，MP 跟施法速度是命脈，記得把魔法書買齊。',
                 elf: '屬性水晶決定你能學什麼，弓手跟劍術兩條路差很多。',
                 dark: '出血跟劇毒疊起來很兇，但很脆，靠迴避活著。',
-                royal: '傭兵基礎上限 3，每 15 點魅力多帶 1 名，最多 7 名；魅力只增加人數，不增加傭兵能力。',
-                dragon: '鎖鏈劍弱點曝光是核心，龍魔法吃 HP 不是 MP，別放到自己死。',
-                warrior: '副手武器是專利，雙武器 proc 全開，負重要顧好。',
-                illusion: '奇古獸普攻直接算魔法傷害，幻覺光環全隊吃得到。'
+                royal: '傭兵基礎上限 3，每 15 點魅力多帶 1 名，最多 7 名；魅力只增加人數，不增加傭兵能力。'
             })[cls] || '';
             return [
                 `${name}？${flavor}${msTxt}`,
@@ -759,9 +761,7 @@ const WC_TOPICS = [
         gen: function () {
             return [
                 '打怪掉的雜物別丟，開自動販賣設一設，掛一晚上金幣自己進來。',
-                '缺錢就去打你打得動的最高等地圖，怪等越高金幣掉越多，別在低等圖磨。',
-                '潘朵拉黑市的收購單有時候價很甜，順手看一下再決定要不要賣商店。',
-                '想快就去接玩家收購，世界頻道那些叫賣的出價常常比商店高。'
+                '缺錢就去打你打得動的最高等地圖，怪等越高金幣掉越多，別在低等圖磨。'
             ];
         }
     },
@@ -780,8 +780,8 @@ const WC_TOPICS = [
         key: 'affix', kw: ['詞綴', '祝福', '祝福嗎', '有祝福', '祝福裝', '遠古裝', '遠古詞', '屬性武器', '武器屬性', '屬性詞', '碧恩', '賦予屬性', '屬性強化', '上屬性', '洗屬性', '五階屬性', '屬性魔法', '附加魔法', '重抽魔法', '觸發技能'],
         gen: function () {
             return [
-                '現行一般頭目掉落與製作裝備有 10% 機率出現「祝福的」詞綴；席琳頭目 20%，瘋狂席琳頭目 30%，其他管道維持原設定。',
-                '別再照舊攻略 SL 三詞綴了，一般頭目與製作是 10% 祝福，席琳頭目 20%、瘋狂席琳頭目 30%；屬性跟遠古能力要找碧恩。',
+                '現行一般頭目掉落與製作裝備有 10% 機率出現「祝福的」詞綴，其他管道維持原設定。',
+                '別再照舊攻略 SL 三詞綴了，一般頭目與製作是 10% 祝福；屬性跟遠古能力要找碧恩。',
                 '祝福是取得裝備時的隨機驚喜，屬性和遠古不是同一個抽法。想洗那兩種就去象牙塔，別在掉落畫面跟自己過不去。',
                 '五階屬性武器還能拿同屬性卷軸找碧恩附加或重抽屬性魔法；遺物武器、本身就有非屬性卷觸發技能的武器不能附加。',
                 '古老的劍跟古老的巨劍雖然無法強化，但碧恩照樣能賦予屬性，而且免 +10/+11 門檻、可以直接衝到第五階。'
@@ -833,6 +833,7 @@ const WC_TOPICS = [
         gen: function (q) {
             let cls = _wcClassFromText(q) || _wcMyCls();
             let ms = _wcMasteryNames(cls);
+            if (typeof MASTERY_ON !== 'undefined' && !MASTERY_ON) return ['精通？現在沒那東西了，裝備跟技能顧好比較實在。'];
             if (!ms.length) return ['精通看你職業，能力面板裡面有四個方向可以選，選了就不能改。'];
             return [
                 `${_wcClsName(cls)} 可以選 ${ms.join('／')}，選了不能改，先看清楚說明再點。`,
@@ -856,12 +857,9 @@ const WC_TOPICS = [
         key: 'relic', kw: ['遺物', '傳說', '稀有', '極品'],
         gen: function () {
             return [
-                '遺物非常稀有，別特地去farm，掛久了自然會遇到。',
-                '想指定拿就去潘朵拉黑市搜索，100 顆龍鑽一次，未知遺物那個選項還保證是你圖鑑沒有的。',
-                '遺物不能強化也不能祝福，拿到什麼就是什麼。',
-                '別看遺物就以為一定強，有幾件是負面效果，看清楚說明再穿。',
-                '最近又傳出一批新遺物：迷宮惡魔的瞥視、斬首的巨大鐮刀、十字墓碑盾、古代法師的隨手小抄那些，散在巴風特、西斯、墳墓守護者、遺忘之島跟底比斯的怪身上，機率低到別抱期待。',
-                '新遺物裡有幾件很妙：鎖鏈衣要配輕盔甲才有加成、百變化身要變身才生效、隨手小抄戴著就多一招寒冰尖刺可以自動施放。'
+                '遺物已經不會再掉了，手上有的照常能穿。',
+                '現在打不到遺物了，別再特地去刷，有的就好好留著。',
+                '遺物停產了，身上那幾件還是照樣有效，賣掉就沒了。'
             ];
         }
     },
@@ -880,19 +878,19 @@ const WC_TOPICS = [
         key: 'rift', kw: ['時空裂痕', '裂痕', '龜裂之核', '裂痕碎片'],
         gen: function () {
             return [
-                '進時空裂痕要 1 顆龜裂之核；去希培利亞找巴特爾，用時空裂痕碎片×100 製作。',
+                '進時空裂痕要 1 顆龜裂之核；去威頓村找巴特爾，用時空裂痕碎片×100 製作。',
                 '裂痕進去後不能傳送，首隻強制頭目在 5 分鐘後出現；離開依停留時間結算排名與待領獎勵。',
                 '裂痕獎勵要離場後回入口領，領完才能再進。想看到四大龍要撐過 30 分鐘後才會進怪物池。'
             ];
         }
     },
     {
-        key: 'sherine', kw: ['席琳世界', '席琳的世界', '席琳模式', '瘋狂席琳', '席琳結晶', '席琳遺骸'],
+        key: 'sherine', kw: ['席琳世界', '席琳的世界', '席琳模式', '瘋狂席琳', '席琳結晶', '席琳遺骸', '席琳神殿'],
         gen: function () {
             return [
-                '席琳的世界會強化怪物，也提高一般掉落倍率；瘋狂席琳更兇。席琳結晶則依怪物等級與頭目身分另算，不是固定一個掉率。',
-                '席琳結晶可以去席琳神殿找伊奧，1 顆換 1 件指定部位的席琳遺骸；遺骸詞綴還能找菈克希絲處理。',
-                '開席琳前先確認自己打怪效率，倍率高不代表被怪打趴也划算。普通打得快，常常比瘋狂模式硬撐更有效率。'
+                '席琳神殿已經關了，席琳的世界也開不了了。',
+                '席琳那套收掉了，身上裝著的遺骸套裝效果還是有效。',
+                '別找席琳神殿了，已經進不去，遺骸跟結晶也拿不到了。'
             ];
         }
     },
@@ -916,8 +914,7 @@ const WC_TOPICS = [
             let hint = ({
                 knight: '力量體質為主，敏捷夠用就好。', mage: '智力優先，精神顧 MP 恢復。',
                 elf: '看你走弓還是劍，弓堆敏捷，劍堆力量。', dark: '敏捷堆迴避，力量顧傷害。',
-                royal: '魅力直接決定寵物跟傭兵，別忽略。', dragon: '力量體質，龍魔法吃 HP 所以體質更重要。',
-                warrior: '力量為主，負重不夠就補體質。', illusion: '智力為主，奇古獸傷害算魔法。'
+                royal: '魅力直接決定寵物跟傭兵，別忽略。'
             })[cls] || '看你的主要輸出來源堆對應屬性。';
             return [
                 `${_wcClsName(cls)}：${hint}上限是 100，內部抗性類的加成到 60 就頂了。`,
@@ -942,7 +939,7 @@ const WC_TOPICS = [
         gen: function () {
             return [
                 '卡片打怪隨機掉，同地區收滿有加成，值得順手收。',
-                '收集冊在「收藏」面板打開，裝備、道具、卡片、遺物各一本。',
+                '收集冊在「收藏」面板打開，裝備、道具、卡片各一本。',
                 '裝備收集冊有全收集加成，某些部位收滿會給永久屬性，別把裝備全賣了。',
                 '殺生石死亡掉卡不是只有一種，玉藻、九尾狐、殺生石三種都有機會出；看到圖沒對上多半是資料或快取還沒更新。'
             ];
@@ -953,13 +950,13 @@ const WC_TOPICS = [
         key: 'death', kw: ['死掉', '死亡', '死了', '噴經驗', '掉經驗', '扣經驗', '陣亡', '復活', '買回經驗', '贖回', '聖使', '阿卡塔', '一直死', '攻城死亡', '攻城區死亡', '噴裝備', '噴道具', '紅人掉裝'],
         gen: function () {
             return [
-                '一般模式死亡不會噴經驗；經典模式才會扣，被怪打死就回村重整旗鼓。',
-                '經典模式死掉的經驗可以去亞丁找聖使阿卡塔花金幣買回一半，紀錄筆數有限，別拖太久。',
+                '死一次扣這級經驗條的 5%，扣到 0 就不會再降，被怪打死就回村重整旗鼓。',
+                '死掉的經驗可以去亞丁找聖使阿卡塔花金幣買回一半，紀錄筆數有限，別拖太久。',
                 '一直死就是等級或裝備跟不上：退一張圖練、把自動喝水的門檻調高，比原地送頭有效。',
-                '攻城區不管是邪惡玩家還是敵人死亡，都不會噴裝備；經典模式在攻城區死亡也不扣經驗。',
+                '攻城區不管是邪惡玩家還是敵人死亡，都不會噴裝備；在攻城區死亡也不扣經驗。',
                 '紅名低於很深的邪惡值才有死亡掉物品風險，攻城區不吃這條。',
                 '邪惡狀態噴掉的裝備別放棄：亞丁的聖使阿卡塔會記錄最近遺失的幾件，花龍之鑽石就能指定贖回其中一件，強化值跟詞綴都照原樣回來。',   // 🕊️ v3.6.86 裝備贖回
-                '阿卡塔的裝備贖回一般模式也能用，不用經典；只有「死亡經驗買回」那段才是經典限定。'
+                '阿卡塔的裝備贖回和死亡經驗買回，一般模式跟經典模式都能用。'
             ];
         }
     },
@@ -974,7 +971,7 @@ const WC_TOPICS = [
                 '殺怪性向 +1；殺白名玩家 NPC 扣 5000，殺藍名扣 10000，殺紅名不扣，攻城區不列入。',
                 '復仇現在不用花金幣，按「嗆他」選一句話就會讓對方加入追殺；打贏才會從名單消失。',
                 '嘲諷玩家 NPC 時，中立 50%、正義 20%、邪惡 100% 會追殺；沒追殺也可能把你封鎖。',
-                '野外、黑市收購、世界頻道這些假玩家名字都走同一個名字池，顏色只看該 NPC 性向。'
+                '野外、世界頻道這些假玩家名字都走同一個名字池，顏色只看該 NPC 性向。'
             ];
         }
     },
@@ -1004,13 +1001,9 @@ const WC_TOPICS = [
         key: 'blackmarket', kw: ['黑市', '潘朵拉', '龍鑽', '龍之鑽石', '收購', '鑽收', '金幣收購', '收購NPC', '叫賣NPC', '未知遺物', '搜索遺物', '喊收', '吵死了', '驅離', '出價太低', '低價'],
         gen: function () {
             return [
-                '黑市在潘朵拉那邊，商品會定時輪換，看到想要的別猶豫，晚五分鐘就被掃光了。',
-                '龍之鑽石主要靠村莊裡喊收購的玩家：把他要的東西給他就換龍鑽，物品放倉庫也算數。',
-                '龍鑽存夠可以在黑市收購搜索指定類型的遺物；選「未知遺物」保證出圖鑑還沒收錄的，蛋類遺物只有這個管道。',
-                '黑市也能自己出價收購：出得比行情高就會上架，掛著等貨上門就好。',
-                '世界頻道喊「鑽收」是龍鑽收購，「收」是金幣收購；兩種 NPC 可以同一個安全區同時出現。',
-                '金幣收購 NPC 的出價看物品售價跟突破，紅人有機會開低於基本價；低價你罵他通常很合理。',
-                '安全區收購 NPC 可以直接驅離，但那個安全區的兩小時倒數還是照跑。'
+                '潘朵拉的黑市已經收攤了，現在去哪個村莊都找不到她。',
+                '喊收購的那些人也都不來了，龍之鑽石現在只能省著用。',
+                '黑市跟收購都關了，裝備想換錢就賣商店或開自動販賣。'
             ];
         }
     },
@@ -1068,7 +1061,7 @@ const WC_TOPICS = [
             return [
                 '等級上限是 100，到頂之後經驗就不會再往上累積了。',
                 '滿等之後統計面板還是會記經驗，那是「照現在的效率應該拿到多少」的參考值，用來比裝備跟練功地點好不好，不是真的入帳。',
-                '練滿之後目標就換成裝備跟收集：強化、遺物、卡片跟收集冊加成，還有攻城跟頭目，這些才是後期真正的成長。'
+                '練滿之後目標就換成裝備跟收集：強化、卡片跟收集冊加成，還有攻城跟頭目，這些才是後期真正的成長。'
             ];
         }
     },
@@ -1131,7 +1124,6 @@ const WC_MOCK_LINES = [
     '先按一次重新整理，很多靈異事件就會消失。',
     '不要什麼都說 BUG，有時候是你任務根本沒接。',
     '試煉沒接就去打，這叫自願加班。',
-    '你打三隻沒掉就問機率，潘朵拉都笑了。',
     '你是不是以為 0.01% 是打十隻會出一件。',
     '這套問題我收過了，賣商店都嫌佔負重。',
     '大哥，物品名稱打完整很難嗎。',
@@ -1189,8 +1181,6 @@ const WC_CHAT_LINES = [
     '世界頻道今天比怪物還兇。',
     '剛上線，今天又改了什麼？',
     '有人整理更新內容嗎？我字太多會睡著。',
-    '你們有沒有覺得潘朵拉今天特別黑。',
-    '黑市又被誰掃光了，我只是晚來五分鐘。',
     '剛遇到一個紅人，嘴很秋但是跑很快。',
     '有人開 PVP 嗎？我開了又怕被打。',
     '我性向快紅到底了，村莊的人看我的眼神都變了。',
@@ -1215,9 +1205,6 @@ const WC_CHAT_LINES = [
     '騎士就是穩，穩穩地打、穩穩地沒掉東西。',
     '妖精今天又在吵風妖火妖誰比較強。',
     '黑妖一刀很帥，躺下去也很快。',
-    '戰士副手終於有存在感了。',
-    '幻術士玩家都去哪了？我很久沒看到同類。',
-    '龍騎士不要再拿 HP 當 MP 用到自己倒地了。',
     '有人在新兵訓練場嗎？我回去懷舊一下。',
     '說話之島還是最有家的感覺。',
     '歐瑞太冷了，我角色站著都像在發抖。',
@@ -1247,7 +1234,6 @@ const WC_CHAT_LINES = [
     '樓上那個名字我昨天是不是看過。',
     '這頻道人好多，但需要幫忙時都突然消失。',
     '我去泡咖啡，等一下回來看有沒有奇蹟。',
-    '有人要一起賭潘朵拉嗎？輸了各自負責。',
     '我剛算了一下，退坑可以省很多電費。',
     '不要問我幾歲，天堂玩家沒有年齡。',
     '以前的網咖味道突然回來了。',
@@ -1686,7 +1672,6 @@ const WC_TRASH_TALK_PAIRS = [
     ['開這種價是把大家當盤子。', '有人買就不是盤子。'],
     ['你喊價喊得很大聲，倉庫是空的吧。', '錢在倉庫，不用秀給你看。'],
     ['市場就是被你這種人搞爛的。', '市場是自由的，別找藉口。'],
-    ['你收購單掛半年了，撤掉吧。', '等有緣人。'],
     ['轉手賺價差很爽喔。', '商人就是這樣，不然呢。'],
     ['講好交換又臨時加價，很經典。', '行情變了。'],
     ['你的東西標價比商城還貴。', '稀有度不一樣，懂嗎。'],
@@ -1711,9 +1696,6 @@ const WC_TRASH_TALK_PAIRS = [
     ['妖精選錯屬性就毀了，可憐。', '屬性是選擇，不是運氣。'],
     ['黑妖只會躲，正面打贏過誰。', '躲得掉才是本事。'],
     ['王族靠傭兵，自己什麼都不會。', '會用資源也是能力。'],
-    ['龍騎士血量放給狗啃，天天躺。', '傷害你看過沒。'],
-    ['戰士雙武器很帥，可惜打不到人。', '打不到的是你的預判。'],
-    ['幻術士的傷害是幻覺吧。', '等你被打到就知道是不是幻覺。'],
     ['你這職業就是版本棄兒，別掙扎了。', '版本會變，我不會。'],
     ['技術差就不要怪職業。', '職業平衡問題你懂什麼。'],
     ['你連精通都選錯，難怪打不動。', '選錯也是我的選擇。'],
@@ -1858,6 +1840,7 @@ function _wcCanIdleChat() {
     return typeof logWorld === 'function';
 }
 function _wcPostIdleChat() {
+    if (WC_FAKE_CHAT_CLOSED) return;
     if (!_wcCanIdleChat()) return;
     if (Math.random() < 0.35) { _wcPostTrashTalk(); return; }   // 🔥 v3.6.74 三成機率改成兩人互嗆（其餘維持原本的日常閒聊）
     let count = 1 + Math.floor(Math.random() * 3);
@@ -1971,7 +1954,7 @@ function _wcIsMassTaunt(q) {
 }
 function _wcMassTauntRosterEntry(raw) {
     if (!raw || !raw.n) return null;
-    let avatar = (typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[raw.avatar]) ? raw.avatar : '男戰士';
+    let avatar = (typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[raw.avatar]) ? raw.avatar : '男騎士';
     let alignmentValue = (typeof pvpClampAlignment === 'function')
         ? pvpClampAlignment(raw.alignmentValue)
         : Math.max(-32767, Math.min(32767, Math.round(Number(raw.alignmentValue) || 0)));
@@ -2068,7 +2051,7 @@ function wcMassTauntGroupBattleFill() {
     if (!wcMassTauntGroupBattleActive() || mapState._wcMassTauntBattleFilling) return;
     mapState._wcMassTauntBattleFilling = true;
     try {
-        let slots = typeof backSlotsActive === 'function' && backSlotsActive() ? 5 : 3;
+        let slots = typeof mobSlotCount === 'function' ? mobSlotCount() : 3;
         for (let i = 0; i < slots; i++) {
             if (!mapState.mobs[i] && mapState.wcMassTauntBattle.next < mapState.wcMassTauntBattle.roster.length) spawnMob(i);
         }
@@ -2144,6 +2127,7 @@ function worldChannelAsk() {
     if (!input) return;
     let q = String(input.value || '').trim();
     if (!q) return;
+    if (typeof myChatCommand === 'function' && myChatCommand(q)) { input.value = ''; return; }   // 「.道具名稱 數量」測試寄信指令（js/00z）
     let now = Date.now();
     if (now < _wcAskCooldownUntil) {
         logWorld('<span class="wc-sys">你講太快了，讓別人也說一下話。</span>');
@@ -2154,6 +2138,7 @@ function worldChannelAsk() {
     let myName = (typeof player !== 'undefined' && player && player.name) ? player.name : '你';
     let myAlignment = (typeof player !== 'undefined' && player) ? player.alignmentValue : 0;
     logWorld(`<span class="wc-ask">${_wcStaticNameHtml(myName, myAlignment)}：${_wcEsc(q)}</span>`);
+    if (WC_FAKE_CHAT_CLOSED) return;   // 虛擬玩家已關：只顯示自己說的話，沒有人回
     if (_wcIsMassTaunt(q)) {
         _wcTriggerMassTaunt();
         return;
@@ -2253,7 +2238,7 @@ function _wcContactFromNpc(npc) {
         n:String(npc.name).trim().slice(0, 24),
         persona:WC_PERSONAS.includes(npc.persona) ? npc.persona : 'helpful',
         cls:(typeof CLAN_CLASS_NAMES === 'object' && CLAN_CLASS_NAMES[npc.cls]) ? npc.cls : 'knight',
-        avatar:npc.avatar || '男戰士',
+        avatar:npc.avatar || '男騎士',
         alignmentValue:_wcAlignmentValue(npc.alignmentValue),
         levelOffset:Number.isFinite(Number(npc.levelOffset)) ? Number(npc.levelOffset) : 0,
         clanId:npc.clanId || null,
@@ -2299,7 +2284,7 @@ function _wcKnownNpcCandidates() {
         let prior = seen[name];
         let row = Object.assign({}, raw, {
             n:name,
-            avatar:raw.avatar || '男戰士',
+            avatar:raw.avatar || '男騎士',
             alignmentValue:_wcAlignmentValue(raw.alignmentValue),
             levelOffset:Number.isFinite(Number(raw.levelOffset)) ? Number(raw.levelOffset) : 0,
             clanId:raw.clanId || null,
@@ -2367,7 +2352,7 @@ function _wcHydrateKnownNpc(raw) {
         name:name,
         persona:WC_PERSONAS.includes(raw.persona) ? raw.persona : _wcPick(WC_PERSONAS),
         cls:(typeof CLAN_CLASS_NAMES === 'object' && CLAN_CLASS_NAMES[cls]) ? cls : 'knight',
-        avatar:raw.avatar || '男戰士',
+        avatar:raw.avatar || '男騎士',
         levelOffset:Number.isFinite(Number(raw.levelOffset)) ? Number(raw.levelOffset) : 0,
         alignmentValue:typeof pvpLockAlignment === 'function'
             ? pvpLockAlignment(name, raw.alignmentValue, clanId)
@@ -2902,11 +2887,10 @@ function _wcAddGrudge(npc, opts) {
         }
         let male = Math.random() < 0.5;
         let avatarByCls = { royal: male ? '王子' : '公主', knight: male ? '男騎士' : '女騎士', mage: male ? '男法師' : '女法師',
-            elf: male ? '男妖精' : '女妖精', dark: male ? '男黑暗妖精' : '女黑暗妖精', dragon: male ? '男龍騎士' : '女龍騎士',
-            warrior: male ? '男戰士' : '女戰士', illusion: male ? '男幻術士' : '女幻術士' };
+            elf: male ? '男妖精' : '女妖精', dark: male ? '男黑暗妖精' : '女黑暗妖精' };
         let avatar = (typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[npc.avatar])
             ? npc.avatar
-            : (avatarByCls[npc.cls] || (male ? '男戰士' : '女戰士'));
+            : (avatarByCls[npc.cls] || (male ? '男騎士' : '女騎士'));
         player.trollPlayers.push({
             n: npc.name,
             avatar: avatar,
@@ -2944,7 +2928,7 @@ function _wcAddGrudge(npc, opts) {
             });
         }
         if (typeof initWorldLogLock === 'function') initWorldLogLock();
-        if (!_wcIdleTimer) _wcIdleTimer = setInterval(_wcPostIdleChat, 60 * 1000);
+        if (!_wcIdleTimer && !WC_FAKE_CHAT_CLOSED) _wcIdleTimer = setInterval(_wcPostIdleChat, 60 * 1000);
         if (typeof syncNpcLanguageSetting === 'function') syncNpcLanguageSetting();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);

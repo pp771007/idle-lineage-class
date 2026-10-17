@@ -246,7 +246,7 @@ function useCardItem(item) {
 // ---- recomputeStats 鉤子：套用各地區「完成」加成（只取該區最高已達階；金=普+銀）----
 function cardCollectionBonus(p, d) {
     d._cardWeightBonus = 0;
-    if (!p || !p.cardDex) return;
+    if (!p || !p.cardDex || DISABLE_COLLECTION) return;   // ⛔ 收藏系統關閉：不給加成
     for (let r = 0; r < CARD_REGIONS.length; r++) {
         let reg = CARD_REGIONS[r];
         let tier = cardRegionTier(reg.key); if (tier <= 0) continue;

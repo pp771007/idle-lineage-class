@@ -21,6 +21,10 @@
     st.id = 'afk-npclist-css';
     st.textContent = [
         'body.afk-npclist #town-npc-map{display:none!important;}',
+        // 天堂M 介面(afk-lmui)會把 #town-npc-map 強制顯示(村莊背景圖也在裡面)→ 上面那條藏不掉。
+        //   只藏地圖上的 NPC(含名牌)，一律從下方清單點；走動的其他玩家(wandering-player，金幣收購等)不在清單裡，保留。
+        //   掛在本外掛：關掉 NPC 清單時這條跟著消失、地圖上的 NPC 會回來，玩家不會變成點不到 NPC。
+        'html body.afk-npclist #town-npc-map .town-npc:not(.wandering-player){display:none!important;}',
         '#afk-npclist{width:100%;flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:5px;padding-bottom:12px;}',
         // 🚨 flex:0 0 auto 不可拿掉:列表是 flex column,列預設 flex-shrink:1 → 列數一多就被容器高度「壓扁」,
         //    壓到 min-height 後兩行介紹的字直接被裁掉(看起來像字太擠)。要的是「列各自撐開、整份用捲的」。
@@ -36,8 +40,8 @@
         //    列表壓成一小條、下面留一大片空白。改成吃滿剩餘高度(整條鏈都要放行,否則某一層 flex:0 0 auto 就卡住)。
         //    只在手機動:桌機 800×450 本來就夠放,不需要改版面。
         '@media (max-width: 768px), (max-height: 520px) and (pointer: coarse){',
-        'body.afk-npclist #game-screen:has(#town-view:not(.hidden)) #col-center{flex:1 1 auto !important;min-height:0;}',
-        'body.afk-npclist #col-center:has(#town-view:not(.hidden)) #map-view-panel{flex:1 1 auto !important;min-height:0;}',
+        'html body.afk-npclist.view-town #game-screen #col-center{flex:1 1 auto !important;min-height:0;}',
+        'html body.afk-npclist.view-town #col-center #map-view-panel{flex:1 1 auto !important;min-height:0;}',
         'body.afk-npclist #town-view:not(.hidden){aspect-ratio:auto !important;height:auto !important;flex:1 1 auto !important;min-height:200px;}',
         '}'
     ].join('\n');

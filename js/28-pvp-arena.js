@@ -171,8 +171,8 @@
         return card;
     }
     function _pvpFallbackAvatar(cls) {
-        let m = { royal: '王子', knight: '男騎士', mage: '男法師', elf: '男妖精', dark: '男黑暗妖精', illusion: '男幻術士', dragon: '男龍騎士', warrior: '男戰士' };
-        return m[cls] || '男戰士';
+        let m = { royal: '王子', knight: '男騎士', mage: '男法師', elf: '男妖精', dark: '男黑暗妖精' };
+        return m[cls] || '男騎士';
     }
 
     // ---------- 編碼／解碼 ----------
@@ -244,14 +244,9 @@
         let hit = Math.max(Number(d.meleeHit) || 0, Number(d.rangedHit) || 0, Number(d.magicHit) || 0) + (Number(d.extraHit) || 0);
         return { dmg: Math.max(0, dmg), hit: Math.max(0, hit) };
     }
-    // 怪物端只有一條普攻計時器；迅猛雙斧用主、副手每秒出手數相加，折算成同等總頻率。
     function _pvpEffectiveAspd(derived) {
         let d = (derived && derived.d) || {};
-        let main = Math.max(0.1, Number(d.aspd) || 0.67);
-        let hasOffhand = !!(derived && derived.eq && derived.eq.offwpn);
-        let off = hasOffhand ? Number(d.aspdOff) : 0;
-        if (Number.isFinite(off) && off > 0) return Math.max(0.1, 1 / ((1 / main) + (1 / off)));
-        return main;
+        return Math.max(0.1, Number(d.aspd) || 0.67);
     }
     // 戰力值（面板顯示用·非戰鬥數值）：HP＋防禦＋攻擊的粗略加權，讓人一眼看出對手強度級距
     function pvpCardPower(derived) {
@@ -270,7 +265,7 @@
         let derived = pvpCardDerive(card);
         if (!derived) return null;
         let d = derived.d || {};
-        let mobId = (typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[card.avatar]) || 'troll_warrior';
+        let mobId = (typeof TROLL_CLASS_BY_AVATAR !== 'undefined' && TROLL_CLASS_BY_AVATAR[card.avatar]) || 'troll_knight';
         let base = DB.mobs[mobId];
         if (!base) return null;
         let mob = JSON.parse(JSON.stringify(base));
@@ -301,7 +296,7 @@
         if (Number.isFinite(Number(d.dr))) {
             // 怪物端沒有玩家的 AC 隨機減免流程，折算其平均值後併入固定減傷。
             let acGap = Math.max(0, 10 - (Number(d.ac) || 10));
-            let div = card.cls === 'knight' ? 2 : (['elf', 'dark', 'dragon', 'warrior'].indexOf(card.cls) >= 0 ? 3 : (card.cls === 'illusion' ? 4 : 5));
+            let div = card.cls === 'knight' ? 2 : (['elf', 'dark'].indexOf(card.cls) >= 0 ? 3 : 5);
             let rndMax = Math.floor(acGap / div), rndMin = Math.floor(rndMax / 3);
             mob.dr = Math.max(0, Math.round(Number(d.dr) + (rndMin + rndMax) / 2));
         }
@@ -315,9 +310,9 @@
         mob._pvpAvatar = card.avatar;
         mob._pvpAlignment = Number(card.align) || 0;
         mob._npcClanName = card.clan || '';
-        mob.img = 'assets/classanim/' + (card.avatar || '男戰士') + 'F/unarmed_idle_0.png';
+        mob.img = 'assets/classanim/' + (card.avatar || '男騎士') + 'F/unarmed_idle_0.png';
         if (typeof MOB_ANIM_NAMES !== 'undefined' && typeof MOB_ANIM_ALIAS !== 'undefined') {
-            let _dir = '玩家' + (card.avatar || '男戰士');
+            let _dir = '玩家' + (card.avatar || '男騎士');
             if (MOB_ANIM_ALIAS[card.n] !== _dir) {
                 MOB_ANIM_ALIAS[card.n] = _dir;
                 if (typeof _mobAnimCache !== 'undefined') delete _mobAnimCache[card.n];

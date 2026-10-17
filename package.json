@@ -1,0 +1,8 @@
+{
+  "name": "idle-lineage-class-tools",
+  "private": true,
+  "description": "試算表 ↔ 遊戲數值的轉換工具(遊戲本體不需要 npm)",
+  "devDependencies": {
+    "exceljs": "4.4.0"
+  }
+}

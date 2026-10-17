@@ -4,7 +4,8 @@ const WH_KEY = 'lineage_idle_warehouse';
 // 🎮 模式桶鍵後綴（倉庫桶／圖鑑桶／傭兵同模式招募共用·單一真相）：經典→'_classic'、一般→''。
 //   ⚠️v3.0.83 傳統模式已取消：t 參數忽略（一般+傳統→一般、經典+傳統→經典）；舊 '_tradonly'/'_trad' 桶由下方 _mergeTradBuckets 一次性併入。
 function modeSuffix(c, t){ return c ? '_classic' : ''; }
-function whKey(p){ let _p = (p !== undefined) ? p : player; return WH_KEY + modeSuffix(!!(_p && _p.classicMode), !!(_p && _p.traditionalMode)); }   // 🏛️🎮 依模式組合取對應倉庫桶
+function whKey(p){ if (SHARED_WAREHOUSE) return WH_KEY;   // 所有角色共用一個倉庫(js/00 SHARED_WAREHOUSE)
+    let _p = (p !== undefined) ? p : player; return WH_KEY + modeSuffix(!!(_p && _p.classicMode), !!(_p && _p.traditionalMode)); }   // 🏛️🎮 依模式組合取對應倉庫桶
 const WH_MAX = 5000;   // 倉庫格數上限（🔧 100 → 200 → 500 → 5000）
 const WH_NO_STORE = ['item_dk_insignia','item_mastery_proof',   // 🚫 v3.2.17 舊項圈 id 已隨項圈系統移除
     'item_pride_pass_11','item_pride_pass_21','item_pride_pass_31','item_pride_pass_41','item_pride_pass_51','item_pride_pass_61','item_pride_pass_71','item_pride_pass_81','item_pride_pass_91',
@@ -14,13 +15,10 @@ const WH_NO_STORE = ['item_dk_insignia','item_mastery_proof',   // 🚫 v3.2.17 
     'new_item_204','new_item_205','new_item_203','new_item_214','new_item_212','new_item_240',
     'new_item_199','new_item_200','new_item_201','new_item_202','new_item_213','item_blueflute',
     'item_death_oath','item_orc_elder_head','item_yeti_head','item_fallen_key',
-    'item_ant_fruit','item_ant_branch','item_ant_bark','item_elmore_heart','item_time_orb','item_wyvern_blood',
-    'new_item_207','new_item_226','new_item_225','item_cyclops_blood','new_item_219','new_item_234',
-    'item_demon_search','item_demon_spy','item_yeti_heart','item_soulfire_ash',
     'new_item_197','new_item_211','item_lost_soul','mat_flame_sword','mat_flame_eye','mat_flame_claw','mat_flame_heart'];   // 🚫 禁止存入倉庫（現行陣列內容）：死亡騎士之印記、精通之證、傲慢之塔傳送符(11~91F)、各村莊搜索狀/信件等劇情道具、沙哈之箭、🔥50級試煉任務道具＋全部試煉道具。
     //    （🗑️ 已不在此列：四種項圈＝v3.2.17 隨項圈系統移除、🎴卡片/裝備收集冊＝v3.5.87 移除 DB 定義、潘朵拉抽獎卷＝v3.5.49 隨舊抽獎機移除）
 // 倉庫分類過濾（武器 / 防具 / 道具）：存入、取出共用同一個下拉清單
-let _whFilter = 'weapon';
+let _whFilter = 'all';
 let _whQtyInput = '';   // 🔧 倉庫存取「數量」共用輸入（取代 prompt()；空字串或 0 ＝整疊全部）。以模組變數保存→面板每次重繪後數值不流失
 let _whSearchInput = '';   // 🔎 倉庫搜尋暫態：2 字以上啟用跨分類模糊篩選，不寫入存檔
 function _whQtyVal(){ let v = parseInt(_whQtyInput, 10); return (v > 0) ? v : 0; }   // 0 ＝全部
@@ -97,7 +95,6 @@ function _whBuildCraftMatIds(){
         for(let g of groups){ if(!Array.isArray(g)) continue; for(let r of g){ let ings = (r && (r.req || r.mats)) || []; for(let m of ings){ if(m && m.id && m.id !== 'gold') _whCraftMatIds[m.id] = true; } } } };
     try { _scan(typeof CRAFT_RECIPES !== 'undefined' && CRAFT_RECIPES); } catch(e){}
     try { _scan(typeof DEMONKING_RECIPES !== 'undefined' && DEMONKING_RECIPES); } catch(e){}
-    try { _scan(typeof LUMIEL_RECIPES !== 'undefined' && LUMIEL_RECIPES); } catch(e){}
 }
 // 道具子分類判定：卡片(eff:'card')／技能書(skillbk)／卷軸(scroll)／任務(type:'quest' 或 quest_ 前綴)／製作(配方原料∪mat_前綴∪type:'etc' 材料)／其他(藥水/misc 消耗品等)
 function whItemSubCat(id){
@@ -123,6 +120,7 @@ function whSubCatOptions(){
 }
 // 倉庫物品是否符合「主分類＋子分類」：子分類空＝只看主分類
 function whMatchFilter(id){
+    if(_whFilter === 'all') return true;   // 🏦 預設「全部」（倉庫視窗依範本改版：打開先看到全部）
     if(whCategory(id) !== _whFilter) return false;
     if(!_whSubFilter) return true;
     if(_whFilter === 'item') return whItemSubCat(id) === _whSubFilter;
@@ -154,6 +152,8 @@ function loadWarehouse(){
         let items = w.items || [];
         try { let tombs = _whTombsRead(); items = items.filter(it => !(it && it.uid != null && tombs[it.uid])); } catch(e){}   // 🪦 墓碑 uid＝已被領出（他分頁復活殘留）→ 隱藏；下次任一寫入時自桶清除
         _whLoadUids = new Set(items.map(it => it && it.uid).filter(u => u != null));
+        if (typeof isRemovedItem === 'function') items = items.filter(it => !isRemovedItem(it));   // 🗑️ 已刪除的物品（脛甲類、魔眼）：濾掉；放在 _whLoadUids 之後→下次寫入會記墓碑，他分頁舊快照不會復活
+        items = _whConsolidate(items);   // 同一種東西分成好幾疊 → 合成一疊（_whLoadUids 刻意在合併前算：被併掉的 uid 下次寫入會記墓碑，他分頁的舊快照不會把它復活）
         return { items: items, gold: w.gold || 0 };
     } catch(e){ _whLoadOk = false; return { items: [], gold: 0 }; }   // JSON 毀損→不可當成空倉庫
 }
@@ -289,7 +289,29 @@ function _mergeTradBuckets(){
         }
     }
 }
-if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('DOMContentLoaded', function(){ try { _mergeTradBuckets(); } catch(e){} });
+// 🏦 共用倉庫(SHARED_WAREHOUSE)：舊的經典模式倉庫 _classic 併進一般倉庫——物品依 uid 去重、金幣相加、墓碑聯集；
+//   一般桶的墓碑(已被領出的 uid)不併回＝防複製。寫入成功才刪來源；任一桶解不開就整個跳過、原樣保留(下次開機再試)。
+//   每次開機都跑：還開著舊版的分頁若又寫了 _classic，下次也會併回來。
+function _mergeClassicWarehouse(){
+    if (!SHARED_WAREHOUSE) return;
+    let SRC = WH_KEY + '_classic', DST = WH_KEY;
+    let _read = key => { let raw; try { raw = _lsGet(key); } catch(e){ return { bad: true }; } if (raw == null) return { miss: true }; try { let s = _lzGet(key); if (s == null || s === '') return { bad: true }; return { obj: JSON.parse(s) }; } catch(e){ return { bad: true }; } };
+    let sw = _read(SRC); if (!sw.obj) return;
+    let dw = _read(DST); if (dw.bad) return;
+    let st = _read(SRC + '_rm'), dt = _read(DST + '_rm'); if (st.bad || dt.bad) return;
+    let tombs = Object.assign({}, (st.obj && typeof st.obj === 'object') ? st.obj : {}, (dt.obj && typeof dt.obj === 'object') ? dt.obj : {});
+    let d = dw.obj || { items: [], gold: 0 };
+    let items = (d.items || []).slice();
+    let have = new Set(items.map(it => it && it.uid).filter(u => u != null));
+    let moved = 0;
+    (sw.obj.items || []).forEach(it => { if (!it || (it.uid != null && (have.has(it.uid) || tombs[it.uid]))) return; items.push(it); moved++; });
+    let gold = (d.gold || 0) + (sw.obj.gold || 0);
+    if (!_lzSet(DST, JSON.stringify({ items: items, gold: gold }))) return;
+    try { _lzSet(DST + '_rm', JSON.stringify(tombs)); } catch(e){}
+    _lsRemove(SRC); try { _lsRemove(SRC + '_rm'); } catch(e){}
+    if (moved || sw.obj.gold) console.info('[倉庫] 經典模式倉庫已併入共用倉庫：物品 ' + moved + ' 疊、金幣 ' + (sw.obj.gold || 0));
+}
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('DOMContentLoaded', function(){ try { _mergeTradBuckets(); } catch(e){} try { _mergeClassicWarehouse(); } catch(e){} });
 // 讀檔／創角時呼叫：把共用桶併進 player.cardDex/equipDex（卡片取較高分·裝備取聯集·只增不減），並回寫共用桶（種子化＋遷移舊存檔 per-character 資料·不丟失）
 function loadSharedCollections(){
     if (!player) return;
@@ -357,13 +379,26 @@ if (typeof window !== 'undefined' && window.addEventListener) window.addEventLis
 //    同簽章永遠只有一格，任一方鎖定→合併後整疊鎖定（旗標傳遞統一走 _whStackAbsorb）。
 // ⚠️ 巨靈願望戒指(gw)每只的三個願望各自獨立，而 itemSig 不含 gw → 必須顯式排除，
 //    否則存入/取出會把兩只不同願望的戒指併成一疊、其中一份願望資料就此消失。
+// 🧱 倉庫同簽章多疊合併（站長 2026-10-15 回報「銀礦石分兩格」）：存入時會疊加，但「經典倉庫併入共用倉庫／模式桶合併／多分頁同步」
+//    都是按 uid 串接、不看簽章 → 同一種東西會變成好幾疊、多佔格子。讀取時統一合併：數量相加、鎖定只擴散不遺失、gw（巨靈願望戒指）不併。
+function _whConsolidate(items){
+    let out = [], bySig = Object.create(null);
+    for (let it of items) {
+        if (!it || it.gw) { out.push(it); continue; }
+        let k = itemSig(it), ex = bySig[k];
+        if (!ex) { bySig[k] = it; out.push(it); continue; }
+        ex.cnt = (ex.cnt || 1) + (it.cnt || 1);
+        if (it.lock) ex.lock = true;
+    }
+    return out;
+}
 function _whStackFind(arr, it){ return (!it.gw) ? arr.find(x => !x.gw && sameItemSig(x, it)) : null; }
 function _whStackAbsorb(stack, src, n){ stack.cnt += n; if(src && src.lock){ stack.lock = true; stack.junk = false; } }   // 合併時保護狀態只會擴散、不會遺失
 // 🗑️ 自動販賣暫態旗標不屬於倉庫（那是每次背包工作階段的狀態）。存入與取出都清掉，否則
 //    帶著早已過期 junkSince 的物品一回到背包就會被下一次 10 秒掃描直接賣掉＝零寬限期。
 //    取出時一併清，可順便治好既有存檔中已經帶著舊旗標躺在倉庫裡的物品。
 function _whClearJunkState(it){ if(it){ delete it.junk; delete it.junkSince; delete it._autoSellQty; delete it._ruleJunk; } return it; }
-// 物品完整簽章：名字(id)+強化值(en)+詞綴(祝福/遠古/屬性)；一鍵存入用來比對「完全相同」
+// 物品完整簽章：名字(id)+強化值(en)+詞綴(祝福/遠古/屬性)
 function whSig(it){ return itemSig(it); }   // 🔧 架構#3：委派給單一事實來源 itemSig
 // 倉庫與角色是兩個獨立儲存桶。每次轉移先保存角色，再保存倉庫；任一步失敗就還原記憶體中的背包/金幣，
 // 避免角色存檔失敗但倉庫成功寫入後，重新整理造成物品複製。
@@ -389,33 +424,7 @@ function whTxnCommit(w, snap){
     }
     return true;
 }
-// 一鍵存入：背包中「與倉庫現有物品 詞綴+名字+強化值 完全相同」者自動存入（鎖定物品保護、不可存物品略過）
-function whOneClickDeposit(){
-    // 🏦 縱深守衛：倉庫只能在安全區使用（浮動視窗曾可被帶進狩獵區；closeNpcInteraction 已補關閉，這裡再擋一層）
-    if (typeof mapState === 'undefined' || !mapState.current || !String(mapState.current).startsWith('town_')) { if (typeof logSys === 'function') logSys('<span class="text-red-400">離開安全區後無法使用倉庫。</span>'); return; }
-    let w = loadWarehouse();
-    let _txn = whTxnSnapshot();
-    let whSigs = new Set(w.items.map(whSig));   // 倉庫現有物品簽章集合
-    let deposited = 0, full = false;
-    for(let it of player.inv.slice()){          // 用副本走訪，過程會改動 player.inv
-        if(WH_NO_STORE.includes(it.id)) continue;   // 不可存入
-        if(it.lock) continue;                        // 鎖定物品保護，不自動存入
-        if(!whSigs.has(whSig(it))) continue;         // 倉庫沒有完全相同的 → 跳過
-        let idx = player.inv.findIndex(i => i.uid === it.uid);
-        if(idx < 0) continue;
-        let cur = player.inv[idx];
-        let stack = _whStackFind(w.items, cur);
-        if(!stack && w.items.length >= WH_MAX){ full = true; break; }
-        player.inv.splice(idx, 1);
-        if(stack){ _whStackAbsorb(stack, cur, cur.cnt); } else { w.items.push(_whClearJunkState(cur)); whSigs.add(whSig(cur)); }
-        deposited++;
-    }
-    if(!whTxnCommit(w, _txn)){ renderTabs(true); updateUI(); renderWarehouseNPC(document.getElementById('interaction-content')); return; }
-    renderTabs(true); updateUI();
-    renderWarehouseNPC(document.getElementById('interaction-content'));
-    if(deposited > 0) logSys(`<span class="text-cyan-300 font-bold">一鍵存入：已存入 ${deposited} 項與倉庫現有物品相同的物品${full ? '（倉庫已滿，部分未存入）' : ''}。</span>`);
-    else logSys(full ? `<span class="text-red-400">倉庫已滿，無法存入。</span>` : `背包中沒有與倉庫現有物品完全相同的可存入物品。`);
-}
+// 🗑️ 2026-10-14 站長決定拿掉「一鍵存入」（whOneClickDeposit 整支刪除）
 // 🔧 倉庫一鍵排列：規則與背包「一鍵排列」完全相同（共用 invSortCmp）
 function sortWarehouse(){
     let w = loadWarehouse();
@@ -489,8 +498,9 @@ function whGold(dir){
     // 🏦 縱深守衛：倉庫只能在安全區使用（浮動視窗曾可被帶進狩獵區；closeNpcInteraction 已補關閉，這裡再擋一層）
     if (typeof mapState === 'undefined' || !mapState.current || !String(mapState.current).startsWith('town_')) { if (typeof logSys === 'function') logSys('<span class="text-red-400">離開安全區後無法使用倉庫。</span>'); return; }
     let amt = parseInt(document.getElementById('wh-gold-amt').value) || 0;
-    if(amt <= 0) return;
     let w = loadWarehouse();
+    if(amt <= 0) amt = (dir === 'in') ? player.gold : (w.gold || 0);   // 數量留空＝全部（跟物品列同一個規則）
+    if(amt <= 0) return;
     let _txn = whTxnSnapshot();
     if(dir === 'in'){ amt = Math.min(amt, player.gold); player.gold -= amt; w.gold = (w.gold||0) + amt; }
     else { amt = Math.min(amt, w.gold||0); w.gold -= amt; player.gold += amt; }
@@ -498,58 +508,98 @@ function whGold(dir){
     updateUI();
     renderWarehouseNPC(document.getElementById('interaction-content'));
 }
+// 🏦 倉庫視窗（2026-10-14 依站長給的範本重排）：
+//   標題列（index.html：寶箱圖＋「倉庫」＋紅色 ✕）→ 一行資訊（共用・格數）→ 金幣列 → 「倉庫／背包」兩個分頁
+//   → 分類頁籤（全部／武器／防具／道具，同背包）→ 搜尋 → 物品清單（分頁，每頁 WH_PAGE 列）。在倉庫分頁再點一次「倉庫」＝整理。
+//   每列：圖示｜名稱×數量｜數量框（可疊的才有，預設整疊）｜取出／存入。
+//   ⚠️ 外掛依賴（勿改名）：#wh-gold-amt、#wh-inv-list、#wh-store-list、
+//      #wh-search-input、清單每列的 data-tip-uid / data-tip-src
+//      （afk-warehouse 長按看資料／只列可穿、afk-whbatch 批次勾選）。
+//      兩份清單都照樣畫出來，非作用分頁的那份只是藏起來（外掛照常找得到）。
+//   分頁：倉庫可到 5,000 格，整份畫出來手機會卡 → 一次只畫一頁；分類／搜尋一變就回第 1 頁。
+const WH_PAGE = 50;
+let _whTab = 'wh';   // 'wh' 倉庫 ／ 'inv' 背包
+let _whPg = { wh: 0, inv: 0 }, _whPgKey = '';
+// 已經在「倉庫」分頁時再點一次＝整理倉庫（同背包「全部 ⇅」再點一次＝整理背包）
+function whSetTab(t){
+    let next = (t === 'inv') ? 'inv' : 'wh';
+    if (next === 'wh' && _whTab === 'wh') { sortWarehouse(); return; }
+    _whTab = next; renderWarehouseNPC(document.getElementById('interaction-content'));
+}
+function whSetPage(d){
+    _whPg[_whTab] = Math.max(0, (_whPg[_whTab] || 0) + d);
+    renderWarehouseNPC(document.getElementById('interaction-content'));
+    let c = document.getElementById('warehouse-window-content'); if (c) c.scrollTop = 0;
+}
+// 列上的數量框 → 帶進核心的「存取數量」再存取（留空或超過＝整疊），做完歸零，下次預設又是整疊
+function whRowAct(side, uid, btn){
+    let row = btn && btn.closest ? btn.closest('.whx-row') : null;
+    let inp = row ? row.querySelector('.whx-qty') : null;
+    whSetQty(inp ? inp.value : '');
+    try { if (side === 'wh') whWithdraw(uid); else whDeposit(uid); } finally { whSetQty(''); }
+}
+const _WHX_SVG = {
+    chest: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5v1H3z"/><path d="M3 12.5h7v2.5h4v-2.5h7V20H3z"/></svg>',
+    bag:   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5a3 3 0 0 1 6 0V6h-1.6V4.5a1.4 1.4 0 0 0-2.8 0V6H9z"/><path d="M5 11a4.5 4.5 0 0 1 4.5-4.5h5A4.5 4.5 0 0 1 19 11v9a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20zm3 3.5v3h8v-3z"/></svg>',
+    down:  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3h3v7.5h3.5L12 16l-5-5.5h3.5z"/><path d="M3 14h3v4h12v-4h3v7H3z"/></svg>',
+    up:    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l5 5.5h-3.5V15h-3V7.5H7z"/><path d="M3 14h3v4h12v-4h3v7H3z"/></svg>',
+    box:   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l9 4.5-9 4.5-9-4.5z"/><path d="M3 8.2l8 4v9.6l-8-4zM21 8.2l-8 4v9.6l8-4z"/></svg>'
+};
 function renderWarehouseNPC(div){
     if (typeof warehouseWindowIsOpen === 'function' && warehouseWindowIsOpen()) { let floating = document.getElementById('warehouse-window-content'); if (floating) div = floating; }
     if (!div) return;
     _activePanel = null;   // 倉庫不需自動刷新
     let w = loadWarehouse();
-    let mkBtn = (it, act) => `<button onclick="${act}('${it.uid}')" data-tip-uid="${it.uid}" data-tip-src="${act === 'whWithdraw' ? 'wh' : 'inv'}" class="tip-host btn w-full text-left py-1.5 px-2 text-sm bg-slate-800 hover:bg-slate-700 border-slate-600">${getItemFullName(it)}</button>`;
     let _searching = _whSearchActive();
     let _invItems = player.inv.filter(it => !it.lock && (_searching ? whMatchSearch(it) : whMatchFilter(it.id)));   // 🔒 鎖定物品不顯示於倉庫存放清單（用戶要求：鎖定物品存放時不顯示）
     let _whItems  = w.items.filter(it => _searching ? whMatchSearch(it) : whMatchFilter(it.id));
-    let invHtml = _invItems.length ? _invItems.map(it => WH_NO_STORE.includes(it.id)
-        ? `<div data-tip-uid="${it.uid}" data-tip-src="inv" class="tip-host w-full text-left py-1.5 px-2 text-sm bg-slate-900/60 border border-slate-700 rounded opacity-50 cursor-not-allowed">${getItemFullName(it)} <span class="text-xs text-red-400">（不可存）</span></div>`
-        : mkBtn(it, 'whDeposit')).join('') : `<div class="text-slate-500 text-sm text-center py-4">${_searching ? '背包沒有符合搜尋的物品' : '此分類背包沒有物品'}</div>`;
-    let whHtml  = _whItems.length ? _whItems.map(it => mkBtn(it, 'whWithdraw')).join('') : `<div class="text-slate-500 text-sm text-center py-4">${_searching ? '倉庫沒有符合搜尋的物品' : '此分類倉庫是空的'}</div>`;
+    let _key = _whFilter + '|' + _whSubFilter + '|' + (_searching ? _whSearchInput : '');
+    if (_key !== _whPgKey) { _whPgKey = _key; _whPg = { wh: 0, inv: 0 }; }
+    let _page = (arr, side) => { let n = Math.max(1, Math.ceil(arr.length / WH_PAGE)); _whPg[side] = Math.min(_whPg[side] || 0, n - 1); return { rows: arr.slice(_whPg[side] * WH_PAGE, (_whPg[side] + 1) * WH_PAGE), n }; };
+    let _icon = it => { let d = DB.items[it.id]; let src = (d && typeof getIconUrl === 'function') ? getIconUrl(d) : ''; return `<div class="whx-icon">${src ? `<img src="${src}" alt="" onerror="this.style.opacity='0'">` : ''}</div>`; };
+    let _row = (it, side) => {
+        let cnt = it.cnt || 1, noStore = side === 'inv' && WH_NO_STORE.includes(it.id);
+        let qty = (cnt > 1 && !noStore) ? `<input class="whx-qty" type="number" min="1" max="${cnt}" value="${cnt}" inputmode="numeric" aria-label="數量">` : '';
+        let act = noStore ? '<span class="whx-nostore">不可存放</span>'
+            : `<button type="button" class="whx-act" onclick="whRowAct('${side}','${it.uid}',this)">${_WHX_SVG.box}<span>${side === 'wh' ? '取出' : '存入'}</span></button>`;
+        return `<div class="whx-row tip-host${noStore ? ' whx-dim' : ''}" data-tip-uid="${it.uid}" data-tip-src="${side}">${_icon(it)}`
+            + `<div class="whx-name"><span class="${getItemColor(it)}">${getItemFullName(cnt > 1 ? { ...it, cnt: 1 } : it)}</span>${cnt > 1 ? `<span class="whx-cnt">×${cnt.toLocaleString()}</span>` : ''}</div>${qty}${act}</div>`;
+    };
+    let _empty = (side) => `<div class="whx-empty">${_searching ? (side === 'wh' ? '倉庫沒有符合搜尋的物品' : '背包沒有符合搜尋的物品') : (side === 'wh' ? '這個分類倉庫是空的' : '這個分類背包沒有物品')}</div>`;
+    let _list = (arr, side) => { let pg = _page(arr, side); return arr.length ? pg.rows.map(it => _row(it, side)).join('') : _empty(side); };
+    let whHtml = _list(_whItems, 'wh'), invHtml = _list(_invItems, 'inv');
+    let onWh = _whTab === 'wh', _cur = onWh ? _whItems : _invItems;
+    let _pages = Math.max(1, Math.ceil(_cur.length / WH_PAGE)), _pi = _whPg[_whTab];
     let _oi = document.getElementById('wh-inv-list'), _os = document.getElementById('wh-store-list');
     let _whInvScroll = _oi ? _oi.scrollTop : 0, _whStoreScroll = _os ? _os.scrollTop : 0, _divScroll = div.scrollTop;
     div.innerHTML = `
-    <div class="flex flex-col gap-3 p-1">
-        <div class="text-slate-300 text-sm leading-relaxed">將物品或金幣存入倉庫，<b class="text-amber-300">四個存檔角色共用</b>。點背包物品＝存入；點倉庫物品＝取出（依下方<b class="text-amber-300">數量</b>欄取出／存入；留空＝整疊全部）。已裝備或鎖定中的物品無法存入（需先解鎖）。</div>
-        <div class="flex items-center gap-2 bg-slate-800/60 border border-slate-600 rounded p-3 text-sm flex-wrap">
-            <span>金幣　背包：<span class="text-yellow-400 font-bold">${player.gold}</span>　倉庫：<span class="text-yellow-400 font-bold">${w.gold||0}</span></span>
-            <input id="wh-gold-amt" type="number" min="1" value="1000" class="w-24 bg-slate-900 border border-slate-600 text-center text-white rounded h-8 ms-auto">
-            <button onclick="whGold('in')" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;">存入 ▶</button>
-            <button onclick="whGold('out')" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #6b2a10 0%, #b3490e 28%, #5a230e 52%, #9a3e0c 76%, #4a1d0c 100%); color: #fed7aa; border-color: #c2410c;">◀ 取出</button>
-        </div>
-        <div class="flex items-center gap-2 text-sm flex-wrap">
-            <span class="text-slate-300 font-bold">物品分類：</span>
-            <select onchange="whSetFilter(this.value)" class="bg-slate-900 border border-slate-600 text-white rounded py-1 px-2 text-sm">
-                <option value="weapon" ${_whFilter==='weapon'?'selected':''}>武器</option>
-                <option value="armor" ${_whFilter==='armor'?'selected':''}>防具</option>
-                <option value="item" ${_whFilter==='item'?'selected':''}>道具</option>
-            </select>
-            <select onchange="whSetSubFilter(this.value)" class="bg-slate-900 border border-slate-600 text-white rounded py-1 px-2 text-sm" title="細分類：武器/防具依圖鑑類型，道具分卡片/技能/製作/任務/卷軸/其他">
-                <option value="">全部</option>
-                ${whSubCatOptions().map(o => `<option value="${o.key}" ${_whSubFilter===o.key?'selected':''}>${o.name}</option>`).join('')}
-            </select>
-            <span class="text-slate-500 text-xs">（存入／取出共用此分類）</span>
-            <span class="text-slate-300 font-bold ms-2">搜尋：</span>
-            <input id="wh-search-input" type="search" placeholder="輸入 2 字以上" value="${_whEscAttr(_whSearchInput)}" oninput="whSetSearch(this.value, this.selectionStart, event)" title="輸入 2 字以上時，跨分類模糊搜尋背包與倉庫物品（支援注音等中文輸入法）" class="w-44 bg-slate-900 border border-slate-600 text-white rounded h-8 px-2">
-            ${_whSearchInput ? '<button onclick="whClearSearch()" class="btn px-3 text-xs font-bold h-8 inline-flex items-center justify-center" title="清除搜尋">清除</button>' : ''}
-            <span class="text-slate-300 font-bold ms-2">數量：</span>
-            <input id="wh-qty-amt" type="number" min="1" placeholder="全部" value="${_whQtyInput}" oninput="whSetQty(this.value)" title="存入／取出的數量；留空或 0 ＝整疊全部（不再使用跳出式輸入框）" class="w-20 bg-slate-900 border border-slate-600 text-center text-white rounded h-8">
-            <button onclick="whOneClickDeposit()" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center ms-auto" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" title="把背包中與倉庫現有物品（詞綴+名字+強化值完全相同）的物品自動存入；鎖定物品不動">一鍵存入</button>
-            <button onclick="sortWarehouse()" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 28%, #16294a 52%, #1d4ed8 76%, #101f38 100%); color: #bfdbfe; border-color: #3b82f6;" title="依背包一鍵排列的相同規則整理倉庫物品">一鍵排列</button>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-            <div class="flex flex-col min-h-0">
-                <div class="font-bold text-cyan-300 mb-1 text-sm">背包（點擊存入 ▶）</div>
-                <div class="flex flex-col gap-1 overflow-y-auto pr-1" id="wh-inv-list" style="max-height:340px">${invHtml}</div>
+    <div class="whx">
+        <div class="whx-info">同帳號所有角色共用・倉庫 ${w.items.length.toLocaleString()} / ${WH_MAX.toLocaleString()} 格</div>
+        <div class="whx-gold">
+            <div class="whx-gold-sum"><img src="assets/ui/wh-coins.webp" alt="" class="whx-coins"><div><div>倉庫金幣 <b>${(w.gold||0).toLocaleString()}</b></div><div>身上金幣 <b>${player.gold.toLocaleString()}</b></div></div></div>
+            <div class="whx-gold-ctl">
+                <input id="wh-gold-amt" type="number" min="1" placeholder="全部" inputmode="numeric" class="whx-input" aria-label="金幣數量">
+                <button type="button" class="whx-btn" onclick="whGold('in')">${_WHX_SVG.down}<span>存入</span></button>
+                <button type="button" class="whx-btn" onclick="whGold('out')">${_WHX_SVG.up}<span>取出</span></button>
             </div>
-            <div class="flex flex-col min-h-0">
-                <div class="font-bold text-amber-300 mb-1 text-sm flex justify-between">倉庫（點擊取出 ◀）<span class="text-slate-400 font-normal">${w.items.length}/${WH_MAX}</span></div>
-                <div class="flex flex-col gap-1 overflow-y-auto pr-1" id="wh-store-list" style="max-height:340px">${whHtml}</div>
+        </div>
+        <div class="whx-tabs">
+            <button type="button" class="${onWh ? 'on' : ''}" onclick="whSetTab('wh')" title="再點一次整理倉庫">${_WHX_SVG.chest}<span>倉庫（${_whItems.length.toLocaleString()}）</span><span class="whx-tabicon" aria-hidden="true">⇅</span></button>
+            <button type="button" class="${onWh ? '' : 'on'}" onclick="whSetTab('inv')">${_WHX_SVG.bag}<span>背包（${_invItems.length.toLocaleString()}）</span></button>
+        </div>
+        <div class="whx-cats">
+            ${[['all','全部'],['weapon','武器'],['armor','防具'],['item','道具']].map(c => `<button type="button" class="${_whFilter===c[0]?'on':''}" onclick="whSetFilter('${c[0]}')">${c[1]}</button>`).join('')}
+        </div>
+        <div class="whx-tools">
+            <input id="wh-search-input" type="search" class="whx-input whx-search" placeholder="搜尋" value="${_whEscAttr(_whSearchInput)}" oninput="whSetSearch(this.value, this.selectionStart, event)">
+        </div>
+        <div class="whx-panel">
+            <div class="whx-list" id="wh-store-list"${onWh ? '' : ' style="display:none"'}>${whHtml}</div>
+            <div class="whx-list" id="wh-inv-list"${onWh ? ' style="display:none"' : ''}>${invHtml}</div>
+            <div class="whx-pager">
+                <button type="button" onclick="whSetPage(-1)" aria-label="上一頁"${_pi > 0 ? '' : ' disabled'}>‹</button>
+                <span>${_pi + 1} / ${_pages}</span>
+                <button type="button" onclick="whSetPage(1)" aria-label="下一頁"${_pi < _pages - 1 ? '' : ' disabled'}>›</button>
             </div>
         </div>
     </div>`;
@@ -622,7 +672,7 @@ function trialExName(n, rewardId) { return `${DB.items[rewardId].n}${n > 1 ? ` �
 // 版型比照「製作」(renderUniversalCraft js/14)：左＝遺骸圖示＋名稱＋兌換材料(craftReqHtml)，右＝數量輸入＋兌換鈕。
 function renderIoExchange(div) {
     let html = `<div class="text-slate-300 text-sm mb-1 px-1">伊奧：「席琳的力量凝於遺骸之中。獻上結晶，選擇你要的部位吧——至於它承載哪一種祝福，由席琳決定。」</div>
-        <div class="text-slate-400 text-xs mb-3 px-1">每件消耗 <span class="c-sherine font-bold">席琳結晶 ×1</span>（背包優先，不足扣共用倉庫）。兌換出的遺骸必附<span class="c-sherine">隨機一種席琳套裝詞綴</span>；集齊相同套裝名的遺骸（裝備欄底部 8 格）即可發動套裝效果。</div>`;
+        <div class="text-slate-400 text-xs mb-3 px-1">每件消耗 <span class="c-sherine font-bold">席琳結晶 ×1</span>（要放在背包、沒上鎖；倉庫裡的要先取出）。兌換出的遺骸必附<span class="c-sherine">隨機一種席琳套裝詞綴</span>；集齊相同套裝名的遺骸（裝備欄底部 8 格）即可發動套裝效果。</div>`;
     SHERINE_REMAINS.forEach(r => {
         let d = DB.items[r.id];
         let reqHtml = craftReqHtml([{ id: 'sherine_crystal', cnt: 1 }]);   // 🔧 共用製作的需求列（顏色/數量/含倉庫存量判定一致）
@@ -667,13 +717,13 @@ function doIoExchange(remId) {
     let _c = document.getElementById('interaction-content'); if (_c) renderIoExchange(_c);   // 就地重渲染（更新結晶持有數，可連續兌換）
 }
 // 菈克希絲：把「身上穿著、帶席琳詞綴」的裝備拆分＝裝備保留其他詞綴/強化值（僅席琳詞綴消失）＋獲得同詞綴的對應部位遺骸。
-//   部位映射＝SHERINE_REMAINS.eqSlot（武器→之爪…盔甲→之鱗）；⚔️ 戰士副手武器欄(offwpn)視同武器→之爪。
+//   部位映射＝SHERINE_REMAINS.eqSlot（武器→之爪…盔甲→之鱗）。
 function renderLachesisSplit(div) {
     let html = `<div class="p-4">
         <div class="text-slate-300 text-sm mb-1">菈克希絲：「命運的絲線纏在你的裝備上……讓我為你解開。裝備還是那件裝備，席琳的祝福則化為遺骸歸你。」</div>
         <div class="text-slate-400 text-xs mb-3">拆分「身上穿著」帶<span class="c-sherine">席琳套裝詞綴</span>的裝備：裝備保留強化值與其他詞綴（僅席琳詞綴消失），並獲得<span class="c-sherine">相同詞綴</span>的對應部位遺骸（如 +12 魔女 祝福的 闊劍 → +12 祝福的闊劍＋魔女之爪）。</div>`;
     let _rows = '';
-    let _slots = SHERINE_REMAINS.map(r => ({ slot: r.eqSlot, remId: r.id, remN: r.n })).concat([{ slot: 'offwpn', remId: 'rem_claw', remN: '之爪' }]);
+    let _slots = SHERINE_REMAINS.map(r => ({ slot: r.eqSlot, remId: r.id, remN: r.n }));
     _slots.forEach(m => {
         let e = player.eq && player.eq[m.slot];
         if (!e || !e.seteff) return;
@@ -690,7 +740,7 @@ function renderLachesisSplit(div) {
 function doLachesisSplit(slotKey) {
     let e = player.eq && player.eq[slotKey];
     if (!e || !e.seteff) return;
-    let _map = (slotKey === 'offwpn') ? SHERINE_REMAINS.find(r => r.eqSlot === 'wpn') : SHERINE_REMAINS.find(r => r.eqSlot === slotKey);
+    let _map = SHERINE_REMAINS.find(r => r.eqSlot === slotKey);
     if (!_map) return;   // 非映射部位（理論上不會發生：清單只列映射欄位）
     let _g = e.seteff.slice(0, 2);
     e.seteff = false;   // 僅席琳詞綴消失：強化值(en)/祝福(bless)/古代(anc)/屬性(attr) 全保留·裝備維持穿著
@@ -702,7 +752,7 @@ function doLachesisSplit(slotKey) {
 
 // ===== 🔥 v3.0.78 試煉接取制（15/30/45 級）：須達等級向 NPC 接取 → 試煉道具才開始掉落（100%·達需求即停·禁倉庫）→ 一次性完成領「全部」獎勵 =====
 //   狀態：player.trialQ[key] = 0/undefined 未接取、1 進行中、2 已完成（完成後無法再接取、道具不再掉落）。
-//   掉落閘＝js/01 trialDropBlocked → trialItemActive；100% 掉落＝js/05 掉落迴圈 trialForced100。
+//   掉落閘＝js/01 trialDropBlocked → trialItemActive；掉率＝js/05 掉落迴圈 trialQuestDropRate（15/30/45 級 1%、法師 45 級 10%、50 級 100%）。
 const TRIAL_Q = {
     knight15:   { cls:'knight',   lv:15, npc:'瑞奇',         reqs:[['new_item_196',1],['new_item_198',1],['new_item_206',1]], rewards:['arm_53'] },
     knight30:   { cls:'knight',   lv:30, npc:'甘特',         reqs:[['new_item_144',1],['new_item_208',1]], rewards:['wpn_redknight','shd_redknight'] },
@@ -716,15 +766,6 @@ const TRIAL_Q = {
     dark15:     { cls:'dark',     lv:30, npc:'倫得',         reqs:[['item_death_oath',1]], rewards:['arm_shadowglove'] },   // 🔁 v3.1.39 需求等級與 dark30 交換（15→30·NPC倫得/獎勵暗影手套/需求死亡誓約不變）
     dark30:     { cls:'dark',     lv:15, npc:'康',           reqs:[['item_orc_elder_head',1]], rewards:['arm_shadowmask'] },   // 🔁 v3.1.39 需求等級與 dark15 交換（30→15·NPC康/獎勵暗影面具/需求妖魔長老之首不變）
     dark45:     { cls:'dark',     lv:45, npc:'布魯迪卡',     reqs:[['item_yeti_head',1]], rewards:['arm_shadowboots'] },
-    illusion15: { cls:'illusion', lv:15, npc:'希蓮恩',       reqs:[['item_ant_fruit',1],['item_ant_branch',1],['item_ant_bark',1]], rewards:['wpn_illu_wand','mem_cube_burn'] },
-    illusion30: { cls:'illusion', lv:30, npc:'希蓮恩',       reqs:[['item_elmore_heart',1]], rewards:['shd_illu_book','mem_cube_shock'] },
-    illusion45: { cls:'illusion', lv:45, npc:'希蓮恩',       reqs:[['item_time_orb',1]], rewards:['clk_illu'] },
-    warrior15:  { cls:'warrior',  lv:15, npc:'多文',         reqs:[['new_item_207',1]], rewards:['wpn_warrior_trial_axe','bk_warrior_dualaxe'] },
-    warrior30:  { cls:'warrior',  lv:30, npc:'多文',         reqs:[['new_item_226',1],['new_item_225',1]], rewards:['clk_warrior_corps','bk_warrior_roar'] },
-    warrior45:  { cls:'warrior',  lv:45, npc:'多文',         reqs:[['item_cyclops_blood',1]], rewards:['hlm_warrior_corps'] },
-    dragon15:   { cls:'dragon',   lv:15, npc:'普洛凱爾',     reqs:[['item_demon_search',3]], rewards:['wpn_dragon_2h','bk_dragon_armor'] },
-    dragon30:   { cls:'dragon',   lv:30, npc:'普洛凱爾',     reqs:[['item_demon_spy',1]], rewards:['armguard_dragonscale','bk_dragon_bloodlust'] },
-    dragon45:   { cls:'dragon',   lv:45, npc:'普洛凱爾',     reqs:[['item_yeti_heart',10]], rewards:['clk_dragon'] },
     royal15:    { cls:'royal',    lv:15, npc:'甘特',         reqs:[['new_item_197',1]], rewards:['clk_royal_red','bk_royal_precise'] },
     royal30:    { cls:'royal',    lv:30, npc:'甘特',         reqs:[['new_item_211',1]], rewards:['clk_royal_majesty','bk_royal_callally'] },
     royal45:    { cls:'royal',    lv:45, npc:'馬沙',         reqs:[['item_lost_soul',1]], rewards:['acc_royal_guard'] },
@@ -733,10 +774,6 @@ const TRIAL_ITEM_Q = {};   // 試煉道具 id → 所屬試煉 key 陣列（古�
 Object.keys(TRIAL_Q).forEach(k => TRIAL_Q[k].reqs.forEach(p => { (TRIAL_ITEM_Q[p[0]] = TRIAL_ITEM_Q[p[0]] || []).push(k); }));
 // 50級試煉道具狀態閘（stage=指定收集階段道具／ex=最終兌換材料·need 預設 1）；時空裂痕碎片為通用素材不管制
 const TRIAL50_ITEM = {
-    new_item_219:      { cls:'warrior',  stage:1, need:5 },
-    new_item_234:      { cls:'warrior',  ex:1 },
-    item_soulfire_ash: { cls:'dragon',   ex:1 },
-    item_wyvern_blood: { cls:'illusion', ex:1, need:5 },
     mat_flame_sword:   { cls:'knight',   ex:1 },
     mat_flame_claw:    { cls:'elf',      ex:1 },
     mat_flame_eye:     { cls:'mage',     ex:1 },
@@ -752,8 +789,8 @@ function questCountForOwner(owner, id, pending, assignedOnly) {
     let inv = (owner.inv || []).filter(i => i && i.id === id && !i.lock).reduce((s, i) => s + (i.cnt || 0), 0);
     let wh = 0;
     try {
-        if (typeof whCountId === 'function' && typeof player !== 'undefined' && player
-            && !!owner.classicMode === !!player.classicMode && !!owner.traditionalMode === !!player.traditionalMode) wh = whCountId(id);
+        if (!NO_REMOTE_WAREHOUSE && typeof whCountId === 'function' && typeof player !== 'undefined' && player
+            && (SHARED_WAREHOUSE || (!!owner.classicMode === !!player.classicMode && !!owner.traditionalMode === !!player.traditionalMode))) wh = whCountId(id);
     } catch (e) {}
     return inv + wh + Math.max(0, Math.floor(Number(pending) || 0));
 }
@@ -788,7 +825,19 @@ function trialItemActiveFor(owner, id, pending, assignedOnly) {
     return true;   // 非管制道具
 }
 function trialItemActive(id) { return trialItemActiveFor(player, id, 0); }
-function trialForced100(id) { return !!(TRIAL_ITEM_Q[id] || TRIAL50_ITEM[id]); }   // 管制試煉道具通過閘門後 100% 掉落
+function trialForced100(id) { return !!(TRIAL_ITEM_Q[id] || TRIAL50_ITEM[id]); }   // 管制試煉道具：不走掉落表機率，改用下面 trialQuestDropRate
+// 🔧 2026-10-15 站長：15/30/45 級試煉道具掉率 1%（法師 45 級的變形怪的血 10%）；50 級試煉照舊 100%
+const TRIAL_DROP_RATE_SPECIAL = { new_item_240: 0.10 };
+function trialQuestDropRate(id) {
+    if (TRIAL50_ITEM[id]) return 1;
+    if (TRIAL_DROP_RATE_SPECIAL[id] != null) return TRIAL_DROP_RATE_SPECIAL[id];
+    return TRIAL_ITEM_Q[id] ? 0.01 : 1;
+}
+function trialDropPctText(ids) {   // 這幾樣試煉道具的掉率，例「1%」「1%／10%」
+    let u = [];
+    ids.forEach(id => { let t = Math.round(trialQuestDropRate(id) * 1000) / 10 + '%'; if (u.indexOf(t) < 0) u.push(t); });
+    return u.join('／');
+}
 function _trialRerender(rr) { let _c = document.getElementById('interaction-content'); let f = rr && window[rr]; if (_c && typeof f === 'function') f(_c); else closeNpcInteraction(); }
 // 產生單一試煉區塊 HTML（rr＝重繪函式名）
 function trialQHTML(key, rr) {
@@ -798,7 +847,7 @@ function trialQHTML(key, rr) {
     if (st === 2) return h + `<div class="text-emerald-400 text-sm mt-1">✅ 已完成（每個角色僅能完成一次）。</div></div>`;
     if ((player.lv || 1) < c.lv) return h + `<div class="text-red-400 text-sm mt-1">需要等級 ${c.lv} 以上才能接取此試煉。</div></div>`;
     if (st === 0) {
-        h += `<div class="text-xs text-slate-400 mt-1 mb-2">接取後才會開始掉落：${c.reqs.map(p => `<b class="text-amber-200">${DB.items[p[0]].n}</b>×${p[1]}`).join('、')}（擊殺指定怪物 100% 掉落·無法存入倉庫·達需求數量即停止掉落）</div>`;
+        h += `<div class="text-xs text-slate-400 mt-1 mb-2">接取後才會開始掉落：${c.reqs.map(p => `<b class="text-amber-200">${DB.items[p[0]].n}</b>×${p[1]}`).join('、')}（擊殺指定怪物 ${trialDropPctText(c.reqs.map(p => p[0]))} 機率掉落·無法存入倉庫·達需求數量即停止掉落）</div>`;
         h += `<div class="text-xs text-slate-400 mb-2">完成獎勵（全數獲得）：${c.rewards.map(id => `<b class="text-sky-300">${DB.items[id].n}</b>`).join('＋')}</div>`;
         return h + `<button class="btn bg-amber-800 hover:bg-amber-700 py-2 px-4 font-bold" onclick="trialQAccept('${key}','${rr}')">接取試煉任務</button></div>`;
     }
@@ -816,7 +865,7 @@ function trialQAccept(key, rr) {
     if (typeof currentRoleIsMercenary === 'function' && currentRoleIsMercenary()) { logSys('<span class="text-amber-300">此角色正在擔任傭兵，請由隊長在傭兵公會接取試煉。</span>'); return; }
     if (!player.trialQ || typeof player.trialQ !== 'object') player.trialQ = {};
     player.trialQ[key] = 1;
-    logSys(`<span class="text-amber-300 font-bold">${c.npc}：試煉開始！</span>去收集 ${c.reqs.map(p => DB.items[p[0]].n + '×' + p[1]).join('、')}（擊殺指定怪物必定掉落）。`);
+    logSys(`<span class="text-amber-300 font-bold">${c.npc}：試煉開始！</span>去收集 ${c.reqs.map(p => DB.items[p[0]].n + '×' + p[1]).join('、')}（擊殺指定怪物有 ${trialDropPctText(c.reqs.map(p => p[0]))} 機率掉落）。`);
     saveGame(); _trialRerender(rr);
 }
 function trialQComplete(key, rr) {   // 🚫 v3.2.16 移除席琳完成：原第 3 參 sherine（耗結晶必附套裝詞綴）廢止
@@ -849,14 +898,12 @@ const YURIA_REWARDS = [
     { id: 'armguard_guardian', nm: '守護者臂甲' },
     { id: 'armguard_mage',     nm: '法師臂甲' }
 ];
-// 👹 尤麗婭第二兌換：以 黑暗哈汀的日記本 六選一兌換 隱藏的魔族武器（每件消耗 1 本）
+// 👹 尤麗婭第二兌換：以 黑暗哈汀的日記本 四選一兌換 隱藏的魔族武器（每件消耗 1 本）
 const YURIA_HATIN_REWARDS = [
     { id: 'wpn_demon_sword_hidden', nm: '隱藏的魔族之劍' },
     { id: 'wpn_demon_bow_hidden',   nm: '隱藏的魔族弓箭' },
     { id: 'wpn_demon_wand_hidden',  nm: '隱藏的魔族魔杖' },
     { id: 'wpn_demon_claw_hidden',  nm: '隱藏的魔族鋼爪' },
-    { id: 'wpn_demon_chain_hidden', nm: '隱藏的魔族鎖鏈劍' },
-    { id: 'wpn_demon_qigu_hidden',  nm: '隱藏的魔族奇古獸' }
 ];
 function renderYuriaQuest(div) {
     let have = questCountId('item_olin_diary');
@@ -869,9 +916,9 @@ function renderYuriaQuest(div) {
     } else {
         html += `<div class="px-4 pb-4 text-red-400 text-sm">你沒有歐林的日記本。</div>`;
     }
-    // 👹 第二兌換：黑暗哈汀的日記本 → 隱藏的魔族武器（六選一）
+    // 👹 第二兌換：黑暗哈汀的日記本 → 隱藏的魔族武器（四選一）
     let have2 = questCountId('item_hatin_diary');
-    html += `<div class="p-4 pt-2 text-slate-300 leading-relaxed border-t border-slate-700/60">尤麗婭：你身上那本<b class="text-purple-300">黑暗哈汀的日記本</b>……裡頭的禁咒，我能據以打造一件<b class="text-purple-300">隱藏的魔族武器</b>。<br>持有黑暗哈汀的日記本：<b class="${have2 >= 1 ? 'text-green-400' : 'text-red-400'}">${have2}</b><br><span class="text-slate-400 text-sm">每件消耗 1 本，六選一。</span></div>`;   // 🗑️ v3.5.87 移除「席琳兌換」宣傳字串（同上·功能已不存在）
+    html += `<div class="p-4 pt-2 text-slate-300 leading-relaxed border-t border-slate-700/60">尤麗婭：你身上那本<b class="text-purple-300">黑暗哈汀的日記本</b>……裡頭的禁咒，我能據以打造一件<b class="text-purple-300">隱藏的魔族武器</b>。<br>持有黑暗哈汀的日記本：<b class="${have2 >= 1 ? 'text-green-400' : 'text-red-400'}">${have2}</b><br><span class="text-slate-400 text-sm">每件消耗 1 本，四選一。</span></div>`;   // 🗑️ v3.5.87 移除「席琳兌換」宣傳字串（同上·功能已不存在）
     if (have2 >= 1) {
         html += `<div class="grid grid-cols-1 gap-3 p-4 pt-0">`;
         YURIA_HATIN_REWARDS.forEach(r => { html += sherineExBtns(r.nm, `doYuriaHatinExchange('${r.id}')`); });   // 🗑️ v3.5.94 席琳兌換鈕與參數已退役（同上）
@@ -1005,16 +1052,6 @@ const TRIAL_50_CFG = {
     dark: { npc: '布魯迪卡',
         stages: [ {id:'item_chaos_key', nm:'混沌鑰匙', cnt:1, hint:'擊殺黑暗棲林者'} ],
         exMat:'item_fallen_key', exMatNm:'墮落鑰匙', rewards:[{id:'wpn_death_finger',nm:'死亡之指'}] },
-    // 🔥 v3.0.78 統一：幻術士/戰士/龍騎士 50 級試煉併入本表（原自訂流程移除；trialStage 2=最終兌換階段·loadGame 已遷移舊 demonTempleOpen 存檔）
-    illusion: { npc: '希蓮恩',
-        stages: [ {id:'mat_rift_shard', nm:'時空裂痕碎片', cnt:100, hint:'底比斯地區怪物掉落'} ],
-        exMat:'item_wyvern_blood', exMatNm:'翼龍之血', exMatCnt:5, rewards:[{id:'wpn_qigu_sapphire',nm:'藍寶石奇古獸'}] },
-    warrior: { npc: '多文',
-        stages: [ {id:'new_item_219', nm:'神秘魔杖', cnt:5, hint:'接取後擊殺指定怪物必定掉落'} ],
-        exMat:'new_item_234', exMatNm:'神秘慎重藥水', rewards:[{id:'wpn_master_axe',nm:'大匠的斧頭'}] },
-    dragon: { npc: '普洛凱爾',
-        stages: [ {id:'mat_rift_shard', nm:'時空裂痕碎片', cnt:100, hint:'底比斯地區怪物掉落'} ],
-        exMat:'item_soulfire_ash', exMatNm:'靈魂之火灰燼', rewards:[{id:'wpn_chain_annihilator',nm:'消滅者鎖鏈劍'}] }
 };
 function build50TrialHTML(npcName) {
     let cfg = TRIAL_50_CFG[player.cls];
@@ -1097,31 +1134,6 @@ function trial50Complete() {   // 🔥 v3.0.78 最終兌換一次性·全拿；�
     saveGame();
     logSys(`<span class="c-legend font-bold">${cfg.npc}：你完成了 50 級試煉的全部考驗！</span><span class="text-amber-200">獲得 ${cfg.rewards.map(r => r.nm).join('、')}。（此試煉已完成，無法再次兌換）</span>`);
     closeNpcInteraction(); renderTabs();
-}
-// 🔮 希蓮恩（希培利亞村莊）：幻術士的試煉道具兌換 + 50 級試煉（時空裂痕碎片→魔族神殿、翼龍之血→藍寶石奇古獸）
-// 🔮 希蓮恩（希培利亞村莊）：幻術士 15/30/45 級試煉（接取制）＋ 50 級試煉（統一走 TRIAL_50_CFG）
-function renderShenien(div) {
-    if (player.cls !== 'illusion') { div.innerHTML = `<div class="p-6 text-red-400">希蓮恩：這場試煉只屬於幻術士。</div>`; return; }
-    let h = `<div class="p-4 text-slate-300 leading-relaxed"><div class="text-amber-300 font-bold mb-3">🔮 希蓮恩的試煉</div>`;
-    h += trialQHTML('illusion15', 'renderShenien') + trialQHTML('illusion30', 'renderShenien') + trialQHTML('illusion45', 'renderShenien');
-    h += `<div class="mt-3">` + build50TrialHTML('希蓮恩') + `</div></div>`;
-    div.innerHTML = h;
-}
-// ⚔️ 多文（海音）：戰士 15/30/45 級試煉（接取制）＋ 50 級試煉（統一走 TRIAL_50_CFG）
-function renderDuwen(div) {
-    if (player.cls !== 'warrior') { div.innerHTML = `<div class="p-6 text-red-400">多文：這場試煉只屬於戰士。</div>`; return; }
-    let h = `<div class="p-4 text-slate-300 leading-relaxed"><div class="text-amber-300 font-bold mb-3">⚔️ 多文的試煉</div>`;
-    h += trialQHTML('warrior15', 'renderDuwen') + trialQHTML('warrior30', 'renderDuwen') + trialQHTML('warrior45', 'renderDuwen');
-    h += `<div class="mt-3">` + build50TrialHTML('多文') + `</div></div>`;
-    div.innerHTML = h;
-}
-// 🐉 普洛凱爾（貝希摩斯）：龍騎士 15/30/45 級試煉（接取制）＋ 50 級試煉（統一走 TRIAL_50_CFG）
-function renderProcel(div) {
-    if (player.cls !== 'dragon') { div.innerHTML = `<div class="p-6 text-red-400">普洛凱爾：這場試煉只屬於龍騎士。</div>`; return; }
-    let h = `<div class="p-4 text-slate-300 leading-relaxed"><div class="text-amber-300 font-bold mb-3">🐉 普洛凱爾的試煉</div>`;
-    h += trialQHTML('dragon15', 'renderProcel') + trialQHTML('dragon30', 'renderProcel') + trialQHTML('dragon45', 'renderProcel');
-    h += `<div class="mt-3">` + build50TrialHTML('普洛凱爾') + `</div></div>`;
-    div.innerHTML = h;
 }
 // 🏹 歐斯：妖精 15 級試煉（接取制）
 function renderOsQuest(div) {

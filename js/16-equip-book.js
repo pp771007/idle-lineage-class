@@ -24,7 +24,6 @@ const EQUIP_CATEGORIES = [
     // 防具
     { key: 'helm',     name: '頭盔',   group: '防具' },
     { key: 'armor',    name: '盔甲',   group: '防具' },
-    { key: 'shin',     name: '脛甲',   group: '防具' },
     { key: 'tshirt',   name: '內衣',   group: '防具' },
     { key: 'cloak',    name: '斗篷',   group: '防具' },
     { key: 'boots',    name: '長靴',   group: '防具' },
@@ -61,7 +60,6 @@ const EQUIP_CAT_BONUS = {
     // 防具
     helm:     { stat: 'dr',     val: 1,  label: '傷害減免 +1' },
     armor:    { stat: 'ac',     val: 1,  label: 'AC -1' },
-    shin:     { stat: 'dr',     val: 1,  label: '傷害減免 +1' },
     cloak:    { stat: 'mr',     val: 1,  label: 'MR +1' },
     boots:    { stat: 'er',     val: 1,  label: 'ER +1' },
     gloves:   { stat: 'dr',     val: 1,  label: '傷害減免 +1' },
@@ -107,7 +105,6 @@ function equipCatKey(id, d) {
         if (d.armguard) return 'armguard';                           // 臂甲（slot:shield 但 armguard 旗標）
         if (d.slot === 'helm') return 'helm';
         if (d.slot === 'armor') return 'armor';
-        if (d.slot === 'shin') return 'shin';   // 🦵 脛甲（盔甲下方·額外防具）
         if (d.slot === 'tshirt') return 'tshirt';   // 🏺 內衣（T恤）：供遺物 T恤 分類（一般 T恤亦一併納入裝備收集冊）
         if (d.slot === 'cloak') return 'cloak';
         if (d.slot === 'boots') return 'boots';
@@ -156,7 +153,7 @@ function equipCatComplete(ck) { let cc = equipCatCount(ck); return cc.total > 0 
 function equipCollectionBonus(p, d) {
     if (d) d._equipWeightBonus = 0;
     if (p) p._equipPetHit = 0;
-    if (!p || !p.equipDex) return;
+    if (!p || !p.equipDex || DISABLE_COLLECTION) return;   // ⛔ 收藏系統關閉：不給加成
     for (let i = 0; i < EQUIP_CATEGORIES.length; i++) {
         let ck = EQUIP_CATEGORIES[i].key;
         let b = EQUIP_CAT_BONUS[ck]; if (!b) continue;

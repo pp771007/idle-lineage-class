@@ -4,7 +4,6 @@
  * 首頁(#main-menu)加一顆「📖 怪物 / 掉落查詢」按鈕,開搜尋面板。
  *   - 單一搜尋框:可同時搜 怪物名 / 地圖名 / 掉落物名;有輸入才顯示結果(空的不渲染,不卡)。
  *   - 每筆結果是「怪物卡」:數值 + 出沒地圖 + 掉落清單(物品名 + 機率%)。
- *   - 「掉落率模式」下拉(一般/席琳的世界 ×3/瘋狂的席琳世界 ×5):重算怪卡掉落率顯示(席琳上限 100%)。
  *   - 純讀取遊戲全域資料(DB.mobs / DB.maps / MOB_DROPS / DB.items),不改遊戲;桌機手機共用。
  *
  * 掛接:在 index.html 的 </body> 前加一行 <script src="afk-dex.js"></script>
@@ -24,7 +23,7 @@
 
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
-    else fn();
+    else setTimeout(fn, 0);   // 由 afk-dexload 點開才載入時 DOM 早就好了:等本檔跑完再 init(下面的 var SPECIAL_BLOCKS 等才有值)
   }
   ready(init);
 
@@ -119,7 +118,7 @@
     try { var q0 = new URLSearchParams(location.search).get('q'); if (q0) { var inp = document.getElementById('m-dex-input'); if (inp) { inp.value = q0; doSearch(); } } } catch (e) {}
   }
 
-  // 獨立頁頁首:首頁 / 小百科 / 掉落查詢 互切(與 afk-wiki 共用同一條,只在 active 標亮)。
+  // 獨立頁頁首:回首頁 / 掉落查詢。
   function buildStandaloneNav(active) {
     if (document.getElementById('m-standalone-nav')) return;
     var base = location.href.split('?')[0].split('#')[0];
@@ -127,7 +126,6 @@
     nav.id = 'm-standalone-nav';
     nav.innerHTML =
       '<a href="' + base + '">🏠 首頁</a>' +
-      '<a href="' + base + '?view=wiki"' + (active === 'wiki' ? ' class="on"' : '') + '>📚 小百科</a>' +
       '<a href="' + base + '?view=dex"' + (active === 'dex' ? ' class="on"' : '') + '>📖 掉落查詢</a>';
     document.body.appendChild(nav);
   }
@@ -165,8 +163,8 @@
     return _castleEntry[mapName] || '';
   }
   function itemNameOf(id) { return (DB.items[id] && DB.items[id].n) ? DB.items[id].n : id; }
-  // 職業限定掉落附註:試煉/兌換道具(TRIAL_ITEM_CLASS)僅該職業擊殺才掉,標「🔒僅X」讓所有職業都看得到是誰限定;非限定道具(書板/鎖鏈劍/印記等全職可掉)不在表內→回 null 不附註。
-  var _CLS_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
+  // 職業限定掉落附註:試煉/兌換道具(TRIAL_ITEM_CLASS)僅該職業擊殺才掉,標「🔒僅X」讓所有職業都看得到是誰限定;非限定道具(全職可掉)不在表內→回 null 不附註。
+  var _CLS_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', royal: '王族' };
   function trialClassOf(id) {
     try {
       if (typeof TRIAL_ITEM_CLASS !== 'undefined' && TRIAL_ITEM_CLASS[id]) {
@@ -201,18 +199,15 @@
       // 去重:原作者的地圖怪物清單可能把同一隻怪列兩次(如 windwood 重複列杜賓狗),否則出沒地圖會出現兩個同名
       // ⚠ 不可寫 .map(mapNameOf):Array.map 會把 index 當第二個參數餵進去(＝村莊名覆寫)，地圖名會變成數字
       var maps = (mobToMaps[id] || []).map(function (mid) { return mapNameOf(mid); }).filter(function (n, i, a) { return a.indexOf(n) === i; });
-      // 合併「全部掉落表」——必須與原作 _auditMobDrops 讀的「同一組」表,否則他統計查得到、我們查不到(戰士印記那批踩過)。
-      // 目前 6 張:MOB_DROPS、黑暗武器(DARK_WEAPON_DROPS)、三階黑精靈水晶(DARK_CRYSTAL_DROPS)、龍騎士(DRAGON_DROPS)、戰士印記(WARRIOR_DROPS)、記憶水晶(MEM_DROPS·幻術士法術書)。
-      // 都用「怪物名」當 key、格式 [[id,%]]。任何表裡的職業限定試煉道具(TRIAL_ITEM_CLASS)一律附註「🔒僅X」;非限定道具(書板/鎖鏈劍/戰士印記/記憶水晶等全職可掉)→trialClassNote 回 null、不附註。
+      // 合併「全部掉落表」——必須與原作 _auditMobDrops 讀的「同一組」表,否則他統計查得到、我們查不到。
+      // 目前 3 張:MOB_DROPS、黑暗武器(DARK_WEAPON_DROPS)、三階黑精靈水晶(DARK_CRYSTAL_DROPS)。
+      // 都用「怪物名」當 key、格式 [[id,%]]。任何表裡的職業限定試煉道具(TRIAL_ITEM_CLASS)一律附註「🔒僅X」;非限定道具(全職可掉)→trialClassNote 回 null、不附註。
       function _tagged(list) { return (list || []).map(function (e) { return [e[0], e[1], trialClassNote(e[0])]; }); }
       function _allTables(nm) {
         return [].concat(
           _tagged((typeof MOB_DROPS !== 'undefined') ? MOB_DROPS[nm] : null),
           _tagged((typeof DARK_WEAPON_DROPS !== 'undefined') ? DARK_WEAPON_DROPS[nm] : null),
-          _tagged((typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[nm] : null),
-          _tagged((typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[nm] : null),
-          _tagged((typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[nm] : null),
-          _tagged((typeof MEM_DROPS !== 'undefined') ? MEM_DROPS[nm] : null)
+          _tagged((typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[nm] : null)
         );
       }
       var raw = _allTables(mob.n);
@@ -249,12 +244,12 @@
       var d = DB.items[id];
       if (!d || !d.n) continue;
       var isEquip = (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc');
-      // ③ 有手動「取得方式」(itemAcquire)的:如龍騎士書板(skillbk、非商店、無怪掉)→ 兌換取得,收進來才搜得到
+      // ③ 有手動「取得方式」(itemAcquire)的:如非商店、無怪掉的兌換品 → 收進來才搜得到
       var hasAcq = !!(window.AFK_EXTRA && AFK_EXTRA.itemAcquire && AFK_EXTRA.itemAcquire[id]);
       // ④ 會在潘朵拉黑市上架的(gachaWeight>0=上架權重):雖無固定來源,但確實買得到 → 也收進來,搜得到名字、詳情卡自動標「目前沒有固定取得途徑」
       //    (避免「明明拿得到卻完全查無」的死角;真正純內部用、gachaWeight=0 又無任何來源的維持排除、不灌爆搜尋)
       var inGacha = (d.gachaWeight > 0);
-      // ⑤ 被任一隻怪掉落的(DROPPED_SET,buildIndexes 已先建好):非裝備但有怪掉的法術書/材料(如記憶水晶=幻術士法術書·gachaWeight=0 那批)
+      // ⑤ 被任一隻怪掉落的(DROPPED_SET,buildIndexes 已先建好):非裝備但有怪掉的法術書/材料(gachaWeight=0 那批)
       //    才搜得到名字、詳情卡會列出哪些怪會掉。掉落查詢本就是查「掉落」,有怪掉的東西理應能直接搜名字。
       var isDropped = !!DROPPED_SET[id];
       // ⑥ 可製作的成品/中間材料(如「黑色米索莉金屬板」=炎魔鐵匠製作、無怪掉、非商店、gachaWeight=0)→ 收進來才搜得到名字,
@@ -296,18 +291,6 @@
     });
     return { mobs: mobs, items: items };
   }
-  // 📚 小百科的命中摘要卡(點任一項→AFK_WIKI_API.goto({q}) 開小百科統一搜尋;gotoWiki 會自動關本模態/獨立頁走網址)
-  function wikiHitsHTML(qRaw) {
-    try {
-      if (!window.AFK_WIKI_API || !AFK_WIKI_API.searchHits) return '';
-      var ws = AFK_WIKI_API.searchHits(qRaw, 8);
-      if (!ws || !ws.length) return '';
-      var rows = ws.map(function (w) {
-        return '<div class="m-dex-wikihit" data-q="' + esc(qRaw) + '">【' + esc(w.label) + '】' + hl(w.title, qRaw.toLowerCase()) + '</div>';
-      }).join('');
-      return '<div class="m-dex-card"><div class="m-dex-imatch-h">📚 小百科相關內容（點任一項前往搜尋）</div>' + rows + '</div>';
-    } catch (e) { return ''; }
-  }
 
   // ----- 搜尋 + 渲染 ------------------------------------------------------
   function doSearch() {
@@ -316,8 +299,7 @@
     var results = document.getElementById('m-dex-results');
     if (!input || !results) return;
     syncUrl();   // 同步搜尋字到網址(獨立頁才會動)
-    var modeEl = document.getElementById('m-dex-mode');
-    var mult = modeEl ? parseFloat(modeEl.value) : 1;
+    var mult = 1;   // 席琳的世界已關閉：掉落一律照一般機率
     var clearBtn = document.getElementById('m-dex-clear');
     if (clearBtn) clearBtn.classList.toggle('show', !!input.value);   // 有字才顯示清除鈕
     var q = (input.value || '').trim().toLowerCase();
@@ -333,21 +315,20 @@
     });
     if (special) { var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true; if (firstHit) try { firstHit.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
     var itemHTML = itemMatchesHTML(q);   // 先列出名稱符合的裝備(可點看數值;含沒被怪掉的)
-    var wikiHTML = wikiHitsHTML(input.value.trim());   // 📚 小百科命中一併附在結果尾端(統一搜尋)
     var hits = [];
     for (var i = 0; i < INDEX.length && hits.length <= MAX_RESULTS; i++) if (INDEX[i].hay.indexOf(q) >= 0) hits.push(INDEX[i]);
     if (!hits.length) {
-      if (itemHTML) { results.innerHTML = itemHTML + (special ? '<div class="m-dex-hint">另見下方<b>「全域特殊掉落規則」</b>。</div>' : '<div class="m-dex-hint">（上面這些物品沒有固定掉落的怪，多為商店／製作／兌換／任務取得）</div>') + wikiHTML; return; }
+      if (itemHTML) { results.innerHTML = itemHTML + (special ? '<div class="m-dex-hint">另見下方<b>「全域特殊掉落規則」</b>。</div>' : '<div class="m-dex-hint">（上面這些物品沒有固定掉落的怪，多為商店／製作／兌換／任務取得）</div>'); return; }
       results.innerHTML = (special
         ? '<div class="m-dex-hint">「' + esc(input.value.trim()) + '」沒有固定掉落的怪物，請見下方<b>「全域特殊掉落規則」</b>。</div>'
-        : '<div class="m-dex-hint">找不到符合的怪物或裝備</div>') + wikiHTML;
+        : '<div class="m-dex-hint">找不到符合的怪物或裝備</div>');
       return;
     }
     var truncated = hits.length > MAX_RESULTS;
     if (truncated) hits = hits.slice(0, MAX_RESULTS);
     var html = itemHTML + hits.map(function (h) { return cardHTML(h, mult, q); }).join('');
     if (truncated) html += '<div class="m-dex-hint">符合的太多,只顯示前 ' + MAX_RESULTS + ' 筆,請輸入更精確的關鍵字。</div>';
-    results.innerHTML = html + wikiHTML;
+    results.innerHTML = html;
   }
 
   var ELE = { fire: '🔥 火', water: '💧 水', earth: '🪨 地', wind: '🌪 風', none: '無' };
@@ -414,14 +395,6 @@
         if (!r || !r.result) return;
         var req = [{ id: r.src, cnt: 1, plus11: true }].concat(dkMats);
         (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_flame_shadow', req: req, yield: 1, note: '消耗 +11 以上的指定惡魔武器，會繼承它的強化值／詞綴／席琳套裝效果' });
-      });
-    }
-    // ⚔️ 神聖執行團裝備:琉米埃爾客製製作(消耗 +7 以上戰士團頭盔/斗篷 + 素材,不在 CRAFT_RECIPES 裡,要另外補)
-    if (typeof LUMIEL_RECIPES !== 'undefined' && LUMIEL_RECIPES) {
-      LUMIEL_RECIPES.forEach(function (r) {
-        if (!r || !r.result) return;
-        var req = [{ id: r.src, cnt: 1, plus7: true }].concat(r.mats || []);
-        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_lumiel', req: req, yield: 1, note: '消耗 +7 以上的「' + (r.srcName || r.src) + '」，會繼承它的強化值／詞綴／席琳套裝效果' });
       });
     }
     // 🔷🔶 鋼鐵瑪那魔杖:神秘的魔法師客製製作(消耗 +7 以上瑪那魔杖/力量魔法杖 + 素材,不在 CRAFT_RECIPES 裡,要另外補)
@@ -504,6 +477,7 @@
   };
   function shopBuyPrice(id) {
     if (SHOP_BUNDLE_PRICE[id]) return SHOP_BUNDLE_PRICE[id];
+    if (typeof TRIAL_SHOP_PRICE !== 'undefined' && TRIAL_SHOP_PRICE[id]) return { base: TRIAL_SHOP_PRICE[id], unit: '' };   // 奇岩試煉商人的售價
     var d = DB.items[id];
     return (d && d.p) ? { base: d.p, unit: '' } : null;
   }
@@ -623,7 +597,7 @@
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
-  var IT_SLOT = { helm: '頭盔', armor: '盔甲', shin: '脛甲', tshirt: '內衣', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊', ear: '耳環', ear1: '耳環', ear2: '耳環', pet: '寵物裝備', petwpn: '寵物武器', petarm: '寵物防具', doll: '娃娃', eye: '魔眼',
+  var IT_SLOT = { helm: '頭盔', armor: '盔甲', tshirt: '內衣', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊', ear: '耳環', ear1: '耳環', ear2: '耳環', pet: '寵物裝備', petwpn: '寵物武器', petarm: '寵物防具', doll: '娃娃',
     rem_claw: '席琳遺骸', rem_eye: '席琳遺骸', rem_blood: '席琳遺骸', rem_flesh: '席琳遺骸', rem_heart: '席琳遺骸', rem_bone: '席琳遺骸', rem_fang: '席琳遺骸', rem_scale: '席琳遺骸' };
   function _baseInst(id) { return { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false }; }
   // 適用職業:遊戲的 buildItemDescHTML 只擺一排職業 logo(16px 小圖、彼此又長得像,認不出誰是誰)→ 每個 logo 後補上職業名。
@@ -653,18 +627,11 @@
     var body = gameHTML ? '<div style="line-height:1.8;margin:4px 0;">' + withClassNames(gameHTML) + '</div>' : '';
     // 攻擊速度:遊戲的 buildItemDescHTML 不顯示武器攻速,在這補回(讀 DB 的 spd=每次攻擊間隔秒數,越低越快;未填預設 1.0,與戰鬥碼 wpn.spd 同源)
     var spdLine = '';
-    if (d.type === 'wpn') {
+    if (false && d.type === 'wpn') {   // 🙈 2026-10-15 站長：不顯示攻擊速度（與物品說明一致）
       var spd = (d.spd != null) ? d.spd : 1.0;
       spdLine = '<div style="line-height:1.8;margin:4px 0;"><span class="text-orange-300">攻擊速度: 每 ' + spd + ' 秒一次（數值越低攻擊越快）</span></div>';
     }
     var priceLine = d.p ? '<div class="m-dex-craft-mats" style="color:#cbd5e1;">賣店價：' + Math.floor(d.p * 0.3).toLocaleString() + ' 金幣</div>' : '';
-    // 黑市成交價:潘朵拉收購單每次輪換擲一次行情價,落在這個區間;出滿上限就必定上架(數字由
-    //   afk-bmprice 借核心函式算,關掉那支開關就整行不出現)。
-    var bmLine = '';
-    var bm = (window.AFK_BM && AFK_BM.itemInfo) ? AFK_BM.itemInfo(id) : null;
-    if (bm && bm.max) bmLine = '<div class="m-dex-craft-mats" style="color:#cbd5e1;">黑市成交價：<b style="color:#fde047;">' + bm.min.toLocaleString() + ' ~ ' + bm.max.toLocaleString() + '</b> 金幣</div>';
-    else if (bm && bm.deny === 'relic') bmLine = '<div class="m-dex-craft-mats" style="color:#94a3b8;">黑市成交價：遺物不能用金幣收購，要在黑市用龍鑽搜索</div>';
-    else if (bm && bm.deny) bmLine = '<div class="m-dex-craft-mats" style="color:#94a3b8;">黑市成交價：不可指定收購</div>';
     // 取得方式:手動補(itemAcquire)/ 歐西里斯寶箱 / 中性句;製作、商店、查掉落鈕沿用
     var acq = '';
     var exAcq = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
@@ -691,7 +658,7 @@
         (dl.length > DROP_LIST_CAP ? '<div class="m-dex-craft-mats" style="margin-top:4px;">…等 ' + dl.length + ' 種怪物</div>' : '') + '</div>';
     }
     var tail = dl.length ? '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>' : '';
-    return head + typeLine + trialLine + body + spdLine + priceLine + bmLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + dropList + tail;
+    return head + typeLine + trialLine + body + spdLine + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + dropList + tail;
   }
   function openItemPop(id) {
     var pop = document.getElementById('m-dex-itempop'); if (!pop) return;
@@ -722,7 +689,7 @@
   });
 
   function cardHTML(h, mult, q) {
-    var modeLabel = mult >= 5 ? '（瘋狂的席琳世界 ×5）' : (mult > 1 ? '（席琳的世界 ×3）' : '');
+    var modeLabel = '';
     var m = h.mob;
     var tags = '';
     if (m.boss) tags += '<span class="m-dex-tag tag-boss">BOSS</span>';
@@ -732,7 +699,7 @@
     var stats = '<div class="m-dex-stats">' +
       st('等級', m.lv) + st('屬性', ELE[m.e] || m.e || '無') + st('種族', m.race || '-') + st('行為', m.beh || '-') +
       st('HP', fmt(m.hp)) + st('攻擊', dmg) + st('命中', m.hit != null ? m.hit : '-') +
-      st('AC', m.ac != null ? m.ac : '-') + st('魔防', m.mr != null ? m.mr : '-') +
+      st('防禦', m.ac != null ? m.ac : '-') + st('魔防', m.mr != null ? m.mr : '-') +
       st('經驗', fmt(m.exp)) + st('金幣', gold) + '</div>';
     var mapsHTML = h.maps.length
       ? h.maps.map(function (nm) {
@@ -745,11 +712,12 @@
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
           var pct = d[2] * mult; if (pct > 100) pct = 100;
           var tag = d[3] ? ' <span class="m-dex-droptag">' + esc(d[3]) + '</span>' : '';
-          // 管制試煉道具(trialForced100)不走掉落表機率:接取後 100% 必掉、沒接取不掉,表內殘留的 % 是死數字
+          // 管制試煉道具(trialForced100)不走掉落表機率:接取後照 trialQuestDropRate 掉、沒接取不掉,表內殘留的 % 是死數字
           var forced = (typeof trialForced100 === 'function') && trialForced100(d[0]);
+          var forcedPct = forced && typeof trialQuestDropRate === 'function' ? trialQuestDropRate(d[0]) * 100 : 100;
           return '<tr>' +
             '<td><span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看詳情">' + hl(d[1], q) + '</span>' + tag + '</td>' +
-            '<td class="m-dex-pct">' + (forced ? '接取後必掉' : fmtPct(pct) + '%') + '</td>' +
+            '<td class="m-dex-pct">' + (forced ? (forcedPct >= 100 ? '接取後必掉' : '接取後 ' + fmtPct(forcedPct) + '%') : fmtPct(pct) + '%') + '</td>' +
             '</tr>';
         }).join('') + '</tbody></table>'
       : '<div class="m-dex-nodrop">無專屬掉落表</div>';
@@ -814,39 +782,14 @@
   // 所以不會出現在上面的怪物卡掉落清單。整理成一個預設收合的面板,點開才展開,不佔主版面。
   // 全域特殊掉落規則:每條一個可摺疊區塊(預設收合,面板保持精簡);搜到該條關鍵字會自動展開+高亮+捲到它
   var SPECIAL_BLOCKS = [
-    { id: 'dropmult', title: '🔮 掉落倍率：席琳的世界 ×3、瘋狂的席琳世界 ×5、恩賜怪 ×10', keys: ['掉落倍率', '倍率', '席琳的世界', '瘋狂的席琳世界', '經典模式', '恩賜怪', '恩賜'], lines: [
-      '<b>怪物卡上顯示的是「一般」掉落機率</b>，下列狀態會整體放大／縮小：',
-      '<b>席琳的世界</b>：被席琳化的怪掉落機率 <b>×3</b>（<b>瘋狂的席琳世界</b> <b>×5</b>）；其中「恩賜怪」更高，<b>×10</b>',
-      '<b>經典模式</b>：掉落機率<b>與一般模式完全相同</b>，不打任何折',
-      '<b>固定、不受倍率影響的例外</b>：怪物卡片（普／銀／金卡）、萬能藥（屬性藥）、黑魔石、銀礦石（各條另有標註）；其餘怪卡掉落都會被倍率放大／縮小',
-      '<b>席琳結晶</b>比較特別：不吃「席琳的世界 ×3」與「恩賜怪 ×10」（機率直接由怪物等級決定），只吃「瘋狂 ×3」；經典模式與它無關（經典角色進不了席琳神殿）——詳見下方席琳結晶那條',
-      '上方的「<b>掉落率模式</b>」下拉可把席琳倍率直接套到怪卡的掉落數字'
-    ] },
     { id: 'panacea', title: '🧪 萬能藥（屬性藥）', keys: ['萬能藥', '屬性藥'], lines: [
       '條件：怪物等級 40 以上、且不是血盟',
       '一般怪 0.01%、頭目 1%，掉落時隨機給 力量／敏捷／體質／智力／精神／魅力 萬能藥之一',
-      '夢幻之島的頭目不走這條，改走自己的一般掉落表（搜該頭目可看到固定掉的萬能藥）',
-      '機率固定，<b>不受</b>「席琳的世界 ×3」影響'
-    ] },
-    { id: 'sherine', title: '🔮 席琳結晶（席琳的世界限定）', keys: ['席琳結晶'], lines: [
-      '條件：開啟「席琳的世界」後，被席琳化的怪掉（血盟怪不掉；沒有等級下限）',
-      '機率直接由<b>怪物等級</b>決定：<b>一般怪 ＝ 0.001% × 等級</b>、<b>頭目 ＝ 0.01% × 等級</b>',
-      '例：Lv30 一般怪 0.03%、Lv60 一般怪 0.06%；Lv60 頭目 0.6%、Lv100 頭目 1%',
-      '倍率：<b>不受</b>「席琳的世界 ×3」與「恩賜怪 ×10」影響；<b>瘋狂的席琳世界 ×3</b>',
-      '<b>經典模式</b>：與結晶無關——經典角色進不了席琳神殿，開不了席琳的世界，也就不會掉結晶',
-      '用途：席琳神殿的「<b>伊奧</b>」處，1 顆換 1 件指定部位的<b>席琳遺骸</b>（詞綴隨機）'
-    ] },
-    { id: 'remains', title: '🦴 席琳遺骸（套裝效果的唯一來源）', keys: ['席琳遺骸', '遺骸', '之爪', '之眼', '之血', '之肉', '之心', '之骨', '之牙', '之鱗', '伊奧', '菈克希絲'], lines: [
-      '<b>怪物不會掉遺骸</b>，裝備上也不會再自己長出席琳套裝詞綴。取得只有一條路：',
-      '<b>席琳神殿・伊奧</b>：<b>席琳結晶 ×1</b> 換 1 件指定部位的遺骸（8 部位任選），附帶的席琳套裝詞綴<b>隨機一種</b>（共 12 組）',
-      '遺骸裝在「裝備」分頁最下面的專屬 8 格（之爪／之眼／之血／之肉／之心／之骨／之牙／之鱗），本身沒有任何數值、不佔負重、不能強化',
-      '<b>同一組名</b>的遺骸湊滿 <b>2／3／5</b> 格 → 發動該席琳套裝的 2／3／5 件效果（效果內容見小百科「席琳」分頁）',
-      '<b>一般裝備上的舊詞綴已不再計入套裝件數</b>（只是留著顯示），也沒辦法轉成遺骸——席琳神殿原本有位「菈克希絲」可以拆，已經沒有這個 NPC 了'
+      '夢幻之島的頭目不走這條，改走自己的一般掉落表（搜該頭目可看到固定掉的萬能藥）'
     ] },
     { id: 'blessscroll', title: '✦ 賦予祝福卷軸（等級 40 以上頭目）', keys: ['賦予祝福', '祝福卷軸'], lines: [
       '條件：等級 40 以上頭目，夢幻之島、攻城區除外',
-      '賦予武器祝福卷軸 0.1%、賦予盔甲祝福卷軸 0.1%、賦予飾品祝福卷軸 0.01%',
-      '會受「席琳的世界 ×3」加成'
+      '賦予武器祝福卷軸 0.1%、賦予盔甲祝福卷軸 0.1%、賦予飾品祝福卷軸 0.01%'
     ] },
     { id: 'castscroll', title: '📜 施法卷軸掉落時變祝福／詛咒', keys: ['施法卷軸', '詛咒'], lines: [
       '打怪掉到「對武器施法的卷軸」或「對盔甲施法的卷軸」時，<b>各有 1% 變成「祝福的」、1% 變成「詛咒的」</b>（兩者互斥）。',
@@ -858,13 +801,11 @@
     ] },
     { id: 'areadrop', title: '🌿 區域額外掉落（妖精森林周邊、眠龍洞穴 1~3 樓）', keys: ['米索莉', '精靈玉', '元素石'], lines: [
       '該區所有怪：精靈玉 20%；粗糙的米索莉塊／元素石 各 2%',
-      '學會「世界樹的呼喚」則為 精靈玉 30%；粗糙的米索莉塊／元素石 各 3%',
-      '會受「席琳的世界 ×3」加成'
+      '學會「世界樹的呼喚」則為 精靈玉 30%；粗糙的米索莉塊／元素石 各 3%'
     ] },
     { id: 'blackstone', title: '⛏ 黑魔石（黑暗妖精素材）', keys: ['黑魔石'], lines: [
       '沉默洞穴周邊：二級黑魔石 20%、三級黑魔石 10%（學「提煉魔石」提高為 30%／15%）',
-      '其他野外／地監：需學「提煉魔石」才掉，二級黑魔石 1%、三級黑魔石 0.5%、四級黑魔石 0.1%',
-      '機率固定，<b>不受</b>席琳世界 ×3 影響'
+      '其他野外／地監：需學「提煉魔石」才掉，二級黑魔石 1%、三級黑魔石 0.5%、四級黑魔石 0.1%'
     ] },
     { id: 'silverore', title: '🪙 銀礦石（黑暗妖精製作材料）', keys: ['銀礦石'], lines: [
       '石頭高崙／鋼鐵高崙：100%',
@@ -882,26 +823,11 @@
       '抽到裝備一定帶強化：多在 +0～該裝備安定值；超出安定值的機率 +1 為 0.1%、+2 0.01%、+3 0.001%、+4 0.0001%。另 1% 帶「祝福的」',
       '⚠️ <b>攻城區內擊殺玩家 NPC 一律不掉</b>'
     ] },
-    { id: 'npcrelic', title: '🏺 玩家 NPC 掉遺物（獨立判定）', keys: ['玩家NPC', '玩家 NPC', '白目玩家', '遺物'], lines: [
-      '擊殺玩家 NPC 時另有一次<b>完全獨立</b>的判定：<b>0.001%</b> 機率掉落一件遺物',
-      '<b>從全部遺物裡等機率抽</b>（不看稀有度、不限該怪專屬），持有<b>幸運暴走兔腳</b>時機率翻倍',
-      '與上面的「攜帶物」互不排擠，可能同時中；<b>攻城區內不掉</b>。玩法詳見小百科「PVP／性向值」分頁'
-    ] },
     { id: 'holyrelic', title: '🏛️ 聖地遺物（拉斯塔巴德傳說武器材料）', keys: ['聖地遺物', '聖地的遺物', '死亡騎士之印記'], lines: [
       '<b>取得①</b>：持有「死亡騎士之印記」時，在<b>拉斯塔巴德區域</b>擊敗<b>任何</b>怪物，<b>0.1%</b> 機率掉落（此條不在固定掉落表、只能搜「聖地遺物」）。',
       '<b>取得②</b>：<b>黑暗妖精聖地</b>的怪物（地獄奴隸／受詛咒的黑暗妖精鬥士·法師·騎士／食腐獸／特提斯／翼龍）固定 <b>0.5%</b> 掉（在一般掉落表內，直接搜怪名即可）。',
       '「死亡騎士之印記」哪來：拉斯塔巴德地監的「長老．X」系列怪掉（各約 3%）——可直接搜「死亡騎士之印記」看是哪些怪。印記唯一、不佔倉、可賣。',
       '用途：可羅蘭斯（沉默洞穴）製作拉斯塔巴德五件傳說武器（每件需聖地遺物 ×100）。'
-    ] },
-    { id: 'relic', title: '🏺 遺物（各怪專屬的極稀有裝備）', keys: ['遺物', 'relic', '遺物收集冊'], lines: [
-      '<b>每隻怪物各有一件專屬遺物</b>，擊殺時 <b>0.0001%</b>（百萬分之一）機率掉落——搜怪物名，該怪的掉落表就會列出那件遺物',
-      '機率<b>會吃掉落倍率</b>：席琳的世界 <b>×3</b>、瘋狂的席琳世界 <b>×5</b>、恩賜怪 <b>×10</b>',
-      '遺物<b>無法強化</b>，也<b>不會</b>帶祝福／詛咒、屬性／遠古詞綴或席琳套裝效果——數值永遠固定',
-      '<b>第二種取得途徑：潘朵拉黑市的「遺物布告欄」</b>——在黑市的收購輸入框打「遺物」，花 <b>100 顆龍之鑽石</b>指定武器／防具／飾品類，'
-      + '系統會挑一件<b>你目前沒有的</b>遺物並開出 3 樣委託材料，交齊即可拿到（3 個欄位共用、每欄完成或取消後冷卻 24 小時）。玩法詳見小百科「遺物市場」分頁',
-      '遺物本身不會出現在黑市的一般陳列商品裡；能給哪些職業用，以裝備卡上標示的職業為準',
-      '取得任何遺物會登錄「<b>遺物收集冊</b>」（遊戲內「收藏」面板第 4 本；進度依一般／經典兩種模式各自一份、與倉庫同規則；只記錄進度、無全收集加成）',
-      '自動賣出<b>預設保護遺物</b>不賣（可在自動賣出設定關閉；對單件設「永遠販賣」則照賣）'
     ] }
   ];
   var SPECIAL_KEYS = SPECIAL_BLOCKS.reduce(function (a, b) { return a.concat(b.keys); }, []);
@@ -938,15 +864,12 @@
           '</span>' +
           '<button id="m-dex-close" type="button" title="關閉">✕</button>' +
         '</div>' +
-        '<div id="m-dex-sherine-row"><label for="m-dex-mode">掉落率模式</label>' +
-          '<select id="m-dex-mode"><option value="1">一般模式</option><option value="3">席琳的世界（×3）</option><option value="5">瘋狂的席琳世界（×5）</option></select></div>' +
         '<div id="m-dex-results"><div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜物品名可直接點看詳情</div></div>' +
         specialPanelHTML() +
       '</div>' +
       '<div id="m-dex-itempop"><div id="m-dex-itempop-card"><button id="m-dex-itempop-close" type="button" title="關閉" aria-label="關閉">✕</button><div id="m-dex-itempop-body"></div></div></div>';
     document.body.appendChild(m);
     document.getElementById('m-dex-input').addEventListener('input', debouncedSearch);
-    document.getElementById('m-dex-mode').addEventListener('change', doSearch);
     document.getElementById('m-dex-close').addEventListener('click', userCloseTop);
     document.getElementById('m-dex-clear').addEventListener('click', function () {
       var i = document.getElementById('m-dex-input');
@@ -972,12 +895,6 @@
       var b = e.target.closest ? e.target.closest('.m-dex-pop-search,[data-dexq]') : null;
       if (!b) return;
       gotoDex({ q: b.getAttribute('data-dexq') || b.getAttribute('data-item') || '' });
-    });
-    // 📚 統一搜尋:點「小百科相關內容」列 → 前往小百科開同字搜尋(gotoWiki 會關本模態/獨立頁走網址)
-    document.addEventListener('click', function (e) {
-      var w = e.target.closest ? e.target.closest('.m-dex-wikihit') : null;
-      if (!w || !window.AFK_WIKI_API || !AFK_WIKI_API.goto) return;
-      AFK_WIKI_API.goto({ q: w.getAttribute('data-q') || '' });
     });
   }
   // adopt===true:接手來源模態(小百科)交出的歷史層、不另壓(跨頁切換用,避免返回鍵殘留)。
@@ -1021,9 +938,6 @@
       '#m-dex-clear:active{background:#64748b;}',
       '#m-dex-close{flex:0 0 auto;width:42px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
       '#m-dex-close:active{background:#334155;}',
-      '#m-dex-sherine-row{display:flex;align-items:center;gap:8px;padding:9px 14px;color:#cbd5e1;font-size:14px;border-bottom:1px solid #1e293b;flex:0 0 auto;}',
-      '#m-dex-sherine-row label{flex:0 0 auto;}',
-      '#m-dex-mode{background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:4px 8px;font-size:14px;font-family:inherit;outline:none;cursor:pointer;}',
       '#m-dex-results{flex:1 1 auto;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}',
       '.m-dex-hint{color:#94a3b8;text-align:center;padding:22px 8px;font-size:14px;line-height:1.6;}',
       '.m-dex-card{background:#111c30;border:1px solid #334155;border-radius:10px;padding:12px;}',
@@ -1044,8 +958,6 @@
       '.m-dex-iname{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
       '.m-dex-iname:active{color:#38bdf8;}',
       '.m-dex-imatch-h{color:#fcd34d;font-weight:bold;font-size:13.5px;margin-bottom:6px;}',
-      '.m-dex-wikihit{color:#cbd5e1;font-size:13.5px;padding:5px 6px;border-radius:6px;cursor:pointer;}',
-      '.m-dex-wikihit:hover{background:#1e293b;color:#fcd34d;}',
       '.m-dex-imatch{font-size:13.5px;line-height:1.9;color:#64748b;}',
       '#m-dex-itempop{display:none;position:absolute;inset:0;z-index:1002;background:rgba(2,6,23,.66);align-items:center;justify-content:center;padding:24px 14px;}',
       '#m-dex-itempop.open{display:flex;}',

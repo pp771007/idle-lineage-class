@@ -78,16 +78,13 @@ function classicSkillChooseMode(mode) {
     refreshClassicSkillBookOnly();
 }
 function classicSkillClassLabel() {
-    return ({ knight:'騎士技術', mage:'法師魔法', elf:'精靈魔法', dark:'黑妖魔法', illusion:'幻術魔法', dragon:'龍騎魔法', warrior:'戰士技能', royal:'王族魔法' })[player.cls] || '職業技能';
+    return ({ knight:'騎士技術', mage:'法師魔法', elf:'精靈魔法', dark:'黑妖魔法', royal:'王族魔法' })[player.cls] || '職業技能';
 }
 function classicSkillIsClassSkill(sk) {
     if (!sk || sk.procOnly) return false;
     if (player.cls === 'knight') return sk.reqK !== undefined && sk.reqM === undefined;
     if (player.cls === 'elf') return sk.reqE !== undefined && sk.reqM === undefined;
     if (player.cls === 'dark') return sk.reqD !== undefined;
-    if (player.cls === 'illusion') return sk.reqI !== undefined && sk.reqM === undefined;
-    if (player.cls === 'dragon') return sk.reqDk !== undefined && sk.reqM === undefined;
-    if (player.cls === 'warrior') return sk.reqW !== undefined;
     if (player.cls === 'royal') return sk.reqRoy !== undefined;
     return false;
 }
@@ -101,7 +98,7 @@ function renderClassicSkillBook(sDiv) {
     let classLabel = classicSkillClassLabel();
     if (stateBook.mode === 'class' && !classSkills.length) stateBook.mode = 'general';
     if (stateBook.mode === 'equipment' && !granted.length) stateBook.mode = 'general';
-    if (stateBook.mode === 'general' && !accessibleGeneral.length && classSkills.length) stateBook.mode = 'class';   // 🔧 無一般魔法職業(騎士/戰士)→預設顯示職業技能，不留空白格
+    if (stateBook.mode === 'general' && !accessibleGeneral.length && classSkills.length) stateBook.mode = 'class';   // 🔧 無一般魔法職業(騎士)→預設顯示職業技能，不留空白格
 
     let tierAvailable = new Set(accessibleGeneral.map(id => +DB.skills[id].tier));
     let list = [];
@@ -178,7 +175,7 @@ function renderTabs(force) {
 
     let eDiv = document.getElementById('tab-equip'); eDiv.innerHTML = '';
     { let _wd = player.d || {}; let _t = _wd.loadTier || 0; let _hdr = document.createElement('div'); _hdr.className = 'classic-list-toolbar text-center py-0.5 rounded bg-slate-900/60 border border-slate-700 text-sm font-bold leading-tight' + (_t >= 1 ? ' cursor-help' : ''); if (_t >= 1) { _hdr.title = _t === 1 ? '負重50%↑：HP/MP不自然恢復' : (_t === 2 ? '負重82%↑：HP/MP不自然恢復、停自動施法、攻速變慢' : '負重100%↑：HP/MP不自然恢復、停自動施法、攻速大幅變慢'); } _hdr.innerHTML = `<span class="${getLoadColor(_t)}">負重 ${_wd.weightPct||0}%</span>`; eDiv.appendChild(_hdr); }
-    const _baseSlots = [{k:'wpn',n:'武器'}, ...((player.cls === 'warrior' && (player.skills.includes('sk_warrior_dualaxe') || player.eq.offwpn)) ? [{k:'offwpn',n:'副手武器'}] : []), {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'shin',n:'脛甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'doll',n:'魔法娃娃'},{k:'arrow',n:'箭矢'},{k:'eye',n:'魔眼'}];   // 🦴 v3.3.21 移除已停用的 {k:'pet'} 空格（v3.2.37 玩家 eq.pet 拆除→改亞丁包武保管·此欄恆空）   // ⚔️ offwpn：戰士學會迅猛雙斧後顯示副手武器欄
+    const _baseSlots = [{k:'wpn',n:'武器'}, {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'doll',n:'魔法娃娃'},{k:'arrow',n:'箭矢'}];   // 🦴 v3.3.21 移除已停用的 {k:'pet'} 空格（v3.2.37 玩家 eq.pet 拆除→改亞丁包武保管·此欄恆空）    const _remSlots = (typeof SHERINE_REMAINS !== 'undefined') ? SHERINE_REMAINS.map(r => ({ k: r.id, n: '遺骸' + r.n })) : [];   // 🦴 v3.1.68 席琳遺骸 8 格（欄位鍵=物品id）·⚠️ 同一組 8 格也顯示在 js/19 嵌入式裝備面板的第 2 頁（PAGE_SLOTS[1]，js/19 自 v3.5.87 起已無浮動模式）→ 日後新增遺骸種類兩處都要同步
     const _remSlots = (typeof SHERINE_REMAINS !== 'undefined') ? SHERINE_REMAINS.map(r => ({ k: r.id, n: '遺骸' + r.n })) : [];   // 🦴 v3.1.68 席琳遺骸 8 格（欄位鍵=物品id）·⚠️ 同一組 8 格也顯示在 js/19 嵌入式裝備面板的第 2 頁（PAGE_SLOTS[1]，js/19 自 v3.5.87 起已無浮動模式）→ 日後新增遺骸種類兩處都要同步
     // 🦴 新版第一頁為 4 欄 × 6 排＝24 格；一般裝備補滿第一頁後，8 格遺骸固定落在第 25~32 格（第二頁前兩排）。
     const _padCells = Math.max(0, CLASSIC_PAGE_CELLS - _baseSlots.length);
@@ -192,25 +189,7 @@ function renderTabs(force) {
             if(ed.set && !_setSeen[e.id]) { _setSeen[e.id] = true; setCheck[ed.set] = (setCheck[ed.set]||0) + 1; }   // 🔧 與 calcStats 一致：同款物品只計 1 件
         }
     }
-    let activeSets = [];
-    if(setCheck['leather'] >= 4) activeSets.push('leather');   // 皮套裝（補上底色判定）
-    if(setCheck['bone'] >= 3) activeSets.push('bone');
-    if(setCheck['dk'] >= 4) activeSets.push('dk');
-    if(setCheck['silver'] >= 4) activeSets.push('silver');
-    if(setCheck['oasis'] >= 4) activeSets.push('oasis');
-    if(setCheck['gnome'] >= 3) activeSets.push('gnome');
-    if(setCheck['mage'] >= 2) activeSets.push('mage');
-    if(setCheck['kurt'] >= 4) activeSets.push('kurt');
-    if(setCheck['mr'] >= 2) activeSets.push('mr');   // 抗魔套裝僅 2 件，門檻應為 2
-    if(setCheck['guard'] >= 3) activeSets.push('guard');
-    if(setCheck['steel'] >= 5) activeSets.push('steel');
-    if(setCheck['kinglord'] >= 4) activeSets.push('kinglord');   // 🔧 四大軍王套裝：4 件齊→欄位底色亮起
-    if(setCheck['demon'] >= 4) activeSets.push('demon');   // 🗼 惡魔套裝：4 件齊→欄位底色亮起
-    if(setCheck['orin'] >= 2) activeSets.push('orin');   // 🔱 歐林西瑪套裝：2 件齊→欄位底色亮起
-    if(setCheck['icequeen_charm'] >= 3) activeSets.push('icequeen_charm');   // ❄️👸 冰之女王魅力套裝：3 件齊→欄位底色亮起
-    if(setCheck['frost'] >= 3) activeSets.push('frost');   // ❄️ 寒冰套裝：3 件齊→欄位底色亮起
-    if(setCheck['bluepirate'] >= 4) activeSets.push('bluepirate');   // 🏴‍☠️ 藍海賊套裝：4 件齊→欄位底色亮起
-    if(setCheck['priest'] >= 5) activeSets.push('priest');   // 🏺 v3.7.52 司祭苦行套裝：5 件齊→欄位底色亮起
+    let activeSets = Object.keys(setCheck).filter(c => setIsActive(c, setCheck));   // 🛡️ 門檻照 DB.sets.need
 
     slots.forEach(s => {
         if (s.filler) {   // 🦴 v3.1.75 填充格：與 decorateClassicInventoryTab 尾端補的空格同款（無邊框互動·非 .list-item）
@@ -246,7 +225,7 @@ function renderTabs(force) {
             let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="object-contain pointer-events-none ${glowClass}">`;
             let _showEquipped = (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') && !d.isArrow;
             let _cornerValue = (Number(eq.en) || 0) > 0
-                ? `<span class="classic-icon-corner-value is-enhance">+${capEn(eq.en, d)}</span>`
+                ? enBadgeHTML(eq, d, _showEquipped ? 'with-eq' : '')
                 : ((eq.cnt || 1) > 1 ? `<span class="classic-icon-corner-value is-count">${(eq.cnt || 1).toLocaleString()}</span>` : '');
             let _equippedBadge = _showEquipped ? '<span class="classic-equipped-badge" aria-hidden="true">E</span>' : '';
             el.classList.add('tip-host');
@@ -288,7 +267,7 @@ player.inv.forEach(i => {
         let isClsPossible = skillReqLv(sk, d.sk) !== undefined;   // 🏅 集中化：含魔導精通特例
         
         if (player.skills.includes(d.sk)) {
-            statusTag = '<span class="text-slate-500 text-[10px] font-bold">[已學習]</span>';
+            statusTag = '<span class="text-slate-500 text-[10px] font-bold">[已學會]</span>';
             itemBg = 'bg-slate-900 opacity-70'; // 已學習變暗
         } else if (!isClsPossible) {
             statusTag = '<span class="text-red-500 text-[10px] font-bold">[無法學習]</span>';
@@ -321,7 +300,7 @@ player.inv.forEach(i => {
     let _dimStyle = dimIcon ? ' style="opacity:0.3;filter:grayscale(0.6);"' : '';   // 🔅 無法裝備→圖示黯淡＋去彩度
     let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="w-6 h-6 object-contain pointer-events-none ${glowClass}"${_dimStyle}>`;
     let _invCornerValue = (Number(i.en) || 0) > 0
-        ? `<span class="classic-icon-corner-value is-enhance">+${capEn(i.en, d)}</span>`
+        ? enBadgeHTML(i, d)
         : ((i.cnt || 1) > 1 ? `<span class="classic-icon-corner-value is-count">${(i.cnt || 1).toLocaleString()}</span>` : '');
     
     // 內容組合 (加入了 statusTag)
@@ -345,9 +324,20 @@ player.inv.forEach(i => {
         // 🖱️ v3.0.38 雙擊快速操作（用戶要求）：可使用型道具（藥水/卷軸/技能書/有效果的 misc）雙擊直接使用、
         //    裝備（武器/防具/飾品）雙擊直接裝備（equipItem 內建 checkCanEquip 職業判定）。
         //    單擊延遲 230ms 才開 Modal（雙擊時取消·同 js/19 裝備視窗側欄 clickTimer 模式）；回憶蠟燭維持單擊進配點重置（排除雙擊使用）。
-        const _dblAct = (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') ? 'equip'
+        //    強化卷軸雙擊 → 開強化視窗（js/33）。
+        const _dblAct = (typeof enhScrollTab === 'function' && enhScrollTab(i.id)) ? 'enh'
+            : (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') ? 'equip'
             : ((i.id !== 'candle' && (d.type === 'pot' || d.type === 'skillbk' || d.type === 'scroll' || (d.type === 'misc' && d.eff && !d.noUse))) ? 'use' : null);
-        if (_dblAct) {
+        if (_dblAct === 'enh') {
+            // 強化卷軸：自己數兩下（手機雙擊不一定有 dblclick 事件）；單擊照舊延遲開物品視窗，延遲拉長到 300ms 讓第二下來得及
+            el.onclick = () => {
+                clearTimeout(window._invClickTimer);
+                let now = Date.now(), lt = window._invLastTap;
+                if (lt && lt.uid === i.uid && now - lt.t < 300) { window._invLastTap = null; openEnhanceWindow(null, false, { scrollId: i.id }); return; }
+                window._invLastTap = { uid: i.uid, t: now };
+                window._invClickTimer = setTimeout(() => openModal(i, false), 300);
+            };
+        } else if (_dblAct) {
             el.onclick = () => { clearTimeout(window._invClickTimer); window._invClickTimer = setTimeout(() => openModal(i, false), 230); };
             el.ondblclick = (ev) => {
                 clearTimeout(window._invClickTimer);
@@ -425,7 +415,7 @@ function decorateClassicInventoryTab(div){
     sortMenu.className='classic-sort-menu';
     if(_invSortMenuOpen)sortMenu.classList.add('open');   // 🔧 v3.0.92 重繪時依持久旗標復原開啟（掛機掉物/自動販賣不再關閉）
     let mode=inventorySortMode();
-    sortMenu.innerHTML=`<button type="button" data-sort="category" class="${mode==='category'?'active':''}">分類整理</button><button type="button" data-sort="quality" class="${mode==='quality'?'active':''}">品質整理</button><button type="button" data-sort="name" class="${mode==='name'?'active':''}">名稱整理</button><label><input type="checkbox" ${player.inventoryAutoSort===false?'':'checked'}> 取得物品時自動整理</label>`;
+    sortMenu.innerHTML=`<button type="button" data-sort="category" class="${mode==='category'?'active':''}">分類整理</button><button type="button" data-sort="quality" class="${mode==='quality'?'active':''}">品質整理</button><button type="button" data-sort="name" class="${mode==='name'?'active':''}">名稱整理</button><label><input type="checkbox" ${player.inventoryAutoSort===true?'checked':''}> 取得物品時自動整理</label>`;
     sortBtn.onclick=(ev)=>{ev.stopPropagation();_invSortMenuOpen=!_invSortMenuOpen;sortMenu.classList.toggle('open',_invSortMenuOpen);};
     sortMenu.querySelectorAll('[data-sort]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();_invSortMenuOpen=false;setInventorySortMode(b.dataset.sort);});
     let auto=sortMenu.querySelector('input');if(auto)auto.onchange=()=>toggleInventoryAutoSort(auto.checked);
@@ -481,18 +471,6 @@ function onSummonToggle(sid) {
         if (sid === 'sk_zombie' && typeof necroDismissOwner === 'function') necroDismissOwner(player);
     }
     updateSummonLock();
-}
-// 🐉 覺醒互斥（無覺醒精通）：勾選一種覺醒 → 自動取消另外兩種，並重繪（重繪會把未勾選的兩種設為 disabled 鎖定）；有覺醒精通(k_awaken)則三種可並存、不鎖
-function onAwakenToggle(sid) {
-    let c = document.getElementById('auto-sk-' + sid);
-    if (c && c.checked && player.mastery !== 'k_awaken') {
-        ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].forEach(id => {
-            if (id !== sid) { let o = document.getElementById('auto-sk-' + id); if (o) o.checked = false; }
-        });
-    } else if (c && !c.checked) {
-        endAutoBuffNow(sid);   // 🔧 取消打勾：該覺醒立即結束（不等自然倒數；HP/MP 消耗也隨之停止）
-    }
-    renderSkillSelects();
 }
 // 🔧 取消打勾即「立即結束」對應的自動輔助增益（不等自然倒數）。回傳是否真的結束了某效果。供 buff 技能 / HoT 治癒 / 覺醒 共用。
 function endAutoBuffNow(sid) {
@@ -568,15 +546,12 @@ function renderSkillSelects() {
             // 魔法相消術涵蓋解毒術與聖潔之光：勾選相消時鎖定這兩者
             let __cancelOn = player.skills.includes('sk_cancel') && document.getElementById('auto-sk-sk_cancel')?.checked;
             let __locked = (sid === 'sk_antidote' || sid === 'sk_holy_light') && __cancelOn;
-            // 🐉 覺醒互斥（無覺醒精通）：已勾選一種覺醒時，鎖定另外兩種「未勾選」的覺醒；已勾選那一個維持可點以便取消
-            let __awakenLocked = sk.awaken && player.mastery !== 'k_awaken' && !document.getElementById('auto-sk-'+sid)?.checked && ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].some(a => document.getElementById('auto-sk-'+a)?.checked);
-            let __awakenAttr = sk.awaken ? ` onchange="onAwakenToggle('${sid}')"` : '';
-            let __dis = (!isAvail || __locked || __awakenLocked) ? 'disabled' : '';
+            let __dis = (!isAvail || __locked) ? 'disabled' : '';
             let __purAttr = (sid === 'sk_cancel') ? ` onchange="renderSkillSelects()"` : '';
-            // 🔧 一般 buff / HoT 治癒（非召喚/覺醒/淨化）：取消打勾即立即結束（召喚/覺醒已各自有 onchange；淨化為反應式無常駐增益）
-            let __autoBuffAttr = (!__isPurify && !sk.summon && !sk.awaken && (sk.type === 'buff' || (sk.type === 'heal' && sk.autoBuff))) ? ` onchange="onAutoBuffToggle('${sid}')"` : '';
+            // 🔧 一般 buff / HoT 治癒（非召喚/淨化）：取消打勾即立即結束（召喚已有 onchange；淨化為反應式無常駐增益）
+            let __autoBuffAttr = (!__isPurify && !sk.summon && (sk.type === 'buff' || (sk.type === 'heal' && sk.autoBuff))) ? ` onchange="onAutoBuffToggle('${sid}')"` : '';
             let __span = __isPurify ? 'text-teal-300' : 'text-purple-300';
-            let __ttl = __locked ? ' title="魔法相消術已涵蓋此效果"' : (__awakenLocked ? ' title="同時只能使用一種覺醒（需「覺醒精通」才能三種並用）"' : '');
+            let __ttl = __locked ? ' title="魔法相消術已涵蓋此效果"' : '';
             // 🧙 v3.2.19 召喚術 v2：有召喚控制戒指→技能清單可點「選擇」開召喚物選單（無戒指顯示預設怪名）
             let __sumSel = '';
             if (sid === 'sk_summon' && isAvail && typeof summonV2ActiveForm === 'function') {
@@ -586,7 +561,7 @@ function renderSkillSelects() {
                     ? ` <button onclick="openSummonSelect()" class="text-cyan-300 underline" style="font-size:11px;" title="召喚控制戒指：挑選召喚物">［${__cur}▾］</button>`
                     : ` <span class="text-slate-500" style="font-size:11px;" title="裝備召喚控制戒指可挑選召喚物">［${__cur}］</span>`;
             }
-            buffHtml += `<label class="cursor-pointer flex items-center gap-2 ${(isAvail && !__locked && !__awakenLocked)?'':'opacity-50'}"${__ttl}><input type="checkbox" id="auto-sk-${sid}" ${checked} ${__dis}${sumAttr}${__awakenAttr}${__purAttr}${__autoBuffAttr}> <span class="${__span}">${skillDisplayName}</span>${__sumSel}</label>`;
+            buffHtml += `<label class="cursor-pointer flex items-center gap-2 ${(isAvail && !__locked)?'':'opacity-50'}"${__ttl}><input type="checkbox" id="auto-sk-${sid}" ${checked} ${__dis}${sumAttr}${__purAttr}${__autoBuffAttr}> <span class="${__span}">${skillDisplayName}</span>${__sumSel}</label>`;
         }
         if(sk.type === 'convert') {
             if (needLv !== undefined) cHtml += `<option value="${sid}" ${dis}>${sk.n}</option>`;   // 🔧 該職業無法學習的轉換技直接不顯示（如法師的心靈轉換/魂體轉換）；等級未達者仍顯示為灰字
@@ -640,7 +615,7 @@ const WEAPON_TAGS = {
     // 🏺 v3.7.52 遺物第二十三批武器 tag：邪惡利牙=雙刀（雙擊）；魔劍士之刀/死騎劍=反擊＋居合雙標籤（黃金權杖先例）；真‧屠龍劍=雙手劍（切割走 eff:cleave）
     relic_serrated_fangs: ['雙刀'], relic_mageblade_knife: ['單手劍', '武士刀'],
     relic_true_dragonslayer: ['雙手劍'], relic_flame_dk_sword: ['單手劍', '武士刀'],
-    wpn_20: ['單手鈍器'], wpn_10: ['單手鈍器'], wpn_13: ['單手鈍器'], wpn_alien: ['單手鈍器'], wpn_1: ['單手鈍器'], wpn_2: ['單手鈍器'], wpn_ancient_axe: ['單手鈍器'], wpn_warrior_trial_axe: ['單手鈍器'], wpn_master_axe: ['單手鈍器'], wpn_demon_axehead: ['單手鈍器'], wpn_iron_axehead: ['單手鈍器'], wpn_giant_axehead: ['單手鈍器'],   // 🔧 古代神之斧／試煉斧頭／大匠的斧頭／魔物的斧頭／鐵斧頭／巨人的斧頭：單手鈍器（鈍擊）
+    wpn_20: ['單手鈍器'], wpn_10: ['單手鈍器'], wpn_13: ['單手鈍器'], wpn_alien: ['單手鈍器'], wpn_1: ['單手鈍器'], wpn_2: ['單手鈍器'],
     wpn_2hsword: ['雙手劍'], wpn_dragonslayer: ['雙手劍'], wpn_official_2h: ['雙手劍'],   // 🔧 雙手劍類型標註
     // 🔧 重擊特效武器標註為「雙手鈍器」
     wpn_battleaxe: ['雙手鈍器'], wpn_19: ['雙手鈍器'], wpn_23: ['雙手鈍器'], wpn_giantaxe: ['雙手鈍器'], wpn_berserker: ['雙手鈍器'], wpn_silveraxe: ['雙手鈍器'], wpn_taurus_axe: ['雙手鈍器'],   // 🔧 牛人斧頭：補上漏標的雙手鈍器 tag（eff:crush 但原無 tag）
@@ -700,10 +675,10 @@ const WEAPON_TAGS = {
     wpn_kukulkan_spear:['矛'], relic_eto_whip:['矛'], relic_serpent_fang:['矛'], relic_kaira_fang:['匕首'], relic_mud_idol:['雙手鈍器'], relic_teo_hammer:['單手鈍器'],
     // 🏺 遺物 第十三批（v3.1.80）：護身斧/恢復魔棒/流星鎚=單手鈍器(鈍擊＋自動貫穿)、串刺刑具=矛(出血·雙手)、方尖碑=雙手鈍器(重擊靠 eff＋自動貫穿)、刺劍=匕首(出血)、雙刃劍=雙刀(雙擊靠 eff)；
     //    彈弓(isBow)/雙尾鞭(chainsword)/熱情魔杖(名稱含魔杖→自動貫穿)/黑暗魔導書(isWand·名稱無杖字→def 顯式 ignHardSkin) 靠旗標/名稱自判免 tag
-    relic_executor_axe:['單手鈍器'], relic_healer_wand:['單手鈍器'], relic_minotaur_flail:['單手鈍器'],
+    relic_healer_wand:['單手鈍器'], relic_minotaur_flail:['單手鈍器'],
     relic_executor_skewer:['矛'], relic_weathered_obelisk:['雙手鈍器'], relic_shadow_stinger:['匕首'], relic_soulreaper_dual:['雙刀'],
     // 🏺 遺物 第十四批（v3.3.0）：兇殘惡鬼的毒牙/殘暴骸骨的破片=單手劍(反擊)、傳說海賊的迷幻雙刀=雙刀(雙擊)、熔岩灼燒的雙拳=單手鈍器(鈍擊＋自動貫穿)；屍毒之針(isBow)/不定形的變幻劍(chainsword) 靠旗標自判免 tag
-    relic_ghoul_fang:['單手劍'], relic_sparto_shard:['單手劍'], relic_pirate_dual:['雙刀'], relic_lava_fists:['單手鈍器'],
+    relic_ghoul_fang:['單手劍'], relic_sparto_shard:['單手劍'], relic_pirate_dual:['雙刀'],
     // 🏺 遺物 第十五批：爆焰＝雙手劍（切割）、撫摸＝鋼爪（雙擊）；兩把魔杖與弓由 isWand/isBow 旗標判定。
     relic_fireking_blast:['雙手劍'], relic_waterking_caress:['鋼爪'],
     // 🏺 遺物 第十六批：三頭釵＝鋼爪（雙擊）、金屬棍棒/灰燼之拳＝單手鈍器（鈍擊）、昆蟲巨鉗＝單手劍+武士刀（反擊+居合）、鐮刀破片＝雙手劍（切割靠 eff）；海洋水晶球(isWand)/迷你闇精靈(qigu)/十字弩弓(isBow) 靠旗標自判免 tag。
@@ -743,13 +718,10 @@ function weaponHasBleed(id){ let d = DB.items[id]; if (d && d.noBleed) return fa
 function weaponPurposeLabels(d) {
     if (!d || d.type !== 'wpn') return [];
     const out = [];
-    if (d.qigu) out.push('奇古獸攻擊（一般攻擊必定命中並視為魔法傷害，受MR減免；奇古獸精通時無視MR）');
-    if (d.qiguProc === 'phantom') out.push('幻影衝擊 1%＋每強化1%（造成基礎80～160的無屬性魔法傷害，不受MR減免）');
-    if (d.qiguProc === 'mindbreak') out.push('心靈破壞 1%＋每強化1%（以自身最大MP 5%為基礎魔法傷害，不消耗MP；奇古獸精通時無視MR）');
     if (d.mpRPerEn) out.push(`MP自然恢復每強化+${d.mpRPerEn}`);
-    if (d.mdmgEnFrom7Max3) out.push('魔法傷害成長（+7起魔法傷害+1，之後每強化+1，最高+3）');
+    if (d.mdmgEnFrom7Max3) out.push('魔攻成長（+7起魔攻+1，之後每強化+1，最高+3）');
     if (d.equipHaste) out.push('裝備加速（常駐加速，與加速術／自我加速藥水不重疊）');
-    if (d.dragonStrike) out.push(`龍的一擊 ${d.dragonStrike}%（每次一般攻擊皆判定且不論命中；對全體造成3D力量+30固定物理傷害）`);
+    if (d.dragonStrike) out.push(`龍的一擊 ${d.dragonStrike}%（每次一般攻擊皆判定且不論命中；對全體造成（3～力量×3）＋30 固定物理傷害）`);
     if (d.procBurstPoison) {
         let p = d.procBurstPoison;
         out.push(`猛爆劇毒 ${p.rateBase == null ? 1 : p.rateBase}%＋每強化${p.ratePerEn == null ? 1 : p.ratePerEn}%（每秒100點真實傷害，持續5秒，最多1層）`);
@@ -806,7 +778,7 @@ function relicPurposeLabels(d) {
     if (d.thorns) out.push(`受擊反傷（反彈${d.thorns}點傷害）`);
     if (d.dmgReflect) out.push(`傷害反射 ${d.dmgReflect}%（免疫該次一般攻擊並反射傷害）`);
     if (d.hurtExplode) out.push(`受擊爆裂（自己與全體敵人受到${d.hurtExplode}點火焰魔法傷害）`);
-    if (d.hurtRapidfire) out.push('受擊反制（受到傷害時立即觸發一次連射；經典模式亦生效）');
+    if (d.hurtRapidfire && RAPIDFIRE_ON) out.push('受擊反制（受到傷害時立即觸發一次連射；經典模式亦生效）');
     if (d.counterBarrierX2) out.push('反擊屏障強化（反擊傷害×2）');
     if (d.crushDr) out.push(`重擊防護（受到重擊傷害-${d.crushDr}%）`);
     if (d.physDrGated) out.push(`物理防護（一般攻擊傷害-${d.physDrGated}%，每3秒一次）`);
@@ -850,8 +822,8 @@ function relicPurposeLabels(d) {
     if (d.instakillFull) out.push(`滿血斬殺 ${pctText(d.instakillFull)}（命中滿血非首領敵人時即死）`);
     if (d.procFireSkillRate) out.push(`火焰法術 ${d.procFireSkillRate}%（攻擊時隨機施放火屬性傷害魔法）`);
     if (d.procHealFlat) out.push(`命中治癒 ${d.procHealFlat.rate}%（恢復${d.procHealFlat.hp}點HP）`);
-    if (d.rapidMax) out.push('最大連射（連射發動時，固定射出目前可用的最大額外箭數）');
-    if (d.bonespike) out.push('骨刺爆裂（連射額外箭命中累積骨刺，最多10層；下一次一般攻擊命中引爆，每層20點固定傷害）');
+    if (d.rapidMax && RAPIDFIRE_ON) out.push('最大連射（連射發動時，固定射出目前可用的最大額外箭數）');
+    if (d.bonespike && RAPIDFIRE_ON) out.push('骨刺爆裂（連射額外箭命中累積骨刺，最多10層；下一次一般攻擊命中引爆，每層20點固定傷害）');
     if (d.critDmgLowHp) out.push(`背水爆擊（HP低於${d.critDmgLowHp.hp}時，近距離爆擊傷害+${d.critDmgLowHp.add}%）`);
     if (d.castOnHurt) out.push(`護身反擊 ${d.castOnHurt.rate}%（玩家受到物理或魔法傷害時，免費施放目前設定的自動攻擊傷害法術）`);
 
@@ -860,7 +832,7 @@ function relicPurposeLabels(d) {
     if (d.swordStr) out.push(`握劍強化（主手裝備單手劍或雙手劍時，力量+${d.swordStr}）`);
     if (d.raceBonus) out.push(`${d.raceBonus.race}剋星（對${d.raceBonus.race}傷害×${d.raceBonus.mult}）`);
     if (d.raceFlat) out.push(`${d.raceFlat.race}剋星（對${d.raceFlat.race}額外傷害+${d.raceFlat.add}）`);
-    if (d.giantBonus) out.push('巨人剋星（攻擊巨人額外造成1D20傷害）');
+    if (d.giantBonus) out.push('巨人剋星（攻擊巨人額外造成 1～20 傷害）');
     if (d.weakHitBonus) out.push(`弱點洞察（屬性剋制時額外傷害+${d.weakHitBonus}）`);
 
     if (d.petDmgAll) out.push(`寵物傷害+${d.petDmgAll}`);
@@ -899,7 +871,7 @@ function tooltipItemDescription(d, itemId) {
     addValue('HP\\s*(?:上限)?', d.mhp); addValue('MP\\s*(?:上限)?', d.mmp);
     addValue('HP\\s*(?:自然)?(?:恢復|回復)(?:量)?', d.hpR);
     addValue('MP\\s*(?:自然)?(?:恢復|回復)(?:量)?', d.mpR);
-    addValue('魔法傷害', d.mdmg); addValue('魔法命中', d.magicHit);
+    addValue('魔攻', d.mdmg); addValue('魔法命中', d.magicHit);
     addValue('額外魔法點數', d.extraMp); addValue('額外傷害', d.extraDmg); addValue('額外命中', d.extraHit);
     addValue('(?:傷害減免|減傷)', d.dr); addValue('(?:迴避|ER)', d.er); addValue('負重(?:上限)?', d.weightCap);
     addValue('(?:近距離|遠距離)命中', d.hit); addValue('(?:近距離|遠距離)傷害', d.dmgBonus);
@@ -952,7 +924,7 @@ function dedupeGeneratedTooltipEffects(effects, d, options) {
     });
 }
 
-const GENIE_WISH_LABEL = { hp60: 'HP +60', mp30: 'MP +30', md3: '近距離傷害 +3', rd3: '遠距離傷害 +3', mdmg2: '魔法傷害 +2', sp6: '額外魔法點數 +6', hpr10: 'HP 自然恢復量 +10', mpr5: 'MP 自然恢復量 +5', dr3: '傷害減免 +3', ac3: 'AC -3', mr6: 'MR +6', str1: '力量 +1', dex1: '敏捷 +1', int1: '智力 +1', wis1: '精神 +1', con1: '體質 +1', cha1: '魅力 +1' };   // 🏺 v3.6.44 巨靈的三個願望
+const GENIE_WISH_LABEL = { hp60: 'HP +60', mp30: 'MP +30', md3: '近距離傷害 +3', rd3: '遠距離傷害 +3', mdmg2: '魔攻 +2', sp6: '額外魔法點數 +6', hpr10: 'HP 自然恢復量 +10', mpr5: 'MP 自然恢復量 +5', dr3: '傷害減免 +3', ac3: 'AC -3', mr6: 'MR +6', str1: '力量 +1', dex1: '敏捷 +1', int1: '智力 +1', wis1: '精神 +1', con1: '體質 +1', cha1: '魅力 +1' };   // 🏺 v3.6.44 巨靈的三個願望
 function buildItemDescHTML(item) {
     let d = DB.items[item.id];
     if(!d) return '';
@@ -963,11 +935,15 @@ function buildItemDescHTML(item) {
     if (item.seteff) {
         let _g = item.seteff.slice(0, 2);
         let _lines = (SHERINE_SET_TEXT[_g] || []).map(t => `<span class="text-green-200">・${t}</span>`).join('<br>');
-        let _legacy = d.remains ? '' : `<br><span class="text-amber-300 text-sm">（舊詞綴：已不計入套裝效果，可請席琳神殿的菈克希絲拆分為遺骸）</span>`;
+        let _legacy = d.remains ? '' : `<br><span class="text-amber-300 text-sm">（舊詞綴：已不計入套裝效果）</span>`;
         desc = `<span class="c-sherine font-bold">✦ 席琳套裝效果：${_g}</span><br>${_lines}${_legacy}`
              + (desc ? `<br>${desc}` : '');
     }
+    // 🎚️ 等級限制（js/00 ITEM_MIN_LV）：等級不到標紅
+    if(d.minLv) desc += `<br><span class="${(typeof itemLvNeed === 'function' && itemLvNeed(d)) ? 'text-red-400' : 'text-slate-200'}">等級限制：${d.minLv} 以上</span>`;
     if(d.type === 'wpn') {
+        // ✋ 2026-10-16 站長：武器寫單手／雙手（雙手不能配盾；判定同裝備時的 isTwoHandedWpn，單手弓也照實寫單手）
+        if(!d.isArrow) desc += `<br><span class="text-slate-200">${(typeof isTwoHandedWpn === 'function' && isTwoHandedWpn(d)) ? '雙手武器（不能裝備盾牌）' : '單手武器'}</span>`;
         desc += `<br><span class="text-orange-300">小型傷害: ${d.dmgS} / 大型傷害: ${d.dmgL}</span>`;
         
         // 🌟 依照你的規則：根據 ranged: true 決定前綴
@@ -979,9 +955,11 @@ function buildItemDescHTML(item) {
         if(d.hit) desc += ` / ${hitLabel}: ${formatBonus(d.hit)}`;
         if(d.dmgBonus !== undefined) desc += ` / ${dmgLabel}: ${formatBonus(d.dmgBonus)}`; // 加上 !== undefined 避免 0 被漏掉
         
-        if(d.mdmg) desc += ` / 魔法傷害: ${formatBonus(d.mdmg)}`;
-        // ⚔️ 攻擊速度依「職業性別×武器種類」查表顯示（以目前角色為準；戰士雙持另依雙斧速度）
-        if (typeof atkSpdApm === 'function' && typeof player !== 'undefined' && player && player.cls && atkSpdFamily(item.id)) {   // 箭矢等非揮擊武器不顯示
+        if(d.mdmg) desc += ` / 魔攻: ${formatBonus(d.mdmg)}`;
+        // ⚔️ 攻擊速度依「職業性別×武器種類」查表顯示（以目前角色為準）
+        // 🙈 2026-10-15 站長：物品說明不顯示攻擊速度／施法速度／硬直（SHOW_ACTION_SPEED 改 true 可恢復；戰鬥照算）
+        const SHOW_ACTION_SPEED = false;
+        if (SHOW_ACTION_SPEED && typeof atkSpdApm === 'function' && typeof player !== 'undefined' && player && player.cls && atkSpdFamily(item.id)) {   // 箭矢等非揮擊武器不顯示
             let _apm = atkSpdApm(player, item.id);
             if (_apm) desc += `<br><span class="text-orange-200">攻擊速度: 每分鐘 ${_apm} 次（${player.avatar || '依職業性別'}）</span>`;
             // 🏛️ 天堂動作速度：硬直依職業；施法速度依目前職業／變身 cast，與此武器及攻速加成無關。
@@ -1056,7 +1034,7 @@ function buildItemDescHTML(item) {
             let val = (ag.base || 0) + tier;
             let perEnHp = en * 10;
             if(ag.stat === 'mhp') desc += `<br><span class="text-amber-300">HP +${val + perEnHp}（特效 +${val}、每強化 HP+10 共 +${perEnHp}）</span>`;
-            else if(ag.stat && ag.stat !== 'none' && val) { let _agLbl = ag.stat === 'dr' ? '額外減傷' : ag.stat === 'magicDmg' ? '魔法傷害' : ag.stat === 'rangedDmg' ? '遠距離傷害' : ag.stat === 'meleeDmg' ? '近距離傷害' : ag.stat; desc += `<br><span class="text-amber-300">${_agLbl} +${val}　HP +${perEnHp}（每強化+1，HP+10）</span>`; }
+            else if(ag.stat && ag.stat !== 'none' && val) { let _agLbl = ag.stat === 'dr' ? '額外減傷' : ag.stat === 'magicDmg' ? '魔攻' : ag.stat === 'rangedDmg' ? '遠距離傷害' : ag.stat === 'meleeDmg' ? '近距離傷害' : ag.stat; desc += `<br><span class="text-amber-300">${_agLbl} +${val}　HP +${perEnHp}（每強化+1，HP+10）</span>`; }
             else desc += `<br><span class="text-amber-300">HP +${perEnHp}（每強化+1，HP+10）</span>`;   // 🛡️ 無門檻特效臂甲（如龍鱗臂甲 stat:none）：只顯示每強化HP，不顯示「none +0」
         }
     }
@@ -1064,21 +1042,20 @@ function buildItemDescHTML(item) {
     // 👇 裝備特效標籤：顯示「名稱＋精簡機制說明」，讓玩家不必只靠特效名稱猜用途。涵蓋 武器/防具/飾品。
     if (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') {
         let _eff = [];
-        if (d.unBonus) _eff.push('不死／狼人加成（額外造成1D20傷害）');   // 🧹 v3.5.87 #128：unDice / sp:'elf' 全 DB.items 零定義（恆假死運算元）→ 只留 unBonus
+        if (d.unBonus) _eff.push('不死／狼人加成（額外造成 1～20 傷害）');   // 🧹 v3.5.87 #128：unDice / sp:'elf' 全 DB.items 零定義（恆假死運算元）→ 只留 unBonus
         if (d.eff === 'pierce')     _eff.push('穿透 ' + (d.pierceChance !== undefined ? d.pierceChance : 100) + '%（命中後追加攻擊另一名敵人）');
         if (d.alsoPierce)           _eff.push('穿透 ' + (d.pierceChance !== undefined ? d.pierceChance : 100) + '%（命中後追加攻擊另一名敵人）');   // 主特效槽被占用時仍可附帶「穿透」；與無視硬皮的「貫穿」不同
-        if (d.eff === 'moonburst')  _eff.push('月光爆裂（命中時8%造成1D30＋強化×2風屬性魔法傷害·受魔法傷害公式與MR影響）');
+        if (d.eff === 'moonburst')  _eff.push('月光爆裂（命中時8%造成1～30＋強化×2風屬性魔法傷害·受魔攻與MR影響）');
         if (d.eff === 'dice_death') _eff.push('即死（命中時1%使非首領目標死亡）');
         if (d.eff === 'haste')      _eff.push('自我加速（裝備時常駐加速）');
         if (d.eff === 'crush')      _eff.push('重擊（提高重擊機率，重擊取武器最大傷害）');
         if (d.eff === 'cleave')     _eff.push('切割（重擊時攻速+20%，持續2秒）');
         if (d.eff === 'combo')      _eff.push('雙擊 ' + (d.comboRate || 0) + '%（追加一次完整一般攻擊）');
-        if (d.weakExpose)           _eff.push('弱點曝光（命中12%疊加，供屠宰者增傷）');   // 🐉 鎖鏈劍：一般攻擊命中12%附加（最多3層）
         if (d.vampPct)              _eff.push('吸取HP ' + Math.round(d.vampPct * 100) + '%（依本次傷害恢復）');
         if (d.ignHardSkin)          _eff.push('貫穿（無視硬皮額外減傷）');   // 🗡️ 暗黑十字弓：攻擊無視硬皮額外減傷
         if (d.redSpecter)           _eff.push('紅惡靈逆襲（4%＋每強化1%，造成水魔傷並吸取10%HP）');   // 👹 隱藏的魔族武器
-        if (d.blueSpecter)          _eff.push('藍惡靈奪魔（4%＋每強化1%，恢復3D6 MP）');   // 👹 隱藏的魔族武器
-        if (d.rapidfire)            _eff.push('連射 ' + d.rapidfire + '%（追加1～3箭，每箭30%傷害）');
+        if (d.blueSpecter)          _eff.push('藍惡靈奪魔（4%＋每強化1%，恢復 3～18 MP）');   // 👹 隱藏的魔族武器
+        if (d.rapidfire && RAPIDFIRE_ON) _eff.push('連射 ' + d.rapidfire + '%（追加1～3箭，每箭30%傷害）');
         if (d.block)                _eff.push('格檔 ' + d.block + '%（重擊時依此機率減半傷害；一般攻擊為上述機率的30%）');
         if (d.immStone)             _eff.push('免疫石化');
         if (d.immPoison)            _eff.push('免疫中毒');
@@ -1148,7 +1125,7 @@ function buildItemDescHTML(item) {
         if (typeof getWeaponTags === 'function' && getWeaponTags(item.id).includes('單手鈍器')) _eff.push('鈍擊（命中時延遲目標攻擊1秒）');
         if (typeof getWeaponTags === 'function' && getWeaponTags(item.id).includes('雙刀')) _eff.push('雙刃（有機率造成雙倍傷害）');
         if (typeof getWeaponTags === 'function' && getWeaponTags(item.id).includes('鋼爪')) _eff.push('重擊 +5%（重擊取武器最大傷害）');
-        if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(item.id)) _eff.push('共鳴（攻擊時依智力免費施放光箭）');
+        if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(item.id)) _eff.push('共鳴（攻擊時依智力免費施放光箭' + ((Number(item.en) || 0) > 0 ? '，傷害 +' + item.en : '') + '）');
         _eff.push(...weaponPurposeLabels(d));
         if (d.relic) _eff.push(...relicPurposeLabels(d));
         _eff = dedupeGeneratedTooltipEffects([...new Set(_eff)], d, { main:true });
@@ -1170,7 +1147,7 @@ function buildItemDescHTML(item) {
     if(d.hpR) statsArr.push(`HP恢復${formatBonus(d.hpR)}`);
     if(d.mpR) statsArr.push(`MP恢復${formatBonus(d.mpR)}`);
     // 補齊通用裝備能力。前方武器/防具區已列出的欄位不重複加入。
-    if(d.mdmg && d.type !== 'wpn') statsArr.push(`魔法傷害${formatBonus(d.mdmg)}`);
+    if(d.mdmg && d.type !== 'wpn') statsArr.push(`魔攻${formatBonus(d.mdmg)}`);
     if(d.extraMp) statsArr.push(`額外魔法點數${formatBonus(d.extraMp)}`);
     if(d.magicHit) statsArr.push(`魔法命中${formatBonus(d.magicHit)}`);
     if(d.extraDmg) statsArr.push(`額外傷害${formatBonus(d.extraDmg)}`);
@@ -1209,6 +1186,11 @@ function buildItemDescHTML(item) {
     }
     // 👆 新增結束 👆
 
+    // 🛡️ 套裝：顯示這組穿了幾件（n/N）與效果；穿滿變金色
+    if (d.set && typeof DB !== 'undefined' && DB.sets && DB.sets[d.set] && typeof countSetPieces === 'function') {
+        let _sn = (typeof player !== 'undefined' && player && player.eq) ? (countSetPieces(player.eq)[d.set] || 0) : 0, _need = setNeed(d.set), _full = _sn >= _need;
+        desc += `<br><span class="${_full ? 'text-amber-300 font-bold' : 'text-slate-400'}">${DB.sets[d.set].n}（${_sn}/${_need}）<br>套裝效果：${setBonusText(d.set)}</span>`;
+    }
     if(item.bless) {
         if(item.bless === 'cursed') {
             let _ct;
@@ -1217,17 +1199,17 @@ function buildItemDescHTML(item) {
             desc += `<br><span class="c-cursed">詛咒的：${_ct}</span>`;
         } else {
             let _bt;
-            if(d.type === 'wpn') _bt = '額外傷害+1，額外魔法點數+2，額外命中+1';
+            if(d.type === 'wpn') _bt = '額外傷害+1，額外魔法點數+2，額外命中+1；打不死系、惡魔系再 +3～6 傷害';
             else { let _acc = (d.slot==='ring'||d.slot==='amulet'||d.slot==='belt'||d.slot==='ear'); _bt = _acc ? '防禦(AC)-1，魔防(MR)+1' : '防禦(AC)-1，傷害減免+1'; }
             desc += `<br><span class="text-yellow-400">祝福的：${_bt}</span>`;
         }
     }
-    if(item.anc) {
+    if(item.anc && !DISABLE_ANC) {
         let _acc = (d.slot==='ring'||d.slot==='amulet'||d.slot==='belt'||d.slot==='ear');
         let _slot = (d.type === 'wpn') ? 'wpn' : (_acc ? 'acc' : 'arm');
         let _v = (item.anc === true) ? 'ancient' : item.anc;
         let _at;
-        if(_slot === 'wpn')      _at = (_v==='eternal') ? '額外傷害+4' : (_v==='immortal') ? '額外命中+4' : (_v==='primordial') ? '魔法傷害+2' : '額外傷害+2，魔法傷害+1';
+        if(_slot === 'wpn')      _at = (_v==='eternal') ? '額外傷害+4' : (_v==='immortal') ? '額外命中+4' : (_v==='primordial') ? '魔攻+2' : '額外傷害+2，魔攻+1';
         else if(_slot === 'arm') _at = (_v==='eternal') ? '防禦(AC)-2' : (_v==='immortal') ? '迴避(ER)+2' : (_v==='primordial') ? '魔防(MR)+4' : '傷害減免+2';
         else                     _at = (_v==='eternal') ? '額外傷害+1，防禦(AC)-1' : (_v==='immortal') ? '額外傷害+1，額外命中+1' : (_v==='primordial') ? '魔防(MR)+2，額外魔法點數+2' : '傷害減免+1，魔防(MR)+1';
         desc += `<br><span class="${ancColorClass(item.anc)}">${ancName(item.anc)}：${_at}</span>`;
@@ -1247,20 +1229,22 @@ function buildItemDescHTML(item) {
     }
 
     // 🪄 授予技能（力量／敏捷／治癒魔法頭盔等 grantSkills 裝備）：列出可額外使用的魔法。
-    //    接線在 js/02 recomputeStats：①任何職業「裝備」→ 授予；②騎士／王族／戰士「背包持有」即授予（不需裝備）。
+    //    接線在 js/02 recomputeStats：①任何職業「裝備」→ 授予；②騎士／王族「背包持有」即授予（不需裝備）。
     if (d.grantSkills && d.grantSkills.length) {
         let _gsk = d.grantSkills.map(sk => (DB.skills[sk] && DB.skills[sk].n) || sk).join('、');
         desc += `<br><span class="text-emerald-300 font-bold">可額外使用魔法：${_gsk}</span>`;
-        desc += `<br><span class="text-slate-400 text-xs">${d.grantSkillsEquipOnly ? '必須裝備才可使用。' : '騎士／王族／戰士放在背包即可使用；其他職業需裝備。'}</span>`;
+        desc += `<br><span class="text-slate-400 text-xs">${d.grantSkillsEquipOnly ? '必須裝備才可使用。' : '騎士／王族放在背包即可使用；其他職業需裝備。'}</span>`;
     }
 
-    // 🛡️ 適用職業：以職業 logo 顯示可裝備此裝備的職業（騎士/妖精/法師/黑暗妖精/幻術士；黑暗妖精走 darkEquipOk 真實規則）
-    if (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') {
-        const _EQ_CLASSES = [['knight','騎士'], ['elf','妖精'], ['mage','法師'], ['dark','黑暗妖精'], ['illusion','幻術士'], ['dragon','龍騎士'], ['warrior','戰士'], ['royal','王族']];
-        let _logos = _EQ_CLASSES
-            .filter(([c]) => isRelic(d) ? reqAllowsClass(d, c) : (c === 'dark') ? darkEquipOk(d, item.id) : (c === 'illusion') ? illusionEquipOk(d, item.id) : (c === 'dragon') ? dragonEquipOk(d, item.id) : (c === 'warrior') ? warriorEquipOk(d, item.id) : (c === 'royal') ? royalEquipOk(d, item.id) : reqAllowsClass(d, c))   // 🏺 遺物：職業適用純以 req 白名單判定（同 checkCanEquip 短路）
-            .map(([, nm]) => `<img src="assets/logo/${nm}icon.png" alt="${nm}" title="${nm}" class="class-eq-icon" onerror="this.style.display='none';">`)
-            .join('');
+    // 🛡️ 適用職業：以職業 logo 顯示可裝備此裝備的職業（騎士/妖精/法師/黑暗妖精/王族；黑暗妖精走 darkEquipOk 真實規則）
+    if ((d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') && d.slot !== 'petwpn' && d.slot !== 'petarm') {   // 🦴 寵物裝備是給寵物穿的，不列職業
+        // 改用文字顯示（logo 太小認不出）
+        const _EQ_CLASSES = [['knight','騎士'], ['elf','妖精'], ['mage','法師'], ['dark','黑暗妖精'], ['royal','王族']];
+        let _okCls = _EQ_CLASSES
+            .filter(([c]) => isRelic(d) ? reqAllowsClass(d, c) : (c === 'dark') ? darkEquipOk(d, item.id) : (c === 'royal') ? royalEquipOk(d, item.id) : reqAllowsClass(d, c))   // 🏺 遺物：職業適用純以 req 白名單判定（同 checkCanEquip 短路）
+        let _logos = (_okCls.length === _EQ_CLASSES.length)   // 五個職業都能裝 → 直接寫「全職業」
+            ? '<span class="text-amber-200">全職業</span>'
+            : _okCls.map(([, nm]) => `<span class="text-amber-200">${nm}</span>`).join('<span class="text-slate-500">、</span>');
         if (_logos) desc += `<br><span class="text-slate-400">適用職業：</span>${_logos}`;
     }
 
@@ -1317,7 +1301,7 @@ function openModal(item, isEq, slot) {
          desc += `<br><span class="text-yellow-400 mt-2 block">販賣價格: ${sellPrice} 金幣</span>`;
     }
     
-    document.getElementById('modal-item-desc').innerHTML = desc;
+    document.getElementById('modal-item-desc').innerHTML = desc.replace(/^(\s*<br\s*\/?>)+/, '');   // 開頭的換行（說明逐行 += '<br>…' 組出來的）不要，名稱下面才不會空一行
     
     let act = '';
     if (isEq) {
@@ -1328,7 +1312,11 @@ function openModal(item, isEq, slot) {
             act += `<button class="col-span-2 w-full btn border-red-700 bg-red-900 hover:bg-red-800 text-red-200 py-3 text-lg font-bold" onclick="unequipItem('${slot}')">卸除</button>`;
         }
     } else {
-        if(d.type === 'pot' || d.type === 'skillbk' || ((d.type === 'misc' || d.type === 'etc') && d.eff && !d.noUse)) {   // 🔧 misc/etc 且有效果(萬能藥/回憶蠟燭/靈魂之球/🥚頑皮幼龍蛋等)亦顯示使用按鈕；noUse 除外
+        if(d.type === 'skillbk') {   // 📖 魔法書：學習／需 Lv.N／已學會（判定同商店·js/08 skillBookStatus）
+            let _sks = skillBookStatus(d.sk);
+            if (_sks.can) act += `<button class="col-span-2 w-full btn border-green-700 bg-emerald-800 hover:bg-emerald-700 text-green-100 py-3 text-lg font-bold" onclick="useItem('${item.uid}')">學習</button>`;
+            else act += `<button class="col-span-2 w-full btn border-slate-600 bg-slate-700 text-slate-400 py-3 text-lg font-bold cursor-not-allowed" disabled>${_sks.label}</button>`;
+        } else if(d.type === 'pot' || ((d.type === 'misc' || d.type === 'etc') && d.eff && !d.noUse)) {   // 🔧 misc/etc 且有效果(萬能藥/回憶蠟燭/靈魂之球/🥚頑皮幼龍蛋等)亦顯示使用按鈕；noUse 除外
             act += `<button class="col-span-2 w-full btn border-green-700 bg-emerald-800 hover:bg-emerald-700 text-green-100 py-3 text-lg font-bold" onclick="useItem('${item.uid}')">使用</button>`;
             if (d.batchUse && item.cnt > 1) act += `<button class="col-span-2 w-full btn border-sky-700 bg-sky-900 hover:bg-sky-800 text-sky-100 py-3 text-lg font-bold" onclick="batchUseItem('${item.uid}')">批量使用（可輸入數量）</button>`;   // 🌅 巨大骷髏的妖魂：批量使用
         }
@@ -1340,16 +1328,19 @@ function openModal(item, isEq, slot) {
             else act += `<button class="col-span-2 w-full btn border-red-900 bg-red-950 text-red-400 py-3 text-lg font-bold cursor-not-allowed" disabled>無法裝備${d.reqAvatar ? `・僅限${d.reqAvatar}` : ''}</button>`;
         }
         
-        // 把販賣按鈕移出來，讓所有道具都可以賣
-        if (!item.lock) {
-            act += `<button class="btn border-orange-700 bg-orange-900 hover:bg-orange-800 py-2 text-base font-bold" onclick="sellItem('${item.uid}', 1, ${sellPrice})">販賣</button>
-                    <button class="btn border-orange-700 bg-orange-900 hover:bg-orange-800 py-2 text-base font-bold" onclick="sellItem('${item.uid}', ${item.cnt}, ${sellPrice})">全部賣出</button>`;
-        }
     }
 
     // 👇 修改：為武器、防具、飾品加入專屬的「強化」按鈕 (加入 !d.isArrow 防呆，箭矢不顯示強化按鈕)
+    //    2026-10-16 站長：道具視窗整理——主要動作（裝備／使用）＋強化排第一列，賣出排第二列
     if (((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc') && !isMaxEnhanced(item) && !d.noEnhance) {   // 🔧 已達淬鍊（強化上限）：隱藏強化按鈕；🏛️ 無法強化的裝備（古老系列）不顯示強化鈕
         act += `<button class="col-span-2 w-full btn border-purple-700 bg-purple-900 hover:bg-purple-800 text-purple-200 py-3 text-lg font-bold mt-2" onclick="showEnhanceOptions('${item.uid}', ${isEq})">強化</button>`;
+    }
+    // 把販賣按鈕移出來，讓所有道具都可以賣（價錢寫在上面的「販賣價格」，按鈕只寫動作；只有一件時不重複放「全部賣出」）
+    if (!isEq && !item.lock) {
+        let _sellCnt = item.cnt || 1;
+        if (act) act += `<div class="col-span-2 act-break" style="height:0"></div>`;   // 賣出另起一列（主要動作在上面）
+        act += `<button class="btn border-orange-700 bg-orange-900 hover:bg-orange-800 py-2 text-base font-bold" onclick="sellItem('${item.uid}', 1, ${sellPrice})">賣出一件</button>`;
+        if (_sellCnt > 1) act += `<button class="btn border-orange-700 bg-orange-900 hover:bg-orange-800 py-2 text-base font-bold" onclick="sellItem('${item.uid}', ${item.cnt}, ${sellPrice})">全部賣出（${_sellCnt.toLocaleString()}）</button>`;
     }
 
     // 廢品勾選（所有背包道具：武器/防具/飾品/藥水/卷軸/魔法書/技能書/材料/試煉道具等）：
@@ -1365,9 +1356,12 @@ function openModal(item, isEq, slot) {
     document.getElementById('modal-actions').innerHTML = act;
 
     // === 旁邊顯示「目前裝備中」對應欄位，方便比對（僅背包中的武器/防具/飾品，箭矢除外）===
+    //    2026-10-16 站長：道具視窗拿掉「與身上比較」→ 一律不顯示（SHOW_COMPARE 改 true 可恢復）
+    const SHOW_COMPARE = false;
     let _cmp = document.getElementById('modal-compare');
-    if(_cmp) {
-        const SLOT_LABEL = { wpn:'武器', offwpn:'副手武器', helm:'頭盔', armor:'盔甲', shin:'脛甲', shield:'副手', cloak:'斗篷', tshirt:'內衣', gloves:'手套', boots:'鞋子', ring1:'戒指 1', ring2:'戒指 2', ring3:'戒指 3', ring4:'戒指 4', amulet:'項鍊', ear1:'耳環 1', ear2:'耳環 2', belt:'腰帶' };   // 🦴 v3.2.37 寵物裝備欄移除（改為每隻寵物於包武保管個別裝備）
+    if(_cmp && !SHOW_COMPARE) { _cmp.classList.add('hidden'); _cmp.innerHTML = ''; }
+    else if(_cmp) {
+        const SLOT_LABEL = { wpn:'武器', offwpn:'副手武器', helm:'頭盔', armor:'盔甲', shield:'副手', cloak:'斗篷', tshirt:'內衣', gloves:'手套', boots:'鞋子', ring1:'戒指 1', ring2:'戒指 2', ring3:'戒指 3', ring4:'戒指 4', amulet:'項鍊', ear1:'耳環 1', ear2:'耳環 2', belt:'腰帶' };   // 🦴 v3.2.37 寵物裝備欄移除（改為每隻寵物於包武保管個別裝備）
         if(!isEq && !d.isArrow && d.slot !== 'petwpn' && d.slot !== 'petarm' && (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc')) {   // 🦴 v3.2.42 稽核修：寵物武器/防具非玩家可穿→不顯示「目前裝備中」比較卡（原顯示 petwpn 原字誤導可穿）
             let slots = (d.type === 'wpn') ? ['wpn'] : (d.slot === 'ring' ? ['ring1','ring2','ring3','ring4'] : (d.slot === 'ear' ? ['ear1','ear2'] : [d.slot]));
             let cards = slots.map(sl => {
@@ -1399,7 +1393,14 @@ function returnToItemModal(uid, isEq) {
 }
 
 // 👇 修改後的功能：顯示選擇卷軸的介面
+// 強化值角標（站長 2026-10-15）：放左上角、字放大；超過安定值閃閃發亮（.en-over；動畫掛在內層 <b>，外層顏色是 !important 動不了）
+//   extra='with-eq'：同格左上角已有「E」裝備中標記 → 往右讓開
+function enBadgeHTML(it, d, extra) {
+    let en = Number(it && it.en) || 0, over = en > ((d && d.safe) || 0);
+    return `<span class="classic-icon-corner-value is-enhance${over ? ' en-over' : ''}${extra ? ' ' + extra : ''}"><b>+${capEn(en, d)}</b></span>`;
+}
 function showEnhanceOptions(uid, isEq) {
+    if (typeof openEnhanceWindow === 'function') { closeModal(); openEnhanceWindow(uid, isEq); return; }   // ⚒️ 2026-10-15 改用強化視窗（js/33）；下方舊流程留作後備
     let item = isEq ? Object.values(player.eq).find(e => e && e.uid === uid) : player.inv.find(i => i.uid === uid);
     if (!item) return;
     let d = DB.items[item.id];
@@ -1519,7 +1520,7 @@ function executeAutoSafeEnhance(targetUid, isEq, scrollId, goal) {
         target = singleItem;
     }
 
-    let fn0 = getItemFullName(target);
+    let fn0 = getItemFullName(target), en0 = target.en;
     let used = 0, destroyed = false, hadRisk = false, ranOut = false;
 
     // 逐級強化，直到抵達目標、卷軸用盡或爆裝
@@ -1547,12 +1548,14 @@ function executeAutoSafeEnhance(targetUid, isEq, scrollId, goal) {
         if (isEq) { if (slot) player.eq[slot] = null; if (typeof syncShahaArrow === 'function') syncShahaArrow(); if (typeof syncDualWield === 'function') syncDualWield(); }   // ⚠️ 快速強化爆裝同樣要同步副手／沙哈箭（與 js/08 doEnhance 一致）
         else { player.inv = player.inv.filter(i => i.uid !== target.uid); }
         logSys(`消耗了 ${used} 張 ${scrollName}。<span class="text-red-500 font-bold">${fn0} 強烈的發出銀色的光芒就消失了。</span>`);
+        if (typeof enhBroadcastFail === 'function') enhBroadcastFail(target);   // 📢 衝門檻失敗 → 跑馬燈（js/34）
     } else if (ranOut) {
         logSys(`${scrollName} 不足，消耗了 ${used} 張，<span class="text-yellow-400 font-bold">+${target.en} ${d.n} 發出銀色的光芒。</span>`);
     } else {
         let prefix = hadRisk ? `<span class="text-green-300 font-bold">強化成功！</span>` : '';
         logSys(`${prefix}消耗了 ${used} 張 ${scrollName}，<span class="text-yellow-400 font-bold">+${target.en} ${d.n} 發出銀色的光芒。</span>`);
     }
+    if (!destroyed && typeof enhBroadcastCheck === 'function') enhBroadcastCheck(target, en0);   // 📢 超過安定值 3 → 跑馬燈（js/34）
 
     calcStats();
     renderTabs();
@@ -1700,9 +1703,10 @@ function runQuickEnhance(type) {
             if ((entry.en || 0) >= Math.min(goal, enhanceCap(d))) { skipped++; survivors.push({ ...entry, cnt: 1, uid: uid() }); continue; }   // 已達/超過目標（或已達淬鍊上限）：原樣保留
             let r = _quickEnhanceUnit(d, entry.en || 0, goal, scrollStacks, st.useBless);   // 🌟 st.useBless＝使用祝福卷（強化成敗為即時擲骰）
             usedTotal += r.used;
-            if (r.destroyed) { destroyed++; continue; }   // 爆裝：不保留
+            if (r.destroyed) { destroyed++; if (typeof enhBroadcastFail === 'function') enhBroadcastFail({ ...entry, en: r.en }); continue; }   // 爆裝：不保留；📢 衝門檻失敗 → 跑馬燈（js/34）
             if (r.en >= goal) reached++; else partial++;  // 抵達 or 卷軸不足停在中途
             survivors.push({ ...entry, cnt: 1, uid: uid(), en: r.en, lock: false });
+            if (typeof enhBroadcastCheck === 'function') enhBroadcastCheck(survivors[survivors.length - 1], entry.en || 0);   // 📢 超過安定值 3 → 跑馬燈（js/34）
         }
     });
 
@@ -1815,7 +1819,7 @@ function getSellPrice(item) {
     let mult = 1;
     if (getAttrAffix(item.attr)) mult *= 10;
     if (item.bless === true) mult *= 10;   // 🔧 僅「祝福的」享 10 倍賣價；'cursed'（詛咒的）為負面詞綴不加價
-    if (item.anc)   mult *= 10;
+    if (item.anc && !DISABLE_ANC)   mult *= 10;
     return price * mult;
 }
 
@@ -1917,7 +1921,7 @@ function toggleInventoryAutoSort(on){ if(!player)return;player.inventoryAutoSort
 let _autoSortAt = -99999;
 function autoSortInventory() {
     if (!player || !Array.isArray(player.inv) || typeof state === 'undefined' || !state.running) return;   // 遊戲未開始（創角配發起始道具等）不排
-    if (player.inventoryAutoSort === false) return;   // 整理開關獨立於自動販賣
+    if (player.inventoryAutoSort !== true) return;   // 整理開關獨立於自動販賣；預設關：新拿到的東西照取得順序排在後面，玩家按「整理」才重排（玩家要求）
     if (state.ticks - _autoSortAt < 100) return;   // ⏲️ 10 秒節流（100 ticks）
     _autoSortAt = state.ticks;
     player.inv.sort(invSortCmp);
@@ -1987,6 +1991,9 @@ function _renderAutoSellBtn() {
 }
 
 // ===== 自動販賣規則（初版） =====
+// 🗑️ 2026-10-14 站長決定：自動賣出只認「清單」（overrides[id]==='sell'，天堂M背包「自動賣出」分類裡新增／移除）；
+//    依強化值整批賣武器防具、藥水留幾個、各種保護等整批規則一律不再生效（設定值留在存檔裡不動）。
+const AUTOSELL_LIST_ONLY = true;
 function getAutoSellRules() {
     if (!player.autoSellRules) player.autoSellRules = {
         delaySec: 60,
@@ -2036,7 +2043,6 @@ function _craftEquipNeeds(){
     let add=rec=>{let mats=(rec&&((rec.req)||(rec.mats)))||[];if(rec&&rec.src)mats=mats.concat([{id:rec.src,cnt:1}]);mats.forEach(m=>{let id=m.id||m[0],n=Number(m.n||m.cnt||m[1]||0),d=DB.items[id];if(id&&n>0&&_asEquipType(d))out[id]=Math.max(out[id]||0,n);});};
     try{if(typeof CRAFT_RECIPES!=='undefined')Object.values(CRAFT_RECIPES).flat().forEach(add);}catch(e){}
     try{if(typeof DEMONKING_RECIPES!=='undefined')DEMONKING_RECIPES.forEach(add);}catch(e){}
-    try{if(typeof LUMIEL_RECIPES!=='undefined')LUMIEL_RECIPES.forEach(add);}catch(e){}
     return (_craftEquipNeedCache=out);
 }
 function _craftReserveMap(r){let x={};if(r.protectCraftEquip){let sets=Math.max(1,Number(r.craftSets)||1);Object.entries(_craftEquipNeeds()).forEach(([id,n])=>x[id]=n*sets);}return x;}
@@ -2050,13 +2056,18 @@ function _asEquipType(d) {
     if (d.type === 'acc') return 'acc';
     return null;
 }
+// 自動賣出清單只賣「白板」：同款但祝福／詛咒／強化過／有屬性／遠古／套裝效果的留著（站長：祝福的被一起賣掉 → 強化、屬性、詛咒也一起保留）
+function _asListKeeps(i) {
+    return !!i.bless || (Number(i.en) || 0) > 0 || !!i.attr || !!(i.anc && !DISABLE_ANC) || !!i.seteff;
+}
 function _autoSellDecision(i, ruleSnapshot, craftRemain) {   // 🔧 v2.6.77 ruleSnapshot：預覽用「快照複本」判定，不讀（也不寫）live 規則；v2.6.91 craftRemain：製作素材保留額度（逐件扣）
     let r = ruleSnapshot || getAutoSellRules(), d = DB.items[i.id];
     if (!d || i.lock || d.noSell || d.noJunk) return { sell:false };
     if (i._userKeep) return { sell:false };   // 🛡️ v2.6.69 審計#10：玩家曾手動取消規則標記→豁免自動販賣（重新儲存規則時清除）
     let ov = r.overrides[i.id];
     if (ov === 'keep') return { sell:false };
-    if (ov === 'sell') return { sell:true, qty:i.cnt };
+    if (ov === 'sell') return _asListKeeps(i) ? { sell:false } : { sell:true, qty:i.cnt };   // 清單照道具種類比對，只賣白板（見 _asListKeeps）
+    if (AUTOSELL_LIST_ONLY) return { sell:false };   // 🗑️ 2026-10-14 只賣「自動賣出清單」裡的道具（下面那套整批規則停用）
     // 🏛️ v2.7.56 解除封印後的「古老的○○」是普通武器／防具，沒有詞綴且多數無法強化，會立即符合一般裝備販賣規則；整系列優先保護（個別「永遠販賣」例外仍優先，故置於 overrides 之後）。
     if (r.protectOldSeries && (String(i.id).startsWith('wpn_old_') || String(i.id).startsWith('amr_old_'))) return { sell:false };
     if (r.protectRelic !== false && typeof isRelic === 'function' && isRelic(d)) return { sell:false };   // 🏺 v3.1.44 保護遺物（預設開·個別「永遠販賣」例外仍優先）
@@ -2066,7 +2077,7 @@ function _autoSellDecision(i, ruleSnapshot, craftRemain) {   // 🔧 v2.6.77 rul
         if(craftRemain&&craftRemain[i.id]>0){protectedQty=Math.min(Number(i.cnt)||1,craftRemain[i.id]);craftRemain[i.id]-=protectedQty;}
         let er = r.equip[et];
         if (!er || !er.on || (i.en || 0) > Number(er.max || 0)) return { sell:false };
-        if ((r.protectBless && i.bless) || (r.protectAnc && i.anc) || (r.protectAttr && i.attr) || (r.protectSet && i.seteff) || (r.protectLegend && d.legend)) return { sell:false };   // 🔧 v2.6.77 保護傳說裝備
+        if ((r.protectBless && i.bless) || (r.protectAnc && i.anc && !DISABLE_ANC) || (r.protectAttr && i.attr) || (r.protectSet && i.seteff) || (r.protectLegend && d.legend)) return { sell:false };   // 🔧 v2.6.77 保護傳說裝備
         return { sell:(Number(i.cnt)||1)>protectedQty, qty:Math.max(0,(Number(i.cnt)||1)-protectedQty) };
     }
     let mr = r.misc[d.type];
@@ -2096,22 +2107,23 @@ function openAutoSellRules() {
     if (!_asBackup) _asBackup = { rules: JSON.parse(JSON.stringify(r)), on: player.autoSellOn, global:!!player.autoSellGlobal };   // 只在「第一次開窗」快照（setAutoSellOverride 重繪不覆蓋草稿基準）
     let old = document.getElementById('autosell-rule-modal'); if (old) old.remove();
     let miscTypes = [...new Set(Object.values(DB.items).filter(d => d && !_asEquipType(d)).map(d => d.type).filter(Boolean))].sort();
-    let ids = Object.keys(DB.items).filter(id => DB.items[id]).sort((a,b) => (DB.items[a]?.n || a).localeCompare(DB.items[b]?.n || b, 'zh-Hant'));
-    let exceptionTypes = [...new Set(ids.map(id => _asEquipType(DB.items[id]) || DB.items[id].type).filter(Boolean))].sort();
     let equipRows = [['wpn','武器'],['arm','防具'],['acc','飾品']].map(([k,n]) => `<label class="as-row"><input id="as-e-${k}" type="checkbox" ${r.equip[k].on?'checked':''}> ${n}，強化值 ≤ <input id="as-em-${k}" type="number" min="0" max="99" value="${r.equip[k].max}"> 自動販賣</label>`).join('');
     let miscRows = miscTypes.map(t => { let x=r.misc[t]||{on:false,keep:0}; return `<label class="as-row"><input class="as-misc" data-type="${t}" type="checkbox" ${x.on?'checked':''}> ${_asTypeLabel(t)}：每種保留 <input class="as-keep" data-type="${t}" type="number" min="0" value="${x.keep}"> 個，多餘販賣</label>`; }).join('');
-    let itemRows = ids.map(id => `<option value="${id}">${DB.items[id]?.n || id}</option>`).join('');
-    let exceptionTypeRows = exceptionTypes.map(t => `<option value="${t}">${_asTypeLabel(t)}</option>`).join('');
-    let rules = Object.entries(r.overrides).map(([id,v]) => `<div class="as-ex"><span>${DB.items[id]?.n || id}</span><b>${v==='keep'?'永遠保留':'永遠販賣'}</b><button onclick="deleteAutoSellOverride('${id}')">刪除</button></div>`).join('') || '<div class="as-muted">目前沒有個別例外</div>';
+    let rules = Object.entries(r.overrides).map(([id,v]) => `<div class="as-ex"><span>${DB.items[id]?.n || id}</span><b>${v==='keep'?'永遠保留':'自動賣出'}</b><button onclick="deleteAutoSellOverride('${id}')">移除</button></div>`).join('') || '<div class="as-muted">還沒有加入任何物品</div>';
+    // 背包掃描：列出背包裡「可以賣、沒上鎖」的物品(每種一格)，點一下＝加入自動賣出(overrides[id]='sell')。
+    //   身上穿的本來就不在背包；上鎖的整疊略過(_autoSellDecision 本來就不賣上鎖件)；已在清單上的不重複列。
+    let _bag = {};
+    (player.inv || []).forEach(i => { let d = DB.items[i.id]; if (!d || i.lock || d.noSell || d.noJunk || r.overrides[i.id]) return; _bag[i.id] = (_bag[i.id] || 0) + (Number(i.cnt) || 1); });
+    let bagRows = Object.keys(_bag).sort((a,b) => (DB.items[a].n || a).localeCompare(DB.items[b].n || b, 'zh-Hant')).map(id => `<button onclick="addAutoSellItem('${id}')" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid #64748b;border-radius:8px;background:#020617;color:#e2e8f0;font-size:13px"><img src="${getIconUrl(DB.items[id])}" style="width:22px;height:22px" onerror="this.style.display='none'">${DB.items[id].n}${_bag[id] > 1 ? ' ×' + _bag[id] : ''}</button>`).join('') || '<div class="as-muted">背包裡沒有可以加入的物品</div>';
     let el=document.createElement('div'); el.id='autosell-rule-modal'; el.innerHTML=`<style>
       #autosell-rule-modal{position:fixed;inset:0;background:#020617aa;z-index:10050;display:flex;align-items:center;justify-content:center;color:#e2e8f0}
       .as-box{width:min(720px,92vw);max-height:88vh;overflow:auto;background:#172033;border:2px solid #b7791f;border-radius:14px;padding:18px;box-shadow:0 18px 60px #000}
       .as-head{display:flex;justify-content:space-between;align-items:center;font-size:23px;font-weight:bold;color:#fde68a}.as-sec{background:#0f172acc;border:1px solid #475569;border-radius:10px;padding:12px;margin-top:12px}.as-title{font-weight:bold;color:#fbbf24;margin-bottom:7px}.as-row{display:block;padding:5px 0}.as-row input[type=number]{width:72px;background:#020617;border:1px solid #64748b;border-radius:5px;padding:3px;text-align:center}.as-row input[type=checkbox]{width:18px;height:18px;vertical-align:middle}.as-help,.as-muted{font-size:13px;color:#94a3b8}.as-actions{display:flex;gap:8px;margin-top:12px}.as-actions button,.as-head button,.as-ex button,.as-ex-tools button{background:#334155;border:1px solid #64748b;border-radius:6px;padding:6px 12px}.as-actions .primary{background:#92400e;border-color:#f59e0b}.as-ex{display:flex;gap:10px;align-items:center;padding:5px;border-bottom:1px solid #334155}.as-ex span{flex:1}.as-ex b{color:#fcd34d}.as-ex-tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.as-ex-tools input,.as-ex-tools select,select{background:#020617;border:1px solid #64748b;padding:6px;border-radius:6px}.as-ex-tools input{min-width:180px;flex:1}.as-btnrow{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.as-quick-actions{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto}.as-sell-now-btn{margin-left:0;height:38px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;line-height:1;padding:0 12px;border:2px solid #fb923c;border-radius:7px;background:#7c2d12;color:#ffedd5;font-weight:bold;cursor:pointer;box-shadow:0 2px 7px #0008}.as-sell-now-btn:hover{filter:brightness(1.25)}.as-sort-now-btn{border-color:#22d3ee;background:#164e63;color:#cffafe}.as-override-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.as-override-actions button{padding:7px 13px;border:2px solid;border-radius:7px;font-weight:bold;cursor:pointer;box-shadow:0 2px 7px #0008;transition:filter .15s,transform .15s}.as-override-actions button:hover{filter:brightness(1.25);transform:translateY(-1px)}.as-keep-btn{color:#bbf7d0;background:#14532d;border-color:#4ade80!important}.as-sell-btn{color:#fecaca;background:#7f1d1d;border-color:#f87171!important}#as-item{width:min(100%,390px);margin-bottom:7px}
     </style><div class="as-box"><div class="as-head"><span>自動販賣規則</span><button onclick="closeAutoSellRules()">Close</button></div>
-      <div class="as-sec"><label class="as-row"><input id="as-on" type="checkbox" ${player.autoSellOn!==false?'checked':''}> 啟用自動販賣</label><label class="as-row"><input id="as-global" type="checkbox" ${player.autoSellGlobal?'checked':''}> 套用全部存檔（8 個角色共用此設定）</label><div class="as-row as-btnrow"><span>物品取得／符合規則後，等待</span><input id="as-delay" type="number" min="10" max="86400" value="${r.delaySec}"><span>秒才販賣</span><span class="as-quick-actions"><button type="button" class="as-sell-now-btn" onclick="sellAutoSellItemsNow()">立即賣出</button><button type="button" class="as-sell-now-btn as-sort-now-btn" onclick="sortInventoryNow()">立即排列</button></span></div><div class="as-help">等待期間可取消廢品標記或鎖定物品；「立即賣出」會跳過等待秒數。背包整理方式與自動整理開關請在背包左側的整理按鈕設定，與自動販賣互不影響。</div></div>
-      <div class="as-sec"><div class="as-title">裝備條件</div>${equipRows}<label class="as-row"><input id="as-pb" type="checkbox" ${r.protectBless?'checked':''}> 保護祝福裝備</label><label class="as-row"><input id="as-pa" type="checkbox" ${r.protectAnc?'checked':''}> 保護古代裝備</label><label class="as-row"><input id="as-pt" type="checkbox" ${r.protectAttr?'checked':''}> 保護屬性裝備</label><label class="as-row"><input id="as-ps" type="checkbox" ${r.protectSet?'checked':''}> 保護套裝詞綴裝備</label><label class="as-row"><input id="as-pl" type="checkbox" ${r.protectLegend?'checked':''}> 保護傳說裝備</label><label class="as-row"><input id="as-prelic" type="checkbox" ${r.protectRelic!==false?'checked':''}> 保護遺物</label><label class="as-row"><input id="as-pold" type="checkbox" ${r.protectOldSeries?'checked':''}> 保護解封後的「古老的」系列裝備</label><div class="as-help">解除封印完成後立即保護古老的劍、巨劍、弩槍、鱗甲、皮盔甲、長袍及金屬盔甲，避免成品在取得瞬間被規則標為廢品。</div><label class="as-row"><input id="as-pcraft" type="checkbox" ${r.protectCraftEquip?'checked':''}> 保護製作素材裝備；保留可製作 <input id="as-craftsets" type="number" min="1" max="99" value="${r.craftSets}"> 次的數量</label><div class="as-help">系統會掃描全部製作配方，例如配方需要「暗殺軍王之痕 ×1」，保留 1 次就至少留 1 件，多餘數量才依武器規則處理。</div></div>
+      <div class="as-sec"><label class="as-row"><input id="as-on" type="checkbox" ${player.autoSellOn!==false?'checked':''}> 啟用自動販賣</label><label class="as-row"><input id="as-global" type="checkbox" ${player.autoSellGlobal?'checked':''}> 所有角色共用此設定</label><div class="as-row as-btnrow"><span>物品取得／符合規則後，等待</span><input id="as-delay" type="number" min="10" max="86400" value="${r.delaySec}"><span>秒才販賣</span><span class="as-quick-actions"><button type="button" class="as-sell-now-btn" onclick="sellAutoSellItemsNow()">立即賣出</button><button type="button" class="as-sell-now-btn as-sort-now-btn" onclick="sortInventoryNow()">立即排列</button></span></div><div class="as-help">等待期間可取消廢品標記或鎖定物品；「立即賣出」會跳過等待秒數。</div></div>
+      <div class="as-sec"><div class="as-title">裝備條件</div>${equipRows}<label class="as-row"><input id="as-pb" type="checkbox" ${r.protectBless?'checked':''}> 保護祝福裝備</label><label class="as-row"${DISABLE_ANC?' style="display:none"':''}><input id="as-pa" type="checkbox" ${r.protectAnc?'checked':''}> 保護古代裝備</label><label class="as-row"><input id="as-pt" type="checkbox" ${r.protectAttr?'checked':''}> 保護屬性裝備</label><label class="as-row"><input id="as-ps" type="checkbox" ${r.protectSet?'checked':''}> 保護套裝詞綴裝備</label><label class="as-row"><input id="as-pl" type="checkbox" ${r.protectLegend?'checked':''}> 保護傳說裝備</label><label class="as-row"><input id="as-prelic" type="checkbox" ${r.protectRelic!==false?'checked':''}> 保護遺物</label><label class="as-row"><input id="as-pold" type="checkbox" ${r.protectOldSeries?'checked':''}> 保護解封後的「古老的」系列裝備</label><div class="as-help">解除封印完成後立即保護古老的劍、巨劍、弩槍、鱗甲、皮盔甲、長袍及金屬盔甲，避免成品在取得瞬間被規則標為廢品。</div><label class="as-row"><input id="as-pcraft" type="checkbox" ${r.protectCraftEquip?'checked':''}> 保護製作素材裝備；保留可製作 <input id="as-craftsets" type="number" min="1" max="99" value="${r.craftSets}"> 次的數量</label><div class="as-help">系統會掃描全部製作配方，例如配方需要「暗殺軍王之痕 ×1」，保留 1 次就至少留 1 件，多餘數量才依武器規則處理。</div></div>
       <div class="as-sec"><div class="as-title">材料與一般物品</div>${miscRows}<div class="as-help">任務物品、不可販賣物品與系統保護物品不會被處理。</div></div>
-      <div class="as-sec"><div class="as-title">個別例外（全遊戲物品）</div><div class="as-ex-tools"><input id="as-item-search" type="search" placeholder="輸入物品名稱搜尋" oninput="refreshAutoSellItemOptions()"><select id="as-item-type" onchange="refreshAutoSellItemOptions()"><option value="all">全部分類</option>${exceptionTypeRows}</select><select id="as-item-scope" onchange="refreshAutoSellItemOptions()"><option value="all">全部物品</option><option value="held">目前持有</option></select></div><div class="as-override-actions"><select id="as-item">${itemRows}</select><button class="as-keep-btn" onclick="setAutoSellOverride('keep')">永遠保留</button><button class="as-sell-btn" onclick="setAutoSellOverride('sell')">永遠販賣</button></div><div class="as-help">例外依物品本體全局套用，包含未取得物品及其所有強化、祝福、屬性與套裝版本。</div><div id="as-overrides">${rules}</div></div>
+      <div class="as-sec"><div class="as-title">自動賣出清單</div><div id="as-overrides">${rules}</div><div class="as-title" style="margin-top:12px">背包物品（點一下加入）</div><div class="as-help">身上穿的、上鎖的不會出現在這裡，也不會被賣。</div><div id="as-bag" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${bagRows}</div></div>
       <div class="as-actions"><button onclick="previewAutoSellRules()">預覽符合物品</button><button class="primary" onclick="saveAutoSellRules()">儲存規則</button></div></div>`;
     document.body.appendChild(el);
 }
@@ -2167,6 +2179,7 @@ function refreshAutoSellItemOptions(){
     select.innerHTML=ids.map(id=>`<option value="${id}">${DB.items[id]?.n||id}${DB.items[id]?.noSell?'（不可販賣）':''}</option>`).join('');
     if(!ids.length)select.innerHTML='<option value="">沒有符合的物品</option>';
 }
+function addAutoSellItem(id){if(!id||!DB.items[id])return;_readAutoSellForm();getAutoSellRules().overrides[id]='sell';openAutoSellRules()}   // 背包掃描點一下＝加入自動賣出清單
 function setAutoSellOverride(v){let id=document.getElementById('as-item').value;if(!id)return;_readAutoSellForm();getAutoSellRules().overrides[id]=v;openAutoSellRules()}
 function deleteAutoSellOverride(id){_readAutoSellForm();delete getAutoSellRules().overrides[id];openAutoSellRules()}
 function toggleLock(uid) {
@@ -2271,7 +2284,7 @@ function _socialNpcRow(rec) {
     return `<div class="bg-slate-900/80 border border-slate-700 rounded p-3 flex items-center justify-between gap-3">
         <div class="min-w-0">
             <div class="truncate">${name}${rec.clanLeader ? '<span class="ml-2 text-xs text-amber-300">盟主</span>' : ''}</div>
-            <div class="text-xs text-slate-500 mt-1 truncate">${_pvpTabEsc(rec.avatar || '男戰士')}・${clan}</div>
+            <div class="text-xs text-slate-500 mt-1 truncate">${_pvpTabEsc(rec.avatar || '男騎士')}・${clan}</div>
         </div>
         <button class="btn shrink-0 px-3 py-2 text-sm font-bold bg-cyan-950 hover:bg-cyan-900 border-cyan-700 text-cyan-100" onclick="socialOpenPrivateByName('${arg}')">私訊</button>
     </div>`;
@@ -2347,7 +2360,7 @@ function renderPvpTab() {
         return `<div class="bg-slate-900/80 border border-slate-700 rounded p-3 flex items-center justify-between gap-3">
             <div class="min-w-0">
                 <div class="truncate">${n}</div>
-                <div class="text-xs text-slate-500 mt-1">${_pvpTabEsc(r.avatar || '男戰士')}・死亡紀錄 ${Math.max(1, Number(r.deaths) || 1)}${chasing ? '・追殺中' : ''}</div>
+                <div class="text-xs text-slate-500 mt-1">${_pvpTabEsc(r.avatar || '男騎士')}・死亡紀錄 ${Math.max(1, Number(r.deaths) || 1)}${chasing ? '・追殺中' : ''}</div>
             </div>
             <button class="btn shrink-0 px-3 py-2 text-sm font-bold ${disabled ? 'opacity-50' : 'bg-red-900 hover:bg-red-800 border-red-600 text-red-100'}" ${disabled} onclick="openPvpRevengeTauntMenu(decodeURIComponent('${_nArg}'),event)">${chasing ? '追殺中' : '嗆他'}</button>
         </div>`;
@@ -2533,12 +2546,13 @@ function switchTab(t, btn) {
     Array.from(btn.parentElement.children).forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     // 👇 更新陣列名單
-    ['stats', 'equip', 'weapons', 'skill', 'armors', 'items', 'audit', 'pvp', 'clan', 'automation'].forEach(id => { let _e = document.getElementById(`tab-${id}`); if(_e) _e.classList.add('hidden'); });   // 🔧 v2.6.74 自動化設定改分頁內嵌（tab-automation）
+    ['stats', 'equip', 'weapons', 'skill', 'armors', 'items', 'audit', 'pvp', 'clan', 'automation', 'pets'].forEach(id => { let _e = document.getElementById(`tab-${id}`); if(_e) _e.classList.add('hidden'); });   // 🔧 v2.6.74 自動化設定改分頁內嵌（tab-automation）
     document.getElementById(`tab-${t}`).classList.remove('hidden');
     if(typeof setEquipmentPanelEmbedded === 'function') setEquipmentPanelEmbedded(t === 'equip');
     if(t === 'audit' && typeof renderAuditTab === 'function') renderAuditTab();
     if(t === 'pvp' && typeof renderPvpTab === 'function') renderPvpTab();
     if(t === 'clan' && typeof renderClanTab === 'function') renderClanTab();
+    if(t === 'pets' && typeof renderPetsTab === 'function') renderPetsTab(true);
     if(t === 'automation' && typeof syncNpcLanguageSetting === 'function') syncNpcLanguageSetting();
 }
 
@@ -2555,14 +2569,14 @@ function _allySkillOptions(ally, kind, cur) {
     let sorted = [...skills].filter(s => DB.skills[s] && !DB.skills[s].procOnly).sort((a, b) => (DB.skills[a].tier || 0) - (DB.skills[b].tier || 0));
     sorted.forEach(sid => {
         let sk = DB.skills[sid];
-        // ⚠️ ally.skills 皆為「該傭兵已學會」的技能→一律可選；不可用 skillReqLv 判可用性（那會依『目前玩家』職業誤判，使跨職業傭兵如幻術士的攻擊技全被 disabled）
+        // ⚠️ ally.skills 皆為「該傭兵已學會」的技能→一律可選；不可用 skillReqLv 判可用性（那會依『目前玩家』職業誤判，使跨職業傭兵的攻擊技全被 disabled）
         // 🧝 v3.8.5 唯一例外＝妖精屬性閘：改讀 **ally.elfEle**（傭兵快照自帶）而非 player.elfEle 就不會誤判。
         //    來源角色換屬性後那些魔法在他自己身上已是灰色不可用 → 擔任傭兵時直接不列（施放端 js/06 同步停放）。
         if (typeof allySkillElementOk === 'function' && !allySkillElementOk(ally, sid)) return;
         let match = (kind === 'atk')
             ? (sk.type === 'atk' && !sk.healSlot)
             : (kind === 'convert')
-            ? (sk.type === 'convert' || sid === 'sk_illu_cube_harmony')   // 🔄 轉換技能欄：type:'convert'（魂體/心靈/魔力奪取）＋ 立方和諧
+            ? (sk.type === 'convert')   // 🔄 轉換技能欄：type:'convert'（魂體/心靈/魔力奪取）
             : ((sk.type === 'heal' && !sk.autoBuff && !['sk_antidote', 'sk_holy_light', 'sk_cancel'].includes(sid)) || (sk.type === 'atk' && sk.healSlot));
         if (!match) return;
         opts += `<option value="${sid}"${cur === sid ? ' selected' : ''}>${sk.n}</option>`;
@@ -2598,11 +2612,12 @@ function renderSquadPanel() {
     let _summonSk = (typeof summonV2ActiveSk === 'function') ? summonV2ActiveSk() : '';
     let _summonVisible = _summons.length > 0 || !!(player && player._summonV2On && _summonSk && typeof summonV2Knows === 'function' && summonV2Knows(_summonSk));
     let _guards = (typeof guardV2List === 'function' && player && player.cls) ? guardV2List() : [];   // 🏰 城堡護衛（可招募的協同角色）
-    if (!allies.length && !_pets.length && !_summonVisible && !_guards.length) { panel.style.display = 'none'; _squadSigTeam = ''; _squadSigSkill = ''; return; }
+    let _charmOut = !!(player && player.charmed && player.charmed._charm && !player.charmed._downed);   // 💫 只有迷魅的怪在身邊也要顯示隊伍面板(看牠的血量)
+    if (!allies.length && !_pets.length && !_summonVisible && !_guards.length && !_charmOut) { panel.style.display = 'none'; _squadSigTeam = ''; _squadSigSkill = ''; return; }
     panel.style.display = '';
     let _sigAllies = allies.map(a => a._slot + ':' + (a._allyName || '') + ':' + (a._downed ? 'D' : '') + ':' + (a.lv || 1)).join('|');
     let sigTeam = _sigAllies
-        + '||P:' + _pets.map(p => p.uid + ':' + p.lv + ':' + (p._downed ? 'D' : '') + ':' + Math.round(p.hp / Math.max(1, p.mhp) * 20) + ':' + Math.round(p.mp / Math.max(1, p.mmp) * 20) + ':' + Math.round((p.exp || 0) / Math.max(1, petExpReq(p.lv)) * 20) + ':' + (p.potPct || 0) + ':' + Math.ceil((p._reviveCd || 0) / 10)).join('|')
+        + '||P:' + _pets.map(p => p.uid + ':' + p.lv + ':' + (p._downed ? 'D' : '') + ':' + Math.round(p.hp / Math.max(1, p.mhp) * 20) + ':' + Math.round(p.mp / Math.max(1, p.mmp) * 20) + ':' + Math.round((p.exp || 0) / Math.max(1, petExpReq(p.lv, p.form)) * 20) + ':' + (p.potPct || 0) + ':' + Math.ceil((p._reviveCd || 0) / 10)).join('|')
         + '||S:' + ((typeof summonTeamSignature === 'function') ? summonTeamSignature() : '')   // team 分頁：名單/倒地/等級＋寵物/召喚血量(5%階)變動才重建
         + '||G:' + ((typeof guardTeamSignature === 'function') ? guardTeamSignature() : '');   // 🏰 城堡護衛血量/倒地/復活倒數變動才重建
     let sigSkill = _sigAllies + '||E:' + allies.map(a => a.elfEle || '').join(',');   // 🩹 v3.2.74 skill 分頁只看傭兵名單/等級→戰鬥中寵物/召喚掉血不重建·開啟的技能下拉不被關
@@ -2635,6 +2650,7 @@ function renderSquadPanel() {
             </div>`;
         }).join('')
             + ((typeof renderPetTeamHTML === 'function') ? renderPetTeamHTML() : '')
+            + ((typeof renderCharmTeamHTML === 'function') ? renderCharmTeamHTML() : '')
             + ((typeof renderSummonTeamHTML === 'function') ? renderSummonTeamHTML() : '')
             + ((typeof renderMercSummonTeamHTML === 'function') ? renderMercSummonTeamHTML() : '')
             + ((typeof renderGuardTeamHTML === 'function') ? renderGuardTeamHTML() : '');   // 隊伍排列：傭兵 → 寵物 → 玩家召喚物 → 傭兵召喚物 → 🏰 城堡護衛
@@ -2655,7 +2671,7 @@ function renderSquadPanel() {
                 <div class="flex items-center gap-1 text-xs"><span class="text-purple-400 font-bold shrink-0" style="width:3rem;">轉換技能</span><select class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-purple-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyConvertSkill('${s}', this.value)">${_allySkillOptions(a, 'convert', a._convertSkill || '')}</select></div>
                 <div class="flex items-stretch gap-1 text-xs">
                     <span class="flex-1 flex items-center justify-center gap-0.5 text-amber-400 bg-slate-900/40 border border-amber-800 rounded py-0.5" title="低於此％時，喝隊長設定的藥水回血。0 = 關閉。">HP&lt;<input type="number" min="0" max="100" value="${potPct}" class="w-10 bg-slate-900 border border-amber-700 text-center text-white rounded" onchange="setAllyPotHp('${s}', this.value)">%喝水</span>
-                    <span class="flex-1 flex items-center justify-center gap-0.5 text-rose-400 bg-slate-900/40 border border-rose-800 rounded py-0.5" title="低於此％時，暫停施放消耗 HP 的技能（龍騎士 HP 技／轉換技能／立方和諧），退回普攻。0 = 關閉。">HP&lt;<input type="number" min="0" max="100" value="${skillPct}" class="w-10 bg-slate-900 border border-rose-700 text-center text-white rounded" onchange="setAllyHpSkill('${s}', this.value)">%停技</span>
+                    <span class="flex-1 flex items-center justify-center gap-0.5 text-rose-400 bg-slate-900/40 border border-rose-800 rounded py-0.5" title="低於此％時，暫停施放消耗 HP 的技能（轉換技能等），退回普攻。0 = 關閉。">HP&lt;<input type="number" min="0" max="100" value="${skillPct}" class="w-10 bg-slate-900 border border-rose-700 text-center text-white rounded" onchange="setAllyHpSkill('${s}', this.value)">%停技</span>
                 </div>
                 ${_allyAutoBuffChips(a)}
             </div>`;
@@ -2729,7 +2745,7 @@ function setAllyHealSkill(slot, val) { let a = _findAlly(slot); if (a) { a._heal
 function setAllyConvertSkill(slot, val) { let a = _findAlly(slot); if (a) { a._convertSkill = val || ''; saveGame(); } }   // 🔄 v2.6.4 轉換技能（type:'convert'／立方和諧）：即時生效（allyCubeTick/轉換施放路徑直接讀 ally._convertSkill）
 function setAllyHealHp(slot, val) { let a = _findAlly(slot); if (a) { a._healHpPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }
 function setAllyPotHp(slot, val) { let a = _findAlly(slot); if (a) { a._potHpPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }   // 🍶 v2.6.4 喝藥水門檻（獨立·低於此%→喝隊長藥水；0=關閉）
-function setAllyHpSkill(slot, val) { let a = _findAlly(slot); if (a) { a._hpSkillPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }   // 🛡️ v2.6.4 停耗HP技門檻（獨立·低於此%→暫停龍騎HP技/轉換技/立方和諧；0=關閉）
+function setAllyHpSkill(slot, val) { let a = _findAlly(slot); if (a) { a._hpSkillPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }   // 🛡️ v2.6.4 停耗HP技門檻（獨立·低於此%→暫停耗HP技/轉換技；0=關閉）
 function setAllyCastMp(slot, val) { let a = _findAlly(slot); if (a) { a._castMpPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }   // 🆕 v2.6.27 施法MP門檻（MP% 高於此才施放攻擊技·0=不限·allyActWithSkillGate 讀 allyCastMpPct）
 // 🆕 v3.0.97 逐兵「自動維持」開關（覆寫 _mercAutoOn·存 ally._autoBuff·隨存檔）。關閉 self-buff→立即結束該 buff 並重算（比照玩家取消打勾立即結束）；召喚/HoT/淨化/立方 屬即時或全隊·僅停止再施放不強制解除。
 function setAllyAutoBuff(slot, sid, on) {
@@ -2751,3 +2767,31 @@ function setAllyAutoBuff(slot, sid, on) {
 //    自 v2.6.74「自動化設定改分頁內嵌」後已不存在於任何 HTML/CSS，兩函式零外部呼叫者，寫入的 fb5_automation_collapsed 亦零讀取端。
 //    （比照 v2.6.76 處理 _applySquadCollapse/toggleSquadCollapse 的先例。）
 // 🔧 v2.6.76 傭兵隊伍面板收合已移除（恆展開·用戶要求）：_applySquadCollapse/toggleSquadCollapse 刪除、index.html 標題列改純標題無箭頭。
+
+// 🖥️ 畫面狀態 class（掛在 body）：取代 CSS 的 `:has(#某元素:not(.hidden))`。
+//   :has() 掛在 body / #col-center 這種大祖先、參數又看 .hidden 時，畫面上「任何」元素切換 hidden（戰鬥中每秒幾十次）
+//   都會讓瀏覽器把整個祖先子樹重算樣式。手機模擬（CPU 4x、掛機 30 秒）：樣式重算 −75%、長任務 30→7 次。
+//   改成只盯這幾個元素自己的 class，變了才同步到 body；MutationObserver 在下一次繪製前就跑完，畫面不會閃。
+//   scripts/check-css-has.mjs 會在 push 前擋下新的 `:has(… .hidden …)`；要加條件就加進下面的 MAP。
+//   核心 css/style.css 與外掛（afk-lmui、afk-npclist、afk-mobile）都讀這組 class → 放核心，不可做成能關掉的外掛。
+(function syncViewStateClasses() {
+    const MAP = [
+        ['battle-view', 'view-battle-fit', el => el.classList.contains('area-fit') && !el.classList.contains('hidden')],
+        ['town-view', 'view-town', el => !el.classList.contains('hidden')],
+        ['item-modal', 'item-modal-open', el => !el.classList.contains('hidden')],
+        ['town-interaction-container', 'town-int-open', el => !el.classList.contains('hidden')],
+        ['load-select-panel', 'load-select-open', el => !el.classList.contains('hidden')],
+    ];
+    function apply() {
+        for (const [id, cls, on] of MAP) {
+            const el = document.getElementById(id), want = !!el && on(el);
+            if (document.body.classList.contains(cls) !== want) document.body.classList.toggle(cls, want);
+        }
+    }
+    function start() {
+        const mo = new MutationObserver(apply);
+        for (const [id] of MAP) { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'] }); }
+        apply();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();

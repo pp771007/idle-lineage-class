@@ -3,8 +3,8 @@ let _vfxPending = [];
 let _vfxLastKillRect = null;   // 最近一次擊殺的怪物格螢幕位置（供稀有掉落閃光定位）
 let _mobRenderCache = null;    // 🚀 怪物列差異更新快取：{ ml節點, structKey, slots:[每格html字串] }→只重建有變動的格子，免每幀整列 innerHTML 重建
 const _VFX_ELE_COLOR = { fire:'#ff7a45', water:'#4fc3f7', wind:'#9ccc65', earth:'#d8a657', magic:'#ce93d8', normal:'#f1f5f9' };
-// ✨ 適合投射動畫的「非屬性」攻擊技能（屬性魔法已自動涵蓋）：技能id→投射外觀(屬性色 or 'axe'=旋轉金屬斧)
-const _VFX_PROJECTILE_SKILLS = { sk_illu_mindbreak:'magic' };   // 戰斧投擲是「下一擊」增益→改在攻擊觸發處射斧，不走 cast 樞紐；🏹 v3.2.14 三重矢移除：改在 js/07 命中迴圈射 3 支箭矢序列幀投射物(playArrowFx·快速連發)·不再播 CSS 風彈；✨ v3.2.15 究極光裂移除（用戶明令無 CSS）：本就被下方 SPELL_FX 閘擋住(有三層動態特效)＝死碼·顯式移除防日後 key 改名時 CSS 光彈偷跑回來；✨ v3.5.87 光箭移除：同究極光裂被 SPELL_FX 閘無條件擋住＝死碼
+// ✨ 適合投射動畫的「非屬性」攻擊技能（屬性魔法已自動涵蓋）：技能id→投射外觀(屬性色)
+const _VFX_PROJECTILE_SKILLS = {};   // 🏹 v3.2.14 三重矢移除：改在 js/07 命中迴圈射 3 支箭矢序列幀投射物(playArrowFx·快速連發)·不再播 CSS 風彈；✨ v3.2.15 究極光裂移除（用戶明令無 CSS）：本就被下方 SPELL_FX 閘擋住(有三層動態特效)＝死碼·顯式移除防日後 key 改名時 CSS 光彈偷跑回來；✨ v3.5.87 光箭移除：同究極光裂被 SPELL_FX 閘無條件擋住＝死碼
 function _vfxLayer() {
     // 🎚️ v3.0.73 vfx 圖層改掛進 #app-stage（與 item-modal/收集冊/浮動裝備視窗/浮動倉庫 同一 stacking context）→ 其 z-index(35) 才排得進這些 UI(z45~72)之下；先前掛 document.body(root context)時 z-index:45 正值恆蓋在 #app-stage(position:fixed→自成 context·z-auto)之上，使死亡殘影蓋掉所有 UID。#app-stage 為 position:fixed 且無 transform/filter→其 position:fixed 子層仍以「視窗」為容器塊(getBoundingClientRect 螢幕座標定位不變)。
     let host = document.getElementById('app-stage') || document.body;
@@ -572,7 +572,7 @@ function _vfxFlush() {
         }
         for (const it of reads) {
             let cx = it.cx, cy = it.top + it.h * 0.45;
-            // 🩸 傷害數字＝玩家最在意的資訊、單一輕量文字節點→放寬上限至 200，使快速/多段攻擊(龍騎士、AoE、傭兵/召喚同時打)也穩定顯示，不再整批被略過
+            // 🩸 傷害數字＝玩家最在意的資訊、單一輕量文字節點→放寬上限至 200，使快速/多段攻擊(AoE、傭兵/召喚同時打)也穩定顯示，不再整批被略過
             if (layer.childElementCount < 200) _vfxNumber(cx + (Math.random() * 26 - 13), it.top + it.h * 0.40, it.p.dmg, it.p.ele, it.p.big);
             // ⛔ v3.0.104 取消「白光打擊特效」（命中衝擊環 _vfxImpact + 火花）：改由命中濺血當唯一命中回饋（舊 _vfxImpact 衝擊環死碼已於 v3.5.48 清除·如需恢復可從 GitHub 版本庫找回）
             if (!window.__vfxOff && layer.childElementCount < 150) _vfxBlood(cx, cy, it.p.big);   // 🩸 v3.0.103 命中濺血（小顆·無殘留）：純特效·輕量小 div 故上限放寬至 150
@@ -691,7 +691,7 @@ function vfxKill(mob) {
         let cx = r.left + r.width * _anc.hc, cy = r.top + r.height * _anc.vc;   // 怪物身體中心(爆裂環/核心/粒子用)
         _vfxLastKillRect = { left: r.left, top: r.top, width: r.width, height: r.height };   // 供稀有掉落閃光定位
         let layer = _vfxLayer();
-        // 🩸 致命一擊的傷害數字：死怪在下一幀渲染前已被 settleDeadMobs 移除→渲染側 HP-delta 抓不到，故在此(格子 DOM 仍在)補顯示，使龍騎士等「一/二擊秒殺」也看得到傷害
+        // 🩸 致命一擊的傷害數字：死怪在下一幀渲染前已被 settleDeadMobs 移除→渲染側 HP-delta 抓不到，故在此(格子 DOM 仍在)補顯示，使「一/二擊秒殺」也看得到傷害
         if (!window.__vfxNumOff) { let _prev = (mob._vfxHp != null) ? mob._vfxHp : (mob.hp || 0);   // 🔢 v3.0.9 致命傷害數字改由「傷害數字開關」控制（獨立於特效）：數字開→即使關特效仍顯示致命傷害數字（死亡動畫本就照播）
           let _kdmg = Math.floor(_prev - mob.curHp);   // 自上次渲染以來累積傷害(含致命擊；curHp 可能為負＝溢殺，顯示實際打出的數值)
           let _kbig = mob._vfxBig; mob._vfxBig = false;   // 'crit'|'heavy'：致命擊的爆擊/重擊旗標仍在(渲染未重設)
@@ -868,18 +868,17 @@ function _vfxProjectile(rect, ele) {
         let _pcr = (typeof _pmCasterRect === 'function') ? _pmCasterRect() : null;   // 🧝 v3.0.49 玩家變身 sprite 顯示中→由 sprite 胸口發射
         if (_pcr) { sx = _pcr.left + _pcr.width / 2; sy = _pcr.top + _pcr.height * 0.35; }
         let tx = rect.left + rect.width / 2, ty = rect.top + rect.height * 0.45;
-        let isAxe = (ele === 'axe');
-        let col = isAxe ? '#cbd5e1' : (_VFX_ELE_COLOR[ele] || '#ce93d8');
+        let col = _VFX_ELE_COLOR[ele] || '#ce93d8';
         let orb = document.createElement('div'); orb.className = 'vfx-particle';
-        let osz = isAxe ? 18 : 15; orb.style.width = osz + 'px'; orb.style.height = osz + 'px';
+        let osz = 15; orb.style.width = osz + 'px'; orb.style.height = osz + 'px';
         orb.style.left = sx + 'px'; orb.style.top = sy + 'px';
-        orb.style.background = isAxe ? 'radial-gradient(circle, #f8fafc 25%, #94a3b8 78%, rgba(0,0,0,0) 100%)' : 'radial-gradient(circle, #fff 10%, ' + col + ' 55%, rgba(0,0,0,0) 100%)';
-        orb.style.boxShadow = isAxe ? '0 0 8px #cbd5e1' : ('0 0 14px ' + col + ', 0 0 26px ' + col);
+        orb.style.background = 'radial-gradient(circle, #fff 10%, ' + col + ' 55%, rgba(0,0,0,0) 100%)';
+        orb.style.boxShadow = '0 0 14px ' + col + ', 0 0 26px ' + col;
         layer.appendChild(orb);
         let dx = tx - sx, dy = ty - sy;
-        let _endTf = 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(1.05)' + (isAxe ? ' rotate(720deg)' : '');
+        let _endTf = 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(1.05)';
         let anim = orb.animate(
-            [ { transform: 'translate(-50%,-50%) scale(.7)' + (isAxe ? ' rotate(0deg)' : ''), opacity: .85 },
+            [ { transform: 'translate(-50%,-50%) scale(.7)', opacity: .85 },
               { transform: _endTf, opacity: 1 } ],
             { duration: 180, easing: 'cubic-bezier(.45,.05,.7,1)' }
         );
@@ -1239,11 +1238,15 @@ function _renderMobsImpl() {
     let _showMobEleFlag = (typeof _relicShowMobEle === 'function') && _relicShowMobEle();   // 🏺 巨大螞蟻的複眼：狀態直接顯示敵人屬性（一次計算·全格共用）
 
     let _back = backSlotsActive();                                   // 🆕 五格模式：原三格(前排)＋後排兩格
-    let _order = _back ? [0, 1, 2, 3, 4] : [0, 1, 2];                // 🆕 v2.7.47 前排(0,1,2)由左而右→再後排(3,4)由左而右；視覺左右序＝目標鎖定序一致(不再交錯)
+    // 🗺️ 2026-10-14 一般狩獵（mobGridMode·目前 3 格）：前排 0,1、後排 2(,3)，排在右側（#mob-list.mob-grid；3 格再加 .mob-grid3＝後排一隻置中）；
+    //    四軍王房等 5 格照舊。
+    let _four = mobGridMode();
+    let _nSlots = _four ? mobSlotCount() : 0;
+    let _order = _back ? (_four ? [0, 1, 2, 3].slice(0, _nSlots) : [0, 1, 2, 3, 4]) : [0, 1, 2];   // 🆕 v2.7.47 前排由左而右→再後排由左而右；視覺左右序＝目標鎖定序一致(不再交錯)
     for(let _k = 0; _k < _order.length; _k++) {
         let i = _order[_k];
         let m = mapState.mobs[i];
-        let _rowCls = (i >= 3) ? ' mob-back' : (_back ? ' mob-front' : '');   // 後排/前排版位 class（三格模式不加→沿用原版面）
+        let _rowCls = (i >= (_four ? 2 : 3)) ? ' mob-back' : (_back ? ' mob-front' : '');   // 後排/前排版位 class（三格模式不加→沿用原版面）
         if (m) {
             let act = (i === mapState.targetIdx) ? 'active' : '';
             let _mi = mobStillImg(m.n, m.img, true);   // 🎬 戰鬥初始幀：有動畫→優先 spawn_0（無 spawn 退 idle_0·再退舊靜態）；無動畫→舊靜態
@@ -1271,8 +1274,6 @@ function _renderMobsImpl() {
                 _badgeTags = order.filter(k => m.st[k] > 0).map(k =>
                     `<span class="px-1 rounded bg-purple-900/70 text-purple-200 text-[10px]">${STATUS_NAME[k]}</span>`).join(' ');
             }
-            // 🐉 弱點曝光：以堆疊層數顯示（非 m.st，獨立 m.weakExpose）；🩹 狀態開關關閉時不顯示
-            if(_showMobStatus && m.weakExpose > 0) _badgeTags = (_badgeTags ? _badgeTags + ' ' : '') + `<span class="px-1 rounded bg-amber-900/70 text-amber-200 text-[10px] font-bold">弱點${m.weakExpose}</span>`;
             // 🔮 席琳恩賜：名字下方常駐標誌（置於異常狀態列最前，不會被狀態列覆蓋）；🩹 狀態開關關閉時亦隱藏
             if(_showMobStatus && m._grace) _badgeTags = `<span class="px-1 rounded bg-red-950/80 grace-badge text-[10px] font-bold">席琳恩賜</span>` + (_badgeTags ? ' ' + _badgeTags : '');
             if(_showMobStatus && m._reflectWall && state.ticks <= m._reflectWall.until) { let _rwK = { melee: '近距離', ranged: '遠距離', magic: '魔法' }[m._reflectWall.kind] || ''; _badgeTags = `<span class="px-1 rounded ${m._reflectWall.block ? 'bg-violet-950/80 text-violet-300' : 'bg-red-950/80 text-red-300'} text-[10px] font-bold">${m._reflectWall.block ? '免疫' : '反射'}${_rwK}</span>` + (_badgeTags ? ' ' + _badgeTags : ''); }   // 🌅 恐怖的面貌（免疫·紫）／血壁空間（反射·紅）自增益徽章
@@ -1345,6 +1346,8 @@ function _renderMobsImpl() {
     // 🚀 差異更新提交：結構(格數/地圖/頭目大圖模式)不變時，只重建「字串有變」的格子；
     //    單體戰鬥下 5 格只重建 1 格（其餘 4 格 DOM/圖片不動）→ 大幅降低 layout/paint 與卡頓。
     let _ml = document.getElementById('mob-list');
+    if (_ml && _ml.classList.contains('mob-grid') !== _four) _ml.classList.toggle('mob-grid', _four);
+    if (_ml && _ml.classList.contains('mob-grid3') !== (_four && _nSlots === 3)) _ml.classList.toggle('mob-grid3', _four && _nSlots === 3);
     if (_ml) {
         let _structKey = _order.join(',') + '|' + mapState.current + '|' + (BOSS_BIG_MAPS.includes(mapState.current) ? 'B' : '');
         let _c = _mobRenderCache;
@@ -1906,9 +1909,9 @@ const MORPH_ANIM_3DIR = new Set(['烈焰的死亡騎士', '真死亡騎士 冥�
 //   assets/classanim/<avatar>/：檔名＝<武器key>_<idle|attack|hurt>_N.png（+_s 影子）＋全武器共用 skill_N/death_N（+_s）·無 _w 層。
 //   武器 key 由 atkSpdFamily(手上武器) 映射；清單外武器一律 sword1（用戶 CSV 規則「裝備列表沒有的武器就用單手劍顯示」）·空手/箭矢=unarmed。
 //   ⚠️新職業：部署 assets/classanim/<avatar>/（46 spr 一次 --multi 共畫布·管線見記憶 class-battle-anim-project）後把 avatar 名加進 Set（一行）。
-const CLASS_BATTLE_ANIM = new Set(['男騎士', '女騎士', '男妖精', '女妖精', '王子', '公主', '男法師', '女法師', '男黑暗妖精', '女黑暗妖精', '男龍騎士', '女龍騎士', '男幻術士', '女幻術士', '男戰士', '女戰士']);   // 🗡️ v3.0.70 全 16 avatar（職業動態 CSV 全部轉檔完成）
-const CLASS_ANIM_WPN_KEY = { '匕首': 'dagger', '單手劍': 'sword1', '雙手劍': 'sword2', '單手鈍器': 'blunt', '雙手鈍器': 'blunt', '弓': 'bow', '十字弓': 'bow', '單手矛': 'spear', '雙手矛': 'spear', '魔杖': 'wand', '雙刀': 'dual', '鋼爪': 'claw', '鎖鏈劍': 'chainsword', '奇古獸': 'qigu' };   // 🏹 v3.0.89 十字弓沿用弓動畫（有弓動畫的職業裝十字弓即播弓·龍騎士/戰士無弓動畫仍走各自 fallback）
-// 🗡️ v3.0.70 per-avatar 可用武器變體＋fallback（CSV 規則：裝備列表沒有的武器→各職 fallback 顯示·法師/幻術士=魔杖·黑暗妖精=匕首·戰士=雙手劍·其餘=單手劍）
+const CLASS_BATTLE_ANIM = new Set(['男騎士', '女騎士', '男妖精', '女妖精', '王子', '公主', '男法師', '女法師', '男黑暗妖精', '女黑暗妖精']);   // 🗡️ v3.0.70 全 avatar（職業動態 CSV 全部轉檔完成）
+const CLASS_ANIM_WPN_KEY = { '匕首': 'dagger', '單手劍': 'sword1', '雙手劍': 'sword2', '單手鈍器': 'blunt', '雙手鈍器': 'blunt', '弓': 'bow', '十字弓': 'bow', '單手矛': 'spear', '雙手矛': 'spear', '魔杖': 'wand', '雙刀': 'dual', '鋼爪': 'claw' };   // 🏹 v3.0.89 十字弓沿用弓動畫（有弓動畫的職業裝十字弓即播弓）
+// 🗡️ v3.0.70 per-avatar 可用武器變體＋fallback（CSV 規則：裝備列表沒有的武器→各職 fallback 顯示·法師=魔杖·黑暗妖精=匕首·其餘=單手劍）
 const CLASS_ANIM_SETS = {
     '男騎士':     { w: ['unarmed','sword2','dagger','sword1','blunt','bow','spear'], fb: 'sword1' },
     '女騎士':     { w: ['unarmed','sword2','dagger','sword1','blunt','bow','spear'], fb: 'sword1' },
@@ -1919,17 +1922,11 @@ const CLASS_ANIM_SETS = {
     '男法師':     { w: ['unarmed','dagger','sword1','wand','bow','spear','blunt'], fb: 'wand' },
     '女法師':     { w: ['unarmed','wand','dagger','sword1','spear','bow','blunt'], fb: 'wand' },
     '男黑暗妖精': { w: ['unarmed','dagger','sword1','bow','dual','claw','gauntlet'], fb: 'dagger' },
-    '女黑暗妖精': { w: ['unarmed','dagger','sword1','bow','dual','claw','gauntlet'], fb: 'dagger' },
-    '男龍騎士':   { w: ['unarmed','sword1','sword2','blunt','chainsword','gauntlet'], fb: 'sword1' },
-    '女龍騎士':   { w: ['unarmed','sword2','sword1','blunt','chainsword','gauntlet'], fb: 'sword1' },
-    '男幻術士':   { w: ['unarmed','blunt','wand','bow','qigu'], fb: 'wand' },
-    '女幻術士':   { w: ['unarmed','blunt','wand','bow','qigu'], fb: 'wand' },
-    '男戰士':     { w: ['unarmed','dblunt','blunt','spear','sword2'], fb: 'sword2' },
-    '女戰士':     { w: ['unarmed','blunt','dblunt','spear','sword2'], fb: 'sword2' }
+    '女黑暗妖精': { w: ['unarmed','dagger','sword1','bow','dual','claw','gauntlet'], fb: 'dagger' }
 };
 // 🧝 v3.5.21 真夏納（Lv85 變形控制戒指·js/02 classMorph）：職業式變身——資料夾 assets/classanim/真夏納<avatar>{,F,2}，
 //   檔名/武器變體規則與職業動態完全相同（<wpn>_idle|attack|hurt_＋共用 skill/death·三方向共畫布·雙特效層已烙入 body 故無 _w）。
-//   變體集依來源 spr 實際動作（戰士無雙手劍動作→退斧；龍騎士有矛動作；黑暗妖精弓=十字弓動作）。部署器＝scratchpad/deploy_true_shanna.js。
+//   變體集依來源 spr 實際動作（黑暗妖精弓=十字弓動作）。部署器＝scratchpad/deploy_true_shanna.js。
 const TRUE_SHANNA_ANIM_SETS = {
     '王子':       { w: ['unarmed','sword1','dagger','spear','bow','blunt','sword2'], fb: 'sword1' },
     '公主':       { w: ['unarmed','sword1','dagger','spear','bow','blunt','sword2'], fb: 'sword1' },
@@ -1940,20 +1937,14 @@ const TRUE_SHANNA_ANIM_SETS = {
     '男法師':     { w: ['unarmed','dagger','sword1','wand','bow','spear','blunt'], fb: 'wand' },
     '女法師':     { w: ['unarmed','dagger','sword1','wand','bow','spear','blunt'], fb: 'wand' },
     '男黑暗妖精': { w: ['unarmed','dagger','sword1','bow','dual','claw','blunt'], fb: 'dagger' },
-    '女黑暗妖精': { w: ['unarmed','dagger','sword1','bow','dual','claw','blunt'], fb: 'dagger' },
-    '男龍騎士':   { w: ['unarmed','sword1','sword2','blunt','chainsword','spear'], fb: 'sword1' },
-    '女龍騎士':   { w: ['unarmed','sword1','sword2','blunt','chainsword','spear'], fb: 'sword1' },
-    '男幻術士':   { w: ['unarmed','blunt','wand','bow','qigu'], fb: 'wand' },
-    '女幻術士':   { w: ['unarmed','blunt','wand','bow','qigu'], fb: 'wand' },
-    '男戰士':     { w: ['unarmed','blunt','spear','dblunt'], fb: 'blunt' },
-    '女戰士':     { w: ['unarmed','blunt','spear','dblunt'], fb: 'blunt' }
+    '女黑暗妖精': { w: ['unarmed','dagger','sword1','bow','dual','claw','blunt'], fb: 'dagger' }
 };
 // 🧭 v3.7.65 職業動畫「八方向」（用戶：人物沒有八方向與行走動態·取代 v3.2.12 的三方向 L/F/R）
 //   資料夾後綴 ANIM_DIR_SFX8＝dir 0..7 →（NW 順時針·與怪物/寵物同羅盤 _vec2dir）：
 //     0 NW='<av>2'  1 N='<av>F'  2 NE='<av>'(基準夾)  3 E='<av>d3'  4 SE='d4'  5 S='d5'  6 SW='d6'  7 W='d7'
 //   ⚠️ 八個資料夾必須共畫布（scratchpad/deploy_class8.js：先 measure 全八方向聯集 box，再逐方向以同 box emit）→ 換向只換幀不重建 DOM、尺寸/left 不跳。
 //   ⚠️ 變身（morphanim）目前仍是三方向資產 → ANIM_DIR_SFX3 把八方向折回 NW/N/NE 三夾（右半球→NE·左半球→NW）。
-const CLASS_ANIM_8DIR = new Set(['男騎士', '女騎士', '男妖精', '女妖精', '王子', '公主', '男法師', '女法師', '男黑暗妖精', '女黑暗妖精', '男龍騎士', '女龍騎士', '男幻術士', '女幻術士', '男戰士', '女戰士']);   // 🏹 v3.7.65 全 16 職業（八方向共畫布部署完成·含 <武器>_walk 行走幀）
+const CLASS_ANIM_8DIR = new Set(['男騎士', '女騎士', '男妖精', '女妖精', '王子', '公主', '男法師', '女法師', '男黑暗妖精', '女黑暗妖精']);   // 🏹 v3.7.65 全職業（八方向共畫布部署完成·含 <武器>_walk 行走幀）
 const ANIM_DIR_SFX8 = ['2', 'F', '', 'd3', 'd4', 'd5', 'd6', 'd7'];
 const ANIM_DIR_SFX3 = ['2', 'F', '', '', '', '', '2', '2'];
 function _animDirSfx(dir, eight) { let t = eight ? ANIM_DIR_SFX8 : ANIM_DIR_SFX3; let d = t[((dir | 0) % 8 + 8) % 8]; return d == null ? '' : d; }
@@ -1975,10 +1966,9 @@ function _classFacing8(who, el) {
         who._faceD = d; return d;
     } catch (e) { return cur; }
 }
-function _classAnimWpnKey(p, set) {   // p=玩家或傭兵（讀 p.eq.wpn/offwpn）
+function _classAnimWpnKey(p, set) {   // p=玩家或傭兵（讀 p.eq.wpn）
     let w = p && p.eq && p.eq.wpn;
     if (!w || !w.id) return 'unarmed';
-    if (p.cls === 'warrior' && p.eq.offwpn && set.w.indexOf('dblunt') >= 0) return 'dblunt';   // ⚔️ 戰士雙持（副手武器欄有東西）→ 雙持鈍器動作
     let _di = (typeof DB !== 'undefined' && DB.items) ? DB.items[w.id] : null;
     if (_di && _di.animFam && set.w.indexOf(_di.animFam) >= 0) return _di.animFam;   // 🥊 動畫專屬武器種類（鐵手甲＝atkSpdFamily 歸弓·但動畫另有一套 gauntlet_*）
     let fam = (typeof atkSpdFamily === 'function') ? atkSpdFamily(w.id) : null;
@@ -2025,7 +2015,7 @@ let _morphBattleCache = {};   // 形態 key（morph:<名>｜class:<avatar>:<武�
 function _battleSpriteProbe(form) {
     _morphBattleCache[form.key] = 'probing';
     let out = { shadow: {}, weapon: {} };
-    let pending = form.wpn ? 20 : 18;   // 🗡️ v3.0.70 職業形態多探 2 項：武器專屬 skill（<wpn>_skill_·黑暗妖精雙刀/鋼爪·龍騎士雙手劍/鎖鏈劍·戰士各武器）；🚶 v3.7.65 動作多一組 walk（body/shadow/weapon 共 3）
+    let pending = form.wpn ? 20 : 18;   // 🗡️ v3.0.70 職業形態多探 2 項：武器專屬 skill（<wpn>_skill_·黑暗妖精雙刀/鋼爪）；🚶 v3.7.65 動作多一組 walk（body/shadow/weapon 共 3）
     let finish = () => { if (--pending <= 0) {
         // 🏹 弓/十字弓無專屬技能動畫(bow_skill_)：施放技能(如妖精三重矢)時原退回「通用 skill_」空手施法姿勢→改借用弓攻擊(bow_attack)姿勢，持弓者施放技能不再變空手（玩家＋傭兵共用此快取·同套用影子層）
         if (form.wpn === 'bow' && !out.wskill && out.attack) { out.wskill = out.attack; if (out.shadow && !out.shadow.wskill && out.shadow.attack) out.shadow.wskill = out.shadow.attack; }
@@ -2076,9 +2066,9 @@ function _pmCurActivePrio() {   // 目前「仍在播放中」動作的權重（
     if (st.act === 'death') return _PM_PRIO.death;   // 死亡鎖定
     let form = _playerBattleForm(); let a = form && _morphBattleCache[form.key];
     if (!a || a === 'probing') return 0;
-    let seq = (st.act === 'skill' && !st.skGen && a.wskill) ? a.wskill : a[st.act];
+    let seq = (st.act === 'skill' && a.wskill) ? a.wskill : a[st.act];
     if (!seq || !seq.length) return 0;
-    let fms = (st.act === 'attack') ? _atkFrameMs((player.d && player.d.aspd) || 0, seq.length)
+    let fms = (st.act === 'attack') ? _pmAtkFrameMs(seq.length)
         : (st.act === 'skill') ? _skillFrameMs(seq.length) : (1000 / MOB_ANIM_FPS);
     return ((Date.now() - st.t) < seq.length * fms) ? (_PM_PRIO[st.act] || 0) : 0;   // 仍在播→其權重·已播完→0(idle)
 }
@@ -2088,8 +2078,8 @@ function _playerMorphTrigger(k, skId) {   // js/04 attack／castSkill·manualCas
     if (st.act === 'death') return;   // 死亡鎖定：復活前不接受任何動作（最高權重）
     let newP = _PM_PRIO[k] || 0, curP = _pmCurActivePrio();   // 🎬 v3.0.106 依權重決定是否打斷（hurt>skill>attack）
     if (newP < curP) { if (k === 'attack') st.pendAtk = true; return; }   // 權重較低→不打斷（attack 排隊·hurt/skill 直接略過）
-    if (k === 'skill') st.skGen = (skId === 'sk_warrior_roar');   // 🗡️ v3.0.70 戰士咆哮用「通用」skill 動作（CSV 規則）·其餘技能優先武器專屬 wskill
     st.act = k; st.t = Date.now(); st.pendAtk = false;   // 🔮 新動作生效→清掉排隊中的攻擊（已被取代）
+    if (typeof _pmScheduleFrame === 'function') _pmScheduleFrame(0);   // ⚔️ 出手當下就換第一幀（不等下一拍 8fps ticker，最多慢 125ms）
 }
 function _playerMorphRemove() {
     if (_pmState.el) { try { _pmState.el.remove(); } catch (e) {} }
@@ -2194,6 +2184,31 @@ function _atkFrameMs(intervalSec, seqLen) {
 // 🔮 v3.0.94 技能動畫播放速度隨施法速度：比照 _atkFrameMs·間隔＝castLock(tick·職業施法冷卻下限·js/07 施法鎖同源)÷10 秒·只加速不放慢（慢施法維持 8fps 早播完待機）
 //    v3.0.96 第2參 lockTicks（選用）：傭兵傳自身 ally.d.castLock；未傳＝主玩家 player.d.castLock（fallback 12）
 function _skillFrameMs(seqLen, lockTicks) { return _atkFrameMs((lockTicks != null ? lockTicks : ((player && player.d && player.d.castLock) || 12)) / 10, seqLen); }
+// ⚔️ 2026-10-15 主角攻擊動畫填滿整個攻擊間隔（站長回報「人物攻擊卡卡的、會停頓」）：
+//   舊制（_atkFrameMs）慢攻維持 8fps → 6 幀 0.75 秒就播完，離下一刀(例 0.88 秒)的空檔插進一格「全域時鐘的待機幀」
+//   （每次都是隨機姿勢）→ 每刀之間身體抖一下。改為每幀＝攻擊間隔÷幀數（上限 PM_ATK_FRAME_MAX_MS，比這更慢才早播完回待機），
+//   播完到下一刀之間停在收刀幀（PM_ATK_HOLD_MS 內），並由 _pmScheduleFrame 準時換幀（8fps ticker 跟 147ms 這種幀長對不齊，會一格長一格短）。
+//   只改主角；傭兵仍走 _atkFrameMs（沒有準時換幀，拉長幀長在 8fps ticker 上反而更不均）。
+const PM_ATK_FRAME_MAX_MS = 200;
+const PM_ATK_HOLD_MS = 250;
+function _pmAtkFrameMs(seqLen) {
+    let iv = (typeof playerAttackIntervalTicks === 'function') ? playerAttackIntervalTicks(true) / 10 : ((player.d && player.d.aspd) || 0);   // 實際出手間隔（含緩速）
+    if (!(iv > 0) || !(seqLen > 0)) return 1000 / MOB_ANIM_FPS;
+    return Math.max(45, Math.min(PM_ATK_FRAME_MAX_MS, iv * 1000 / seqLen));
+}
+// 單次動作（攻擊/技能/受擊）播放中：在下一幀的時間點補跑一次 _playerMorphApply（只排最近的一個；照 ticker 的條件跳過背景/補跑）
+let _pmFrameTimer = null, _pmFrameAt = 0;
+function _pmScheduleFrame(ms) {
+    let at = Date.now() + ms;
+    if (_pmFrameTimer !== null && _pmFrameAt <= at + 2) return;
+    if (_pmFrameTimer !== null) clearTimeout(_pmFrameTimer);
+    _pmFrameAt = at;
+    _pmFrameTimer = setTimeout(function () {
+        _pmFrameTimer = null;
+        if (document.hidden || (typeof catchupActive === 'function' && catchupActive())) return;
+        try { _playerMorphApply(); } catch (e) {}
+    }, Math.max(0, ms));
+}
 // 🧍 v3.7.81 用戶指定改回原本的固定站位（不移動）＝回到 v3.6.89 行為：玩家恆站前排中央、朝向永遠對攻擊目標、待機幀不播行走。
 //   走位實作（_playerMoveStep）原樣保留，只由此開關關閉；要改回走位把此值改 true 即可（行走幀仍照常預載）。
 const PLAYER_BATTLE_WALK = false;
@@ -2308,17 +2323,19 @@ function _playerMorphApply() {   // 8fps ticker 驅動（🗡️ v3.0.67 形態�
     let act = null, f = 0, _useW = false;
     if (_pmState.act) {
         let seq = a[_pmState.act];
-        if (_pmState.act === 'skill' && !_pmState.skGen && a.wskill) { seq = a.wskill; _useW = true; }   // 🗡️ v3.0.70 武器專屬 skill 優先（戰士咆哮 skGen→通用）
+        if (_pmState.act === 'skill' && a.wskill) { seq = a.wskill; _useW = true; }   // 🗡️ v3.0.70 武器專屬 skill 優先
         if (seq) {
-            let _fms = (_pmState.act === 'attack') ? _atkFrameMs((player.d && player.d.aspd) || 0, seq.length)   // ⚔️ v3.0.91 攻擊動畫隨攻速加速
+            let _fms = (_pmState.act === 'attack') ? _pmAtkFrameMs(seq.length)   // ⚔️ 攻擊動畫填滿攻擊間隔（見 _pmAtkFrameMs）
                 : (_pmState.act === 'skill') ? _skillFrameMs(seq.length)   // 🔮 v3.0.94 技能動畫隨施法速度加速（castLock 內播完）
                 : (1000 / MOB_ANIM_FPS);
-            let ff = Math.floor((Date.now() - _pmState.t) / _fms);
+            let _el = Date.now() - _pmState.t;
+            let ff = Math.floor(_el / _fms);
             if (_pmState.act === 'death') { act = 'death'; f = Math.min(ff, seq.length - 1); }
-            else if (ff < seq.length) { act = _pmState.act; f = ff; }
+            else if (ff < seq.length) { act = _pmState.act; f = ff; _pmScheduleFrame((ff + 1) * _fms - _el); }
+            else if (_pmState.act === 'attack' && !_pmState.pendAtk && _el < seq.length * _fms + PM_ATK_HOLD_MS) { act = 'attack'; f = seq.length - 1; _pmScheduleFrame(seq.length * _fms + PM_ATK_HOLD_MS - _el); }   // 收刀幀停一下等下一刀，不閃待機
             else {
                 _pmState.act = null;
-                if (_pmState.pendAtk && a.attack) { _pmState.pendAtk = false; _pmState.act = 'attack'; _pmState.t = Date.now(); act = 'attack'; f = 0; _useW = false; }   // 🎬 v3.0.106 skill／hurt 播完→接播排隊中的攻擊動畫
+                if (_pmState.pendAtk && a.attack) { _pmState.pendAtk = false; _pmState.act = 'attack'; _pmState.t = Date.now(); act = 'attack'; f = 0; _useW = false; _pmScheduleFrame(_pmAtkFrameMs(a.attack.length)); }   // 🎬 v3.0.106 skill／hurt 播完→接播排隊中的攻擊動畫
                 else _pmState.pendAtk = false;
             }
         } else if (_pmState.act !== 'death') _pmState.act = null;   // 該動作無序列→回待機（death 無序列則維持 idle）
@@ -2359,10 +2376,13 @@ if (typeof manualCast === 'function' && !manualCast._pmWrapped) {
 //    改為「玩家＋傭兵依招募順序站固定位置」：玩家＋傭兵1~3 前排（bottom 2·z 28）·傭兵4~7 後排（bottom 26·z 4=站後面有景深）·永不跳位、zIndex 恆為正。
 function _partySpritePos() {
     let five = true; try { five = (typeof backSlotsActive !== 'function') || backSlotsActive(); } catch (e) {}
+    // 🗺️ 2026-10-14 一般狩獵（怪物在右）：玩家與傭兵站左側（站長：人物在左、怪物在右）
+    let four = false; try { four = typeof mobGridMode === 'function' && mobGridMode(); } catch (e) {}
+    if (four) return { P: { x: '20%', b: 2 }, A: [{ x: '34%', b: 2 }, { x: '7%', b: 2 }, { x: '27%', b: 26 }, { x: '13%', b: 26 }, { x: '40%', b: 26 }, { x: '3%', b: 26 }, { x: '20%', b: 40 }] };
     return five ? { P: { x: '45.5%', b: 2 }, A: [{ x: '23%', b: 2 }, { x: '66%', b: 2 }, { x: '83.5%', b: 2 }, { x: '28%', b: 26 }, { x: '51%', b: 26 }, { x: '70.5%', b: 26 }, { x: '7%', b: 26 }] }
                 : { P: { x: '39%', b: 2 },   A: [{ x: '28%', b: 2 }, { x: '62%', b: 2 }, { x: '72%', b: 2 }, { x: '33.5%', b: 26 }, { x: '57%', b: 26 }, { x: '77.5%', b: 26 }, { x: '23%', b: 26 }] };
 }
-let _allySpriteStates = {};   // slot → { act, t, prevHp, el, imgs, key, skGen }
+let _allySpriteStates = {};   // slot → { act, t, prevHp, el, imgs, key }
 function _allySpriteTrigger(ally, k, skId) {   // js/06 掛點：allyAttackOnce→'attack'·三施法函式→'skill'
     try {
         if (!ally || ally._slot == null) return;
@@ -2370,10 +2390,9 @@ function _allySpriteTrigger(ally, k, skId) {   // js/06 掛點：allyAttackOnce�
         if (!st || st.act === 'death') return;
         if (st.act === 'skill' && k === 'attack') {   // 🔮 v3.0.96 鏡像玩家(v3.0.94)：技能動畫優先——攻擊排隊(pendAtk)到技能播完才播（傭兵受擊走 HP-delta 本就不打斷施法）
             let a = _morphBattleCache[st.key];
-            let seq = (a && a !== 'probing') ? ((!st.skGen && a.wskill) ? a.wskill : a.skill) : null;
+            let seq = (a && a !== 'probing') ? (a.wskill ? a.wskill : a.skill) : null;
             if (seq && (Date.now() - st.t) < seq.length * _skillFrameMs(seq.length, (ally.d && ally.d.castLock) || 12)) { st.pendAtk = true; return; }
         }
-        if (k === 'skill') st.skGen = (skId === 'sk_warrior_roar' || skId === '咆哮');   // 傭兵端傳技能名·玩家端傳技能 id
         st.act = k; st.t = Date.now(); st.pendAtk = false;   // 新動作生效→清掉排隊中的攻擊（已被取代）
     } catch (e) {}
 }
@@ -2397,7 +2416,7 @@ function _allySpritesApply() {   // 8fps ticker 驅動
         if (a === undefined) { _battleSpriteProbe(form); return; }
         if (!a || a === 'probing') return;
         let slot = String(ally._slot);
-        let st = _allySpriteStates[slot] || (_allySpriteStates[slot] = { act: null, t: 0, prevHp: null, el: null, imgs: null, key: null, dkey: null, skGen: false, pendAtk: false });
+        let st = _allySpriteStates[slot] || (_allySpriteStates[slot] = { act: null, t: 0, prevHp: null, el: null, imgs: null, key: null, dkey: null, pendAtk: false });
         st.key = form.key;   // 🧭 v3.2.12 快取查找鍵含朝向（供 _allySpriteTrigger 讀）·每輪更新
         if (st.dkey !== form.domKey) { if (st.el) { try { st.el.remove(); } catch (e) {} } st.el = null; st.imgs = null; st.act = null; st.dkey = form.domKey; st.pendAtk = false; }   // 🔮 v3.0.96 換形態→清排隊攻擊；🧭 v3.2.12 只在武器/形態(domKey)變時重建·換朝向(form.key 變·domKey 不變)只換幀
         // 受擊：curHp-delta（涵蓋所有傷害落點）🎬 v3.0.106 播放權重 hurt>skill：受擊可打斷施法（只有死亡不被打斷·鏡像玩家）
@@ -2427,7 +2446,7 @@ function _allySpritesApply() {   // 8fps ticker 驅動
         let act = null, f = 0, _useW = false;
         if (st.act) {
             let seq = a[st.act];
-            if (st.act === 'skill' && !st.skGen && a.wskill) { seq = a.wskill; _useW = true; }
+            if (st.act === 'skill' && a.wskill) { seq = a.wskill; _useW = true; }
             if (seq) {
                 let _fms = (st.act === 'attack') ? _atkFrameMs(((ally.d && ally.d.aspd) ? ally.d.aspd : (typeof atkSpdBaseItv === 'function' ? atkSpdBaseItv(ally) : 0)), seq.length)   // ⚔️ v3.0.98 傭兵攻擊動畫用實際排程間隔 ally.d.aspd（含加速等·與 js/06 攻速一致；原用 base 會動畫比攻擊慢）
                     : (st.act === 'skill') ? _skillFrameMs(seq.length, (ally.d && ally.d.castLock) || 12)   // 🔮 v3.0.96 傭兵技能動畫隨自身施法速度（鏡像玩家 v3.0.94）

@@ -4,7 +4,7 @@ const MAP_CATEGORIES = {
         {v:'town_silver_knight',t:'銀騎士村'}, {v:'town_elf',t:'妖精森林'}, {v:'town_talking',t:'說話之島'},
         {v:'town_gludio',t:'燃柳村'}, {v:'town_gludin',t:'古魯丁村莊'}, {v:'town_giran',t:'奇岩'}, {v:'town_heine',t:'海音'},
         {v:'town_oren',t:'歐瑞村莊'}, {v:'town_aden',t:'亞丁',c:'#facc15'}, {v:'town_ivory_tower',t:'象牙塔'}, {v:'town_witon',t:'威頓村'},
-        {v:'town_sherine',t:'席琳神殿',c:'#4ade80',classicHide:true}, {v:'town_silent',t:'沉默洞穴',c:'#a78bfa'}, {v:'town_hyperia',t:'希培利亞村莊',c:'#c084fc'}, {v:'town_behemoth',t:'貝希摩斯',c:'#f59e0b'}, {v:'town_flame_audience',t:'炎魔謁見所',c:'#ff6b35',questReq:'demonTemple',affinityReq:1000}, {v:'town_elder_council',t:'長老會議廳',c:'#a5b4fc'}
+        {v:'town_sherine',t:'席琳神殿',c:'#4ade80',classicHide:true,closed:true}, {v:'town_silent',t:'沉默洞穴',c:'#a78bfa'}, {v:'town_flame_audience',t:'炎魔謁見所',c:'#ff6b35',questReq:'demonTemple',affinityReq:1000}, {v:'town_elder_council',t:'長老會議廳',c:'#a5b4fc'}
     ],
     wild: [
         {v:'silver_knight',t:'銀騎士地區'}, {v:'talking_island',t:'說話之島周邊'}, {v:'zone_01',t:'妖精森林周邊'},
@@ -21,10 +21,10 @@ const MAP_CATEGORIES = {
         {v:'zone_15',t:'眠龍洞穴1樓'},{v:'zone_16',t:'眠龍洞穴2樓'},{v:'zone_17',t:'眠龍洞穴3樓'},
         {v:'crystal_cave1',t:'水晶洞穴1樓'},{v:'crystal_cave2',t:'水晶洞穴2樓'},{v:'crystal_cave3',t:'水晶洞穴3樓'},
         {v:'zone_18',t:'奇岩地監1樓'},{v:'zone_19',t:'奇岩地監2樓'},{v:'zone_20',t:'奇岩地監3樓'},{v:'zone_21',t:'奇岩地監4樓'},
-        {v:'zone_22',t:'沙漠地監1樓'},{v:'zone_23',t:'沙漠地監2樓'},{v:'zone_24',t:'沙漠地監3樓'},{v:'zone_25',t:'沙漠地監4樓'},
+        {v:'zone_22',t:'騎士洞穴1樓'},{v:'zone_23',t:'騎士洞穴2樓'},{v:'zone_24',t:'騎士洞穴3樓'},{v:'zone_25',t:'騎士洞穴4樓'},
         {v:'zone_26',t:'龍之谷地監1樓'},{v:'zone_27',t:'龍之谷地監2樓'},{v:'zone_28',t:'龍之谷地監3樓'},{v:'zone_29',t:'龍之谷地監4樓'},{v:'zone_30',t:'龍之谷地監5樓'},{v:'zone_31',t:'龍之谷地監6樓'},
         {v:'zone_32',t:'螞蟻洞窟1樓'},{v:'zone_33',t:'螞蟻洞窟2樓'},
-        {v:'zone_34',t:'地下通道1樓'},{v:'zone_35',t:'地下通道2樓'},{v:'zone_36',t:'地下通道3樓'},
+        {v:'zone_34',t:'海音地監1樓'},{v:'zone_35',t:'海音地監2樓'},{v:'zone_36',t:'海音地監3樓'},
         {v:'eva_kingdom',t:'伊娃王國'},
         {v:'zone_37',t:'象牙塔4樓'},{v:'zone_38',t:'象牙塔5樓'},{v:'zone_39',t:'象牙塔6樓'},{v:'zone_40',t:'象牙塔7樓'},{v:'zone_41',t:'象牙塔8樓'},
         {v:'rastabad_cave1',t:'拉斯塔巴德地下洞穴1樓'},{v:'rastabad_cave2',t:'拉斯塔巴德地下洞穴2樓'},{v:'rastabad_cave3',t:'拉斯塔巴德地下洞穴3樓'},
@@ -111,12 +111,12 @@ const MAP_REGIONS = [
     ]},
     { key: 'windwood', label: '風木', castleCity: 'windwood', castleAt: 0, maps: [
         {v:'windwood', t:'風木周邊'}, {v:'desert', t:'沙漠'},
-        {v:'zone_22', t:'沙漠地監1樓'}, {v:'zone_23', t:'沙漠地監2樓'}, {v:'zone_24', t:'沙漠地監3樓'}, {v:'zone_25', t:'沙漠地監4樓'},
+        {v:'zone_22', t:'騎士洞穴1樓'}, {v:'zone_23', t:'騎士洞穴2樓'}, {v:'zone_24', t:'騎士洞穴3樓'}, {v:'zone_25', t:'騎士洞穴4樓'},
         {v:'zone_32', t:'螞蟻洞窟1樓'}, {v:'zone_33', t:'螞蟻洞窟2樓'}
     ]},
     { key: 'heine', label: '海音', castleCity: 'heine', castleAt: 1, maps: [
         {v:'town_heine', t:'海音城鎮'}, {v:'heine', t:'海音周邊'}, {v:'mirror_forest', t:'鏡子森林'},
-        {v:'zone_34', t:'地下通道1樓'}, {v:'zone_35', t:'地下通道2樓'}, {v:'zone_36', t:'地下通道3樓'},
+        {v:'zone_34', t:'海音地監1樓'}, {v:'zone_35', t:'海音地監2樓'}, {v:'zone_36', t:'海音地監3樓'},
         {v:'eva_kingdom', t:'伊娃王國'}, {v:'fafurion_lair', t:'法利昂洞穴'}
     ]},
     { key: 'giran', label: '奇岩', maps: [
@@ -129,13 +129,13 @@ const MAP_REGIONS = [
         {v:'antaras_lair', t:'安塔瑞斯棲息地'}, {v:'town_silent', t:'沉默洞穴'}, {v:'silent_outer', t:'沉默洞穴周邊'}
     ]},
     { key: 'witon', label: '威頓', maps: [
-        {v:'town_witon', t:'威頓村莊'}, {v:'fire_dragon', t:'火龍窟'}, {v:'valakas_lair', t:'巴拉卡斯巢穴'}, {v:'town_behemoth', t:'貝希摩斯'}
+        {v:'town_witon', t:'威頓村莊'}, {v:'fire_dragon', t:'火龍窟'}, {v:'valakas_lair', t:'巴拉卡斯巢穴'}
     ]},
     { key: 'oren', label: '歐瑞', maps: [
         {v:'town_oren', t:'歐瑞村莊'}, {v:'zone_02', t:'歐瑞周邊'}, {v:'zone_03', t:'歐瑞雪原'}, {v:'zone_04', t:'艾爾摩激戰地'}, {v:'zone_05', t:'國境要塞'},
         {v:'town_ivory_tower', t:'象牙塔（1~3樓）'}, {v:'zone_37', t:'象牙塔4樓'}, {v:'zone_38', t:'象牙塔5樓'}, {v:'zone_39', t:'象牙塔6樓'}, {v:'zone_40', t:'象牙塔7樓'}, {v:'zone_41', t:'象牙塔8樓'},
         {v:'crystal_cave1', t:'水晶洞穴1樓'}, {v:'crystal_cave2', t:'水晶洞穴2樓'}, {v:'crystal_cave3', t:'水晶洞穴3樓'},
-        {v:'shadow_temple', t:'暗影神殿'}, {v:'town_hyperia', t:'希培利亞'}
+        {v:'shadow_temple', t:'暗影神殿'}
     ]},
     { key: 'aden', label: '亞丁', maps: [
         {v:'town_aden', t:'亞丁城鎮'}, {v:'twilight_mt', t:'黃昏山脈'}, {v:'dream_island', t:'夢幻之島'}
@@ -157,7 +157,7 @@ const MAP_REGIONS = [
         {v:'sunrise_castle', t:'日出之國城墎'}, {v:'sunrise_east', t:'日出之國東之地'}, {v:'sunrise_west', t:'日出之國西之地'}, {v:'sunrise_north', t:'日出之國北之地'}
     ]},
     { key: 'sherine', label: '席琳神殿', maps: [
-        {v:'town_sherine', t:'席琳神殿'}
+        {v:'town_sherine', t:'席琳神殿', closed:true}
     ]}
 ];
 // 由地圖 v 找回 MAP_CATEGORIES 的原始定義（顏色/進入條件/原名）
@@ -184,8 +184,10 @@ function regionMapList(rk) {
     }
     return out;
 }
-// 地區在目前模式下是否有可見地圖（經典模式隱藏整個只剩席琳神殿的地區，避免空分類）
-function regionHasVisible(rk) { return regionMapList(rk).some(m => !(m.classicHide && player.classicMode)); }
+// 地圖是否整個不顯示、也不可進入：closed＝永久關閉（2026-10-14 起席琳神殿）；classicHide＝經典模式隱藏
+function mapHiddenEntry(m) { return !!(m && (m.closed || (m.classicHide && player.classicMode))); }
+// 地區在目前模式下是否有可見地圖（隱藏整個只剩席琳神殿的地區，避免空分類）
+function regionHasVisible(rk) { return regionMapList(rk).some(m => !mapHiddenEntry(m)); }
 // ===== 🔧 攻城城池設定（肯特城／風木城；機制相同，僅城門/守護塔/地圖/城堡不同）=====
 const SIEGE_CITY = {
     kent:     { key:'kent',     name:'肯特城', outer:'kent_outer', outerName:'肯特外門區', inner:'kent_inner', innerName:'肯特內城', castle:'town_kent_castle',     castleName:'肯特城', gate:'肯特城門', tower:'肯特守護塔' },
@@ -293,7 +295,7 @@ function mapOptDisabled(m) {
     // 🧑‍🤝‍🧑 v3.7.84 受僱為其他角色的傭兵期間＝只能停留在安全區 → 下拉中所有非 town_ 地圖一律灰階不可選
     //    （與 changeMap 的 mercenaryRoleBattleBlocked 同一條規則·此處只是把它前推到 UI 上；快取版避免每個選項都掃 localStorage）
     if (m.v && !String(m.v).startsWith('town_') && typeof mercRoleSafeAreaOnly === 'function' && mercRoleSafeAreaOnly()) return true;
-    if (m.classicHide && player.classicMode) return true;   // 🔥 經典模式：席琳神殿不可進入（縱深防護，配合 populateMapSelect 隱藏選項）
+    if (mapHiddenEntry(m)) return true;   // 🔥 已關閉的地圖／經典模式的席琳神殿不可進入（縱深防護，配合 populateMapSelect 隱藏選項）
     if (m.needKey && !player.inv.some(i => i.id === m.needKey && (i.cnt || 1) >= 1)) return true;   // 🔑 需鑰匙地圖：背包無鑰匙 → 灰色不可選
     // 🗼 傲慢之塔樓層門檻：2~10樓需曾擊敗潔尼斯女王；11樓以上需持有對應傳送符/支配符/移動卷軸
     if (m.questReq === 'demonTemple' && !player.demonTempleOpen) return true;   // 🔥 魔族神殿：須完成該角色 50 級試煉指定階段才開放（逐角色）
@@ -308,7 +310,7 @@ function populateMapSelect(cat) {
     sel.innerHTML = '';
     let list = regionMapList(cat);
     list.forEach(m => {
-        if (m.classicHide && player.classicMode) return;   // 🔥 經典模式：隱藏席琳神殿（連選項都不顯示）
+        if (mapHiddenEntry(m)) return;   // 🔥 已關閉／經典模式隱藏的地圖連選項都不顯示
         let o = document.createElement('option');
         o.value = m.v; o.textContent = m.t;
         if (mapOptDisabled(m)) { o.disabled = true; o.style.color = '#64748b'; }
@@ -493,9 +495,6 @@ function getHomeTown() {
     if (player.bloodPledge === 'esti') return 'town_heine';
     if (player.bloodPledge === 'tros') return 'town_oren';
     if (player.cls === 'dark') return 'town_silent';   // 🔧 黑暗妖精：未加入血盟時回沉默洞穴（已加入則上面已回盟主村莊）
-    if (player.cls === 'illusion') return 'town_hyperia';   // 🔧 幻術士：回希培利亞村莊
-    if (player.cls === 'dragon') return 'town_behemoth';   // 🐉 龍騎士：回貝希摩斯
-    if (player.cls === 'warrior') return 'town_heine';   // ⚔️ 戰士：回海音
     if (player.cls === 'mage') return 'town_talking';
     if (player.cls === 'elf') return 'town_elf';
     return 'town_silver_knight';
@@ -977,7 +976,7 @@ function ismaelCursedExchange(kind) {
     let el = document.getElementById('interaction-content'); if (el) renderIsmaelExchange(el);
 }
 // ===== 🔥 碧恩：屬性強化卷軸「賦予屬性」（v3.0.77 屬性強化系統改版·取代舊「祝福裝備」功能；克里斯特已移除） =====
-//   規則：只能用在「裝備中武器／副手武器(戰士限定)」；每次使用皆為獨立事件，成功率 7%；
+//   規則：只能用在「裝備中武器」；每次使用皆為獨立事件，成功率 7%；
 //   無屬性成功→1階、同屬性成功→+1階（最高5階）、不同屬性成功→變成該屬性1階；
 //   第5階同屬性卷軸：原生無攻擊觸發技能的非遺物武器可用 1% 機率附加／重抽屬性魔法；同技能升星、不同技能回1星，最高3星；
 //   衝第4階需武器+10以上、第5階需+11以上（不符不消耗卷軸；🗡️ v3.7.29 noEnhance 非遺物武器＝古老的劍/巨劍 豁免門檻）；失敗僅消耗卷軸，武器不會消失。
@@ -1064,9 +1063,8 @@ function doBianUncurse(slotKey) {
     let _e = document.getElementById('interaction-content'); if (_e) renderBianAttr(_e);
 }
 function renderBianAttr(el) {
-    // 只列出 裝備中武器 與 副手武器（戰士雙持時才有 offwpn）
+    // 只列出 裝備中武器
     let slots = [{ k: 'wpn', n: '武器' }];
-    if (player.eq && player.eq.offwpn) slots.push({ k: 'offwpn', n: '副手武器' });
     let cnt = id => { let it = player.inv.find(i => i.id === id); return it ? it.cnt : 0; };
     let rows = slots.map(sl => {
         let it = player.eq[sl.k];
@@ -1117,6 +1115,9 @@ function ismaelBuyAcc() {
 }
 
 function changeMap(force) {
+    // 🚫 目標地圖不在下拉選單裡（已關閉的席琳神殿、經典模式隱藏的地圖）→ select 值是空字串，照走會把所在地清成 ''；原地不動
+    let _mapSel = document.getElementById('map-select');
+    if (_mapSel && !_mapSel.value && mapState.current) { syncMapSelectors(); return; }
     // 行動限制狀態（石化／麻痺／冰凍／暈眩）時無法主動切換地圖；force=true 供復活、載入等內部流程略過
     if (!force && player.statuses &&
         (player.statuses.stone > 0 || player.statuses.paralyze > 0 || player.statuses.freeze > 0 || player.statuses.stun > 0 || player.statuses.sleep > 0)) {
@@ -1257,6 +1258,7 @@ function changeMap(force) {
 
 // ===== 🔮 席琳神殿：祈禱（席琳的世界 開關介面）=====
 function toggleSherineWorld() {
+    if (SHERINE_CLOSED) return;   // 🚫 席琳的世界已關閉
     if ((player.lv || 1) < 40) { logSys('<span class="text-red-400">等級未達 40，席琳對你的祈禱沒有回應。</span>'); return; }
     player.sherineWorld = !player.sherineWorld;
     if (player.sherineWorld) player.sherineMad = false;   // 🔮 互斥：開啟一般席琳 → 關閉瘋狂席琳
@@ -1269,6 +1271,7 @@ function toggleSherineWorld() {
     let el = document.getElementById('interaction-content'); if (el) renderSherinePray(el);
 }
 function toggleSherineMad() {
+    if (SHERINE_CLOSED) return;   // 🚫 席琳的世界已關閉
     if ((player.lv || 1) < 40) { logSys('<span class="text-red-400">等級未達 40，席琳對你的祈禱沒有回應。</span>'); return; }
     player.sherineMad = !player.sherineMad;
     if (player.sherineMad) player.sherineWorld = false;   // 🔮 互斥：開啟瘋狂席琳 → 關閉一般席琳
@@ -1289,13 +1292,13 @@ function renderSherinePray(div) {
             <div class="text-slate-300 text-sm leading-relaxed">席琳：旅人啊……是否願意凝視這個世界的另一面？（需等級 40 以上，可自由開啟/關閉；兩種世界互斥）</div>
             <div class="bg-slate-800/60 border ${on ? 'border-red-700' : 'border-slate-600'} rounded p-3 text-sm leading-relaxed">
                 <div class="font-bold mb-1 ${on ? 'c-sherine' : 'text-slate-200'}">席琳的世界：目前 ${on ? '<span class="text-red-300">開啟</span>' : '<span class="text-slate-400">關閉</span>'}</div>
-                <div class="text-slate-200 text-xs">怪物 HP×3、傷害×2、經驗/金錢×5，掉落×3，可能出現<span class="c-sherine font-bold">珍稀套裝裝備</span>與<span class="c-sherine font-bold">席琳結晶</span>。</div>
+                <div class="text-slate-200 text-xs">怪物 HP×3、傷害×2、經驗/金錢×5，掉落×3，會掉<span class="c-sherine font-bold">席琳結晶</span>（找伊奧換遺骸）。</div>
             </div>
             <button class="btn py-3 text-base font-bold ${!lvOk ? 'bg-slate-600 border-slate-500 opacity-60 cursor-not-allowed' : (on ? 'bg-slate-700 hover:bg-slate-600 border-slate-500' : 'bg-red-800 hover:bg-red-700 border-red-600')}"
                 ${!lvOk ? 'disabled' : ''} onclick="toggleSherineWorld()">${!lvOk ? '等級不足（需 Lv40）' : (on ? '🙏 祈禱：關閉席琳的世界' : '🙏 祈禱：開啟席琳的世界')}</button>
             <div class="bg-slate-900/70 border ${mad ? 'border-rose-600' : 'border-slate-700'} rounded p-3 text-sm leading-relaxed">
                 <div class="font-bold mb-1 ${mad ? 'c-sherine' : 'text-rose-300'}">🔥 瘋狂的席琳世界：目前 ${mad ? '<span class="text-rose-300">開啟</span>' : '<span class="text-slate-400">關閉</span>'}</div>
-                <div class="text-slate-200 text-xs">極致試煉。怪物 HP×5、AC 降低（一般怪−10、頭目−20）、MR 提高（最多額外＋200）、命中×2、傷害×3、經驗/金錢×10，掉落與詞綴×5；<span class="c-sherine font-bold">套裝效果與席琳結晶掉率為一般席琳的 3 倍</span>。</div>
+                <div class="text-slate-200 text-xs">極致試煉。怪物 HP×5、AC 降低（一般怪−10、頭目−20）、MR 提高（最多額外＋200）、命中×2、傷害×3、經驗/金錢×10，掉落與詞綴×5；<span class="c-sherine font-bold">席琳結晶掉率為一般席琳的 3 倍</span>。</div>
             </div>
             <button class="btn py-3 text-base font-bold ${!lvOk ? 'bg-slate-600 border-slate-500 opacity-60 cursor-not-allowed' : (mad ? 'bg-slate-700 hover:bg-slate-600 border-slate-500' : 'bg-rose-900 hover:bg-rose-800 border-rose-600')}"
                 ${!lvOk ? 'disabled' : ''} onclick="toggleSherineMad()">${!lvOk ? '等級不足（需 Lv40）' : (mad ? '🙏 祈禱：關閉瘋狂的席琳世界' : '🔥 祈禱：開啟瘋狂的席琳世界')}</button>
@@ -1327,9 +1330,10 @@ function hanSubmitProof() {
     let el = document.getElementById('interaction-content'); if (el) renderHanNPC(el);
 }
 function chooseMastery(id) {
+    if (!MASTERY_ON) return;
     if (player.masteryQuest !== 'done') return;
     let md = MASTERY_DATA[player.cls];
-    if (!md || !md.list[id] || player.mastery === id) return;
+    if (!md || !md.list[id] || player.mastery === id || masteryHidden(id)) return;
     // 🔧 詛咒鎖定優先於精通切換：若離開劍術精通會使「被詛咒的騎士武器」失去裝備資格，
     //    但詛咒裝備無法卸下，故直接擋下切換（避免繞過詛咒鎖定強制卸裝）。
     if (player.mastery === 'e_sword' && id !== 'e_sword' && player.eq.wpn && isEquipCursed('wpn')) {
@@ -1338,7 +1342,7 @@ function chooseMastery(id) {
         if (!stillOk) { logSys('<span class="text-red-400 font-bold">手中被詛咒的騎士武器無法卸下，無法切換精通！</span><span class="text-red-300">請先至象牙塔『碧恩』處解除詛咒。</span>'); return; }
     }
     // 初次選擇免費；之後每次更換固定 300 萬金幣（不隨次數遞增）
-    if (player.mastery !== null) {
+    if (player.mastery !== null && !masteryHidden(player.mastery)) {   // 目前是已關閉的精通（連射精通）→ 換掉免費
         let cost = masteryChangeCost();
         if (player.gold < cost.gold) {
             logSys(`<span class="text-red-400 font-bold">更換精通需要 ${cost.gold.toLocaleString()} 金幣。</span>`);
@@ -1372,14 +1376,6 @@ function chooseMastery(id) {
         player._summonV2On = on;   // 保留自動重施開關→下個 tick 立即召回精靈王
         logSys('精靈之力開始昇華——強力精靈將以「精靈王」之姿重新現身。');
     }
-    // 🐉 覺醒精通解除：離開覺醒精通後同時只能維持一種覺醒——清除多餘的覺醒增益（保留第一個生效者），
-    //    否則先前同時開啟的三種覺醒會殘留到自然倒數結束（自動施放互斥只擋新施放、不會收回既有的）。
-    if (id !== 'k_awaken' && player.buffs) {
-        let _kept = false;
-        ['sk_dragon_awaken_antares', 'sk_dragon_awaken_falion', 'sk_dragon_awaken_baraka'].forEach(_ak => {
-            if ((player.buffs[_ak] || 0) > 0) { if (_kept) player.buffs[_ak] = 0; else _kept = true; }
-        });
-    }
     if (prev === 'e_sword' && player.eq.wpn) {
         let wd = DB.items[player.eq.wpn.id];
         let ok = reqAllowsClass(wd, player.cls) || loadUpAllows(player.eq.wpn.id);
@@ -1402,7 +1398,7 @@ function renderHanNPC(div) {
     if (!q) {   // 未接取
         div.innerHTML = `
         <div class="flex flex-col gap-4 p-2 items-center text-center">
-            <div class="text-slate-300 leading-relaxed">${player.cls === 'dark' ? '漢：每個走到極致的黑暗妖精，都要回答同一個問題——<br><span class="text-amber-200 font-bold">你的「信念」是什麼</span>' : `漢：每個走到極限的${({knight:'騎士',mage:'法師',elf:'妖精',illusion:'幻術士',dragon:'龍騎士',warrior:'戰士',royal:'王族'})[player.cls]}，都要回答同一個問題——<br><span class="text-amber-200 font-bold">你的「道」是什麼？</span>`}</div>
+            <div class="text-slate-300 leading-relaxed">${player.cls === 'dark' ? '漢：每個走到極致的黑暗妖精，都要回答同一個問題——<br><span class="text-amber-200 font-bold">你的「信念」是什麼</span>' : `漢：每個走到極限的${({knight:'騎士',mage:'法師',elf:'妖精',royal:'王族'})[player.cls]}，都要回答同一個問題——<br><span class="text-amber-200 font-bold">你的「道」是什麼？</span>`}</div>
             <div class="bg-slate-800/70 border border-amber-700/60 rounded p-3 text-sm text-slate-300">擊敗 <span class="text-red-300 font-bold">${md.boss}</span>，取回 <span class="text-blue-300 font-bold">精通之證</span>，我便為你開啟精通之路。</div>
             <button class="btn px-10 py-3 text-lg font-bold bg-amber-800 hover:bg-amber-700 border-amber-500" onclick="hanAcceptQuest()">🏅 接取精通任務</button>
         </div>`;
@@ -1421,11 +1417,13 @@ function renderHanNPC(div) {
     }
     // q === 'done'：精通選擇（中央職業徽記 + 上下左右四色按鈕）
     let cur = player.mastery;
+    if (cur && masteryHidden(cur)) cur = null;   // 已關閉的精通：畫面上當作還沒選（免費選一個新的）
     let cost = masteryChangeCost();
     let costTxt = (cur === null)
         ? '<span class="text-emerald-300 font-bold">初次選擇免費</span>'
         : `更換費用：<span class="text-yellow-300 font-bold">${cost.gold.toLocaleString()} 金幣</span>（固定費用）`;
     let btn = (id) => {
+        if (!id || masteryHidden(id)) return '';
         let m = md.list[id];
         let active = cur === id;
         return `<button class="btn w-full h-full py-3 px-2 border-2 ${MASTERY_POS_STYLE[m.pos]} ${active ? 'ring-2 ring-yellow-300 shadow-[0_0_14px_rgba(253,224,71,0.6)]' : ''}" onclick="chooseMastery('${id}')" title="${m.d}">
@@ -1493,7 +1491,7 @@ function renderPrideEntrance(container) {
         <button onclick="startPrideClimb(false)" class="btn w-full py-4 text-xl font-bold bg-rose-800 hover:bg-rose-700 border border-rose-500 text-white shadow-lg">🗼 進入傲慢之塔</button>
         <button onclick="startPrideClimb(true)" class="btn w-full py-4 text-xl font-bold bg-amber-800 hover:bg-amber-700 border border-amber-500 text-white shadow-lg">🏆 挑戰排名模式</button>
         ${rankBlock(player.prideRank, false)}
-        ${player.classicMode ? '' : rankBlock(player.prideRankSherine, true)}
+        ${(player.classicMode || SHERINE_CLOSED) ? '' : rankBlock(player.prideRankSherine, true)}
         <div class="text-slate-500 text-xs">排名模式中即使持有支配符也無法使用傳送術與瞬間移動卷軸；回村或擊敗 100 層頭目時結算。${player.classicMode ? '' : '一般與席琳的世界的排名各自獨立計算。'}</div>`;
     container.appendChild(box);
 }
@@ -1553,7 +1551,7 @@ function renderDantesGate(div) {
             <p class="text-xs text-slate-500 pt-1">挑戰吉爾塔斯時若身上持有 完整的召喚球：戰敗回村將消耗 1 顆，吉爾塔斯的 HP 會保持不變（暫停回血）直到你再次進入；沒有完整的召喚球則重新進入將是全新的吉爾塔斯。</p>
         </div>`;
 }
-// 🕊️ v3.4.73 聖使阿卡塔（亞丁·經典限定）：死亡經驗買回。
+// 🕊️ v3.4.73 聖使阿卡塔（亞丁）：死亡經驗買回（原經典限定；2026-10-16 一般模式也扣經驗後兩模式都開放）。
 //   ・killPlayer（js/04）只在「實際損失 > 0」時記 player.deathLog:{lv,loss,t}（上限 10 筆·滿了淘汰最舊·逐角色隨存檔）——當級 0% 死亡不建檔，無法買回沒失去的經驗。
 //   ・買回：花費 死亡時等級×等級×1000 金幣 → 取回該筆「實際損失經驗」的 50%（floor），紀錄即銷毀；回灌走 player.exp += n + checkLvUp()（可正常升級）。
 function renderArkataBuyback(el) {
@@ -1594,10 +1592,10 @@ function renderArkataBuyback(el) {
             <div class="text-sky-300 font-bold text-sm border-b border-sky-900/60 pb-1">裝備贖回</div>
             <div class="text-xs text-slate-400">邪惡狀態下死亡遺失的裝備會被記錄：${lost.length} / 5（滿 5 件後新的遺失會擠掉最舊的一筆）・持有龍之鑽石：<span class="text-sky-300">${dia.toLocaleString()}</span></div>
             ${itemRows || '<div class="text-slate-500 text-sm bg-slate-800/40 border border-slate-700 rounded p-4 text-center">目前沒有遺失的裝備紀錄。</div>'}
-            ${player.classicMode ? `
+
             <div class="text-amber-300 font-bold text-sm border-b border-amber-900/60 pb-1 mt-2">死亡經驗買回</div>
             <div class="text-xs text-slate-400">每筆死亡紀錄可花費「死亡時等級×等級×1000」金幣，取回實際損失經驗的一半。死亡紀錄：${log.length} / 10（滿 10 筆後新的死亡會擠掉最舊的一筆）・持有金幣：<span class="text-yellow-300">${(player.gold || 0).toLocaleString()}</span></div>
-            ${rows || '<div class="text-slate-500 text-sm bg-slate-800/40 border border-slate-700 rounded p-4 text-center">目前沒有死亡紀錄。願聖光持續眷顧你。</div>'}` : ''}
+            ${rows || '<div class="text-slate-500 text-sm bg-slate-800/40 border border-slate-700 rounded p-4 text-center">目前沒有死亡紀錄。願聖光持續眷顧你。</div>'}
         </div>`;
 }
 const ARKATA_REDEEM_COST = 1000;   // 🕊️ v3.6.84 裝備贖回費用（龍之鑽石）
@@ -1625,7 +1623,7 @@ function arkataRedeemItem(i) {
     if (host) renderArkataBuyback(host);
 }
 function arkataBuyback(i) {
-    if (!player || !player.classicMode) return;   // 🕊️ 經典限定（縱深防護）
+    if (!player || !player.cls) return;   // 🕊️ 2026-10-16 起一般模式也會扣經驗 → 兩模式都能買回
     let log = Array.isArray(player.deathLog) ? player.deathLog : [];
     let r = log[i];
     if (!r) return;
@@ -1655,8 +1653,9 @@ function openPandoraShortcut() {
 function interactNPC(npcId, townId) {
     let npc = DB.towns[townId].npcs.find(n => n.id === npcId);
     if(!npc) return;
+    if (townId === 'town_sherine' && SHERINE_CLOSED) return;   // 🚫 席琳神殿已關閉：席琳／伊奧／菈克希絲一律打不開
     if ((npc.id === 'npc_esti' || npc.id === 'npc_tros') && typeof clanNpcVisible === 'function' && !clanNpcVisible(npc.id, townId)) return;
-    if (npc.classicHide && player.classicMode) return;   // 🔥 經典模式：漢 不可互動（縱深防護，正常情況卡片已不渲染；v3.0.77 碧恩經典可用）
+    if ((npc.classicHide && player.classicMode) || (npc.type === 'mastery' && !MASTERY_ON)) return;   // 🔥 經典模式：漢 不可互動（縱深防護，正常情況卡片已不渲染；v3.0.77 碧恩經典可用）
     if (npc.classicOnly && !player.classicMode) return;   // 🕊️ 經典限定 NPC（聖使阿卡塔）：一般模式不可互動（縱深防護，渲染層已過濾）
     _activePanel = null;   // 開啟新面板：先清除自動刷新標記，由對應 render 視需要重新設定
 
@@ -1720,12 +1719,6 @@ function interactNPC(npcId, townId) {
         renderGunterQuest(contentDiv);
     } else if (npc.id === 'npc_yuria') {
         renderYuriaQuest(contentDiv);
-    } else if (npc.id === 'npc_shenien') {
-        renderShenien(contentDiv);
-    } else if (npc.id === 'npc_duwen') {
-        renderDuwen(contentDiv);
-    } else if (npc.id === 'npc_procel') {
-        renderProcel(contentDiv);
     } else if (npc.id === 'npc_mother') {
         renderMotherQuest(contentDiv);
     } else if (npc.id === 'npc_ricky') {
@@ -1815,8 +1808,8 @@ const NPC_SPR = {
     '3227': { g: '3227', f: 12 }, '3225': { g: '3225', f: 12 },   // 👑 v3.2.91 依詩蒂＝公主(3227)／特羅斯＝王子(3225)·職業動畫 dir5 站立(12f)
     // 🆕 v3.3.7 指定名稱 NPC 專屬外型（body＋真實影子 sprite）＋女性外型池新增 6804
     '1839': { g: '1839', f: 9 }, '2813': { g: '2813', f: 9 }, '2794': { g: '2794', f: 9 }, '2829': { g: '2829', f: 11 },
-    '2801': { g: '2801', f: 8 }, '2820': { g: '2820', f: 15 }, '6899': { g: '6899', f: 12 }, '6757': { g: '6757', f: 12 },
-    '6690': { g: '6690', f: 12 }, '6804': { g: '6804', f: 12 },
+    '2801': { g: '2801', f: 8 }, '2820': { g: '2820', f: 15 }, '6757': { g: '6757', f: 12 },
+    '6804': { g: '6804', f: 12 },
     '5454': { g: '5454', f: 1 },   // 🌑 v3.3.33 真‧冥皇丹特斯＝骸骨王座坐像（NPC/真‧冥皇丹特斯 5454-0＋影子 5455-0·單幀 138×228）
     '2141': { g: '2141', f: 6 },   // 🕊️ v3.4.73 聖使阿卡塔（body 2141＋影 2142·6幀·29×59）
     '10669': { g: '10669', f: 3 },   // 🏦 v3.4.74 朵琳＝倉庫NPC通用新外型（body 10669＋影 10670·3幀·67×44 帶雙寶箱·取代舊 54）
@@ -1835,7 +1828,7 @@ const NPC_SPR_FIXED = {
     npc_esti: '3227', npc_tros: '3225',   // 👑 v3.2.91 血盟 依詩蒂＝公主動畫(f_royal)／特羅斯＝王子動畫(m_royal)·全城鎮通用
     // 🆕 v3.3.7 指定名稱 NPC 專屬外型（用戶提供 Downloads/NPC/<名>·避免與通用池撞臉）：
     npc_kupu: '1839', npc_rabiani: '1307', npc_runde: '2813', npc_kang: '2794', npc_brudica: '2829',
-    npc_skvati: '2801', npc_saedia: '2820', npc_shenien: '6899', npc_bartel: '6757', npc_sphere: '6690',
+    npc_skvati: '2801', npc_saedia: '2820', npc_bartel: '6757',
     npc_dantes_lord: '5454', npc_atelier: '1768',   // 🌑 v3.3.33 長老會議廳：真‧冥皇丹特斯＝骸骨王座／亞提利歐＝矮人鐵匠（用戶指定·同炎魔鐵匠外型 1768）
     npc_arkata: '2141',   // 🕊️ v3.4.73 聖使阿卡塔（亞丁·經典限定·死亡經驗買回）
     npc_arena: '1305',    // ⚔️ v3.7.5 鬥技場管理者 巴魯特（古魯丁村莊·甲冑武人外型·決鬥競技場入口）
@@ -1873,7 +1866,7 @@ const NPC_SPR_FEMALE = new Set(['98', '949', '1307', '3858', '854q', '3227', '86
 const NPC_SPR_FEMALE_POOL = ['949', '1307', '3858', '98', '6804'];
 //   依名字判定為女性的城鎮 NPC（未列者＝男性/中性·走原邏輯並避開女性外型）。⚠️新增女性名 NPC 補這裡。
 const NPC_FEMALE_IDS = new Set([
-    'npc_shenien', 'npc_yuria', 'npc_lachesis', 'npc_moliya', 'npc_moli', 'npc_saedia',
+    'npc_yuria', 'npc_lachesis', 'npc_moliya', 'npc_moli', 'npc_saedia',
     'npc_brudica', 'npc_sherine', 'npc_io', 'npc_masha', 'npc_doll_merchant',
     'npc_lumiel',   // 🚺 v3.3.6 海音 琉米埃爾＝女性外型
     'npc_lucy',     // 🚺 v3.7.7 古魯丁 露西（雜貨商人）＝女性外型
@@ -1931,8 +1924,8 @@ const TOWN_NPC_SPOTS = {
     town_elf: [[30, 48], [42, 33], [57, 30], [72, 34], [22, 60], [69, 49], [48, 62], [44, 74], [84, 43], [55, 70], [30, 72], [84, 74], [15, 88], [63, 63]],   // 🎯 艾利溫右移出安特點擊範圍；羅賓孫(第13位)維持圓形木平台
     // 奇岩城鎮：邁爾/范吉爾/愛弗特=右下市集攤棚各一攤｜溫諾=攤棚上方廣場路面(v3.3.32勿站攤頂)｜莫麗雅/海克特=噴泉兩側｜哈巴特=公會階梯前｜倫提斯=左教堂門廊｜賽巴斯=右上綠籬步道｜蘇瑞耳=圓頂庫房右側街面(v3.3.32勿貼圓頂)
     town_giran: [[69, 81], [81, 56], [88, 79], [57, 88], [38, 66], [54, 66], [66, 42], [19, 39], [58, 33], [24, 84]],   // 🎯 v3.4.79 倫提斯(製作·第8位)[14,36]→[19,39] 移出教堂門廊到路面＋蘇瑞耳(倉庫·第10位)[22,81]→[24,84] 移出圓頂庫房牆邊（用戶箭頭指示）
-    // 海音城鎮(運河水都)：比特=左下通往碼頭的街面｜哈金=上排庫房前街面｜傭兵公會=右上建築左側路面｜琉米埃爾=花壇右下路面(勿站上花壇)｜多文=中央廣場｜依詩蒂=橋頭左側廣場(勿站上橋)｜依斯巴=木棧碼頭板上(港口)
-    town_heine: [[29, 67], [41, 26], [56, 29], [22, 41], [50, 50], [62, 45], [28, 88]],
+    // 海音城鎮(運河水都)：比特=左下通往碼頭的街面｜哈金=上排庫房前街面｜傭兵公會=右上建築左側路面｜琉米埃爾=花壇右下路面(勿站上花壇)｜依詩蒂=橋頭左側廣場(勿站上橋)｜依斯巴=木棧碼頭板上(港口)
+    town_heine: [[29, 67], [41, 26], [56, 29], [22, 41], [62, 45], [28, 88]],
     // 亞丁城鎮(白石王都)：拉溫=左宅邸前｜恬金=右上宮殿階梯｜烏普尼=噴泉台階旁｜諾斯=中央羅盤地磚｜包武=右下拱廊前｜聖使阿卡塔=左上迴廊前(經典限定)
     town_aden: [[19, 62], [76, 30], [64, 48], [42, 68], [69, 77], [31, 40]],
     // 歐瑞村莊(雪山村·v3.3.32 依用戶截圖箭頭校正四點全下到路面)：畢伍德=右屋前雪路｜希林=上方倉庫門前地面｜傭兵公會=村中央｜伊貝爾賓=左屋前空地(勿站台階)｜大衛=右屋角前雪路｜特羅斯=左下柴堆路口
@@ -1942,10 +1935,8 @@ const TOWN_NPC_SPOTS = {
     // 古魯丁村莊(港口村)：巴魯特=廣場中左空地｜凱倫=左側藍屋大宅前石板路｜露西=左下攤棚前路面｜傭兵公會=廣場中右｜奧斯丁=水井左下石地
     //   ⚠️[50,58] 是叫賣玩家固定點（TOWN_WANDERING_BUYER_SPOTS.town_gludin 同座標），NPC 一律避開。
     town_gludin: [[38, 58], [23, 46], [33, 81], [70, 55], [48, 36]],
-    // 威頓村莊(火山村)：馬沙=大宅階梯前｜漢=村中央｜客盧亞=左上屋簷攤棚｜宙斯之熔岩高崙=左下鍛造爐(自家熔爐)｜魔法娃娃商人=右下屋前｜艾斯倫=右側貨箱堆旁｜多魯嘉貝爾=下方村口(副本入口)｜米米=左中攤位｜萊利的輔佐官=右上宅邸前（🐉 v3.7.57·573×323 扁平圖·橫向間距≥10%≈57px）
-    town_witon: [[70, 37], [48, 52], [27, 40], [13, 72], [66, 79], [77, 48], [38, 84], [24, 57], [88, 30]],
-    // 希培利亞(天空神殿)：倉管=左上殿門階梯｜史菲爾=上方大殿門前｜巴特爾=右側步道橋頭｜希蓮恩=中央圓形圖紋
-    town_hyperia: [[15, 32], [48, 24], [68, 56], [48, 55]],
+    // 威頓村莊(火山村)：馬沙=大宅階梯前｜漢=村中央｜客盧亞=左上屋簷攤棚｜宙斯之熔岩高崙=左下鍛造爐(自家熔爐)｜巴特爾=廣場上方空地｜皮爾=廣場左下空地｜魔法娃娃商人=右下屋前｜艾斯倫=右側貨箱堆旁｜多魯嘉貝爾=下方村口(副本入口)｜米米=左中攤位｜萊利的輔佐官=右上宅邸前（🐉 v3.7.57·573×323 扁平圖·橫向間距≥10%≈57px）
+    town_witon: [[70, 37], [48, 52], [27, 40], [13, 72], [58, 38], [36, 66], [66, 79], [77, 48], [38, 84], [24, 57], [88, 30]],
     // 象牙塔：帕羅=左階梯平台｜塔拉斯=上廳地磚(v3.3.32勿站上層平台)｜塔斯=星紋左側｜巴耶斯=右書牆前｜碧恩=右上水晶祭壇階下(賦屬)｜迪嘉勒廷=大階梯底｜迪泰特=中央星紋｜神秘的魔法師=閱讀角書桌右側地磚(v3.3.32勿站桌區)
     town_ivory_tower: [[20, 60], [35, 31], [38, 55], [78, 50], [76, 28], [62, 32], [52, 58], [89, 76]],
     // 🌑 長老會議廳(環形議場·v3.3.33)：真‧冥皇丹特斯=上方大門前階台(骸骨王座坐像)｜亞提利歐=中央星紋右側石板
@@ -1954,8 +1945,6 @@ const TOWN_NPC_SPOTS = {
     town_sherine: [[67, 48], [42, 64], [16, 33]],
     // 沉默洞穴(黑妖地城)：史克瓦提=左圓頂殿門廊｜雷亞斯=右上樓閣門前｜賽帝亞=大階梯底｜庫普=廣場左｜可羅蘭斯=左下禮拜堂前｜倫得=中央星紋｜康=右下高台走道｜布魯迪卡=廣場右；避開水晶簇/吊橋
     town_silent: [[19, 44], [72, 37], [36, 35], [40, 58], [35, 80], [52, 50], [78, 68], [63, 60]],
-    // 貝希摩斯(熔岩要塞)：倉管=左閘門房｜森帕爾=大階梯底｜皮爾=右走道方尖碑旁｜普洛凱爾=中央紋章
-    town_behemoth: [[28, 44], [55, 32], [66, 62], [44, 56]],
     // 炎魔謁見所：炎魔之影=中央紋章｜小惡魔=左下台階｜炎魔鐵匠=左壁爐火(鍛造)｜輔佐官=紅毯王座階下；避開岩漿
     town_flame_audience: [[48, 60], [24, 80], [18, 42], [70, 32]],
     // 海賊島村莊：波尼=沙灘小屋遮陽棚攤位前｜庫得=左高腳倉庫棧橋樓梯下(木桶堆)｜希米哲=右側水井邊
@@ -1982,7 +1971,7 @@ const TOWN_WANDERING_BUYER_SPOTS = {
     town_silver_knight: [55, 60], town_talking: [53, 60], town_elf: [54, 48], town_gludio: [50, 60], town_gludin: [50, 58],
     town_giran: [48, 48], town_heine: [43, 64], town_oren: [54, 70], town_aden: [60, 62],
     town_elder_council: [38, 60], town_pride: [62, 70], town_rift: [30, 50], town_ivory_tower: [69, 63],
-    town_witon: [52, 68], town_silent: [54, 72], town_hyperia: [57, 68], town_behemoth: [52, 72],
+    town_witon: [52, 68], town_silent: [54, 72],
     town_pirate_village: [56, 58]
 };
 // 同城出現兩位收購者時，第二位從已驗證的原收購點周圍挑選空位；實際選點還會避開當前城鎮的所有 NPC。
@@ -2006,11 +1995,12 @@ const ALLY_GUILD_TOWN_SPOTS = {
     town_silver_knight: [70, 72], town_windwood_castle: [31, 70], town_talking: [43, 52], town_elf: [75, 78],
     town_gludio: [72, 60], town_giran: [75, 68], town_aden: [48, 84], town_elder_council: [74, 70],
     town_pride: [31, 75], town_rift: [66, 46], town_ivory_tower: [68, 84], town_witon: [64, 58],
-    town_sherine: [28, 72], town_silent: [64, 74], town_hyperia: [73, 65], town_behemoth: [75, 52],
+    town_sherine: [28, 72], town_silent: [64, 74],
     town_flame_audience: [65, 74], town_pirate_village: [28, 70]
 };
 function ensureTownAllyGuilds() {
     if (!DB || !DB.towns) return;
+    if (MERC_CLOSED) return;   // 🚫 傭兵關閉：不補傭兵公會（js/00-data 末尾已下架）
     Object.keys(ALLY_GUILD_TOWN_SPOTS).forEach(townId => {
         let town = DB.towns[townId];
         if (!town || !Array.isArray(town.npcs) || town.npcs.some(npc => npc && npc.type === 'ally')) return;
@@ -2160,7 +2150,7 @@ function renderTownNPCMap(townId) {
             return typeof clanNpcVisible === 'function' && clanNpcVisible(npc.id, townId);
         }
         if (npc.darkOnly && player.cls !== 'dark') return false;
-        if (npc.classicHide && player.classicMode) return false;
+        if ((npc.classicHide && player.classicMode) || (npc.type === 'mastery' && !MASTERY_ON)) return false;   // 🏅 精通系統關閉：漢 不出現
         if (npc.classicOnly && !player.classicMode) return false;   // 🕊️ 經典限定 NPC（聖使阿卡塔）：一般模式不渲染
         return true;
     }).map(npc => {

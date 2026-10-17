@@ -85,10 +85,7 @@
   function thresholds() {
     if (_thr) return _thr;
     _thr = {};
-    try {
-      var re = /setCheck\[['"]([A-Za-z_0-9]+)['"]\]\s*>=\s*(\d+)/g, src = String(recomputeStats), m;
-      while ((m = re.exec(src))) { var n = +m[2]; if (!_thr[m[1]] || n < _thr[m[1]]) _thr[m[1]] = n; }   // 同一組有多階時取最低（＝開始有效果的那階）
-    } catch (e) {}
+    try { for (var code in DB.sets) _thr[code] = (typeof setNeed === 'function') ? setNeed(code) : (DB.sets[code].need || DB.sets[code].items.length); } catch (e) {}   // 門檻讀 DB.sets.need（套裝表是單一真相）
     if (!Object.keys(_thr).length) console.warn('[AFK-trackinfo] 讀不到核心的套裝件數門檻（上游可能改了 recomputeStats 的寫法），狀態欄不顯示套裝。');
     return _thr;
   }
@@ -103,10 +100,7 @@
     if (!_cn) {
       _cn = {};
       try {
-        for (var k in DB.sets) {
-          var s = DB.sets[k]; if (!s || !s.items) continue;
-          for (var i = 0; i < s.items.length; i++) { var d = DB.items[s.items[i]]; if (d && d.set && !_cn[d.set]) _cn[d.set] = s.n; }
-        }
+        for (var k in DB.sets) { if (DB.sets[k] && DB.sets[k].n) _cn[k] = DB.sets[k].n; }   // DB.sets 的鍵＝套裝代碼
       } catch (e) {}
       for (var e2 in SET_CN_EXTRA) if (!_cn[e2]) _cn[e2] = SET_CN_EXTRA[e2];
     }

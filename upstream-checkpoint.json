@@ -1,21 +1,22 @@
 {
-  "upstreamRepo": "https://github.com/shines871/idle-lineage-class.git",
-  "localClone": "D:/otherPersonRepos/idle-lineage-class",
-  "syncedUpstreamCommit": "137faacc5f9e164b68e6b6310dddbedfa79564c0",
-  "syncedAt": "2026-07-26 08:32 (UTC+8)",
-  "note": "由 sync-upstream.mjs 自動更新；上游 GAME_VERSION v3.8.34。架構=純上游鏡像+外掛層，syncedUpstreamCommit=目前核心/資產鏡像的上游 commit。",
-  "saveIo": {
-    "note": "存檔寫入/壓縮相關核心函式的 sha(見 scripts/check-save-io.mjs)。變動代表 afk-synccompress 的假設要重新確認,人工複核後才用 --accept 更新。",
-    "reviewedAt": "2026-07-23 18:43 (UTC+8)",
-    "fns": {
-      "_lsSet": "0d7574b7d44b7adf",
-      "_lzSet": "22eef461cde73e02",
-      "_lzGet": "184f9650bc9d01da",
-      "_lzSetStoredRaw": "21adbef0f61a313c",
-      "_lzRemoveStored": "3419ac355068f99d",
-      "_getLzWorker": "6856ce20939c844e",
-      "_queueLzCompression": "cb8d63a69443dfc6",
-      "var _lzWorker": "c39dc7aabd4e8b17"
-    }
-  }
+    "upstreamRepo":  "https://github.com/shines871/idle-lineage-class.git",
+    "localClone":  "D:/otherPersonRepos/idle-lineage-class",
+    "syncedUpstreamCommit":  "137faacc5f9e164b68e6b6310dddbedfa79564c0",
+    "syncedAt":  "2026-07-26 08:32 (UTC+8)",
+    "note":  "由 sync-upstream.mjs 自動更新；上游 GAME_VERSION v3.8.34。架構=純上游鏡像+外掛層，syncedUpstreamCommit=目前核心/資產鏡像的上游 commit。",
+    "saveIo":  {
+                   "note":  "存檔寫入/壓縮相關核心函式的 sha(見 scripts/check-save-io.mjs)。變動代表 afk-synccompress 的假設要重新確認,人工複核後才用 --accept 更新。",
+                   "reviewedAt":  "2026-07-23 18:43 (UTC+8)",
+                   "fns":  {
+                               "_lsSet":  "0d7574b7d44b7adf",
+                               "_lzSet":  "22eef461cde73e02",
+                               "_lzGet":  "184f9650bc9d01da",
+                               "_lzSetStoredRaw":  "21adbef0f61a313c",
+                               "_lzRemoveStored":  "3419ac355068f99d",
+                               "_getLzWorker":  "6856ce20939c844e",
+                               "_queueLzCompression":  "cb8d63a69443dfc6",
+                               "var _lzWorker":  "c39dc7aabd4e8b17"
+                           }
+               },
+    "forkedAt":  "2026-10-11 (UTC+8) — 起不再同步原作者，核心檔改為直接修改；syncedUpstreamCommit＝最後一次同步的上游 commit"
 }

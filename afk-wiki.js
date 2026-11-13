@@ -2599,20 +2599,12 @@
     else k = ((typeof equipCatKey === 'function') ? equipCatKey(id, d) : (typeof EQUIP_ITEM_CAT !== 'undefined' ? EQUIP_ITEM_CAT[id] : null)) || 'wpn_other';
     return _eqSlotKnown[k] ? k : 'other';   // 對不上桶的一律進「其他部位」,不讓它從頁面上消失
   }
-  // 某職業能否裝備:用遊戲真實規則(與遊戲顯示一致),非單看 req
+  // 某職業能否裝備:規則唯一一份在 afk-dex 的 classCanEquip(掉落查詢詳情的職業 logo 也用它,兩邊才不會一邊說能裝一邊說不能)。
+  //   讀不到掉落查詢時退回 req 白名單(只會比遊戲寬鬆,不會讓頁面壞掉)。
   function classCanEquip(d, id, cls) {
     if (cls === 'all') return true;
-    try {
-      // 固定遺物變體(relicBaseId,上游 v3.9 RELIC_EQUIPMENT_VARIANTS)照原型的完整規則判(同 js/08 checkCanEquip 換成原型再判),不是遺物的 req 白名單
-      if (d.relicBaseId !== undefined && typeof d.relicBaseId === 'string' && DB.items[d.relicBaseId]) { id = d.relicBaseId; d = DB.items[id]; }
-      if (typeof isRelic === 'function' && isRelic(d) && typeof reqAllowsClass === 'function') return reqAllowsClass(d, cls);   // 🏺 遺物：純以 req 白名單判定（同遊戲 checkCanEquip 短路，繞過各職業武器清單）
-      if (cls === 'dark' && typeof darkEquipOk === 'function') return darkEquipOk(d, id);
-      if (cls === 'illusion' && typeof illusionEquipOk === 'function') return illusionEquipOk(d, id);
-      if (cls === 'dragon' && typeof dragonEquipOk === 'function') return dragonEquipOk(d, id);
-      if (cls === 'warrior' && typeof warriorEquipOk === 'function') return warriorEquipOk(d, id);
-      if (cls === 'royal' && typeof royalEquipOk === 'function') return royalEquipOk(d, id);
-      if (typeof reqAllowsClass === 'function') return reqAllowsClass(d, cls);
-    } catch (e) {}
+    if (window.AFK_DEX_API && AFK_DEX_API.classCanEquip) return AFK_DEX_API.classCanEquip(d, id, cls);
+    try { if (typeof reqAllowsClass === 'function') return reqAllowsClass(d, cls); } catch (e) {}
     return true;
   }
   // 詳情:直接重用掉落查詢的完整物品詳情(itemDetailHTML),與掉落查詢一模一樣(類型/數值/攻速/賣價/製作/商店/取得/怪物掉落),只去掉它的名稱列與互動鈕;建一次快取

@@ -2603,6 +2603,8 @@
   function classCanEquip(d, id, cls) {
     if (cls === 'all') return true;
     try {
+      // 固定遺物變體(relicBaseId,上游 v3.9 RELIC_EQUIPMENT_VARIANTS)照原型的完整規則判(同 js/08 checkCanEquip 換成原型再判),不是遺物的 req 白名單
+      if (d.relicBaseId !== undefined && typeof d.relicBaseId === 'string' && DB.items[d.relicBaseId]) { id = d.relicBaseId; d = DB.items[id]; }
       if (typeof isRelic === 'function' && isRelic(d) && typeof reqAllowsClass === 'function') return reqAllowsClass(d, cls);   // 🏺 遺物：純以 req 白名單判定（同遊戲 checkCanEquip 短路，繞過各職業武器清單）
       if (cls === 'dark' && typeof darkEquipOk === 'function') return darkEquipOk(d, id);
       if (cls === 'illusion' && typeof illusionEquipOk === 'function') return illusionEquipOk(d, id);
@@ -2690,7 +2692,8 @@
   var EQ_PROC_FIELDS = ['spellProc', 'grantSkills', 'onHitCastSkill', 'onHitEleDmg', 'skillDmgMult', 'onDmgHeal', 'mpOnHit',
     'castOnHurt', 'hurtExplode', 'charmOnHit', 'thorns', 'dmgReflect', 'vampPct', 'killHealHp', 'judgmentThunder',
     'fireballBurst', 'instakillFull', 'eyePetrify', 'blueSpecter', 'redSpecter', 'strawCurse', 'missGrazeRate',
-    'freeChill', 'stealth', 'counterEles', 'eleWpnMult', 'eleBonusDmg', 'armguard', 'vanderStunHit', 'hasteStrike'];
+    'freeChill', 'stealth', 'counterEles', 'eleWpnMult', 'eleBonusDmg', 'armguard', 'vanderStunHit', 'hasteStrike',
+    'physDrGated', 'statusHealHp', 'dotMpRefund'];   // 受擊減傷(每 3 秒一次)／中異常回血／受持續傷害回魔
   function eqHasProc(d) {
     for (var k in d) if (/proc/i.test(k)) return true;
     for (var i = 0; i < EQ_PROC_FIELDS.length; i++) if (d[EQ_PROC_FIELDS[i]]) return true;
@@ -2811,6 +2814,7 @@
     var relic = [
       '<b>每隻怪物各有一件專屬遺物</b>（名稱藍字、說明帶【遺物】），擊殺時 <b>0.0001%</b>（百萬分之一）機率掉落；機率會吃掉落倍率：席琳的世界 <b>×3</b>、瘋狂的席琳世界 <b>×5</b>、恩賜怪 <b>×10</b>。想查哪隻怪掉哪件，到「掉落查詢」搜怪物名。',
       '<b>無法強化</b>，也<b>不會</b>帶祝福／詛咒、屬性／遠古詞綴或席琳套裝效果——撿到什麼樣就永遠什麼樣。',
+      '名稱是「<b>怪名的裝備名</b>」的 ' + Object.keys(DB.items).filter(function (k) { return DB.items[k].relicBaseId !== undefined; }).length + ' 件，是原型裝備的強化版：<b>職業、武器種類、攻速、貫穿、法杖共鳴都跟原型一樣</b>，數值依該怪強度加成，另多一項特殊效果。',
       '不會出現在潘朵拉黑市的陳列商品裡（但可以用黑市的「遺物布告欄」指定兌換，見「遺物市場」分頁）。能給哪些職業用，以每件裝備標示的職業為準。',
       '有專屬新部位「<b>脛甲</b>」（盔甲之下的額外防具格，目前只有遺物）。',
       '取得任何遺物會登錄「<b>遺物收集冊</b>」（遊戲內「收藏」面板第 4 本；進度依一般／經典兩種模式各自一份、與倉庫同規則；只記錄進度、無全收集加成）。',

@@ -117,7 +117,9 @@
             //   手機改成「流式堆疊」(DOM 序 title→menu→meta 自然由上而下排)，不再重疊；藝術背景圖 absolute inset:0 照樣鋪滿。
             + 'body.m-mobile #login-art-stage{ height:auto !important; min-height:100dvh; aspect-ratio:auto !important; display:flex !important; flex-direction:column !important; justify-content:flex-start !important; }\n'
             + 'body.m-mobile #login-title-layer, body.m-mobile #main-menu, body.m-mobile #login-meta-layer{ position:static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; width:auto !important; transform:none !important; }\n'
-            + 'body.m-mobile #login-title-layer{ margin-top:14px; }\n'
+            //   標題 margin-top 要讓過左上角的外掛開關鈕(afk-toggles 的 #afk-toggles-entry:top 6px＋高 ~29px,
+            //   兩者都在橫幅下方起算)。上游 v3.9 標題變長、置中後左緣伸進那顆鈕底下,14px 會蓋掉第一個字。
+            + 'body.m-mobile #login-title-layer{ margin-top:40px; }\n'
             + 'body.m-mobile #login-meta-layer{ margin:10px auto 18px !important; text-align:center; }';
         (document.head || document.documentElement).appendChild(st);
     }

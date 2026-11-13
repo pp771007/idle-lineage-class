@@ -11,10 +11,10 @@
          DESIGN_W/isMobileDevice/window.__mobileScaling 全專案零呼叫；唯一實際效果 viewport-fit=cover 直接併入上方 meta。
          （width=1180 手機縮放已於桌機專注決策時移除·本作 desktop-only） -->
 
-    <title>放置天堂 - 日出之國</title>
+    <title>放置天堂 - 單機完整版</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <link rel="stylesheet" href="css/style.css?v=80ca1493e1.8.6-npc-private-chat">
+    <link rel="stylesheet" href="css/style.css?v=803e4e99ff.9-login-layout">
     <link rel="stylesheet" href="css/floating-ui.css?v=f9232e9e67.5.100-audit-tail">
     <link rel="stylesheet" href="css/tailwind-built.css?v=c0926cfba4"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
@@ -29,8 +29,11 @@
         <img id="login-bg-image" src="public/assets/login/310.png" alt="登入畫面背景">
         <img id="login-anim-image" src="public/assets/login/273.png" alt="登入畫面動畫">
         <div id="login-title-layer" class="text-center">
-            <h1 class="text-4xl font-bold text-yellow-400 mb-2">放置天堂 - 日出之國</h1>
-            <p class="text-base text-slate-400">創造您的角色並開始冒險</p>
+            <h1 class="text-4xl font-bold text-yellow-400 mb-2">放置天堂 - 單機完整版</h1>
+            <ol id="login-update-notes" aria-label="本次更新說明">
+                <li>刪除多餘編碼，並修改可能造成卡頓與存檔錯誤問題</li>
+                <li>由Astra 6替沒有遺物的敵人都補上新遺物，實際能力我自己都不知道</li>
+            </ol>
         </div>
 
         <div id="main-menu" class="flex flex-col gap-5 items-center my-12">
@@ -41,8 +44,8 @@
         </div>
 
         <div id="login-meta-layer">
-            <!-- 🏷️ 版本號（由 js/14 window.onload 依 GAME_VERSION 填入；此處 v2.4.0 僅為 JS 失效時的後備文字） -->
-            <div id="login-version" class="text-center text-sm text-slate-300 font-medium tracking-wide select-none">v2.4.0</div>
+            <!-- 🏷️ 版本號由 js/14 window.onload 依 GAME_VERSION 填入；後備文字同步本次發布版本。 -->
+            <div id="login-version" class="text-center text-sm text-slate-300 font-medium tracking-wide select-none">v3.9</div>
             <div id="login-disclaimer" class="text-center text-xs text-slate-400 leading-relaxed mx-auto">本遊戲為非官方免費同人作品，絕無營利意圖；遊戲內圖片與音樂版權歸原權利方 NCSOFT 所有，其餘程式為獨立開發，嚴禁商業販售。</div>
         </div>
       </div>
@@ -551,23 +554,23 @@
     </script>
 
     <script src="js/anim-manifest.js?v=8168f3d2c7.8.12-necro-relics"></script>
-    <script src="js/00-data.js?v=2f8dce5aab.8.34-merc-trial-class-loot"></script>
-<script src="js/01-drops-config.js?v=97c2d34557.8.26-flywing-relics"></script>
-<script src="js/02-stats-recompute.js?v=0209ba097c.8.26-flywing-relics"></script>
-    <script src="js/03-combat-core.js?v=061ad25cbd.8.26-flywing-relics"></script>
-    <script src="js/04-combat-attack.js?v=a3772e77b4.8.26-flywing-relics"></script>
+    <script src="js/00-data.js?v=7d19facfa5.9-update-notes"></script>
+<script src="js/01-drops-config.js?v=b048b4f328.8.38-relic-completion"></script>
+<script src="js/02-stats-recompute.js?v=58d8f7220b.8.39-relic-runtime"></script>
+    <script src="js/03-combat-core.js?v=59e925248e.8.39-relic-runtime"></script>
+    <script src="js/04-combat-attack.js?v=edbc112af5.8.39-relic-runtime"></script>
 <script src="js/05-kill-progression.js?v=7a8adb68e6.8.34-merc-trial-class-loot"></script>
-    <script src="js/06-status-allies.js?v=f7f26341f6.8.34-merc-trial-class-loot"></script>
+    <script src="js/06-status-allies.js?v=79c159480b.8.39-relic-runtime"></script>
     <script src="js/07-skills-cast.js?v=4fd4b0a386.8.26-flywing-relics"></script>
-<script src="js/08-items-equip.js?v=73fee2a2a9.8.16-wis-regen-interval"></script>
-<script src="js/09-vfx-render.js?v=1d2db72192.8.32-merc-vfx-origin"></script>
-    <script src="js/10-ui-tabs.js?v=f05ab31579.8.14-merc-guild"></script>
+<script src="js/08-items-equip.js?v=0e93a9bcd8.8.38-relic-completion"></script>
+<script src="js/09-vfx-render.js?v=c3ba01080a.8.35-runtime-cleanup"></script>
+    <script src="js/10-ui-tabs.js?v=b504b2b269.8.38-relic-completion"></script>
 <script src="js/11-world-map.js?v=dce16f586a.8.17-item-stack-source"></script>
-<script src="js/12-npc-quests.js?v=c0155e520d.8.34-merc-trial-class-loot"></script>
-<script src="js/13-shop-save.js?v=a95bb3ba57.8.18-desktop-save-isolation"></script>
-<script src="js/14-craft-pandora.js?v=528dc95d26.8.17-item-stack-source"></script>
-<script src="js/15-cards.js?v=b1159fb025.7.66"></script>
-<script src="js/16-equip-book.js?v=b65ee3ef7a.8.15-legacy-import-smooth"></script>
+<script src="js/12-npc-quests.js?v=ee9d3da58b.8.36-save-integrity"></script>
+<script src="js/13-shop-save.js?v=9d9a59af40.8.37-item-transactions"></script>
+<script src="js/14-craft-pandora.js?v=45e146de96.8.37-item-transactions"></script>
+<script src="js/15-cards.js?v=0c6f17786d.8.37-item-transactions"></script>
+<script src="js/16-equip-book.js?v=75c8aeffa0.8.38-relic-completion"></script>
 <script src="js/18-misc-book.js?v=efb9d0a866.8.15-legacy-import-smooth"></script>
 <script src="js/17-audio.js?v=07c972f6fe.8.1-monia-sfx"></script>
 <script src="js/19-equipment-window.js?v=3d33f8f53d.7.57"></script>
@@ -575,14 +578,14 @@
 <script src="js/21-relic-book.js?v=7d118874fb.8.15-legacy-import-smooth"></script>
     <script src="js/23-summons.js?v=f5f505462f.8.23-sherine-set-rework"></script>
     <script src="js/22-pets.js?v=665accdc36.8.23-sherine-set-rework"></script>
-    <script src="js/24-pandora-relic-market.js?v=7f16b2804b.7.70"></script>
+    <script src="js/24-pandora-relic-market.js?v=86fa1204d0.8.35-runtime-cleanup"></script>
     <script src="js/25-clan-system.js?v=c78fb35df2.8.7-social-private"></script>
-    <script src="js/26-world-channel.js?v=9f45eaff51.8.13-private-bond"></script>
+    <script src="js/26-world-channel.js?v=f88c1183fa.8.35-runtime-cleanup"></script>
 <script src="js/28-pvp-arena.js?v=3448feb9f9.7.89-stage33-host-sign"></script>
 <script src="js/29-siege-v2-data.js?v=eae6887df7.7.63-siege-v2"></script>
 <script src="js/30-siege-v2.js?v=616f9643f4.7.89-castle-ring-layout"></script>
 <script src="js/31-castle-guards.js?v=91544fd42d.8.23-sherine-set-rework"></script>
-<script src="js/32-threat.js?v=f113c09abd.8.23-sherine-set-rework"></script>
+<script src="js/32-threat.js?v=a62547f4a1.8.35-runtime-cleanup"></script>
     <!-- ═══════════ 加掛版外掛層（核心永遠是原作者原版；我們的功能全部是外掛疊上去） ═══════════ -->
     <!-- 此區塊由 scripts/sync-upstream.mjs 於「拉上游 index.html 後」自動注入到 </body> 之前。?v= 由 stamp-code-versions 補。 -->
     <!-- 🌓 宣告「這頁本來就是深色」：沒宣告的話 Android Chrome 的「自動深色主題」會自己疊一層反轉，
@@ -598,7 +601,7 @@
     <!-- 存檔解壓快取：必須排在所有會讀 localStorage 的外掛之前（核心每殺一隻怪都重解壓一次血盟狀態） -->
     <script src="afk-lzcache.js?v=1b86b3d102"></script>
     <!-- afk-synccompress：存檔即時壓縮（預設關）——開啟後把 _lzSet 換回同步壓縮，根治登出/多開後存檔未壓縮爆滿。緊接 lzcache、在任何會存檔的外掛之前 -->
-    <script src="afk-synccompress.js?v=920a9aa04d"></script>
+    <script src="afk-synccompress.js?v=00db459cfa"></script>
     <!-- afk-clanroster：血盟名冊瘦身——名冊只增不減（上限一萬筆），而野外 PVP 每生一個對手就整包讀改寫一次，越玩越慢。排在 synccompress 之後（它包 _lzSet，我們包 _clanWriteState，互不干擾） -->
     <script src="afk-clanroster.js?v=7d1358ef78"></script>
     <!-- afk-allyslim：傭兵快照瘦身——傭兵是來源角色的深拷貝，隊長存檔裡每個傭兵都各帶一份廢品標記等用不到的資料（實測佔存檔三成）。包 saveGame，存檔前清空 -->
@@ -609,7 +612,7 @@
     <!-- 離線快速結算（自己 monkey-patch 包核心 saveGame/loadGame/changeMap/killMob/gainItem；搭配 maybeSpawnMobs 補丁） -->
     <script src="afk-offline.js?v=b3e169d4f8"></script>
     <!-- 手機版面 / 返回鍵 -->
-    <script src="afk-mobile.js?v=2c98ed403f"></script>
+    <script src="afk-mobile.js?v=3aa8ba2ece"></script>
     <script src="afk-backnav.js?v=a02389afc7"></script>
     <script src="afk-battlehud.js?v=a9842b42d6"></script>
     <script src="afk-mapbar.js?v=048a44152b"></script>
@@ -647,12 +650,13 @@
     <script src="afk-mercguard.js?v=b05f7ef97d"></script>
     <!-- 傭兵技能清單即時更新：隊伍面板 skill 分頁的重建簽章沒把技能清單算進去，傭兵換了授予技能的裝備/學了新魔法，下拉停在舊清單 -->
     <script src="afk-squadsync.js?v=5af6f9f1cc"></script>
-    <!-- 金卡怪掉遠古裝備：遠古系在上游是「絕版」(rollAffixesNew 恆回 anc:false)，這裡把產生管道接回來，條件綁卡片收集冊金階 -->
+    <!-- 遠古系裝備的來源與傳承：上游是「絕版」(rollAffixesNew 恆回 anc:false)，這裡把產生管道接回來（金卡怪掉落／該分類收滿後的非打怪取得），並讓製作/精煉把本體的詞綴帶到成品（上游只替祝福做了這件事） -->
     <script src="afk-ancdrop.js?v=61ec59fea1"></script>
     <!-- 重複的遺物會帶詞綴：遺物收集冊已收錄的那件，之後再打到的每一件各自 50% 擲祝福／遠古系／屬性（屬性只上武器遺物）。需核心補丁 11 的 __afkRelicAffix 鉤子 -->
     <script src="afk-relicaffix.js?v=a3466a1fa0"></script>
-    <!-- 遺物整理：重複的遺物一次清掉（賣金幣／回收換龍鑽）；每個遺物 id 自動保留最好的 1 件。排在 afk-relicaffix 之後＝在最外層包 renderRelicBook -->
+    <!-- 遺物整理：重複的遺物一次清掉（賣金幣走核心 getSellPrice／回收換龍鑽 3 顆一件）；每個遺物 id 自動保留最好的 1 件（布告欄搜尋的抽獎池看的是「你現在手上有沒有」，全清掉會搜回剛丟的那件）。排在 afk-relicaffix 之後＝在最外層包 renderRelicBook，入口不會被它的說明行擠掉 -->
     <script src="afk-relicbatch.js?v=d5a2f5796f"></script>
+    <!-- 黑市收購價提示：收購欄下方即時顯示必中價/命中率/平均要等多久（遊戲只能靠掛單試）；也開 AFK_BM 給 afk-dex 的物品詳情標價 -->
     <script src="afk-bmprice.js?v=ec643849be"></script>
     <!-- 只迴避指定頭目：把上游「迴避頭目(瞬移卷軸)」的範圍從「全部的王」縮小到玩家挑的那幾隻（每張地圖各自一份） -->
     <script src="afk-bossavoid.js?v=57b4e8083e"></script>
@@ -661,13 +665,14 @@
     <script src="afk-invlist.js?v=638e5a43ed"></script>
     <script src="afk-eqlist.js?v=7a7533b7ce"></script>
     <script src="afk-npclist.js?v=cae12423d7"></script>
-    <!-- afk-npclabel：村莊 NPC 名牌不要跑出畫面 -->
+    <!-- afk-npclabel：村莊 NPC 名牌不要跑出畫面（包核心的名牌排版，補左右夾邊） -->
     <script src="afk-npclabel.js?v=21861a88d8"></script>
     <script src="afk-mobname.js?v=d74c25c2c9"></script>
     <script src="afk-trackinfo.js?v=aebaee94e2"></script>
     <!-- afk-trackmaps：追蹤選單補上選不到的圖（黑暗妖精聖地＝地獄奴隸唯一產地、傲慢之塔2~10樓、六張隱藏區域）；三批來歷不同,檔頭有表 -->
     <script src="afk-trackmaps.js?v=368c42d9fa"></script>
     <script src="afk-relicguard.js?v=fb3d923c3e"></script>
+    <!-- afk-wpnfix：補上游漏掉的武器設定（分類表 + 物品欄位；只在上游是空的時候才補，作者填了自動讓路） -->
     <script src="afk-wpnfix.js?v=5d0ab9c416"></script>
     <!-- 快速強化目標上限 +12→+15（包 buildQuickEnhanceHeader 補下拉選項） -->
     <script src="afk-enhtarget.js?v=011a932c2c"></script>
@@ -692,14 +697,14 @@
     <script src="afk-dollcursor.js?v=dd9163f19b"></script>
     <!-- afk-anyclass：去除裝備職業限制（預設關）——包 checkCanEquip，執行期間暫時放行職業那幾關 -->
     <script src="afk-anyclass.js?v=533d290037"></script>
-    <!-- afk-locksafe：上鎖的裝備不會被潘朵拉收購/遺物布告欄拿走 -->
+    <!-- afk-locksafe：上鎖的裝備不會被潘朵拉收購/遺物布告欄拿走（包入口，執行期間把上鎖物品從背包暫時抽掉） -->
     <script src="afk-locksafe.js?v=a1ab38bb29"></script>
-    <!-- afk-buyercompat：收購 NPC 向下兼容（收 +6 也可以繳 +15）——需搭配 apply-core-patches 補丁 13 的 __afkBuyerEnMatch 鉤子；排在 afk-locksafe 之後＝在最外層 -->
+    <!-- afk-buyercompat：收購 NPC 向下兼容（收 +6 也可以繳 +15）——需搭配 apply-core-patches 補丁 13 的 __afkBuyerEnMatch 鉤子；排在 afk-locksafe 之後＝在最外層，算候選時看得到完整背包 -->
     <script src="afk-buyercompat.js?v=c724720a1b"></script>
     <!-- 傳統模式(偽)/自動衝裝：需搭配 scripts/apply-core-patches.mjs 的 gainItem _tEn 鉤子 -->
     <script src="afk-traditional.js?v=99472abfb1"></script>
     <script src="afk-warehouse.js?v=ae8c589300"></script>
-    <!-- 倉庫批次存取:勾選/全選一次搬完(核心是一件一件搬、每件都 saveGame,幾千格搬不動);排在 afk-warehouse 之後 → afterRender 在它的注入之後才跑 -->
+    <!-- 倉庫批次存取(預設關):勾選/全選一次搬完(核心是一件一件搬、每件都 saveGame,幾千格搬不動);排在 afk-warehouse 之後 → afterRender 在它的注入之後才跑 -->
     <script src="afk-whbatch.js?v=40dee81b7f"></script>
     <!-- 迷你遊戲（我方自製） -->
     <script src="afk-dograce.js?v=72135b4c65"></script>
@@ -708,7 +713,7 @@
     <script src="afk-sw.js?v=0c1440decf"></script>
     <script src="afk-syncinfo.js?v=598e4b40ae"></script>
     <script src="afk-analytics.js?v=25e209371f"></script>
-    <script src="afk-skin.js?v=a066812f39"></script>
+    <script src="afk-skin.js?v=9a6e522454"></script>
     <!-- ═══════════ 加掛版外掛層 END ═══════════ -->
 </body>
 </html>

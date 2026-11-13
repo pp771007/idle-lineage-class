@@ -36,10 +36,16 @@
   var _syncLzSet = function (key, jsonStr) {
     // 開關關 / 讀不到開關中樞 / 打包版 → 完全用回上游原版(非同步)行為,不改任何 byte
     if (!window.AFK_TOGGLES || !AFK_TOGGLES.enabled('synccompress') || window.fableStore) return _orig(key, jsonStr);
+    // 上游 v3.9 的物品交易(runItemTransaction):交易中 _lsSet 只是暫存草稿、提交時才落盤;
+    // 交易日誌沒收完/恢復中則整個儲存暫停。兩種狀態都要跟原版 _lzSet 開頭那兩行同語義。
+    var inTx = typeof _itemTransaction !== 'undefined' && _itemTransaction;
+    if (!inTx && typeof _itemCanWriteStorage === 'function' && !_itemCanWriteStorage()) return false;
     // 同步壓縮(還原作者 d8e583539 之前的版本):存檔當下就壓成 LZ1,無非同步空窗
-    try { if (typeof _lzWorkerRev !== 'undefined' && _lzWorkerRev) _lzWorkerRev[key] = (_lzWorkerRev[key] || 0) + 1; } catch (e) {}   // 讓任何在途的舊 Worker 結果失效(rev 不符→其 onmessage 放棄),不會回頭用舊原文蓋掉我們剛壓好的版本
+    if (!inTx) try { if (typeof _lzWorkerRev !== 'undefined' && _lzWorkerRev) _lzWorkerRev[key] = (_lzWorkerRev[key] || 0) + 1; } catch (e) {}   // 讓任何在途的舊 Worker 結果失效(rev 不符→其 onmessage 放棄),不會回頭用舊原文蓋掉我們剛壓好的版本;交易中由提交時的 _itemWriteRaw 負責
     var packed = null;
     try { packed = 'LZ1:' + LZString.compressToUTF16(jsonStr); } catch (e) { packed = null; }
+    // 交易中照樣暫存壓縮版(提交時落盤的就是 LZ1,不會再排 Worker 留空窗);暫存失敗=交易已中止,不退明文、不報空間不足
+    if (inTx) return _lsSet(key, packed != null ? packed : jsonStr);
     if (packed != null && _lsSet(key, packed)) return true;
     if (_lsSet(key, jsonStr)) return true;   // 壓縮或寫入失敗 → 退原文(與作者原版 fallback 一致)
     if (typeof logSys === 'function') logSys('<span class="text-red-400 font-bold">⚠ 儲存空間不足，存檔可能未完整寫入。</span>');

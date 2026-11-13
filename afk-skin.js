@@ -80,8 +80,13 @@
        → 入口幾條都貼齊版本號、不會因為多一條就整塊往下擠到版號。
        字級用 min(1.25vh,.94vw)=「舞台高度的 1.25%」(舞台是 4:3、高=min(100vh,75vw)):
        整塊隨舞台等比縮放,小視窗才不會漲上去壓到標題。⚠ 上限別調太高——一調高,在小視窗
-       (整塊還沒縮到上限以下)就會頂到標題;smoke 第一輪有驗「不壓到標題/版號」。 */
-    '#afk-plugin-panel{position:absolute;z-index:5;left:5.8%;width:25.4%;top:21.8%;bottom:59.8%;',
+       (整塊還沒縮到上限以下)就會頂到標題;smoke 第一輪有驗「不壓到標題/版號」。
+       上游 v3.9 把標題下的副標換成多行更新說明(#login-update-notes),標題底到原版號位置(41.5%)
+       只剩 ~13%、塞不下入口(~16%)→ 有 panel 時把版本號層(#login-meta-layer)往下挪到 47.5%
+       (版權字底端約 54%,仍在金框內 ~57%),panel 底緣跟著貼在新版號上方 1.3%。
+       只在 panel 存在時挪(stage 掛 .afk-has-panel,見 ensurePanel)→ 關掉本外掛首頁就是原版版面。 */
+    '#login-art-stage.afk-has-panel #login-meta-layer{top:47.5%;}',
+    '#afk-plugin-panel{position:absolute;z-index:5;left:5.8%;width:25.4%;top:21.8%;bottom:53.8%;',
       'display:flex;flex-direction:column;align-items:center;justify-content:flex-end;',
       'gap:.42em;font-size:clamp(8px,min(1.25vh,.94vw),16px);}',
     /* 選角/創角時作者會把 #main-menu 加 .hidden,入口要跟著收起來。
@@ -99,7 +104,7 @@
     /* ⚙ 其他功能的選單原本往「上」彈(它在手機是排在最底下的)。搬到左欄後上方只剩到標題那點距離,
        選單一長就會被 #login-art-stage 的 overflow:hidden 從頂端切掉、玩家滑不到 → 這裡改成往下彈,
        並用 min(vh,vw)(=舞台高度的百分比)封頂 + 自己捲,視窗再小也不會有項目掉在舞台外。 */
-    '#afk-plugin-panel #afk-stg-menu{top:100%;bottom:auto;margin:.6em 0 0;max-height:min(56vh,42vw);overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.55);}',
+    '#afk-plugin-panel #afk-stg-menu{top:100%;bottom:auto;margin:.6em 0 0;max-height:min(50vh,37.5vw);overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.55);}',
 
     /* 📢 公告跑馬燈:放在 #main-menu 第一個子層(首頁按鈕上方);紅底捲動,游標移上去暫停。
        (v3.0.40 作者登入頁改成藝術舞台後,標題不再是 #creation-screen 直接子層,改錨定 #main-menu。) */
@@ -197,6 +202,7 @@
       panel.id = 'afk-plugin-panel';
       stage.appendChild(panel);   // 一定排在 #main-menu 之後 → CSS 的 `#main-menu.hidden ~ #afk-plugin-panel` 才成立
     }
+    stage.classList.add('afk-has-panel');   // 讓版本號層往下讓位(見 CSS 的 .afk-has-panel)
     orderInto(panel, els);
   }
 
@@ -206,6 +212,8 @@
     if (!panel) return;
     while (panel.firstChild) menu.appendChild(panel.firstChild);
     panel.remove();
+    var stage = document.getElementById('login-art-stage');
+    if (stage) stage.classList.remove('afk-has-panel');
   }
 
   function apply() {

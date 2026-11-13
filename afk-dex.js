@@ -619,7 +619,7 @@
     if (body) return body;
     return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">目前沒有固定取得途徑</div></div>';
   }
-  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML, classCanEquip: classCanEquip, goto: gotoDex, close: closeForNav, isOpen: _isModalClosable, searchSummary: searchSummary };   // goto({q}) 通用跨頁前往掉落查詢;close/isOpen 供跨頁切換(關閉來源、接手歷史層);searchSummary 供小百科統一搜尋
+  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML, goto: gotoDex, close: closeForNav, isOpen: _isModalClosable, searchSummary: searchSummary };   // goto({q}) 通用跨頁前往掉落查詢;close/isOpen 供跨頁切換(關閉來源、接手歷史層);searchSummary 供小百科統一搜尋
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
@@ -628,37 +628,8 @@
   function _baseInst(id) { return { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false }; }
   // 適用職業:遊戲的 buildItemDescHTML 只擺一排職業 logo(16px 小圖、彼此又長得像,認不出誰是誰)→ 每個 logo 後補上職業名。
   //   職業名取自 logo 自己的 alt(遊戲產生時就填好中文名),作者加職業自動跟上;圖載入失敗(onerror 隱藏)時文字仍在。
-  // 某職業能否裝備:照遊戲 js/08 checkCanEquip 的職業部分(不含精通/負重這類看角色狀態的放寬)。小百科裝備篩選也讀這支。
-  //   固定遺物變體(relicBaseId,上游 v3.9)換成原型再判;其他遺物純看 req 白名單;一般裝備走各職業的 xxxEquipOk。
-  function classCanEquip(d, id, cls) {
-    if (cls === 'all') return true;
-    try {
-      if (d.relicBaseId !== undefined && typeof d.relicBaseId === 'string' && DB.items[d.relicBaseId]) { id = d.relicBaseId; d = DB.items[id]; }
-      if (typeof isRelic === 'function' && isRelic(d) && typeof reqAllowsClass === 'function') return reqAllowsClass(d, cls);
-      if (cls === 'dark' && typeof darkEquipOk === 'function') return darkEquipOk(d, id);
-      if (cls === 'illusion' && typeof illusionEquipOk === 'function') return illusionEquipOk(d, id);
-      if (cls === 'dragon' && typeof dragonEquipOk === 'function') return dragonEquipOk(d, id);
-      if (cls === 'warrior' && typeof warriorEquipOk === 'function') return warriorEquipOk(d, id);
-      if (cls === 'royal' && typeof royalEquipOk === 'function') return royalEquipOk(d, id);
-      if (typeof reqAllowsClass === 'function') return reqAllowsClass(d, cls);
-    } catch (e) {}
-    return true;
-  }
-  // 遊戲的 buildItemDescHTML 對遺物變體仍只看 req(與它自己的 checkCanEquip 不一致)→ 變體的職業 logo 照上面的真實規則重畫。
-  //   順序與檔名跟遊戲那排(js/10 的 _EQ_CLASSES)一致。
-  var EQ_CLASS_LOGOS = [['knight', '騎士'], ['elf', '妖精'], ['mage', '法師'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士'], ['warrior', '戰士'], ['royal', '王族']];
-  var CLASS_LOGO_RE = /<img\b[^>]*\bclass="[^"]*class-eq-icon[^"]*"[^>]*>/g;
-  function fixVariantClassLogos(html, id) {
-    var d = DB.items[id];
-    if (!d || d.relicBaseId === undefined) return html;
-    var first = true;
-    var logos = EQ_CLASS_LOGOS.filter(function (c) { return classCanEquip(d, id, c[0]); }).map(function (c) {
-      return '<img src="assets/logo/' + c[1] + 'icon.png" alt="' + c[1] + '" title="' + c[1] + '" class="class-eq-icon" onerror="this.style.display=\'none\';">';
-    }).join('');
-    return String(html).replace(CLASS_LOGO_RE, function () { if (!first) return ''; first = false; return logos; });
-  }
   function withClassNames(html) {
-    return String(html).replace(CLASS_LOGO_RE, function (tag) {
+    return String(html).replace(/<img\b[^>]*\bclass="[^"]*class-eq-icon[^"]*"[^>]*>/g, function (tag) {
       var m = tag.match(/\balt="([^"]*)"/);
       return (m && m[1]) ? tag + '<span class="m-dex-clsname">' + esc(m[1]) + '</span>' : tag;
     });
@@ -679,7 +650,7 @@
     var gameHTML = '';
     try { if (typeof buildItemDescHTML === 'function') gameHTML = buildItemDescHTML(_baseInst(id)); } catch (e) {}
     if (!gameHTML) gameHTML = d.d || '';
-    var body = gameHTML ? '<div style="line-height:1.8;margin:4px 0;">' + withClassNames(fixVariantClassLogos(gameHTML, id)) + '</div>' : '';
+    var body = gameHTML ? '<div style="line-height:1.8;margin:4px 0;">' + withClassNames(gameHTML) + '</div>' : '';
     // 攻擊速度:遊戲的 buildItemDescHTML 不顯示武器攻速,在這補回(讀 DB 的 spd=每次攻擊間隔秒數,越低越快;未填預設 1.0,與戰鬥碼 wpn.spd 同源)
     var spdLine = '';
     if (d.type === 'wpn') {

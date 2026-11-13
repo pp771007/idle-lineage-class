@@ -2599,11 +2599,11 @@
     else k = ((typeof equipCatKey === 'function') ? equipCatKey(id, d) : (typeof EQUIP_ITEM_CAT !== 'undefined' ? EQUIP_ITEM_CAT[id] : null)) || 'wpn_other';
     return _eqSlotKnown[k] ? k : 'other';   // 對不上桶的一律進「其他部位」,不讓它從頁面上消失
   }
-  // 某職業能否裝備:規則唯一一份在 afk-dex 的 classCanEquip(掉落查詢詳情的職業 logo 也用它,兩邊才不會一邊說能裝一邊說不能)。
-  //   讀不到掉落查詢時退回 req 白名單(只會比遊戲寬鬆,不會讓頁面壞掉)。
+  // 某職業能否裝備:規則唯一一份在 afk-relicvariant 的 AFK_EQUIP_CLASS(物品說明的職業 logo 也照它畫,篩選與詳情才不會一邊說能裝一邊說不能)。
+  //   讀不到時退回 req 白名單(只會比遊戲寬鬆,不會讓頁面壞掉)。
   function classCanEquip(d, id, cls) {
     if (cls === 'all') return true;
-    if (window.AFK_DEX_API && AFK_DEX_API.classCanEquip) return AFK_DEX_API.classCanEquip(d, id, cls);
+    if (window.AFK_EQUIP_CLASS) return AFK_EQUIP_CLASS.canEquip(d, id, cls);
     try { if (typeof reqAllowsClass === 'function') return reqAllowsClass(d, cls); } catch (e) {}
     return true;
   }
